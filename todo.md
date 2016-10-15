@@ -1,0 +1,5 @@
+- investigate gh search results
+- log command stdout/err
+- consolidate lists
+- support local toolchains
+- remove download crate

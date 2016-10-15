@@ -1,0 +1,15 @@
+[package]
+name = "cargobomb"
+version = "0.1.0"
+authors = ["Brian Anderson <banderson@mozilla.com>"]
+
+[dependencies]
+clap = "2.11.3"
+error-chain = "0.5.0"
+tempdir = "0.3.4"
+url = "1.1"
+walkdir = "0.1.8"
+json = "0.10.2"
+semver = "0.5.0"
+lazy_static = "0.2"
+chrono = "0.2.25"

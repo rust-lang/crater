@@ -28,8 +28,9 @@ pub fn read_lines(path: &Path) -> Result<Vec<String>> {
        .collect())
 }
 
-pub fn append(path: &Path, s: &str) -> Result<()> {
+pub fn append_line(path: &Path, s: &str) -> Result<()> {
     let mut f = OpenOptions::new().create(true).append(true).open(path)?;
     f.write_all(s.as_bytes())?;
+    f.write_all("\n".as_bytes())?;
     Ok(())
 }

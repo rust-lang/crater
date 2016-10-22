@@ -1,7 +1,8 @@
 #![recursion_limit = "1024"]
 
 #![allow(unused)]
-#![feature(question_mark)]
+#![feature(proc_macro)]
+#![feature(receiver_try_iter)]
 
 extern crate clap;
 #[macro_use]
@@ -14,6 +15,16 @@ extern crate semver;
 #[macro_use]
 extern crate lazy_static;
 extern crate chrono;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+extern crate serde;
+extern crate tar;
+extern crate flate2;
+extern crate toml;
+#[macro_use]
+extern crate scopeguard;
+extern crate libc;
 
 #[macro_use]
 mod log;
@@ -26,46 +37,71 @@ mod file;
 mod dl;
 mod gh;
 mod util;
+mod run;
+mod crates;
+mod git;
+mod checkpoint;
+mod ex;
+mod toml_frobber;
 
 use clap::{App, Arg, AppSettings, SubCommand, ArgMatches};
 use errors::*;
 use std::panic;
 use std::env;
+use std::process;
 
 const WORK_DIR: &'static str = "./work";
 const CARGO_HOME: &'static str = "./work/cargo-home";
 const RUSTUP_HOME: &'static str = "./work/rustup-home";
 const TOOLCHAIN_DIR: &'static str = "./work/tc";
-const REPO_DIR: &'static str = "./work/repos";
+const CRATES_DIR: &'static str = "./work/crates";
 const EXPERIMENT_DIR: &'static str = "./work/ex";
-const DISCO_DIR: &'static str = "./work/disco";
 const LIST_DIR: &'static str = "./work/lists";
 const LOG_DIR: &'static str = "./work/logs";
+const FROB_DIR: &'static str = "./work/fromls";
+const TARGET_DIR: &'static str = "./work/target-dirs";
+const TEST_DIR: &'static str = "./work/test";
 
 fn main() {
-    log!("program args: {}", env::args().skip(1).collect::<Vec<_>>().join(" "));
-    let r = panic::catch_unwind(|| {
-        if let Err(e) = main_() {
-            log!("error: {}", e);
-            std::process::exit(1);
+    log::init();
+    let code = match panic::catch_unwind(main_) {
+        Ok(Ok(())) => {
+            0
         }
-    });
-    if let Err(e) = r {
-        log!("panic: {:?}", e);
-    }
+        Ok(Err(e)) => {
+            use std::error::Error;
+            util::report_error(&e);
+            1
+        }
+        Err(e) => {
+            util::report_panic(&*e);
+            1
+        }
+    };
     log::finish();
+    process::exit(code);
 }
 
 fn main_() -> Result<()> {
     let ref matches = cli().get_matches();
 
     match matches.subcommand() {
-        ("prepare-toolchain", Some(m)) => try!(prepare_toolchain(m)),
-        ("run", Some(m)) => try!(run(m)),
-        ("create-recent-list", Some(_)) => try!(create_recent_list()),
-        ("create-hot-list", Some(_)) => try!(create_hot_list()),
-        ("create-gh-candidate-list", Some(_)) => try!(create_gh_candidate_list()),
-        ("create-gh-app-list", Some(_)) => try!(create_gh_app_list()),
+        ("create-recent-list", Some(_)) => create_recent_list()?,
+        ("create-second-list", Some(_)) => create_second_list()?,
+        ("create-hot-list", Some(_)) => create_hot_list()?,
+        ("create-gh-candidate-list", Some(_)) => create_gh_candidate_list()?,
+        ("create-gh-app-list", Some(_)) => create_gh_app_list()?,
+        ("prepare-crates", Some(_)) => prepare_crates()?,
+        ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
+        ("link-toolchain", Some(m)) => panic!(),
+        ("frob-cargo-tomls", Some(_)) => frob_cargo_tomls()?,
+        ("capture-shas", Some(m)) => capture_shas(m)?,
+        ("capture-lockfiles", Some(m)) => capture_lockfiles(m)?,
+        ("fetch-deps", Some(m)) => fetch_deps(m)?,
+        ("run", Some(m)) => run(m)?,
+        ("summarize", Some(_)) => panic!(),
+        ("easy-test", Some(m)) => panic!(),
+        ("sleep", Some(m)) => sleep(m)?,
         _ => unreachable!()
     }
 
@@ -80,51 +116,11 @@ fn cli() -> App<'static, 'static> {
         .setting(AppSettings::DeriveDisplayOrder)
         .setting(AppSettings::SubcommandRequiredElseHelp)
 
-        // Main commands
-        .subcommand(
-            SubCommand::with_name("prepare-lists")
-                .about("TODO"))
-        .subcommand(
-            SubCommand::with_name("prepare-toolchain")
-                .about("TODO")
-                .arg(Arg::with_name("toolchain").required(true))
-                .arg(Arg::with_name("target").required(true)))
-        .subcommand(
-            SubCommand::with_name("prepare-crates")
-                .about("TODO"))
-        .subcommand(
-            SubCommand::with_name("test")
-                .about("Run a single experiment")
-                .arg(Arg::with_name("toolchain1").required(true))
-                .arg(Arg::with_name("toolchain2").required(true))
-                .arg(Arg::with_name("target").required(true))
-                .arg(Arg::with_name("name")
-                     .long("name")
-                     .required(false)
-                     .default_value("default"))
-                .arg(Arg::with_name("mode")
-                     .long("mode")
-                     .required(false)
-                     .possible_values(&["release", "debug"])
-                     .default_value("debug"))
-                .arg(Arg::with_name("rustflags")
-                     .long("rustflags")
-                     .required(false))
-                .arg(Arg::with_name("crate-list-file")
-                     .long("crate-list-file")
-                     .required(false)
-                     .default_value("../crate-list.txt")))
-        .subcommand(
-            SubCommand::with_name("summarize")
-                .about("TODO"))
-                .arg(Arg::with_name("name")
-                     .long("name")
-                     .required(false)
-                     .default_value("default"))
-
-        // Additional commands
         .subcommand(
             SubCommand::with_name("create-recent-list")
+                .about("TODO"))
+        .subcommand(
+            SubCommand::with_name("create-second-list")
                 .about("TODO"))
         .subcommand(
             SubCommand::with_name("create-hot-list")
@@ -135,6 +131,71 @@ fn cli() -> App<'static, 'static> {
         .subcommand(
             SubCommand::with_name("create-gh-app-list")
                 .about("TODO"))
+        .subcommand(
+            SubCommand::with_name("prepare-crates")
+                .about("TODO"))
+        .subcommand(
+            SubCommand::with_name("prepare-toolchain")
+                .about("TODO")
+                .arg(Arg::with_name("toolchain").required(true))
+                .arg(Arg::with_name("target").required(true)))
+        .subcommand(
+            SubCommand::with_name("frob-cargo-tomls")
+                .about("TODO"))
+        .subcommand(
+            SubCommand::with_name("capture-shas")
+                .about("TODO")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("capture-lockfiles")
+                .about("TODO")
+                .arg(Arg::with_name("toolchain")
+                     .long("toolchain")
+                     .required(true)
+                     .takes_value(true))
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default"))
+                .arg(Arg::with_name("all")
+                     .long("all")))
+        .subcommand(
+            SubCommand::with_name("fetch-deps")
+                .about("TODO")
+                .arg(Arg::with_name("toolchain")
+                     .long("toolchain")
+                     .required(true)
+                     .takes_value(true))
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("run")
+                .arg(Arg::with_name("toolchain")
+                     .long("toolchain")
+                     .required(true)
+                     .takes_value(true))
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("summarize")
+                .about("TODO"))
+                .arg(Arg::with_name("name")
+                     .long("name")
+                     .required(false)
+                     .default_value("default"))
+        .subcommand(
+            SubCommand::with_name("sleep")
+                .arg(Arg::with_name("secs")
+                     .required(true)))
+
+
 }
 
 fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
@@ -143,32 +204,12 @@ fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
     toolchain::prepare_toolchain(toolchain, target)
 }
 
-fn run(m: &ArgMatches) -> Result<()> {
-    use compare::*;
-
-    let toolchain1 = m.value_of("toolchain1").expect("");
-    let toolchain2 = m.value_of("toolchain2").expect("");
-    let target = m.value_of("target").expect("");
-    let mode = m.value_of("mode").expect("");
-    let rustflags = m.value_of("rustflags");
-    let crate_list_file = m.value_of("crate-list-file").expect("");
-
-    let mode = if mode == "debug" { Mode::Debug } else { Mode::Release };
-    let crates = load_crate_list(&crate_list_file)?;
-    let config = Config {
-        toolchain1: toolchain1.to_string(),
-        toolchain2: toolchain2.to_string(),
-        target: target.to_string(),
-        mode: mode,
-        rustflags: rustflags.map(|m| m.to_string()),
-        crates: crates,
-    };
-
-    compare::run(&config)
-}
-
 fn create_recent_list() -> Result<()> {
     lists::create_recent_list()
+}
+
+fn create_second_list() -> Result<()> {
+    lists::create_second_list()
 }
 
 fn create_hot_list() -> Result<()> {
@@ -181,4 +222,42 @@ fn create_gh_candidate_list() -> Result<()> {
 
 fn create_gh_app_list() -> Result<()> {
     lists::create_gh_app_list()
+}
+
+fn prepare_crates() -> Result<()> {
+    crates::prepare()
+}
+
+fn frob_cargo_tomls() -> Result<()> {
+    toml_frobber::frob_em()
+}
+
+fn capture_shas(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex::capture_shas(ex_name)
+}
+
+fn capture_lockfiles(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    let ref toolchain = m.value_of("toolchain").expect("");
+    let all = m.value_of("all").is_some();
+    ex::capture_lockfiles(ex_name, toolchain, all)
+}
+
+fn fetch_deps(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    let ref toolchain = m.value_of("toolchain").expect("");
+    ex::fetch_deps(ex_name, toolchain)
+}
+
+fn run(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    let ref toolchain = m.value_of("toolchain").expect("");
+    ex::run_test(ex_name, toolchain)
+}
+
+fn sleep(m: &ArgMatches) -> Result<()> {
+    let ref secs = m.value_of("secs").expect("");
+    run::run("sleep", &[secs], &[]);
+    Ok(())
 }

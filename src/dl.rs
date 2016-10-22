@@ -10,6 +10,12 @@ pub fn download(url: &str) -> Result<Vec<u8>> {
     })
 }
 
+pub fn download_limit(url: &str, ms: usize) -> Result<Vec<u8>> {
+    util::try_hard_limit(ms, || {
+        download_no_retry(url)
+    })
+}
+
 pub fn download_no_retry(url: &str) -> Result<Vec<u8>> {
     let out = Command::new("curl")
         .arg("-sSLf")
@@ -18,7 +24,7 @@ pub fn download_no_retry(url: &str) -> Result<Vec<u8>> {
         .chain_err(|| "unable to run curl")?;
 
     if !out.status.success() {
-        return Err("failed to search github".into());
+        return Err(format!("failed to download {}", url).into());
     }
 
     Ok(out.stdout)

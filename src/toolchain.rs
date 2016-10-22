@@ -7,10 +7,14 @@ use CARGO_HOME;
 use RUSTUP_HOME;
 use std::fs::{self, File};
 use std::cell::RefCell;
-use std::process::Command;
 use std::io::Write;
 use dl;
 use util;
+use log;
+use run;
+use TOOLCHAIN_DIR;
+use git;
+use TARGET_DIR;
 
 const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";
 
@@ -57,12 +61,21 @@ fn init_rustup(target: &str) -> Result<()> {
     Ok(())
 }
 
-fn rustup_exe() -> PathBuf {
-    PathBuf::from(format!("{}/bin/rustup{}", CARGO_HOME, EXE_SUFFIX))
+fn rustup_exe() -> String {
+    format!("{}/bin/rustup{}", CARGO_HOME, EXE_SUFFIX)
 }
 
 fn rustup_exists() -> bool {
     Path::new(&rustup_exe()).exists()
+}
+
+fn rustup_run(name: &str,
+              args: &[&str],
+              env: &[(&str, &str)]) -> Result<()> {
+    let mut full_env = [("CARGO_HOME", CARGO_HOME),
+                   ("RUSTUP_HOME", RUSTUP_HOME)].to_vec();
+    full_env.extend(env.iter());
+    run::run(name, args, &full_env)
 }
 
 fn install_rustup(target: &str) -> Result<()> {
@@ -81,17 +94,10 @@ fn install_rustup(target: &str) -> Result<()> {
 
     // FIXME: Wish I could install rustup without installing a toolchain
     util::try_hard(|| {
-        let status = command(installer)
-            .arg("-y")
-            .arg("--no-modify-path")
-            .status()
-            .chain_err(|| "unable to run rustup-init")?;
-
-        if status.success() {
-            Ok(())
-        } else {
-            Err("rustup installation failed".into())
-        }
+        rustup_run(&installer.to_string_lossy(),
+                   &["-y", "--no-modify-path"],
+                   &[])
+            .chain_err(|| "unable to run rustup-init")
     })
 }
 
@@ -104,16 +110,15 @@ pub fn make_executable(path: &Path) -> Result<()> {
     fn inner(path: &Path) -> Result<()> {
         use std::os::unix::fs::PermissionsExt;
 
-        let metadata = try!(fs::metadata(path).chain_err(|| {
-            ErrorKind::SettingPermissions {
-                path: PathBuf::from(path),
-            }
-        }));
+        let metadata = fs::metadata(path)?;
+
         let mut perms = metadata.permissions();
         let new_mode = (perms.mode() & !0o777) | 0o755;
         perms.set_mode(new_mode);
 
-        set_permissions(path, perms)
+        fs::set_permissions(path, perms)?;
+
+        Ok(())
     }
 
     inner(path)
@@ -122,46 +127,61 @@ pub fn make_executable(path: &Path) -> Result<()> {
 fn update_rustup() -> Result<()> {
     log!("updating rustup");
     util::try_hard(|| {
-        let status = command(&rustup_exe())
-            .arg("self").arg("update")
-            .status()
-            .chain_err(|| "unable to run rustup self-update")?;
-
-        if status.success() {
-            Ok(())
-        } else {
-            Err("rustup self-update failed".into())
-        }
+        rustup_run(&rustup_exe(),
+                   &["self", "update"],
+                   &[])
+            .chain_err(|| "unable to run rustup self-update")
     })
-}
-
-fn command(path: &Path) -> Command {
-    let mut cmd = Command::new(path);
-    cmd.env("CARGO_HOME", CARGO_HOME)
-        .env("RUSTUP_HOME", RUSTUP_HOME);
-    cmd
 }
 
 fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
     log!("installing toolchain {}", toolchain);
     util::try_hard(|| {
-        let status = command(&rustup_exe())
-            .arg("toolchain")
-            .arg("install")
-            .arg(toolchain)
-            .status()
-            .chain_err(|| "unable to install toolchain via rustup")?;
-
-        if status.success() {
-            Ok(())
-        } else {
-            Err("toolchain installation failed".into())
-        }
+        rustup_run(&rustup_exe(),
+                   &["toolchain", "install", toolchain],
+                   &[])
+            .chain_err(|| "unable to install toolchain via rustup")
     })
 }
 
 fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
     log!("installing toolchain {}#{}", repo, sha);
 
+    fs::create_dir_all(TOOLCHAIN_DIR)?;
+    let ref dir = Path::new(TOOLCHAIN_DIR).join(sha);
+    git::shallow_clone_or_pull(repo, dir)?;
+    git::shallow_fetch_sha(repo, dir, sha)?;
+    git::reset_to_sha(dir, sha)?;
+
     panic!()
+}
+
+pub fn rustup_toolchain_name(toolchain: &str) -> Result<String> {
+    let toolchain = parse_toolchain(toolchain)?;
+    Ok(match toolchain {
+        Toolchain::Dist(ref n) => n.to_string(),
+        Toolchain::Repo(_, _) => {
+            panic!()
+        }
+    })
+}
+
+pub fn target_dir(ex_name: &str) -> PathBuf {
+    Path::new(TARGET_DIR).join(ex_name)
+}
+
+pub fn run_cargo(toolchain: &str, ex_name: &str, args: &[&str]) -> Result<()> {
+    let toolchain_name = rustup_toolchain_name(&toolchain)?;
+    let ex_target_dir = target_dir(ex_name);
+
+    fs::create_dir_all(TARGET_DIR)?;
+
+    let toolchain_arg = "+".to_string() + &toolchain_name;
+    let ref mut full_args = [&*toolchain_arg].to_vec();
+    full_args.extend_from_slice(args);
+
+    let cargo = Path::new(CARGO_HOME).join("bin/cargo");
+    rustup_run(&cargo.to_string_lossy(),
+               full_args,
+               &[("CARGO_TARGET_DIR", &ex_target_dir.to_string_lossy())])
 }

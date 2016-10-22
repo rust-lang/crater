@@ -1,12 +1,14 @@
 use errors::*;
-use DISCO_DIR;
+use WORK_DIR;
 use std::fs::{self, File};
 use std::thread;
-use std::process::Command;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::io::{BufReader, Read, BufRead};
 use util;
+use log;
+use run;
+use git;
 
 const REGISTRY: &'static str = "https://github.com/rust-lang/crates.io-index.git";
 
@@ -18,7 +20,7 @@ pub struct Crate {
 pub type Dep = (String, String);
 
 pub fn find_registry_crates() -> Result<Vec<Crate>> {
-    fs::create_dir_all(DISCO_DIR)?;
+    fs::create_dir_all(WORK_DIR)?;
     update_registry()?;
     log!("loading registry");
     let r = read_registry()?;
@@ -27,40 +29,12 @@ pub fn find_registry_crates() -> Result<Vec<Crate>> {
 }
 
 fn update_registry() -> Result<()> {
-    util::try_hard(|| {
-        let repo_path = repo_path();
-        if !repo_path.exists() {
-            log!("cloning registry");
-            let status = Command::new("git")
-                .arg("clone")
-                .arg("--depth").arg("1")
-                .arg(REGISTRY)
-                .arg(&*repo_path.to_string_lossy())
-                .status()
-                .chain_err(|| "unable to run git clone")?;
-
-            if !status.success() {
-                return Err("unable to clone registry".into())
-            }
-        } else {
-            log!("updating registry");
-            let status = Command::new("git")
-                .arg("pull")
-                .current_dir(&repo_path)
-                .status()
-                .chain_err(|| "unable to run git pull")?;
-
-            if !status.success() {
-                return Err("unable to update registry".into())
-            }
-        }
-
-        Ok(())
-    })
+    git::shallow_clone_or_pull(REGISTRY, &repo_path())
+        .chain_err(|| "unable to update registry")
 }
 
 fn repo_path() -> PathBuf {
-    Path::new(DISCO_DIR).join("crates.io-index")
+    Path::new(WORK_DIR).join("crates.io-index")
 }
 
 fn read_registry() -> Result<Vec<Crate>> {

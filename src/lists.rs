@@ -4,10 +4,12 @@ use registry;
 use LIST_DIR;
 use file;
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use gh;
 use std::thread;
 use std::time::Duration;
+use semver::{Version, VersionReq};
+use std::fmt::{self, Formatter, Display};
 
 fn recent_path() -> PathBuf {
     Path::new(LIST_DIR).join("recent-crates.txt")
@@ -28,7 +30,31 @@ pub fn create_recent_list() -> Result<()> {
 
 pub fn read_recent_list() -> Result<Vec<(String, String)>> {
     let lines = file::read_lines(&recent_path())
-        .chain_err(|| "unable to read recent list. run 'cargobomb create-recent-list'?")?;
+        .chain_err(|| "unable to read recent list. run `cargobomb create-recent-list`?")?;
+    split_crate_lines(&lines)
+}
+
+fn second_path() -> PathBuf {
+    Path::new(LIST_DIR).join("second-crates.txt")
+}
+
+pub fn create_second_list() -> Result<()> {
+    log!("creating second list");
+    fs::create_dir_all(LIST_DIR)?;
+
+    let crates = registry::find_registry_crates()?;
+    let crates: Vec<_> = crates.into_iter().filter_map(|mut crate_| {
+        crate_.versions.pop();
+        crate_.versions.pop().map(move |v| (crate_.name, v.0))
+    }).collect();
+    write_crate_list(&second_path(), &crates)?;
+    log!("second crates written to {}", second_path().display());
+    Ok(())
+}
+
+pub fn read_second_list() -> Result<Vec<(String, String)>> {
+    let lines = file::read_lines(&second_path())
+        .chain_err(|| "unable to read second list. run `cargobomb create-second-list`?")?;
     split_crate_lines(&lines)
 }
 
@@ -52,8 +78,6 @@ fn hot_path() -> PathBuf {
 }
 
 pub fn create_hot_list() -> Result<()> {
-    use semver::{Version, VersionReq};
-
     log!("creating hot list");
     fs::create_dir_all(LIST_DIR)?;
 
@@ -123,7 +147,7 @@ pub fn create_hot_list() -> Result<()> {
 
 pub fn read_hot_list() -> Result<Vec<(String, String)>> {
     let lines = file::read_lines(&hot_path())
-        .chain_err(|| "unable to read hot list. run 'cargobomb create-hot-list'?")?;
+        .chain_err(|| "unable to read hot list. run `cargobomb create-hot-list`?")?;
     split_crate_lines(&lines)
 }
 
@@ -143,7 +167,7 @@ pub fn create_gh_candidate_list() -> Result<()> {
 
 pub fn read_gh_candidates_list() -> Result<Vec<String>> {
     file::read_lines(&gh_candidate_path())
-        .chain_err(|| "unable to read gh-candidates list. run 'cargobomb create-gh-candidates-list'?")
+        .chain_err(|| "unable to read gh-candidates list. run `cargobomb create-gh-candidates-list`?")
 }
 
 fn gh_app_path() -> PathBuf {
@@ -152,9 +176,9 @@ fn gh_app_path() -> PathBuf {
 
 pub fn create_gh_app_list() -> Result<()> {
     let repos = read_gh_candidates_list()?;
-    let timeout = 100;
+    let delay = 100;
 
-    log!("testing {} repos. {}ms", repos.len(), repos.len() * timeout);
+    log!("testing {} repos. {}ms+", repos.len(), repos.len() * delay);
 
     // Look for Cargo.lock files in the Rust repos we're aware of
     let mut apps = Vec::new();
@@ -162,7 +186,7 @@ pub fn create_gh_app_list() -> Result<()> {
         if gh::is_rust_app(&repo)? {
             apps.push(format!("https://github.com/{}", repo));
         }
-        thread::sleep(Duration::from_millis(timeout as u64));
+        thread::sleep(Duration::from_millis(delay as u64));
     }
 
     file::write_lines(&gh_app_path(), &apps)?;
@@ -172,5 +196,70 @@ pub fn create_gh_app_list() -> Result<()> {
 
 pub fn read_gh_app_list() -> Result<Vec<String>> {
     file::read_lines(&gh_app_path())
-        .chain_err(|| "unable to read gh-app list. run 'cargobomb create-gh-app-list'?")
+        .chain_err(|| "unable to read gh-app list. run `cargobomb create-gh-app-list`?")
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum Crate {
+    Version(String, Version),
+    Repo(String)
+}
+
+impl Display for Crate {
+    fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
+        let s = match *self {
+            Crate::Version(ref n, ref v) => format!("{}-{}", n, v),
+            Crate::Repo(ref u) => u.to_string(),
+        };
+        s.fmt(f)
+    }
+}
+
+pub fn read_all_lists() -> Result<Vec<Crate>> {
+    let mut all = HashSet::new();
+    let recent = read_recent_list();
+    let second = read_second_list();
+    let hot = read_hot_list();
+    let gh_apps = read_gh_app_list();
+
+    fn semverify(v: Result<Vec<(String, String)>>) -> Result<Vec<(String, Version)>> {
+        v.map(|r| r.into_iter().map(|(c, v)| {
+            let ref bogus = format!("bogus version {} for {}", v, c);
+            let v = Version::parse(&v).expect(bogus);
+            (c, v)
+        }).collect())
+    }
+    
+    let recent = semverify(recent);
+    let second = semverify(second);
+    let hot = semverify(hot);
+
+    if let Ok(recent) = recent {
+        all.extend(recent.into_iter().map(|(c, v)| Crate::Version(c, v)));
+    } else {
+        log!("failed to load recent list. ignoring");
+    }
+    if let Ok(second) = second { 
+       all.extend(second.into_iter().map(|(c, v)| Crate::Version(c, v)));
+    } else {
+        log!("failed to load second list. ignoring");
+    }
+    if let Ok(hot) = hot {
+        all.extend(hot.into_iter().map(|(c, v)| Crate::Version(c, v)));
+    } else {
+        log!("failed to load hot list. ignoring");
+    }
+    if let Ok(gh_apps) = gh_apps {
+        all.extend(gh_apps.into_iter().map(|c| Crate::Repo(c)));
+    } else {
+        log!("failed to load gh-app list. ignoring");
+    }
+
+    if all.is_empty() {
+        return Err("no crates loaded. run `cargobomb prepare-lists`?".into());
+    }
+
+    let mut all: Vec<_> = all.drain().collect();
+    all.sort();
+    Ok(all)
 }

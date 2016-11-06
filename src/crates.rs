@@ -183,9 +183,11 @@ fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
     use walkdir::*;
 
     if dest_dir.exists() {
-        util::remove_dir_all(dest_dir)?;
+        util::remove_dir_all(dest_dir)
+            .chain_err(|| "unable to remove test dir")?;
     }
-    fs::create_dir_all(dest_dir)?;
+    fs::create_dir_all(dest_dir)
+        .chain_err(|| "unable to create test dir")?;
 
     fn is_hidden(entry: &DirEntry) -> bool {
         entry.file_name()

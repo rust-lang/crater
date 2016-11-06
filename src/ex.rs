@@ -207,31 +207,37 @@ pub fn run_test(ex_name: &str, toolchain: &str) -> Result<()> {
             log!("crate {} has a lockfile. skipping", c);
             continue;
         }
-        let existing_result = get_test_result(ex_name, c, toolchain)?;
-        if let Some(r) = existing_result {
-            log!("skipping crate {}. existing result: {}", c, r);
-            log!("delete result file to rerun test: {}",
-                 result_file(ex_name, c, toolchain)?.display());
-            skipped_crates += 1;
-            continue;
-        }
+        let r = {
+            let existing_result = get_test_result(ex_name, c, toolchain)?;
+            if let Some(r) = existing_result {
+                skipped_crates += 1;
 
-        // SCARY HACK: Crates in the container are built in the mounted
-        // ./work/test directory. Some of them write files to that directory
-        // which end up being owned by root. This command deletes those
-        // files by running "rm" in the container.
-        let test_dir = Path::new(TEST_DIR);
-        if test_dir.exists() {
-            let _ = run_in_docker(ex_name, test_dir,
-                                  &["sh", "-c", "rm -r /test/*"]);
-        }
+                log!("skipping crate {}. existing result: {}", c, r);
+                log!("delete result file to rerun test: {}",
+                     result_file(ex_name, c, toolchain)?.display());
+                Ok(r)
+            } else {
+                completed_crates += 1;
 
-        let r = crates::with_work_crate(c, |path| {
-            with_frobbed_toml(c, path)?;
-            with_captured_lockfile(ex_name, c, path)?;
+                // SCARY HACK: Crates in the container are built in the mounted
+                // ./work/test directory. Some of them write files to that directory
+                // which end up being owned by root. This command deletes those
+                // files by running "rm" in the container. Note especially the "rm .*"
+                // command that depends on rm refusing to remove "." and "..".
+                let test_dir = Path::new(TEST_DIR);
+                if test_dir.exists() {
+                    let _ = run_in_docker(ex_name, test_dir,
+                                          &["sh", "-c", "rm -rf /test/*; rm -rf /test/.*"]);
+                }
 
-            run_single_test(ex_name, c, path, toolchain)
-        });
+                crates::with_work_crate(c, |path| {
+                    with_frobbed_toml(c, path)?;
+                    with_captured_lockfile(ex_name, c, path)?;
+
+                    run_single_test(ex_name, c, path, toolchain)
+                })
+            }
+        };
 
         match r {
             Err(ref e) => {
@@ -253,20 +259,26 @@ pub fn run_test(ex_name: &str, toolchain: &str) -> Result<()> {
             Ok(TestResult::TestPass) => sum_test_pass += 1,
         }
 
-        completed_crates += 1;
-
         let elapsed = Instant::now().duration_since(start_time).as_secs();
-        let tests_per_second = (completed_crates as f64) / (elapsed as f64);
-        let remaining_tests = total_crates - skipped_crates - completed_crates;
-        let remaining_time = (remaining_tests as f64) * tests_per_second;
+        let seconds_per_test = if completed_crates > 0 {
+            (elapsed as f64) / (completed_crates as f64)
+        } else {
+            0.0
+        };
+        let remaining_tests = total_crates - completed_crates - skipped_crates;
+        let remaining_time = remaining_tests * seconds_per_test as usize;
 
-        log!("progress: {} / {} ({} skipped of {}) tests in {}s",
-             completed_crates,
-             total_crates - skipped_crates,
-             skipped_crates,
-             total_crates,
-             elapsed);
-        log!("{} tests/s. expecting {}s remaining", remaining_tests, remaining_time);
+        let remaining_time_str = if remaining_time < 60 * 8 {
+            format!("{:0} seconds", remaining_time)
+        } else if remaining_time < 60 * 60 * 8 {
+            format!("{:0} minutes", remaining_time / 60)
+        } else {
+            format!("{:0} hours", remaining_time / 60 / 60)
+        };
+
+        log!("progress: {} / {}", completed_crates + skipped_crates, total_crates);
+        log!("{} crates tested in {} s. {:.2} s/crate. {} crates remaining. ~{}",
+             completed_crates, elapsed, seconds_per_test, remaining_tests, remaining_time_str);
         log!("results: {} fail / {} build-pass / {} test-pass / {} errors",
              sum_fail, sum_build_pass, sum_test_pass, sum_errors);
     }

@@ -38,6 +38,18 @@
 - test debug + optimizations
 - use cargo-vendor for caching libraries
 - fix docker file system permissions
+- associate crates with github repos
+- analyze contributors to crates
+- what kind of analysis can you do with
+  - full source of all crate revisions
+  - full dependency graph of all revisions
+  - full source history of all crates
+  - full source history of all rust project on github
+  - compile and run sandboxed rust on all platforms
+- declared dependency tester.
+  for a single crate, for each of its deps, modify the lockfile while running
+  that crate's tests, looking for combinations that don't pass
+- crusader testing
 
 # Apps I didn't find through search :-/
 
@@ -60,7 +72,7 @@ cargobomb works with a lot of data, and wants to coordinate that between
 distributed workers
 
 - master/
-  - config.json
+  - state.json
 - local/
   - cargo-home/
   - rustup-home/
@@ -75,9 +87,15 @@ distributed workers
   - fromls/
   - lockfiles/
   - lists/
-- ex-data/
+    - recent.txt
+    - second.txt
+    - hot.txt
+    - gh-repos.txt
+    - gh-apps.txt
+- ex/
   - $ex-name/
     - config.json
+    - crates.txt
     - lockfiles/
     - custom-tc/ - ?
       - $host/
@@ -101,3 +119,37 @@ distributed workers
       - index.html
       - report.md
       - todo
+
+# Work flow
+
+- Update data
+  - create lists
+    - crates
+      - most recent version
+      - second recent version
+      - most resolvable version
+      - sorted by most popular
+    - gh repos
+    - gh apps
+    - gh app shas
+  - download crates
+  - download gh apps
+  - frob tomls
+  - generate lockfiles
+- Define experiment
+  - create config.json
+  - create crates.txt
+  - copy lockfiles into experiment
+- Load caches for experiment
+- Prepare toolchains
+- Run experiment
+  - Run
+- Generate report
+- Garbage collect
+
+```
+$ cargobomb update
+$ cargobomb new --report=comparison --test=build --toolchain=nightly
+$ cargobomb run
+$ cargobomb report
+```

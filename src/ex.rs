@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use crates;
 use lists::Crate;
 use run;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use serde_json;
 use file;
 use toolchain;
@@ -187,6 +187,10 @@ fn with_frobbed_toml(crate_: &Crate, path: &Path) -> Result<()> {
 
 pub fn run_build_and_test_test(ex_name: &str, toolchain: &str) -> Result<()> {
     run_test(ex_name, toolchain, build_and_test)
+}
+
+pub fn run_unstable_features(ex_name: &str, toolchain: &str) -> Result<()> {
+    run_test(ex_name, toolchain, find_unstable_features)
 }
 
 pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
@@ -444,3 +448,97 @@ fn get_test_result(ex_name: &str, c: &Crate, toolchain: &str) -> Result<Option<T
     }
 }
 
+fn find_unstable_features(_ex_name: &str, path: &Path, _rustup_tc: &str) -> Result<TestResult> {
+    use walkdir::*;
+
+    fn is_hidden(entry: &DirEntry) -> bool {
+        entry.file_name()
+            .to_str()
+            .map(|s| s.starts_with("."))
+            .unwrap_or(false)
+    }
+
+    let mut features = HashSet::new();
+
+    for entry in WalkDir::new(path)
+        .into_iter()
+        .filter_entry(|e| !is_hidden(e))
+    {
+        let entry = entry.chain_err(|| "walk dir")?;
+        if !entry.file_name().to_str().map(|s| s.contains(".rs")).unwrap_or(false) { continue }
+        if !entry.file_type().is_file() { continue }
+
+        let new_features = parse_features(entry.path())?;
+
+        for feature in new_features {
+            features.insert(feature);
+        }
+    }
+
+    let mut features: Vec<_> = features.into_iter().collect();
+    features.sort();
+    for feature in features {
+        log!("unstable-feature: {}", feature);
+    }
+
+    Ok(TestResult::TestPass)
+}
+
+fn parse_features(path: &Path) -> Result<Vec<String>> {
+    let mut features = Vec::new();
+    let contents = file::read_string(path)?;
+    for (hash_idx, _) in contents.match_indices('#') {
+        fn ten_bytes(s: Option<&str>) -> String {
+            if let Some(s) = s {
+                if s.len() < 10 {
+                    s.to_string()
+                } else {
+                    s[..10].to_string()
+                }
+            } else {
+                String::from("<none>")
+            }
+        }
+        let contents = &contents[hash_idx + 1..];
+        let contents = eat_token(Some(contents), "!").or(Some(contents));
+        let contents = eat_token(contents, "[");
+        let contents = eat_token(contents, "feature");
+        let new_features = parse_list(contents, "(", ")");
+        features.extend_from_slice(&new_features);
+    }
+
+    fn eat_token<'a>(s: Option<&'a str>, tok: &str) -> Option<&'a str> {
+        eat_whitespace(s).and_then(|s| {
+            if s.starts_with(tok) {
+                Some(&s[tok.len()..])
+            } else {
+                None
+            }
+        })
+    }
+
+    fn eat_whitespace(s: Option<&str>) -> Option<&str> {
+        s.and_then(|s| {
+            if let Some(i) = s.find(|c: char| !c.is_whitespace()) {
+                Some(&s[i..])
+            } else {
+                None
+            }
+        })
+    }
+
+    fn parse_list(s: Option<&str>, open: &str, close: &str) -> Vec<String> {
+        let s = eat_whitespace(s);
+        let s = eat_token(s, open);
+        if let Some(s) = s {
+            if let Some(i) = s.find(close) {
+                let s = &s[..i];
+                return s.split(',').map(|s| s.trim().to_string()).collect();
+            }
+        }
+
+        Vec::new()
+    }
+
+    Ok(features)
+}

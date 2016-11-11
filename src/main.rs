@@ -99,6 +99,7 @@ fn main_() -> Result<()> {
         ("capture-lockfiles", Some(m)) => capture_lockfiles(m)?,
         ("fetch-deps", Some(m)) => fetch_deps(m)?,
         ("run", Some(m)) => run(m)?,
+        ("run-unstable-features", Some(m)) => run_unstable_features(m)?,
         ("summarize", Some(_)) => panic!(),
         ("easy-test", Some(m)) => panic!(),
         ("sleep", Some(m)) => sleep(m)?,
@@ -184,6 +185,16 @@ fn cli() -> App<'static, 'static> {
                      .required(false)
                      .default_value("default")))
         .subcommand(
+            SubCommand::with_name("run-unstable-features")
+                .arg(Arg::with_name("toolchain")
+                     .long("toolchain")
+                     .required(true)
+                     .takes_value(true))
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
             SubCommand::with_name("summarize")
                 .about("TODO"))
                 .arg(Arg::with_name("name")
@@ -254,6 +265,12 @@ fn run(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
     ex::run_build_and_test_test(ex_name, toolchain)
+}
+
+fn run_unstable_features(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    let ref toolchain = m.value_of("toolchain").expect("");
+    ex::run_unstable_features(ex_name, toolchain)
 }
 
 fn sleep(m: &ArgMatches) -> Result<()> {

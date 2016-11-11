@@ -50,6 +50,7 @@
   for a single crate, for each of its deps, modify the lockfile while running
   that crate's tests, looking for combinations that don't pass
 - crusader testing
+- check for working docker before running tests
 
 # Apps I didn't find through search :-/
 

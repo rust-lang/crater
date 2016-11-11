@@ -185,7 +185,13 @@ fn with_frobbed_toml(crate_: &Crate, path: &Path) -> Result<()> {
     Ok(())
 }
 
-pub fn run_test(ex_name: &str, toolchain: &str) -> Result<()> {
+pub fn run_build_and_test_test(ex_name: &str, toolchain: &str) -> Result<()> {
+    run_test(ex_name, toolchain, build_and_test)
+}
+
+pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
+    where F: Fn(&str, &Path, &str) -> Result<TestResult>
+{
     let crates = crates::crates_and_dirs()?;
 
     // Just for reporting progress
@@ -234,7 +240,7 @@ pub fn run_test(ex_name: &str, toolchain: &str) -> Result<()> {
                     with_frobbed_toml(c, path)?;
                     with_captured_lockfile(ex_name, c, path)?;
 
-                    run_single_test(ex_name, c, path, toolchain)
+                    run_single_test(ex_name, c, path, toolchain, &f)
                 })
             }
         };
@@ -287,7 +293,7 @@ pub fn run_test(ex_name: &str, toolchain: &str) -> Result<()> {
 }
 
 #[derive(Copy, Clone)]
-enum TestResult {
+pub enum TestResult {
     Fail,
     BuildPass,
     TestPass,
@@ -317,8 +323,10 @@ impl TestResult {
     }
 }
 
-fn run_single_test(ex_name: &str, c: &Crate, path: &Path, toolchain: &str) -> Result<TestResult> {
-
+fn run_single_test<F>(ex_name: &str, c: &Crate, path: &Path,
+                      toolchain: &str, f: &F) -> Result<TestResult>
+    where F: Fn(&str, &Path, &str) -> Result<TestResult>
+{
     let result_dir = result_dir(ex_name, c, toolchain)?;
     if result_dir.exists() {
         util::remove_dir_all(&result_dir)?;
@@ -328,22 +336,26 @@ fn run_single_test(ex_name: &str, c: &Crate, path: &Path, toolchain: &str) -> Re
 
     log::redirect(&log_file, || {
         let tc = toolchain::rustup_toolchain_name(toolchain)?;
-        let tc_arg = &format!("+{}", tc);
-        let build_r = run_in_docker(ex_name, path, &["cargo", tc_arg, "build", "--frozen"]);
-        let test_r;
+        f(ex_name, path, &tc)
+    })
+}
 
-        if build_r.is_ok() {
-            test_r = Some(run_in_docker(ex_name, path, &["cargo", tc_arg, "test", "--frozen"]));
-        } else {
-            test_r = None;
-        }
+fn build_and_test(ex_name: &str, path: &Path, rustup_tc: &str) -> Result<TestResult> {
+    let tc_arg = &format!("+{}", rustup_tc);
+    let build_r = run_in_docker(ex_name, path, &["cargo", tc_arg, "build", "--frozen"]);
+    let test_r;
 
-        Ok(match (build_r, test_r) {
-            (Err(_), None) => TestResult::Fail,
-            (Ok(_), Some(Err(_))) => TestResult::BuildPass,
-            (Ok(_), Some(Ok(_))) => TestResult::TestPass,
-            (_, _) => unreachable!()
-        })
+    if build_r.is_ok() {
+        test_r = Some(run_in_docker(ex_name, path, &["cargo", tc_arg, "test", "--frozen"]));
+    } else {
+        test_r = None;
+    }
+
+    Ok(match (build_r, test_r) {
+        (Err(_), None) => TestResult::Fail,
+        (Ok(_), Some(Err(_))) => TestResult::BuildPass,
+        (Ok(_), Some(Ok(_))) => TestResult::TestPass,
+        (_, _) => unreachable!()
     })
 }
 

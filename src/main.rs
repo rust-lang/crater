@@ -253,7 +253,7 @@ fn fetch_deps(m: &ArgMatches) -> Result<()> {
 fn run(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
-    ex::run_test(ex_name, toolchain)
+    ex::run_build_and_test_test(ex_name, toolchain)
 }
 
 fn sleep(m: &ArgMatches) -> Result<()> {

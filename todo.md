@@ -73,9 +73,9 @@ cargobomb works with a lot of data, and wants to coordinate that between
 distributed workers
 
 - master/
-  - state.json
+  - state.json - atomic replace
 - local/
-  - cargo-home/
+  - cargo-home/ - mutable
   - rustup-home/
   - crates.io-index/
   - gh-clones/

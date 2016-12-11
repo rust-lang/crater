@@ -19,7 +19,7 @@ use toolchain;
 
 const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq)]
 pub enum Toolchain {
     Dist(String), // rustup toolchain spec
     Repo(String, String), // Url, Sha

@@ -32,6 +32,8 @@ pub fn run_unstable_features(ex_name: &str, toolchain: &str) -> Result<()> {
 pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
     where F: Fn(&str, &Path, &str) -> Result<TestResult>
 {
+    verify_toolchain(ex_name, toolchain)?;
+
     let crates = ex_crates_and_dirs(ex_name)?;
 
     // Just for reporting progress
@@ -123,6 +125,16 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
              completed_crates, elapsed, seconds_per_test, remaining_tests, remaining_time_str);
         log!("results: {} fail / {} build-pass / {} test-pass / {} errors",
              sum_fail, sum_build_pass, sum_test_pass, sum_errors);
+    }
+
+    Ok(())
+}
+
+fn verify_toolchain(ex_name: &str, toolchain: &str) -> Result<()> {
+    let tc = toolchain::parse_toolchain(toolchain)?;
+    let config = load_config(ex_name)?;
+    if !config.toolchains.contains(&tc) {
+        return Err(format!("toolchain {} not in experiment", toolchain).into());
     }
 
     Ok(())

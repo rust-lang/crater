@@ -41,9 +41,9 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Experiment {
-    crates: Vec<Crate>,
-    toolchains: Vec<Toolchain>,
+pub struct Experiment {
+    pub crates: Vec<Crate>,
+    pub toolchains: Vec<Toolchain>,
 }
 
 /// Define an experiment, including selecting the crates to be tested
@@ -95,7 +95,7 @@ pub fn define_(ex_name: &str, toolchains: &[&str],
     Ok(())
 }
 
-fn load_config(ex_name: &str) -> Result<Experiment> {
+pub fn load_config(ex_name: &str) -> Result<Experiment> {
     let config = file::read_string(&config_file(ex_name))?;
     serde_json::from_str(&config)
         .chain_err(|| "unable to deserialize experiment config")

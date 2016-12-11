@@ -118,8 +118,11 @@ fn main_() -> Result<()> {
         ("create-gh-candidate-list-from-cache", Some(_)) => create_gh_candidate_list_from_cache()?,
         ("create-gh-app-list-from-cache", Some(_)) => create_gh_app_list_from_cache()?,
 
-        // Global experiment prep
+        // Experiment prep
         ("define-ex", Some(m)) => define_ex(m)?,
+        ("prepare-ex", Some(m)) => prepare_ex(m)?,
+
+        // Global experiment prep
         ("prepare-ex-shared", Some(m)) => prepare_ex_shared(m)?,
         ("fetch-gh-mirrors", Some(m)) => fetch_gh_mirrors(m)?,
         ("capture-shas", Some(m)) => capture_shas(m)?,
@@ -184,7 +187,7 @@ fn cli() -> App<'static, 'static> {
             SubCommand::with_name("create-gh-app-list-from-cache")
                 .about("create the list of GitHub Rust applications from cache"))
 
-        // Global experiment prep
+        // Experiment prep
         .subcommand(
             SubCommand::with_name("define-ex")
                 .about("define an experiment")
@@ -201,6 +204,15 @@ fn cli() -> App<'static, 'static> {
                      .long("demo")
                      .required(false)
                      .takes_value(false)))
+        .subcommand(
+            SubCommand::with_name("prepare-ex")
+                .about("prepare shared and local data for experiment")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+
+        // Global experiment prep
         .subcommand(
             SubCommand::with_name("prepare-ex-shared")
                 .about("prepare shared data for experiment")
@@ -372,7 +384,7 @@ fn create_gh_app_list_from_cache() -> Result<()> {
 }
 
 
-// Global experiment prep
+// Experiment prep
 
 fn define_ex(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
@@ -386,6 +398,16 @@ fn define_ex(m: &ArgMatches) -> Result<()> {
 
     Ok(())
 }
+
+fn prepare_ex(m: &ArgMatches) -> Result<()> {
+    prepare_ex_shared(m)?;
+    prepare_ex_local(m)?;
+
+    Ok(())
+}
+
+
+// Global experiment prep
 
 fn prepare_ex_shared(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
@@ -430,6 +452,7 @@ fn capture_lockfiles(m: &ArgMatches) -> Result<()> {
 fn prepare_ex_local(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     ex::fetch_deps(ex_name, "stable")?;
+    ex::prepare_all_toolchains(ex_name)?;
 
     Ok(())
 }

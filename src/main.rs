@@ -98,9 +98,6 @@ fn main_() -> Result<()> {
     let ref matches = cli().get_matches();
 
     match matches.subcommand() {
-        ("define-ex", Some(m)) => define_ex(m)?,
-        ("prepare-ex-global", Some(m)) => prepare_ex_global(m)?,
-
         // List creation
         ("create-lists", Some(m)) => create_lists(m)?,
         ("create-recent-list", Some(_)) => create_recent_list()?,
@@ -112,14 +109,16 @@ fn main_() -> Result<()> {
         ("create-gh-app-list-from-cache", Some(_)) => create_gh_app_list_from_cache()?,
 
         // Experiment prep
+        ("define-ex", Some(m)) => define_ex(m)?,
+        ("prepare-ex-global", Some(m)) => prepare_ex_global(m)?,
         ("download-crates-for-ex", Some(m)) => download_crates_for_ex(m)?,
+        ("capture-shas", Some(m)) => capture_shas(m)?,
+        ("frob-cargo-tomls", Some(m)) => frob_cargo_tomls(m)?,
+        ("capture-lockfiles", Some(m)) => capture_lockfiles(m)?,
 
         ("prepare-crates", Some(_)) => prepare_crates()?,
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
         ("link-toolchain", Some(m)) => panic!(),
-        ("frob-cargo-tomls", Some(m)) => frob_cargo_tomls(m)?,
-        ("capture-shas", Some(m)) => capture_shas(m)?,
-        ("capture-lockfiles", Some(m)) => capture_lockfiles(m)?,
         ("fetch-deps", Some(m)) => fetch_deps(m)?,
         ("run", Some(m)) => run(m)?,
         ("run-unstable-features", Some(m)) => run_unstable_features(m)?,
@@ -210,6 +209,20 @@ fn cli() -> App<'static, 'static> {
                      .long("ex")
                      .required(false)
                      .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("capture-lockfiles")
+                .about("TODO")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default"))
+                .arg(Arg::with_name("toolchain")
+                     .long("toolchain")
+                     .required(false)
+                     .takes_value(true)
+                     .default_value("stable"))
+                .arg(Arg::with_name("all")
+                     .long("all")))
 
 
         // Toolchain management
@@ -223,19 +236,6 @@ fn cli() -> App<'static, 'static> {
         .subcommand(
             SubCommand::with_name("prepare-crates")
                 .about("downloads all known crates to local disk"))
-        .subcommand(
-            SubCommand::with_name("capture-lockfiles")
-                .about("TODO")
-                .arg(Arg::with_name("toolchain")
-                     .long("toolchain")
-                     .required(true)
-                     .takes_value(true))
-                .arg(Arg::with_name("ex")
-                     .long("ex")
-                     .required(false)
-                     .default_value("default"))
-                .arg(Arg::with_name("all")
-                     .long("all")))
         .subcommand(
             SubCommand::with_name("fetch-deps")
                 .about("TODO")
@@ -368,18 +368,18 @@ fn frob_cargo_tomls(m: &ArgMatches) -> Result<()> {
     ex::frob_tomls(ex_name)
 }
 
+fn capture_lockfiles(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    let ref toolchain = m.value_of("toolchain").expect("");
+    let all = m.is_present("all");
+    ex::capture_lockfiles(ex_name, toolchain, all)
+}
+
 
 // Other
 
 fn prepare_crates() -> Result<()> {
     crates::prepare()
-}
-
-fn capture_lockfiles(m: &ArgMatches) -> Result<()> {
-    let ref ex_name = m.value_of("ex").expect("");
-    let ref toolchain = m.value_of("toolchain").expect("");
-    let all = m.value_of("all").is_some();
-    ex::capture_lockfiles(ex_name, toolchain, all)
 }
 
 fn fetch_deps(m: &ArgMatches) -> Result<()> {

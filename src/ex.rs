@@ -182,7 +182,7 @@ fn lockfile(ex_name: &str, crate_: &Crate) -> PathBuf {
 pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: bool) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(ex_name))?;
 
-    let crates = crates::crates_and_dirs()?;
+    let crates = ex_crates_and_dirs(ex_name)?;
 
     for (ref c, ref dir) in crates {
         if dir.join("Cargo.lock").exists() {

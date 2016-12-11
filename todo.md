@@ -116,21 +116,20 @@ distributed workers
 
 # Work flow
 
-- update-data
-  - prepare-stable-toolchain
-  - create-lists
-    - create-recent-list
-    - create-second-list
-    - create-hot-list
-    - create-gh-candidate-list-from-cache
-    - create-gh-app-list-from-cache
+- prepare-toolchain stable
+- create-lists
+  - create-recent-list
+  - create-second-list
+  - create-hot-list
+  - create-gh-candidate-list-from-cache
+  - create-gh-app-list-from-cache
 - define-ex - sets up experiment definition and per-experiment crate list
 - prepare-ex
   - prepare-ex-global
     - download-crates
     - capture-shas
     - frob-tomls
-    - generate lockfiles (w/ stable)
+    - capture-lockfiles (w/ stable)
   - Prepare local state for experiment (prepare-ex-local)
     - Fetch deps (w/ stable)
     - Prepare toolchains

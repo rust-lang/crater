@@ -42,6 +42,7 @@ mod crates;
 mod git;
 mod checkpoint;
 mod ex;
+mod ex_run;
 mod toml_frobber;
 mod model;
 mod gh_mirrors;
@@ -469,19 +470,22 @@ fn prepare_all_toolchains_for_ex(m: &ArgMatches) -> Result<()> {
 }
 
 
-// Other
+// Experiment running
 
 fn run(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
-    ex::run_build_and_test_test(ex_name, toolchain)
+    ex_run::run_build_and_test_test(ex_name, toolchain)
 }
 
 fn run_unstable_features(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
-    ex::run_unstable_features(ex_name, toolchain)
+    ex_run::run_unstable_features(ex_name, toolchain)
 }
+
+
+// Other
 
 fn sleep(m: &ArgMatches) -> Result<()> {
     let ref secs = m.value_of("secs").expect("");

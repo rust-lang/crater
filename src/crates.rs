@@ -117,11 +117,6 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
 
 fn dl_repo(url: &str, dir: &Path) -> Result<()> {
     let (org, name) = gh_url_to_org_and_name(url)?;
-    if dir.exists() {
-        log!("repo {}/{} exists at {}. skipping", org, name, dir.display());
-        return Ok(());
-    }
-
     fs::create_dir_all(&gh_dir())?;
     log!("downloading repo {} to {}", url, dir.display());
     let r = git::shallow_clone_or_pull(url, &dir);

@@ -226,8 +226,11 @@ fn capture_lockfile(ex_name: &str, crate_: &Crate, path: &Path, toolchain: &str)
 }
 
 fn with_captured_lockfile(ex_name: &str, crate_: &Crate, path: &Path) -> Result<()> {
-    let ref src_lockfile = lockfile(ex_name, crate_);
     let ref dst_lockfile = path.join("Cargo.lock");
+    if dst_lockfile.exists() {
+        return Ok(());
+    }
+    let ref src_lockfile = lockfile(ex_name, crate_);
     if src_lockfile.exists() {
         log!("using lockfile {}", src_lockfile.display());
         fs::copy(src_lockfile, dst_lockfile)
@@ -239,12 +242,8 @@ fn with_captured_lockfile(ex_name: &str, crate_: &Crate, path: &Path) -> Result<
 }
 
 pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
-    let crates = crates::crates_and_dirs()?;
+    let crates = ex_crates_and_dirs(ex_name)?;
     for (ref c, ref dir) in crates {
-        if dir.join("Cargo.lock").exists() {
-            log!("crate {} has a lockfile. skipping", c);
-            continue;
-        }
         let r = crates::with_work_crate(c, |path| {
             with_frobbed_toml(ex_name, c, path)?;
             with_captured_lockfile(ex_name, c, path)?;
@@ -271,7 +270,7 @@ pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
 fn with_frobbed_toml(ex_name: &str, crate_: &Crate, path: &Path) -> Result<()> {
     let (crate_name, crate_vers) = match *crate_ {
         Crate::Version(ref n, ref v) => (n.to_string(), v.to_string()),
-        _ => panic!("unimplemented crate type in with_captured_lockfile"),
+        _ => return Ok(())
     };
     let ref src_froml = froml_path(ex_name, &crate_name, &crate_vers);
     let ref dst_froml = path.join("Cargo.toml");
@@ -313,10 +312,6 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
 
     log!("running {} tests", total_crates);
     for (ref c, ref dir) in crates {
-        if dir.join("Cargo.lock").exists() {
-            log!("crate {} has a lockfile. skipping", c);
-            continue;
-        }
         let r = {
             let existing_result = get_test_result(ex_name, c, toolchain)?;
             if let Some(r) = existing_result {

@@ -1,6 +1,5 @@
 # not next
 
-- download-crates-for-ex should refresh git repos
 - test that docker works before running tests
 - record durations tests take to run
 - record and report on remaining work to go
@@ -116,22 +115,22 @@ distributed workers
 
 # Work flow
 
+- prepare-toolchain stable
 - create-lists
   - create-recent-list
   - create-second-list
   - create-hot-list
   - create-gh-candidate-list-from-cache
   - create-gh-app-list-from-cache
-- prepare-toolchain stable
 - define-ex - sets up experiment definition and per-experiment crate list
 - prepare-ex
-  - prepare-ex-global
-    - download-crates
+  - prepare-ex-shared
+    - download-crates-for-ex
     - capture-shas
     - frob-tomls
-    - capture-lockfiles (w/ stable)
-  - Prepare local state for experiment (prepare-ex-local)
-    - Fetch deps (w/ stable)
+    - capture-lockfiles
+  - prepare-ex-local
+    - fetch-deps
     - Prepare toolchains
 - run
 - gen-report

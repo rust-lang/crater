@@ -108,18 +108,22 @@ fn main_() -> Result<()> {
         ("create-gh-candidate-list-from-cache", Some(_)) => create_gh_candidate_list_from_cache()?,
         ("create-gh-app-list-from-cache", Some(_)) => create_gh_app_list_from_cache()?,
 
-        // Experiment prep
+        // Global experiment prep
         ("define-ex", Some(m)) => define_ex(m)?,
-        ("prepare-ex-global", Some(m)) => prepare_ex_global(m)?,
+        ("prepare-ex-shared", Some(m)) => prepare_ex_shared(m)?,
         ("download-crates-for-ex", Some(m)) => download_crates_for_ex(m)?,
         ("capture-shas", Some(m)) => capture_shas(m)?,
         ("frob-cargo-tomls", Some(m)) => frob_cargo_tomls(m)?,
         ("capture-lockfiles", Some(m)) => capture_lockfiles(m)?,
 
+        // Local experiment prep
+        ("prepare-ex-local", Some(m)) => prepare_ex_local(m)?,
+        ("fetch-deps", Some(m)) => fetch_deps(m)?,
+
+        // Misc
         ("prepare-crates", Some(_)) => prepare_crates()?,
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
         ("link-toolchain", Some(m)) => panic!(),
-        ("fetch-deps", Some(m)) => fetch_deps(m)?,
         ("run", Some(m)) => run(m)?,
         ("run-unstable-features", Some(m)) => run_unstable_features(m)?,
         ("summarize", Some(_)) => panic!(),
@@ -182,8 +186,8 @@ fn cli() -> App<'static, 'static> {
                      .required(false)
                      .takes_value(false)))
         .subcommand(
-            SubCommand::with_name("prepare-ex-global")
-                .about("prepare data for experiment")
+            SubCommand::with_name("prepare-ex-shared")
+                .about("prepare shared data for experiment")
                 .arg(Arg::with_name("ex")
                      .long("ex")
                      .required(false)
@@ -225,6 +229,28 @@ fn cli() -> App<'static, 'static> {
                      .long("all")))
 
 
+        // Local experiment prep
+        .subcommand(
+            SubCommand::with_name("prepare-ex-local")
+                .about("prepare local data for experiment")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("fetch-deps")
+                .about("fetch the deps needed for an experiment")
+                .arg(Arg::with_name("toolchain")
+                     .long("toolchain")
+                     .required(true)
+                     .takes_value(true)
+                     .default_value("stable"))
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+
+
         // Toolchain management
         .subcommand(
             SubCommand::with_name("prepare-toolchain")
@@ -236,17 +262,6 @@ fn cli() -> App<'static, 'static> {
         .subcommand(
             SubCommand::with_name("prepare-crates")
                 .about("downloads all known crates to local disk"))
-        .subcommand(
-            SubCommand::with_name("fetch-deps")
-                .about("TODO")
-                .arg(Arg::with_name("toolchain")
-                     .long("toolchain")
-                     .required(true)
-                     .takes_value(true))
-                .arg(Arg::with_name("ex")
-                     .long("ex")
-                     .required(false)
-                     .default_value("default")))
         .subcommand(
             SubCommand::with_name("run")
                 .arg(Arg::with_name("toolchain")
@@ -330,7 +345,7 @@ fn create_gh_app_list_from_cache() -> Result<()> {
 }
 
 
-// Experiment prep
+// Global experiment prep
 
 fn define_ex(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
@@ -344,7 +359,7 @@ fn define_ex(m: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn prepare_ex_global(m: &ArgMatches) -> Result<()> {
+fn prepare_ex_shared(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     ex::download_crates(ex_name)?;
     ex::capture_shas(ex_name)?;
@@ -377,16 +392,26 @@ fn capture_lockfiles(m: &ArgMatches) -> Result<()> {
 }
 
 
-// Other
+// Local experiment prep
 
-fn prepare_crates() -> Result<()> {
-    crates::prepare()
+fn prepare_ex_local(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex::fetch_deps(ex_name, "stable")?;
+
+    Ok(())
 }
 
 fn fetch_deps(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
     ex::fetch_deps(ex_name, toolchain)
+}
+
+
+// Other
+
+fn prepare_crates() -> Result<()> {
+    crates::prepare()
 }
 
 fn run(m: &ArgMatches) -> Result<()> {

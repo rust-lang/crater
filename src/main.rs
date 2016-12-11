@@ -132,7 +132,6 @@ fn main_() -> Result<()> {
         ("fetch-deps", Some(m)) => fetch_deps(m)?,
 
         // Misc
-        ("prepare-crates", Some(_)) => prepare_crates()?,
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
         ("link-toolchain", Some(m)) => panic!(),
         ("run", Some(m)) => run(m)?,
@@ -277,9 +276,6 @@ fn cli() -> App<'static, 'static> {
 
 
         // Misc
-        .subcommand(
-            SubCommand::with_name("prepare-crates")
-                .about("downloads all known crates to local disk"))
         .subcommand(
             SubCommand::with_name("run")
                 .arg(Arg::with_name("toolchain")
@@ -432,10 +428,6 @@ fn fetch_deps(m: &ArgMatches) -> Result<()> {
 
 
 // Other
-
-fn prepare_crates() -> Result<()> {
-    crates::prepare()
-}
 
 fn run(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");

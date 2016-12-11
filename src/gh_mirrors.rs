@@ -27,3 +27,9 @@ pub fn fetch(url: &str) -> Result<()> {
     let dir = repo_dir(url)?;
     git::shallow_clone_or_pull(url, &dir)
 }
+
+pub fn reset_to_sha(url: &str, sha: &str) -> Result<()> {
+    let ref dir = repo_dir(url)?;
+    git::shallow_fetch_sha(url, dir, sha)?;
+    git::reset_to_sha(dir, sha)
+}

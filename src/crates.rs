@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use CRATES_DIR;
-use lists::{self, Crate};
+use ex::ExCrate;
 use std::thread;
 use std::time::Duration;
 use semver::Version;
@@ -26,17 +26,12 @@ fn registry_dir() -> PathBuf {
     Path::new(CRATES_DIR).join("reg")
 }
 
-pub fn prepare() -> Result<()> {
-    let list = crates_and_dirs()?;
-    prepare_(&list)
-}
-
-pub fn prepare_(list: &[(Crate, PathBuf)]) -> Result<()> {
+pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
     log!("preparing {} crates", list.len());
     let mut successes = 0;
     for &(ref crate_, ref dir) in list {
         match *crate_ {
-            Crate::Version(ref name, ref vers) => {
+            ExCrate::Version(ref name, ref vers) => {
                 let r = dl_registry(name, &vers.to_string(), dir)
                     .chain_err(|| format!("unable to download {}-{}", name, vers));
                 if let Err(e) = r {
@@ -46,8 +41,8 @@ pub fn prepare_(list: &[(Crate, PathBuf)]) -> Result<()> {
                 }
                 // crates.io doesn't rate limit. Go fast
             }
-            Crate::Repo(ref url) => {
-                let r = dl_repo(url, dir)
+            ExCrate::Repo(ref url, ref sha) => {
+                let r = dl_repo(url, dir, sha)
                     .chain_err(|| format!("unable to download {}", url));
                 if let Err(e) = r {
                     util::report_error(&e);
@@ -67,14 +62,14 @@ pub fn prepare_(list: &[(Crate, PathBuf)]) -> Result<()> {
     Ok(())
 }
 
-pub fn crate_dir(c: &Crate) -> Result<PathBuf> {
+pub fn crate_dir(c: &ExCrate) -> Result<PathBuf> {
     match *c {
-        Crate::Version(ref name, ref vers) => {
+        ExCrate::Version(ref name, ref vers) => {
             Ok(registry_dir().join(format!("{}-{}", name, vers)))
         }
-        Crate::Repo(ref url) => {
+        ExCrate::Repo(ref url, ref sha) => {
             let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-            Ok(gh_dir().join(format!("{}.{}", org, name)))
+            Ok(gh_dir().join(format!("{}.{}.{}", org, name, sha)))
         }
     }
 }
@@ -102,17 +97,11 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     r
 }
 
-fn dl_repo(url: &str, dir: &Path) -> Result<()> {
-    let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-    fs::create_dir_all(&gh_dir())?;
+fn dl_repo(url: &str, dir: &Path, sha: &str) -> Result<()> {
     log!("downloading repo {} to {}", url, dir.display());
-    let r = git::shallow_clone_or_pull(url, &dir);
-
-    if r.is_err() {
-        let _ = util::remove_dir_all(&dir);
-    }
-
-    r
+    gh_mirrors::reset_to_sha(url, sha)?;
+    let src_dir = gh_mirrors::repo_dir(url)?;
+    util::copy_dir(&src_dir, dir)
 }
 
 fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> Result<()> {
@@ -137,73 +126,15 @@ fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> R
     Ok(())
 }
 
-pub fn crates_and_dirs() -> Result<Vec<(Crate, PathBuf)>> {
-    let cd = lists::read_all_lists()?.into_iter().filter_map(|c| {
-        let dir = crate_dir(&c)
-            .chain_err(|| format!("unable to get crate_dir for {}", c));
-        if let Err(e) = dir {
-            util::report_error(&e);
-            None
-        } else {
-            Some((c, dir.expect("")))
-        }
-    });
-
-    Ok(cd.collect())
-}
-
-pub fn with_work_crate<F, R>(crate_: &Crate, f: F) -> Result<R>
+pub fn with_work_crate<F, R>(crate_: &ExCrate, f: F) -> Result<R>
     where F: Fn(&Path) -> Result<R>
 {
     let src_dir = crate_dir(crate_)?;
     let dest_dir = Path::new(TEST_DIR);
     log!("creating temporary build dir for {} in {}", crate_, dest_dir.display());
 
-    copy_dir(&src_dir, &dest_dir)?;
+    util::copy_dir(&src_dir, &dest_dir)?;
     let r = f(&dest_dir);
     util::remove_dir_all(dest_dir)?;
     r
-}
-
-fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
-    use walkdir::*;
-
-    if dest_dir.exists() {
-        util::remove_dir_all(dest_dir)
-            .chain_err(|| "unable to remove test dir")?;
-    }
-    fs::create_dir_all(dest_dir)
-        .chain_err(|| "unable to create test dir")?;
-
-    fn is_hidden(entry: &DirEntry) -> bool {
-        entry.file_name()
-            .to_str()
-            .map(|s| s.starts_with("."))
-            .unwrap_or(false)
-    }
-
-    let mut partial_dest_dir = PathBuf::from("./");
-    let mut depth = 0;
-    for entry in WalkDir::new(src_dir)
-        .into_iter()
-        .filter_entry(|e| !is_hidden(e))
-    {
-        let entry = entry.chain_err(|| "walk dir")?;
-        while entry.depth() <= depth && depth > 0 {
-            assert!(partial_dest_dir.pop());
-            depth -= 1;
-        }
-        let path = dest_dir.join(&partial_dest_dir).join(entry.file_name());
-        if entry.file_type().is_dir() && entry.depth() > 0 {
-            fs::create_dir_all(&path)?;
-            assert!(entry.depth() == depth + 1);
-            partial_dest_dir.push(entry.file_name());
-            depth += 1;
-        }
-        if entry.file_type().is_file() {
-            fs::copy(&entry.path(), path)?;
-        }
-    }
-
-    Ok(())
 }

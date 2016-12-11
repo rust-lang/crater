@@ -169,7 +169,7 @@ fn cli() -> App<'static, 'static> {
             SubCommand::with_name("create-gh-app-list-from-cache")
                 .about("create the list of GitHub Rust applications from cache"))
 
-        // Experiment prep
+        // Global experiment prep
         .subcommand(
             SubCommand::with_name("define-ex")
                 .about("define an experiment")
@@ -349,6 +349,7 @@ fn prepare_ex_global(m: &ArgMatches) -> Result<()> {
     ex::download_crates(ex_name)?;
     ex::capture_shas(ex_name)?;
     ex::frob_tomls(ex_name)?;
+    ex::capture_lockfiles(ex_name, "stable", false)?;
 
     Ok(())
 }

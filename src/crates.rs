@@ -94,10 +94,10 @@ fn gh_url_to_org_and_name(url: &str) -> Result<(String, String)> {
 
 fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     if dir.exists() {
-        println!("crate {}-{} exists at {}. skipping", name, vers, dir.display());
+        log!("crate {}-{} exists at {}. skipping", name, vers, dir.display());
         return Ok(());
     }
-    println!("downloading crate {}-{} to {}", name, vers, dir.display());
+    log!("downloading crate {}-{} to {}", name, vers, dir.display());
     let url = format!("{0}/{1}/{1}-{2}.crate", CRATES_ROOT, name, vers);
     let bin = dl::download(&url)
         .chain_err(|| format!("unable to download {}", url))?;
@@ -118,12 +118,12 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
 fn dl_repo(url: &str, dir: &Path) -> Result<()> {
     let (org, name) = gh_url_to_org_and_name(url)?;
     if dir.exists() {
-        println!("repo {}/{} exists at {}. skipping", org, name, dir.display());
+        log!("repo {}/{} exists at {}. skipping", org, name, dir.display());
         return Ok(());
     }
 
     fs::create_dir_all(&gh_dir())?;
-    println!("downloading repo {} to {}", url, dir.display());
+    log!("downloading repo {} to {}", url, dir.display());
     let r = git::shallow_clone_or_pull(url, &dir);
 
     if r.is_err() {

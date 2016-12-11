@@ -116,13 +116,13 @@ distributed workers
 
 # Work flow
 
-- prepare-toolchain stable
 - create-lists
   - create-recent-list
   - create-second-list
   - create-hot-list
   - create-gh-candidate-list-from-cache
   - create-gh-app-list-from-cache
+- prepare-toolchain stable
 - define-ex - sets up experiment definition and per-experiment crate list
 - prepare-ex
   - prepare-ex-global

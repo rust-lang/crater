@@ -98,8 +98,10 @@ fn main_() -> Result<()> {
     let ref matches = cli().get_matches();
 
     match matches.subcommand() {
-        // List creation
         ("create-lists", Some(m)) => create_lists(m)?,
+        ("define-ex", Some(m)) => define_ex(m)?,
+
+        // List creation
         ("create-recent-list", Some(_)) => create_recent_list()?,
         ("create-second-list", Some(_)) => create_second_list()?,
         ("create-hot-list", Some(_)) => create_hot_list()?,
@@ -141,8 +143,19 @@ fn cli() -> App<'static, 'static> {
                      .long("full")
                      .required(false)
                      .takes_value(false)))
+        .subcommand(
+            SubCommand::with_name("define-ex")
+                .about("define an experiment")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default"))
+                .arg(Arg::with_name("demo")
+                     .long("demo")
+                     .required(false)
+                     .takes_value(false)))
 
-        // Individual debugging commands
+        // Individual debugging commands, lists
         .subcommand(
             SubCommand::with_name("create-recent-list")
                 .about("create the list of most recent crate versions"))
@@ -230,8 +243,8 @@ fn cli() -> App<'static, 'static> {
         .subcommand(
             SubCommand::with_name("summarize")
                 .about("TODO"))
-                .arg(Arg::with_name("name")
-                     .long("name")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
                      .required(false)
                      .default_value("default"))
         .subcommand(
@@ -258,6 +271,19 @@ fn create_lists(m: &ArgMatches) -> Result<()> {
 
     Ok(())
 }
+
+fn define_ex(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    let demo = m.is_present("demo");
+    if demo {
+        ex::define_demo(ex_name)?;
+    } else {
+        ex::define(ex_name)?;
+    }
+
+    Ok(())
+}
+
 
 fn create_recent_list() -> Result<()> {
     lists::create_recent_list()
@@ -288,14 +314,10 @@ fn create_gh_app_list_from_cache() -> Result<()> {
 }
 
 
+// Experiments
+
 fn prepare_crates() -> Result<()> {
     crates::prepare()
-}
-
-fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
-    let ref toolchain = m.value_of("toolchain").expect("");
-    let ref target = m.value_of("target").expect("");
-    toolchain::prepare_toolchain(toolchain, target)
 }
 
 fn frob_cargo_tomls() -> Result<()> {
@@ -337,3 +359,10 @@ fn sleep(m: &ArgMatches) -> Result<()> {
     run::run("sleep", &[secs], &[]);
     Ok(())
 }
+
+fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
+    let ref toolchain = m.value_of("toolchain").expect("");
+    let ref target = m.value_of("target").expect("");
+    toolchain::prepare_toolchain(toolchain, target)
+}
+

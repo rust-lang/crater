@@ -7,7 +7,7 @@ use errors::*;
 use EXPERIMENT_DIR;
 use std::path::{Path, PathBuf};
 use crates;
-use lists::Crate;
+use lists::{self, Crate};
 use run;
 use std::collections::{HashMap, HashSet};
 use serde_json;
@@ -19,12 +19,63 @@ use log;
 use toml_frobber;
 use TEST_DIR;
 
+#[derive(Serialize, Deserialize)]
+struct Experiment {
+    crates: Vec<Crate>
+}
+
+/// Define an experiment, including selecting the crates to be tested
+pub fn define(ex_name: &str) -> Result<()> {
+    let crates = lists::read_all_lists()?;
+    define_(ex_name, crates)
+}
+
+pub fn define_demo(ex_name: &str) -> Result<()> {
+    log!("defining demo");
+    let demo_crate = "lazy_static";
+    let demo_gh_app = "brson/basic-http-server";
+    let mut found_demo_crate = false;
+    let crates = lists::read_all_lists()?.into_iter().filter(|c| {
+        match *c {
+            Crate::Version(ref c, _) => {
+                if c == demo_crate && !found_demo_crate {
+                    found_demo_crate = true;
+                    true
+                } else {
+                    false
+                }
+            }
+            Crate::Repo(ref r) => {
+                r.contains(demo_gh_app)
+            }
+        }
+    }).collect();
+    define_(ex_name, crates)
+}
+
+pub fn define_(ex_name: &str, crates: Vec<Crate>) -> Result<()> {
+    log!("defining experiment {} for {} crates", ex_name, crates.len());
+    let ex = Experiment {
+        crates: crates
+    };
+    fs::create_dir_all(&ex_dir(ex_name))?;
+    let json = serde_json::to_string(&ex)
+        .chain_err(|| "unable to serialize experiment config")?;
+    log!("writing ex config to {}", config_file(ex_name).display());
+    file::write_string(&config_file(ex_name), &json)?;
+    Ok(())
+}
+
 fn ex_dir(ex_name: &str) -> PathBuf {
     Path::new(EXPERIMENT_DIR).join(ex_name)
 }
 
 fn shafile(ex_name: &str) -> PathBuf {
     Path::new(EXPERIMENT_DIR).join(ex_name).join("shas.json")
+}
+
+fn config_file(ex_name: &str) -> PathBuf {
+    Path::new(EXPERIMENT_DIR).join(ex_name).join("config.json")
 }
 
 pub fn capture_shas(ex_name: &str) -> Result<()> {

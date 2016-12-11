@@ -223,9 +223,9 @@ pub fn read_gh_app_list() -> Result<Vec<String>> {
         .chain_err(|| "unable to read gh-app list. run `cargobomb create-gh-app-list`?")
 }
 
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Crate {
-    Version(String, Version),
+    Version(String, String), // name, vers
     Repo(String)
 }
 
@@ -245,18 +245,6 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
     let second = read_second_list();
     let hot = read_hot_list();
     let gh_apps = read_gh_app_list();
-
-    fn semverify(v: Result<Vec<(String, String)>>) -> Result<Vec<(String, Version)>> {
-        v.map(|r| r.into_iter().map(|(c, v)| {
-            let ref bogus = format!("bogus version {} for {}", v, c);
-            let v = Version::parse(&v).expect(bogus);
-            (c, v)
-        }).collect())
-    }
-    
-    let recent = semverify(recent);
-    let second = semverify(second);
-    let hot = semverify(hot);
 
     if let Ok(recent) = recent {
         all.extend(recent.into_iter().map(|(c, v)| Crate::Version(c, v)));

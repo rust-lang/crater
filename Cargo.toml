@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Brian Anderson <banderson@mozilla.com>"]
 
 [profile.dev]
-opt-level = 1
+opt-level = 0
 
 [dependencies]
 clap = "2.11.3"

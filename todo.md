@@ -130,16 +130,15 @@ distributed workers
     - most resolvable version
     - sorted by most popular
   - discover gh-apps
-  - discover gh-app shas
 - Define experiment
   - create config.json
   - create crates.txt
 - Prepare caches for experiment
   - download crates
   - download gh apps
-  - generate lockfiles and copy into experiment
-  - find gh app shas and copy into experiment
-  - frob tomls and copy into experiment
+  - discover gh-app shas
+  - generate lockfiles
+  - frob tomls
 - Prepare toolchains
 - Run experiment
 - Generate report

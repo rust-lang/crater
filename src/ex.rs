@@ -344,6 +344,18 @@ pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
 
 }
 
+pub fn prepare_all_toolchains(ex_name: &str) -> Result<()> {
+    let config = load_config(ex_name)?;
+    for tc in &config.toolchains {
+        toolchain::prepare_toolchain_(tc)?;
+    }
+
+    Ok(())
+}
+
+
+// Experiment running
+
 fn with_frobbed_toml(ex_name: &str, crate_: &ExCrate, path: &Path) -> Result<()> {
     let (crate_name, crate_vers) = match *crate_ {
         ExCrate::Version(ref n, ref v) => (n.to_string(), v.to_string()),

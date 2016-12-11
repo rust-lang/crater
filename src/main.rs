@@ -130,6 +130,7 @@ fn main_() -> Result<()> {
         // Local experiment prep
         ("prepare-ex-local", Some(m)) => prepare_ex_local(m)?,
         ("fetch-deps", Some(m)) => fetch_deps(m)?,
+        ("prepare-all-toolchains-for-ex", Some(m)) => prepare_all_toolchains_for_ex(m)?,
 
         // Misc
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
@@ -267,6 +268,13 @@ fn cli() -> App<'static, 'static> {
                      .required(true)
                      .takes_value(true)
                      .default_value("stable"))
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+           SubCommand::with_name("prepare-all-toolchains-for-ex")
+                .about("prepare all toolchains for local experiment")
                 .arg(Arg::with_name("ex")
                      .long("ex")
                      .required(false)
@@ -430,6 +438,11 @@ fn fetch_deps(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
     ex::fetch_deps(ex_name, toolchain)
+}
+
+fn prepare_all_toolchains_for_ex(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex::prepare_all_toolchains(ex_name)
 }
 
 

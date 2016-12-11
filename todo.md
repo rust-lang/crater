@@ -132,7 +132,7 @@ distributed workers
     - capture-lockfiles
   - prepare-ex-local
     - fetch-deps
-    - Prepare toolchains
+    - prepare-all-toolchains-for-ex
 - run
 - gen-report
 

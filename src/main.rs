@@ -123,7 +123,7 @@ fn main_() -> Result<()> {
         ("prepare-ex-shared", Some(m)) => prepare_ex_shared(m)?,
         ("fetch-gh-mirrors", Some(m)) => fetch_gh_mirrors(m)?,
         ("capture-shas", Some(m)) => capture_shas(m)?,
-        ("download-crates-for-ex", Some(m)) => download_crates_for_ex(m)?,
+        ("download-crates", Some(m)) => download_crates(m)?,
         ("frob-cargo-tomls", Some(m)) => frob_cargo_tomls(m)?,
         ("capture-lockfiles", Some(m)) => capture_lockfiles(m)?,
 
@@ -218,7 +218,7 @@ fn cli() -> App<'static, 'static> {
                      .required(false)
                      .default_value("default")))
         .subcommand(
-            SubCommand::with_name("download-crates-for-ex")
+            SubCommand::with_name("download-crates")
                 .about("downloads crates to local disk")
                 .arg(Arg::with_name("ex")
                      .long("ex")
@@ -392,7 +392,7 @@ fn fetch_gh_mirrors(m: &ArgMatches) -> Result<()> {
     ex::fetch_gh_mirrors(ex_name)
 }
 
-fn download_crates_for_ex(m: &ArgMatches) -> Result<()> {
+fn download_crates(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     ex::download_crates(ex_name)
 }

@@ -1,13 +1,6 @@
-# next
-
-- add frobbed toml
-- create lockfiles
-- run tests
-- fallback gh list
-- split interface into "meta", "tc", and "ex"
-
 # not next
 
+- download-crates-for-ex should refresh git repos
 - test that docker works before running tests
 - record durations tests take to run
 - record and report on remaining work to go
@@ -133,13 +126,15 @@ distributed workers
 - Define experiment
   - create config.json
   - create crates.txt
-- Prepare caches for experiment
+- Prepare data for experiment (prepare-ex --global)
   - download crates
   - download gh apps
   - discover gh-app shas
   - generate lockfiles
   - frob tomls
-- Prepare toolchains
+- Prepare local state for experiment (prepare-ex --local)
+  - Fetch deps
+  - Prepare toolchains
 - Run experiment
 - Generate report
 - Garbage collect

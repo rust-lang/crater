@@ -27,9 +27,13 @@ fn registry_dir() -> PathBuf {
 
 pub fn prepare() -> Result<()> {
     let list = crates_and_dirs()?;
+    prepare_(&list)
+}
+
+pub fn prepare_(list: &[(Crate, PathBuf)]) -> Result<()> {
     log!("preparing {} crates", list.len());
     let mut successes = 0;
-    for &(ref crate_, ref dir) in &list {
+    for &(ref crate_, ref dir) in list {
         match *crate_ {
             Crate::Version(ref name, ref vers) => {
                 let r = dl_registry(name, &vers.to_string(), dir)
@@ -62,7 +66,7 @@ pub fn prepare() -> Result<()> {
     Ok(())
 }
 
-fn crate_dir(c: &Crate) -> Result<PathBuf> {
+pub fn crate_dir(c: &Crate) -> Result<PathBuf> {
     match *c {
         Crate::Version(ref name, ref vers) => {
             Ok(registry_dir().join(format!("{}-{}", name, vers)))

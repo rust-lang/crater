@@ -19,6 +19,18 @@ use log;
 use toml_frobber;
 use TEST_DIR;
 
+fn ex_dir(ex_name: &str) -> PathBuf {
+    Path::new(EXPERIMENT_DIR).join(ex_name)
+}
+
+fn shafile(ex_name: &str) -> PathBuf {
+    Path::new(EXPERIMENT_DIR).join(ex_name).join("shas.json")
+}
+
+fn config_file(ex_name: &str) -> PathBuf {
+    Path::new(EXPERIMENT_DIR).join(ex_name).join("config.json")
+}
+
 #[derive(Serialize, Deserialize)]
 struct Experiment {
     crates: Vec<Crate>
@@ -66,21 +78,31 @@ pub fn define_(ex_name: &str, crates: Vec<Crate>) -> Result<()> {
     Ok(())
 }
 
-fn ex_dir(ex_name: &str) -> PathBuf {
-    Path::new(EXPERIMENT_DIR).join(ex_name)
+fn load_config(ex_name: &str) -> Result<Experiment> {
+    let config = file::read_string(&config_file(ex_name))?;
+    serde_json::from_str(&config)
+        .chain_err(|| "unable to deserialize experiment config")
 }
 
-fn shafile(ex_name: &str) -> PathBuf {
-    Path::new(EXPERIMENT_DIR).join(ex_name).join("shas.json")
+pub fn download_crates(ex_name: &str) -> Result<()> {
+    crates::prepare_(&ex_crates_and_dirs(ex_name)?)
 }
 
-fn config_file(ex_name: &str) -> PathBuf {
-    Path::new(EXPERIMENT_DIR).join(ex_name).join("config.json")
+fn ex_crates_and_dirs(ex_name: &str) -> Result<Vec<(Crate, PathBuf)>> {
+    let config = load_config(ex_name)?;
+    let crates = config.crates.clone().into_iter().filter_map(|c| {
+        let dir = crates::crate_dir(&c).ok();
+        if dir.is_none() {
+            util::report_error(&format!("unable to find dir for {}", c).into());
+        }
+        dir.map(|d| (c, d))
+    });
+    Ok(crates.collect())
 }
 
 pub fn capture_shas(ex_name: &str) -> Result<()> {
     let mut shas: HashMap<String, String> = HashMap::new();
-    for (krate, dir) in crates::crates_and_dirs()? {
+    for (krate, dir) in ex_crates_and_dirs(ex_name)? {
         match krate {
             Crate::Repo(url) => {
                 let r = run::run_capture(Some(&dir),
@@ -113,6 +135,7 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
     fs::create_dir_all(&ex_dir(ex_name))?;
     let shajson = serde_json::to_string(&shas)
         .chain_err(|| "unable to serialize json")?;
+    log!("writing shas to {}", shafile(ex_name).display());
     file::write_string(&shafile(ex_name), &shajson)?;
 
     Ok(())

@@ -223,7 +223,7 @@ pub fn read_gh_app_list() -> Result<Vec<String>> {
         .chain_err(|| "unable to read gh-app list. run `cargobomb create-gh-app-list`?")
 }
 
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub enum Crate {
     Version(String, String), // name, vers
     Repo(String)

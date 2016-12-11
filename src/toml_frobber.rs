@@ -8,30 +8,7 @@ use FROB_DIR;
 use std::path::{Path, PathBuf};
 use toml::{Parser, Value};
 
-pub fn frob_em() -> Result<()> {
-    fs::create_dir_all(FROB_DIR)?;
-
-    for (crate_, dir) in crates::crates_and_dirs()? {
-        match crate_ {
-            Crate::Version(ref name, ref vers) => {
-                let r = frob_toml(&dir, name, &vers.to_string());
-                if let Err(e) = r {
-                    log!("couldn't frob: {}", e);
-                    util::report_error(&e);
-                }
-            }
-            _ => ()
-        }
-    }
-
-    Ok(())
-}
-
-pub fn froml_path(name: &str, vers: &str) -> PathBuf {
-    Path::new(FROB_DIR).join(format!("{}-{}.Cargo.toml", name, vers))
-}
-
-fn frob_toml(dir: &Path, name: &str, vers: &str) -> Result<()> {
+pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
     log!("frobbing {}-{}", name, vers);
     let toml_str = file::read_string(&dir.join("Cargo.toml"))
         .chain_err(|| "no cargo.toml?")?;
@@ -75,10 +52,9 @@ fn frob_toml(dir: &Path, name: &str, vers: &str) -> Result<()> {
 
     if changed {
         let toml = Value::Table(toml);
-        let new_path = froml_path(name, vers);
-        file::write_string(&new_path, &format!("{}", toml))?;
+        file::write_string(out, &format!("{}", toml))?;
 
-        log!("frobbed toml written to {}", new_path.display());
+        log!("frobbed toml written to {}", out.display());
     }
 
     Ok(())

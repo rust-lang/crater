@@ -116,28 +116,30 @@ distributed workers
 
 # Work flow
 
-- create lists
-  - crates
-    - most recent version
-    - second recent version
-    - most resolvable version
-    - sorted by most popular
-  - discover gh-apps
-- Define experiment
+- update-data
+  - prepare-stable-toolchain
+  - create-lists
+    - crates
+      - most recent version
+      - second recent version
+      - most resolvable version
+      - sorted by most popular
+    - discover gh-apps
+- define-ex
   - create config.json
   - create crates.txt
-- Prepare data for experiment (prepare-ex --global)
-  - download crates
-  - download gh apps
-  - discover gh-app shas
-  - generate lockfiles
-  - frob tomls
-- Prepare local state for experiment (prepare-ex --local)
-  - Fetch deps
-  - Prepare toolchains
-- Run experiment
-- Generate report
-- Garbage collect
+- prepare-ex
+  - Prepare data for experiment (prepare-ex-global)
+    - download crates
+    - download gh apps
+    - discover gh-app shas
+    - generate lockfiles (w/ stable)
+    - frob tomls
+  - Prepare local state for experiment (prepare-ex-local)
+    - Fetch deps (w/ stable)
+    - Prepare toolchains
+- run
+- gen-report
 
 ```
 cargobomb update-data

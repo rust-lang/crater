@@ -57,4 +57,3 @@ pub fn report_panic(e: &Any) {
         log_err!("panicked");
     }
 }
-

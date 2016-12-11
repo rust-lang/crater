@@ -98,11 +98,11 @@ fn main_() -> Result<()> {
     let ref matches = cli().get_matches();
 
     match matches.subcommand() {
-        ("create-lists", Some(m)) => create_lists(m)?,
         ("define-ex", Some(m)) => define_ex(m)?,
-        ("prepare-ex", Some(m)) => prepare_ex(m)?,
+        ("prepare-ex-global", Some(m)) => prepare_ex_global(m)?,
 
         // List creation
+        ("create-lists", Some(m)) => create_lists(m)?,
         ("create-recent-list", Some(_)) => create_recent_list()?,
         ("create-second-list", Some(_)) => create_second_list()?,
         ("create-hot-list", Some(_)) => create_hot_list()?,
@@ -117,7 +117,7 @@ fn main_() -> Result<()> {
         ("prepare-crates", Some(_)) => prepare_crates()?,
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
         ("link-toolchain", Some(m)) => panic!(),
-        ("frob-cargo-tomls", Some(_)) => frob_cargo_tomls()?,
+        ("frob-cargo-tomls", Some(m)) => frob_cargo_tomls(m)?,
         ("capture-shas", Some(m)) => capture_shas(m)?,
         ("capture-lockfiles", Some(m)) => capture_lockfiles(m)?,
         ("fetch-deps", Some(m)) => fetch_deps(m)?,
@@ -140,7 +140,7 @@ fn cli() -> App<'static, 'static> {
         .setting(AppSettings::DeriveDisplayOrder)
         .setting(AppSettings::SubcommandRequiredElseHelp)
 
-        // Primary commands
+        // Lists
         .subcommand(
             SubCommand::with_name("create-lists")
                 .about("create all the lists of crates")
@@ -148,26 +148,6 @@ fn cli() -> App<'static, 'static> {
                      .long("full")
                      .required(false)
                      .takes_value(false)))
-        .subcommand(
-            SubCommand::with_name("define-ex")
-                .about("define an experiment")
-                .arg(Arg::with_name("ex")
-                     .long("ex")
-                     .required(false)
-                     .default_value("default"))
-                .arg(Arg::with_name("demo")
-                     .long("demo")
-                     .required(false)
-                     .takes_value(false)))
-        .subcommand(
-            SubCommand::with_name("prepare-ex")
-                .about("prepare data for experiment")
-                .arg(Arg::with_name("ex")
-                     .long("ex")
-                     .required(false)
-                     .default_value("default")))
-
-        // Individual debugging commands, lists
         .subcommand(
             SubCommand::with_name("create-recent-list")
                 .about("create the list of most recent crate versions"))
@@ -192,6 +172,24 @@ fn cli() -> App<'static, 'static> {
 
         // Experiment prep
         .subcommand(
+            SubCommand::with_name("define-ex")
+                .about("define an experiment")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default"))
+                .arg(Arg::with_name("demo")
+                     .long("demo")
+                     .required(false)
+                     .takes_value(false)))
+        .subcommand(
+            SubCommand::with_name("prepare-ex-global")
+                .about("prepare data for experiment")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
             SubCommand::with_name("download-crates-for-ex")
                 .about("downloads crates to local disk")
                 .arg(Arg::with_name("ex")
@@ -201,6 +199,13 @@ fn cli() -> App<'static, 'static> {
         .subcommand(
             SubCommand::with_name("capture-shas")
                 .about("TODO")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("frob-cargo-tomls")
+                .about("frobs tomls for experiment crates")
                 .arg(Arg::with_name("ex")
                      .long("ex")
                      .required(false)
@@ -215,9 +220,6 @@ fn cli() -> App<'static, 'static> {
                 .about("TODO")
                 .arg(Arg::with_name("toolchain").required(true))
                 .arg(Arg::with_name("target").required(true)))
-        .subcommand(
-            SubCommand::with_name("frob-cargo-tomls")
-                .about("TODO"))
         .subcommand(
             SubCommand::with_name("capture-lockfiles")
                 .about("TODO")
@@ -277,7 +279,8 @@ fn cli() -> App<'static, 'static> {
 
 }
 
-// Main commands
+
+// List creation
 
 fn create_lists(m: &ArgMatches) -> Result<()> {
     let full = m.value_of("full").is_some();
@@ -294,29 +297,6 @@ fn create_lists(m: &ArgMatches) -> Result<()> {
 
     Ok(())
 }
-
-fn define_ex(m: &ArgMatches) -> Result<()> {
-    let ref ex_name = m.value_of("ex").expect("");
-    let demo = m.is_present("demo");
-    if demo {
-        ex::define_demo(ex_name)?;
-    } else {
-        ex::define(ex_name)?;
-    }
-
-    Ok(())
-}
-
-fn prepare_ex(m: &ArgMatches) -> Result<()> {
-    let ref ex_name = m.value_of("ex").expect("");
-    ex::download_crates(ex_name)?;
-    ex::capture_shas(ex_name)?;
-
-    Ok(())
-}
-
-
-// List creation
 
 fn create_recent_list() -> Result<()> {
     lists::create_recent_list()
@@ -349,6 +329,26 @@ fn create_gh_app_list_from_cache() -> Result<()> {
 
 // Experiment prep
 
+fn define_ex(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    let demo = m.is_present("demo");
+    if demo {
+        ex::define_demo(ex_name)?;
+    } else {
+        ex::define(ex_name)?;
+    }
+
+    Ok(())
+}
+
+fn prepare_ex_global(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex::download_crates(ex_name)?;
+    ex::capture_shas(ex_name)?;
+
+    Ok(())
+}
+
 fn download_crates_for_ex(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     ex::download_crates(ex_name)
@@ -359,15 +359,16 @@ fn capture_shas(m: &ArgMatches) -> Result<()> {
     ex::capture_shas(ex_name)
 }
 
+fn frob_cargo_tomls(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex::frob_tomls(ex_name)
+}
+
 
 // Other
 
 fn prepare_crates() -> Result<()> {
     crates::prepare()
-}
-
-fn frob_cargo_tomls() -> Result<()> {
-    toml_frobber::frob_em()
 }
 
 fn capture_lockfiles(m: &ArgMatches) -> Result<()> {

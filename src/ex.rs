@@ -31,6 +31,14 @@ fn config_file(ex_name: &str) -> PathBuf {
     Path::new(EXPERIMENT_DIR).join(ex_name).join("config.json")
 }
 
+fn froml_dir(ex_name: &str) -> PathBuf {
+    Path::new(EXPERIMENT_DIR).join(ex_name).join("fromls")
+}
+
+fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
+    froml_dir(ex_name).join(format!("{}-{}.Cargo.toml", name, vers))
+}
+
 #[derive(Serialize, Deserialize)]
 struct Experiment {
     crates: Vec<Crate>
@@ -141,6 +149,24 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn frob_tomls(ex_name: &str) -> Result<()> {
+    for (krate, dir) in ex_crates_and_dirs(ex_name)? {
+        match krate {
+            Crate::Version(ref name, ref vers) => {
+                let out = froml_path(ex_name, name, vers);
+                let r = toml_frobber::frob_toml(&dir, name, vers, &out);
+                if let Err(e) = r {
+                    log!("couldn't frob: {}", e);
+                    util::report_error(&e);
+                }
+            }
+            _ => ()
+        }
+    }
+
+    Ok(())
+}
+
 fn lockfile_dir(ex_name: &str) -> PathBuf {
     Path::new(EXPERIMENT_DIR).join(ex_name).join("lockfiles")
 }
@@ -169,7 +195,7 @@ pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: boo
             continue;
         }
         let r = crates::with_work_crate(c, |path| {
-            with_frobbed_toml(c, path)?;
+            with_frobbed_toml(ex_name, c, path)?;
             capture_lockfile(ex_name, c, path, toolchain)
         }).chain_err(|| format!("failed to generate lockfile for {}", c));
         if let Err(e) = r {
@@ -220,7 +246,7 @@ pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
             continue;
         }
         let r = crates::with_work_crate(c, |path| {
-            with_frobbed_toml(c, path)?;
+            with_frobbed_toml(ex_name, c, path)?;
             with_captured_lockfile(ex_name, c, path)?;
 
             let manifest_path = path.join("Cargo.toml").to_string_lossy().to_string();
@@ -242,12 +268,12 @@ pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
 
 }
 
-fn with_frobbed_toml(crate_: &Crate, path: &Path) -> Result<()> {
+fn with_frobbed_toml(ex_name: &str, crate_: &Crate, path: &Path) -> Result<()> {
     let (crate_name, crate_vers) = match *crate_ {
         Crate::Version(ref n, ref v) => (n.to_string(), v.to_string()),
         _ => panic!("unimplemented crate type in with_captured_lockfile"),
     };
-    let ref src_froml = toml_frobber::froml_path(&crate_name, &crate_vers);
+    let ref src_froml = froml_path(ex_name, &crate_name, &crate_vers);
     let ref dst_froml = path.join("Cargo.toml");
     if src_froml.exists() {
         log!("using frobbed toml {}", src_froml.display());
@@ -315,7 +341,7 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
                 }
 
                 crates::with_work_crate(c, |path| {
-                    with_frobbed_toml(c, path)?;
+                    with_frobbed_toml(ex_name, c, path)?;
                     with_captured_lockfile(ex_name, c, path)?;
 
                     run_single_test(ex_name, c, path, toolchain, &f)

@@ -122,8 +122,8 @@ fn main_() -> Result<()> {
         ("define-ex", Some(m)) => define_ex(m)?,
         ("prepare-ex-shared", Some(m)) => prepare_ex_shared(m)?,
         ("fetch-gh-mirrors", Some(m)) => fetch_gh_mirrors(m)?,
-        ("download-crates-for-ex", Some(m)) => download_crates_for_ex(m)?,
         ("capture-shas", Some(m)) => capture_shas(m)?,
+        ("download-crates-for-ex", Some(m)) => download_crates_for_ex(m)?,
         ("frob-cargo-tomls", Some(m)) => frob_cargo_tomls(m)?,
         ("capture-lockfiles", Some(m)) => capture_lockfiles(m)?,
 
@@ -211,15 +211,15 @@ fn cli() -> App<'static, 'static> {
                      .required(false)
                      .default_value("default")))
         .subcommand(
-            SubCommand::with_name("download-crates-for-ex")
-                .about("downloads crates to local disk")
+            SubCommand::with_name("capture-shas")
+                .about("TODO")
                 .arg(Arg::with_name("ex")
                      .long("ex")
                      .required(false)
                      .default_value("default")))
         .subcommand(
-            SubCommand::with_name("capture-shas")
-                .about("TODO")
+            SubCommand::with_name("download-crates-for-ex")
+                .about("downloads crates to local disk")
                 .arg(Arg::with_name("ex")
                      .long("ex")
                      .required(false)

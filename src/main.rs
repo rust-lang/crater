@@ -211,15 +211,19 @@ fn cli() -> App<'static, 'static> {
                      .required(false)
                      .default_value("default")))
 
-        // Misc
-        .subcommand(
-            SubCommand::with_name("prepare-crates")
-                .about("downloads all known crates to local disk"))
+
+        // Toolchain management
         .subcommand(
             SubCommand::with_name("prepare-toolchain")
                 .about("TODO")
                 .arg(Arg::with_name("toolchain").required(true))
                 .arg(Arg::with_name("target").required(true)))
+
+
+        // Misc
+        .subcommand(
+            SubCommand::with_name("prepare-crates")
+                .about("downloads all known crates to local disk"))
         .subcommand(
             SubCommand::with_name("capture-lockfiles")
                 .about("TODO")
@@ -345,6 +349,7 @@ fn prepare_ex_global(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     ex::download_crates(ex_name)?;
     ex::capture_shas(ex_name)?;
+    ex::frob_tomls(ex_name)?;
 
     Ok(())
 }

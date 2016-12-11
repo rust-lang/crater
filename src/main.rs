@@ -43,6 +43,7 @@ mod git;
 mod checkpoint;
 mod ex;
 mod toml_frobber;
+mod model;
 
 use clap::{App, Arg, AppSettings, SubCommand, ArgMatches};
 use errors::*;

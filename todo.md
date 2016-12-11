@@ -122,7 +122,7 @@ distributed workers
   - create-hot-list
   - create-gh-candidate-list-from-cache
   - create-gh-app-list-from-cache
-- define-ex - sets up experiment definition and per-experiment crate list
+- define-ex --demo - sets up experiment definition and per-experiment crate list
 - prepare-ex
   - prepare-ex-shared
     - fetch-gh-mirrors

@@ -155,13 +155,25 @@ fn gh_candidate_path() -> PathBuf {
     Path::new(LIST_DIR).join("gh-candidates.txt")
 }
 
+fn gh_candidate_cache_path() -> PathBuf {
+    Path::new("gh-candidates.txt").into()
+}
+
 pub fn create_gh_candidate_list() -> Result<()> {
-    log!("creating recent list");
+    log!("creating gh candidate list");
     fs::create_dir_all(LIST_DIR)?;
 
     let candidates = gh::get_candidate_repos()?;
     file::write_lines(&gh_candidate_path(), &candidates)?;
     log!("candidate repos written to {}", gh_candidate_path().display());
+    Ok(())
+}
+
+pub fn create_gh_candidate_list_from_cache() -> Result<()> {
+    log!("creating gh candidate list from cache");
+    fs::create_dir_all(LIST_DIR)?;
+    log!("copying {} to {}", gh_candidate_cache_path().display(), gh_candidate_path().display());
+    fs::copy(&gh_candidate_cache_path(), &gh_candidate_path())?;
     Ok(())
 }
 
@@ -172,6 +184,10 @@ pub fn read_gh_candidates_list() -> Result<Vec<String>> {
 
 fn gh_app_path() -> PathBuf {
     Path::new(LIST_DIR).join("gh-apps.txt")
+}
+
+fn gh_app_cache_path() -> PathBuf {
+    Path::new("gh-apps.txt").into()
 }
 
 pub fn create_gh_app_list() -> Result<()> {
@@ -191,6 +207,14 @@ pub fn create_gh_app_list() -> Result<()> {
 
     file::write_lines(&gh_app_path(), &apps)?;
     log!("rust apps written to {}", gh_app_path().display());
+    Ok(())
+}
+
+pub fn create_gh_app_list_from_cache() -> Result<()> {
+    log!("creating gh app list from cache");
+    fs::create_dir_all(LIST_DIR)?;
+    log!("copying {} to {}", gh_app_cache_path().display(), gh_app_path().display());
+    fs::copy(&gh_app_cache_path(), &gh_app_path())?;
     Ok(())
 }
 

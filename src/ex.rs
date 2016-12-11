@@ -230,7 +230,7 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
                 completed_crates += 1;
 
                 // SCARY HACK: Crates in the container are built in the mounted
-                // ./work/test directory. Some of them write files to that directory
+                // ./work/local/test directory. Some of them write files to that directory
                 // which end up being owned by root. This command deletes those
                 // files by running "rm" in the container. Note especially the "rm .*"
                 // command that depends on rm refusing to remove "." and "..".

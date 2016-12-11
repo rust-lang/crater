@@ -51,16 +51,27 @@ use std::env;
 use std::process;
 
 const WORK_DIR: &'static str = "./work";
-const CARGO_HOME: &'static str = "./work/cargo-home";
-const RUSTUP_HOME: &'static str = "./work/rustup-home";
-const TOOLCHAIN_DIR: &'static str = "./work/tc";
-const CRATES_DIR: &'static str = "./work/crates";
+const LOCAL_DIR: &'static str = "./work/local";
+
+const CARGO_HOME: &'static str = "./work/local/cargo-home";
+const RUSTUP_HOME: &'static str = "./work/local/rustup-home";
+// Custom toolchains
+const TOOLCHAIN_DIR: &'static str = "./work/local/custom-tc";
+// Where cargo puts its output, when running outside a docker container,
+// CARGO_TARGET_DIR
+const TARGET_DIR: &'static str = "./work/local/target-dirs";
+// The directory crates are unpacked to for running tests, mounted
+// in docker containers
+const TEST_DIR: &'static str = "./work/local/test";
+
+const CRATES_DIR: &'static str = "./work/shared/crates";
+// Lists of crates
+const LIST_DIR: &'static str = "./work/shared/lists";
+// crates.io Cargo.toml files, modified to build correctly
+const FROB_DIR: &'static str = "./work/shared/fromls";
+
 const EXPERIMENT_DIR: &'static str = "./work/ex";
-const LIST_DIR: &'static str = "./work/lists";
 const LOG_DIR: &'static str = "./work/logs";
-const FROB_DIR: &'static str = "./work/fromls";
-const TARGET_DIR: &'static str = "./work/target-dirs";
-const TEST_DIR: &'static str = "./work/test";
 
 fn main() {
     log::init();
@@ -86,11 +97,16 @@ fn main_() -> Result<()> {
     let ref matches = cli().get_matches();
 
     match matches.subcommand() {
+        // List creation
+        ("create-lists", Some(m)) => create_lists(m)?,
         ("create-recent-list", Some(_)) => create_recent_list()?,
         ("create-second-list", Some(_)) => create_second_list()?,
         ("create-hot-list", Some(_)) => create_hot_list()?,
         ("create-gh-candidate-list", Some(_)) => create_gh_candidate_list()?,
         ("create-gh-app-list", Some(_)) => create_gh_app_list()?,
+        ("create-gh-candidate-list-from-cache", Some(_)) => create_gh_candidate_list_from_cache()?,
+        ("create-gh-app-list-from-cache", Some(_)) => create_gh_app_list_from_cache()?,
+
         ("prepare-crates", Some(_)) => prepare_crates()?,
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
         ("link-toolchain", Some(m)) => panic!(),
@@ -118,20 +134,36 @@ fn cli() -> App<'static, 'static> {
         .setting(AppSettings::SubcommandRequiredElseHelp)
 
         .subcommand(
+            SubCommand::with_name("create-lists")
+                .about("create all the lists of crates")
+                .arg(Arg::with_name("full")
+                     .long("full")
+                     .required(false)
+                     .takes_value(false)))
+
+        // Individual debugging commands
+        .subcommand(
             SubCommand::with_name("create-recent-list")
-                .about("TODO"))
+                .about("create the list of most recent crate versions"))
         .subcommand(
             SubCommand::with_name("create-second-list")
-                .about("TODO"))
+                .about("create the list of of second-most-recent crate versions"))
         .subcommand(
             SubCommand::with_name("create-hot-list")
-                .about("TODO"))
+                .about("create the list of popular crates"))
         .subcommand(
             SubCommand::with_name("create-gh-candidate-list")
-                .about("TODO"))
+                .about("crate the list of all GitHub Rust repos"))
         .subcommand(
             SubCommand::with_name("create-gh-app-list")
-                .about("TODO"))
+                .about("create the list of GitHub Rust applications"))
+        .subcommand(
+            SubCommand::with_name("create-gh-candidate-list-from-cache")
+                .about("crate the list of all GitHub Rust repos from cache"))
+        .subcommand(
+            SubCommand::with_name("create-gh-app-list-from-cache")
+                .about("create the list of GitHub Rust applications from cache"))
+
         .subcommand(
             SubCommand::with_name("prepare-crates")
                 .about("TODO"))
@@ -209,10 +241,21 @@ fn cli() -> App<'static, 'static> {
 
 }
 
-fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
-    let ref toolchain = m.value_of("toolchain").expect("");
-    let ref target = m.value_of("target").expect("");
-    toolchain::prepare_toolchain(toolchain, target)
+
+fn create_lists(m: &ArgMatches) -> Result<()> {
+    let full = m.value_of("full").is_some();
+    lists::create_recent_list()?;
+    lists::create_second_list()?;
+    lists::create_hot_list()?;
+    if full {
+        lists::create_gh_candidate_list()?;
+        lists::create_gh_app_list()?;
+    } else {
+        lists::create_gh_candidate_list_from_cache()?;
+        lists::create_gh_app_list_from_cache()?;
+    }
+
+    Ok(())
 }
 
 fn create_recent_list() -> Result<()> {
@@ -235,8 +278,23 @@ fn create_gh_app_list() -> Result<()> {
     lists::create_gh_app_list()
 }
 
+fn create_gh_candidate_list_from_cache() -> Result<()> {
+    lists::create_gh_candidate_list_from_cache()
+}
+
+fn create_gh_app_list_from_cache() -> Result<()> {
+    lists::create_gh_app_list_from_cache()
+}
+
+
 fn prepare_crates() -> Result<()> {
     crates::prepare()
+}
+
+fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
+    let ref toolchain = m.value_of("toolchain").expect("");
+    let ref target = m.value_of("target").expect("");
+    toolchain::prepare_toolchain(toolchain, target)
 }
 
 fn frob_cargo_tomls() -> Result<()> {

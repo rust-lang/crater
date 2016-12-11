@@ -123,34 +123,33 @@ distributed workers
 
 # Work flow
 
-- Update data
-  - create lists
-    - crates
-      - most recent version
-      - second recent version
-      - most resolvable version
-      - sorted by most popular
-    - gh repos
-    - gh apps
-    - gh app shas
-  - download crates
-  - download gh apps
-  - frob tomls
-  - generate lockfiles
+- create lists
+  - crates
+    - most recent version
+    - second recent version
+    - most resolvable version
+    - sorted by most popular
+  - discover gh-apps
 - Define experiment
   - create config.json
   - create crates.txt
   - copy lockfiles into experiment
 - Load caches for experiment
+  - download crates
+  - download gh apps
+  - frob tomls
+  - generate lockfiles
+  - download gh repos
+  - gh app shas
 - Prepare toolchains
 - Run experiment
-  - Run
 - Generate report
 - Garbage collect
 
 ```
-$ cargobomb update
-$ cargobomb new --report=comparison --test=build --toolchain=nightly
-$ cargobomb run
-$ cargobomb report
+cargobomb update-data
+cargobomb define-ex
+cargobomb prepare-ex
+cargobomb run
+cargobomb report
 ```

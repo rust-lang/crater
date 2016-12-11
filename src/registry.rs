@@ -1,5 +1,5 @@
 use errors::*;
-use WORK_DIR;
+use LOCAL_DIR;
 use std::fs::{self, File};
 use std::thread;
 use std::path::{Path, PathBuf};
@@ -20,7 +20,7 @@ pub struct Crate {
 pub type Dep = (String, String);
 
 pub fn find_registry_crates() -> Result<Vec<Crate>> {
-    fs::create_dir_all(WORK_DIR)?;
+    fs::create_dir_all(LOCAL_DIR)?;
     update_registry()?;
     log!("loading registry");
     let r = read_registry()?;
@@ -34,7 +34,7 @@ fn update_registry() -> Result<()> {
 }
 
 fn repo_path() -> PathBuf {
-    Path::new(WORK_DIR).join("crates.io-index")
+    Path::new(LOCAL_DIR).join("crates.io-index")
 }
 
 fn read_registry() -> Result<Vec<Crate>> {

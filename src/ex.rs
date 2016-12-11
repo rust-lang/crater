@@ -125,9 +125,11 @@ fn ex_crates_and_dirs(ex_name: &str) -> Result<Vec<(Crate, PathBuf)>> {
 
 pub fn capture_shas(ex_name: &str) -> Result<()> {
     let mut shas: HashMap<String, String> = HashMap::new();
-    for (krate, dir) in ex_crates_and_dirs(ex_name)? {
+    let config = load_config(ex_name)?;
+    for krate in config.crates {
         match krate {
             Crate::Repo(url) => {
+                let dir = gh_mirrors::repo_dir(&url)?;
                 let r = run::run_capture(Some(&dir),
                                          "git",
                                          &["log", "-n1", "--pretty=%H"],

@@ -191,6 +191,11 @@ fn cli() -> App<'static, 'static> {
                      .long("ex")
                      .required(false)
                      .default_value("default"))
+                .arg(Arg::with_name("toolchain")
+                     .long("toolchain")
+                     .required(true)
+                     .multiple(true)
+                     .takes_value(true))
                 .arg(Arg::with_name("demo")
                      .long("demo")
                      .required(false)
@@ -363,11 +368,12 @@ fn create_gh_app_list_from_cache() -> Result<()> {
 
 fn define_ex(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
+    let toolchains = m.values_of("toolchain").expect("").collect::<Vec<_>>();
     let demo = m.is_present("demo");
     if demo {
-        ex::define_demo(ex_name)?;
+        ex::define_demo(ex_name, &toolchains)?;
     } else {
-        ex::define(ex_name)?;
+        ex::define(ex_name, &toolchains)?;
     }
 
     Ok(())

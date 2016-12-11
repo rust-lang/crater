@@ -15,10 +15,12 @@ use run;
 use TOOLCHAIN_DIR;
 use git;
 use TARGET_DIR;
+use toolchain;
 
 const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";
 
-enum Toolchain {
+#[derive(Serialize, Deserialize)]
+pub enum Toolchain {
     Dist(String), // rustup toolchain spec
     Repo(String, String), // Url, Sha
 }
@@ -35,7 +37,7 @@ pub fn prepare_toolchain(toolchain: &str) -> Result<()> {
     Ok(())
 }
 
-fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {
+pub fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {
     if toolchain.starts_with("https://") {
         if let Some(hash_idx) = toolchain.find("#") {
             let repo = &toolchain[.. hash_idx];

@@ -13,7 +13,7 @@ use run;
 use std::collections::{HashMap, HashSet};
 use serde_json;
 use file;
-use toolchain;
+use toolchain::{self, Toolchain};
 use util;
 use std::fmt::{self, Formatter, Display};
 use log;
@@ -42,16 +42,17 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 
 #[derive(Serialize, Deserialize)]
 struct Experiment {
-    crates: Vec<Crate>
+    crates: Vec<Crate>,
+    toolchains: Vec<Toolchain>,
 }
 
 /// Define an experiment, including selecting the crates to be tested
-pub fn define(ex_name: &str) -> Result<()> {
+pub fn define(ex_name: &str, toolchains: &[&str]) -> Result<()> {
     let crates = lists::read_all_lists()?;
-    define_(ex_name, crates)
+    define_(ex_name, toolchains, crates)
 }
 
-pub fn define_demo(ex_name: &str) -> Result<()> {
+pub fn define_demo(ex_name: &str, toolchains: &[&str]) -> Result<()> {
     log!("defining demo");
     let demo_crate = "lazy_static";
     let demo_gh_app = "brson/basic-http-server";
@@ -71,13 +72,20 @@ pub fn define_demo(ex_name: &str) -> Result<()> {
             }
         }
     }).collect();
-    define_(ex_name, crates)
+    define_(ex_name, toolchains, crates)
 }
 
-pub fn define_(ex_name: &str, crates: Vec<Crate>) -> Result<()> {
+pub fn define_(ex_name: &str, toolchains: &[&str],
+               crates: Vec<Crate>) -> Result<()> {
+    let mut tcs = Vec::new();
+    for tc in toolchains {
+        tcs.push(toolchain::parse_toolchain(tc)?);
+    }
+
     log!("defining experiment {} for {} crates", ex_name, crates.len());
     let ex = Experiment {
-        crates: crates
+        crates: crates,
+        toolchains: tcs,
     };
     fs::create_dir_all(&ex_dir(ex_name))?;
     let json = serde_json::to_string(&ex)

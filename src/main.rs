@@ -44,6 +44,7 @@ mod checkpoint;
 mod ex;
 mod toml_frobber;
 mod model;
+mod gh_mirrors;
 
 use clap::{App, Arg, AppSettings, SubCommand, ArgMatches};
 use errors::*;
@@ -56,18 +57,27 @@ const LOCAL_DIR: &'static str = "./work/local";
 
 const CARGO_HOME: &'static str = "./work/local/cargo-home";
 const RUSTUP_HOME: &'static str = "./work/local/rustup-home";
+
 // Custom toolchains
 const TOOLCHAIN_DIR: &'static str = "./work/local/custom-tc";
+
 // Where cargo puts its output, when running outside a docker container,
 // CARGO_TARGET_DIR
 const TARGET_DIR: &'static str = "./work/local/target-dirs";
+
 // The directory crates are unpacked to for running tests, mounted
 // in docker containers
 const TEST_DIR: &'static str = "./work/local/test";
 
+// Where GitHub crate mirrors are stored
+const GH_MIRRORS_DIR: &'static str = "./work/local/gh-mirrors";
+
+// Where crates.io sources are stores
 const CRATES_DIR: &'static str = "./work/shared/crates";
+
 // Lists of crates
 const LIST_DIR: &'static str = "./work/shared/lists";
+
 // crates.io Cargo.toml files, modified to build correctly
 const FROB_DIR: &'static str = "./work/shared/fromls";
 
@@ -111,6 +121,7 @@ fn main_() -> Result<()> {
         // Global experiment prep
         ("define-ex", Some(m)) => define_ex(m)?,
         ("prepare-ex-shared", Some(m)) => prepare_ex_shared(m)?,
+        ("fetch-gh-mirrors", Some(m)) => fetch_gh_mirrors(m)?,
         ("download-crates-for-ex", Some(m)) => download_crates_for_ex(m)?,
         ("capture-shas", Some(m)) => capture_shas(m)?,
         ("frob-cargo-tomls", Some(m)) => frob_cargo_tomls(m)?,
@@ -188,6 +199,13 @@ fn cli() -> App<'static, 'static> {
         .subcommand(
             SubCommand::with_name("prepare-ex-shared")
                 .about("prepare shared data for experiment")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("fetch-gh-mirrors")
+                .about("fetch github repos for experiment")
                 .arg(Arg::with_name("ex")
                      .long("ex")
                      .required(false)
@@ -367,6 +385,11 @@ fn prepare_ex_shared(m: &ArgMatches) -> Result<()> {
     ex::capture_lockfiles(ex_name, "stable", false)?;
 
     Ok(())
+}
+
+fn fetch_gh_mirrors(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex::fetch_gh_mirrors(ex_name)
 }
 
 fn download_crates_for_ex(m: &ArgMatches) -> Result<()> {

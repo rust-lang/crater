@@ -125,6 +125,7 @@ distributed workers
 - define-ex - sets up experiment definition and per-experiment crate list
 - prepare-ex
   - prepare-ex-shared
+    - fetch-gh-mirrors
     - download-crates-for-ex
     - capture-shas
     - frob-tomls

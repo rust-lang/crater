@@ -1,3 +1,4 @@
+use gh_mirrors;
 use std::time::Instant;
 use RUSTUP_HOME;
 use CARGO_HOME;
@@ -90,6 +91,20 @@ fn load_config(ex_name: &str) -> Result<Experiment> {
     let config = file::read_string(&config_file(ex_name))?;
     serde_json::from_str(&config)
         .chain_err(|| "unable to deserialize experiment config")
+}
+
+pub fn fetch_gh_mirrors(ex_name: &str) -> Result<()> {
+    let config = load_config(ex_name)?;
+    for c in &config.crates {
+        match *c {
+            Crate::Repo(ref url) => {
+                gh_mirrors::fetch(url)?;
+            }
+            _ => ()
+        }
+    }
+
+    Ok(())
 }
 
 pub fn download_crates(ex_name: &str) -> Result<()> {

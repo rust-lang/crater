@@ -14,6 +14,7 @@ use tar::Archive;
 use flate2::read::GzDecoder;
 use std::io::Read;
 use TEST_DIR;
+use gh_mirrors;
 
 const CRATES_ROOT: &'static str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
@@ -72,24 +73,10 @@ pub fn crate_dir(c: &Crate) -> Result<PathBuf> {
             Ok(registry_dir().join(format!("{}-{}", name, vers)))
         }
         Crate::Repo(ref url) => {
-            let (org, name) = gh_url_to_org_and_name(url)?;
+            let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
             Ok(gh_dir().join(format!("{}.{}", org, name)))
         }
     }
-}
-
-fn gh_url_to_org_and_name(url: &str) -> Result<(String, String)> {
-    let mut components = url.split("/").collect::<Vec<_>>();
-    let name = components.pop();
-    let org = components.pop();
-    let (org, name) = if let (Some(org), Some(name)) = (org, name) {
-        (org, name)
-    } else {
-        let e = format!("malformed repo url: {}", url);
-        return Err(e.into());
-    };
-
-    Ok((org.to_string(), name.to_string()))
 }
 
 fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
@@ -116,7 +103,7 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
 }
 
 fn dl_repo(url: &str, dir: &Path) -> Result<()> {
-    let (org, name) = gh_url_to_org_and_name(url)?;
+    let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
     fs::create_dir_all(&gh_dir())?;
     log!("downloading repo {} to {}", url, dir.display());
     let r = git::shallow_clone_or_pull(url, &dir);

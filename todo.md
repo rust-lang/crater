@@ -126,8 +126,8 @@ distributed workers
 - prepare-ex
   - prepare-ex-shared
     - fetch-gh-mirrors
-    - download-crates-for-ex
     - capture-shas
+    - download-crates-for-ex
     - frob-tomls
     - capture-lockfiles
   - prepare-ex-local

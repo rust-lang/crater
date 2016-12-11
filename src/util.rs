@@ -57,3 +57,21 @@ pub fn report_panic(e: &Any) {
         log_err!("panicked");
     }
 }
+
+pub fn this_target() -> String {
+    let os = if cfg!(target_os = "linux") {
+        "unknown-linux-gnu"
+    } else if cfg!(target_os = "windows") {
+        "pc-windows-msvc"
+    } else {
+        panic!("unrecognized OS");
+    };
+
+    let arch = if cfg!(target_arch = "x86_64") {
+        "x86_64"
+    } else {
+        panic!("unrecognized arch");
+    };
+
+    format!("{}-{}", arch, os)
+}

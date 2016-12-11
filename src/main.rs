@@ -215,9 +215,8 @@ fn cli() -> App<'static, 'static> {
         // Toolchain management
         .subcommand(
             SubCommand::with_name("prepare-toolchain")
-                .about("TODO")
-                .arg(Arg::with_name("toolchain").required(true))
-                .arg(Arg::with_name("target").required(true)))
+                .about("install or update a toolchain")
+                .arg(Arg::with_name("toolchain").required(true)))
 
 
         // Misc
@@ -409,7 +408,6 @@ fn sleep(m: &ArgMatches) -> Result<()> {
 
 fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
     let ref toolchain = m.value_of("toolchain").expect("");
-    let ref target = m.value_of("target").expect("");
-    toolchain::prepare_toolchain(toolchain, target)
+    toolchain::prepare_toolchain(toolchain)
 }
 

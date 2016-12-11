@@ -23,9 +23,9 @@ enum Toolchain {
     Repo(String, String), // Url, Sha
 }
 
-pub fn prepare_toolchain(toolchain: &str, target: &str) -> Result<()> {
+pub fn prepare_toolchain(toolchain: &str) -> Result<()> {
     let toolchain = parse_toolchain(toolchain)?;
-    init_rustup(target)?;
+    init_rustup()?;
 
     match toolchain {
         Toolchain::Dist(toolchain) => init_toolchain_from_dist(&toolchain)?,
@@ -49,11 +49,11 @@ fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {
     }
 }
 
-fn init_rustup(target: &str) -> Result<()> {
+fn init_rustup() -> Result<()> {
     fs::create_dir_all(CARGO_HOME)?;
     fs::create_dir_all(RUSTUP_HOME)?;
     if !rustup_exists() {
-        install_rustup(target)?;
+        install_rustup()?;
     } else {
         update_rustup()?;
     }
@@ -78,10 +78,10 @@ fn rustup_run(name: &str,
     run::run(name, args, &full_env)
 }
 
-fn install_rustup(target: &str) -> Result<()> {
+fn install_rustup() -> Result<()> {
     log!("installing rustup");
     let ref rustup_url = format!("{}/{}/rustup-init{}",
-                                 RUSTUP_BASE_URL, target, EXE_SUFFIX);
+                                 RUSTUP_BASE_URL, &util::this_target(), EXE_SUFFIX);
     let buf = dl::download(rustup_url).chain_err(|| "unable to download rustup")?;
 
     let tempdir = TempDir::new("cargobomb")?;

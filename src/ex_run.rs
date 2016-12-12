@@ -63,17 +63,6 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
             } else {
                 completed_crates += 1;
 
-                // SCARY HACK: Crates in the container are built in the mounted
-                // ./work/local/test directory. Some of them write files to that directory
-                // which end up being owned by root. This command deletes those
-                // files by running "rm" in the container. Note especially the "rm .*"
-                // command that depends on rm refusing to remove "." and "..".
-                let test_dir = Path::new(TEST_DIR);
-                if test_dir.exists() {
-                    let _ = run_in_docker(ex_name, test_dir,
-                                          &["sh", "-c", "rm -rf /test/*; rm -rf /test/.*"]);
-                }
-
                 crates::with_work_crate(c, |path| {
                     with_frobbed_toml(ex_name, c, path)?;
                     with_captured_lockfile(ex_name, c, path)?;
@@ -212,6 +201,7 @@ fn run_in_docker(ex_name: &str, path: &Path, args: &[&str]) -> Result<()> {
     let test_dir=absolute(path);
     let cargo_home=absolute(Path::new(CARGO_HOME));
     let rustup_home=absolute(Path::new(RUSTUP_HOME));
+    // This is configured as CARGO_TARGET_DIR by the docker container itself
     let target_dir=absolute(&toolchain::target_dir(ex_name));
 
     fs::create_dir_all(&test_dir);
@@ -227,20 +217,28 @@ fn run_in_docker(ex_name: &str, path: &Path, args: &[&str]) -> Result<()> {
 
     let image_name = "cargobomb";
 
+    let user_env = &format!("USER_ID={}", user_id());
+    let cmd_env = &format!("CMD={}", args.join(" "));
+
     let mut args_ = vec!["run", "-i",
                          "--rm",
                          "-v", test_mount,
                          "-v", cargo_home_mount,
                          "-v", rustup_home_mount,
                          "-v", target_mount,
+                         "-e", user_env,
+                         "-e", cmd_env,
                          image_name];
-
-    args_.extend_from_slice(args);
 
     run::run("docker", &args_, &[])
         .chain_err(|| "cargo build failed")?;
 
     Ok(())
+}
+
+#[cfg(unix)]
+fn user_id() -> ::libc::uid_t {
+    unsafe { ::libc::geteuid() }
 }
 
 fn absolute(path: &Path) -> PathBuf {

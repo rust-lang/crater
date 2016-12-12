@@ -29,7 +29,6 @@
 - test --debug and --release
 - test debug + optimizations
 - use cargo-vendor for caching libraries
-- fix docker file system permissions
 - associate crates with github repos
 - analyze contributors to crates
 - what kind of analysis can you do with
@@ -43,6 +42,7 @@
   that crate's tests, looking for combinations that don't pass
 - crusader testing
 - check for working docker before running tests
+- build docker image from cargobomb
 
 # Apps I didn't find through search :-/
 

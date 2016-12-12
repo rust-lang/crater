@@ -71,7 +71,8 @@ pub fn define_demo(ex_name: &str, toolchains: &[&str]) -> Result<()> {
                 r.contains(demo_gh_app)
             }
         }
-    }).collect();
+    }).collect::<Vec<_>>();
+    assert!(crates.len() == 2);
     define_(ex_name, toolchains, crates)
 }
 

@@ -431,6 +431,7 @@ https://github.com/brson/cargo-bake
 https://github.com/brson/cargo-crusader
 https://github.com/brson/cargobomb
 https://github.com/brson/ctrs
+https://github.com/brson/hello-rs
 https://github.com/brson/httptest
 https://github.com/brunodea/gebemula
 https://github.com/brunoom1/pass_gen

@@ -55,7 +55,7 @@ pub fn define(ex_name: &str, toolchains: &[&str]) -> Result<()> {
 pub fn define_demo(ex_name: &str, toolchains: &[&str]) -> Result<()> {
     log!("defining demo");
     let demo_crate = "lazy_static";
-    let demo_gh_app = "brson/basic-http-server";
+    let demo_gh_app = "brson/hello-rs";
     let mut found_demo_crate = false;
     let crates = lists::read_all_lists()?.into_iter().filter(|c| {
         match *c {

@@ -55,6 +55,13 @@ pub fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {
     }
 }
 
+pub fn tc_to_string(tc: &Toolchain) -> String {
+    match *tc {
+        Toolchain::Dist(ref s) => s.clone(),
+        Toolchain::Repo(ref url, ref sha) => format!("{}#{}", url, sha),
+    }
+}
+
 fn init_rustup() -> Result<()> {
     fs::create_dir_all(CARGO_HOME)?;
     fs::create_dir_all(RUSTUP_HOME)?;

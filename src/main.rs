@@ -503,7 +503,8 @@ fn run_unstable_features(m: &ArgMatches) -> Result<()> {
 // Reporting
 
 fn gen_report(m: &ArgMatches) -> Result<()> {
-    panic!()
+    let ref ex_name = m.value_of("ex").expect("");
+    report::gen(ex_name)
 }
 
 

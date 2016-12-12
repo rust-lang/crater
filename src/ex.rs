@@ -89,8 +89,7 @@ pub fn define_(ex_name: &str, toolchains: &[&str],
         toolchains: tcs,
     };
     fs::create_dir_all(&ex_dir(ex_name))?;
-    let json = serde_json::to_string(&ex)
-        .chain_err(|| "unable to serialize experiment config")?;
+    let json = serde_json::to_string(&ex)?;
     log!("writing ex config to {}", config_file(ex_name).display());
     file::write_string(&config_file(ex_name), &json)?;
     Ok(())
@@ -98,8 +97,7 @@ pub fn define_(ex_name: &str, toolchains: &[&str],
 
 pub fn load_config(ex_name: &str) -> Result<Experiment> {
     let config = file::read_string(&config_file(ex_name))?;
-    serde_json::from_str(&config)
-        .chain_err(|| "unable to deserialize experiment config")
+    Ok(serde_json::from_str(&config)?)
 }
 
 pub fn fetch_gh_mirrors(ex_name: &str) -> Result<()> {
@@ -151,8 +149,7 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
     }
 
     fs::create_dir_all(&ex_dir(ex_name))?;
-    let shajson = serde_json::to_string(&shas)
-        .chain_err(|| "unable to serialize json")?;
+    let shajson = serde_json::to_string(&shas)?;
     log!("writing shas to {}", shafile(ex_name).display());
     file::write_string(&shafile(ex_name), &shajson)?;
 
@@ -161,8 +158,7 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
 
 fn load_shas(ex_name: &str) -> Result<HashMap<String, String>> {
     let shas = file::read_string(&shafile(ex_name))?;
-    let shas = serde_json::from_str(&shas)
-        .chain_err(|| "unable to deserialize json")?;
+    let shas = serde_json::from_str(&shas)?;
     Ok(shas)
 }
 

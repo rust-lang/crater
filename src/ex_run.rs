@@ -21,6 +21,29 @@ use toml_frobber;
 use TEST_DIR;
 use ex::*;
 
+pub fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
+    let tc = toolchain::rustup_toolchain_name(toolchain)?;
+    Ok(ex_dir(ex_name).join("res").join(tc).join(crate_to_dir(c)?))
+}
+
+pub fn result_file(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
+    Ok(result_dir(ex_name, c, toolchain)?.join("results.txt"))
+}
+
+pub fn result_log(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
+    Ok(result_dir(ex_name, c, toolchain)?.join("log.txt"))
+}
+
+fn crate_to_dir(c: &ExCrate) -> Result<String> {
+    match *c {
+        ExCrate::Version(ref n, ref v) => Ok(format!("reg/{}-{}", n, v)),
+        ExCrate::Repo(ref url, ref sha) => {
+            let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
+            Ok(format!("gh/{}.{}.{}", org, name, sha))
+        }
+    }
+}
+
 pub fn run_build_and_test_test(ex_name: &str, toolchain: &str) -> Result<()> {
     run_test(ex_name, toolchain, build_and_test)
 }
@@ -129,7 +152,7 @@ fn verify_toolchain(ex_name: &str, toolchain: &str) -> Result<()> {
     Ok(())
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum TestResult {
     Fail,
     BuildPass,
@@ -169,7 +192,7 @@ fn run_single_test<F>(ex_name: &str, c: &ExCrate, path: &Path,
         util::remove_dir_all(&result_dir)?;
     }
     fs::create_dir_all(&result_dir)?;
-    let log_file = result_dir.join("log.txt");
+    let log_file = result_log(ex_name, c, toolchain)?;
 
     log::redirect(&log_file, || {
         let tc = toolchain::rustup_toolchain_name(toolchain)?;
@@ -250,25 +273,6 @@ fn absolute(path: &Path) -> PathBuf {
     }
 }
 
-fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
-    let tc = toolchain::rustup_toolchain_name(toolchain)?;
-    Ok(ex_dir(ex_name).join("res").join(tc).join(crate_to_dir(c)?))
-}
-
-fn crate_to_dir(c: &ExCrate) -> Result<String> {
-    match *c {
-        ExCrate::Version(ref n, ref v) => Ok(format!("reg/{}-{}", n, v)),
-        ExCrate::Repo(ref url, ref sha) => {
-            let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-            Ok(format!("gh/{}.{}.{}", org, name, sha))
-        }
-    }
-}
-
-fn result_file(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
-    Ok(result_dir(ex_name, c, toolchain)?.join("results.txt"))
-}
-
 fn record_test_result(ex_name: &str, c: &ExCrate, toolchain: &str, r: TestResult) -> Result<()> {
     let result_dir = result_dir(ex_name, c, toolchain)?;
     fs::create_dir_all(&result_dir)?;
@@ -279,7 +283,7 @@ fn record_test_result(ex_name: &str, c: &ExCrate, toolchain: &str, r: TestResult
     Ok(())
 }
 
-fn get_test_result(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<Option<TestResult>> {
+pub fn get_test_result(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<Option<TestResult>> {
     let result_file = result_file(ex_name, c, toolchain)?;
     if result_file.exists() {
         let s = file::read_string(&result_file)?;

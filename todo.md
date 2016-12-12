@@ -59,6 +59,12 @@ https://github.com/farseerfc/ydcv-rs
 3152 deps cached
 13 GB after building up to bytestool
 
+# Building docker container
+
+```
+docker build -t cargobomb docker
+```
+
 # Data model
 
 cargobomb works with a lot of data, and wants to coordinate that between

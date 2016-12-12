@@ -79,6 +79,8 @@ pub fn gen(ex_name: &str) -> Result<()> {
     log!("writing results to {}", results_file(ex_name).display());
     file::write_string(&results_file(ex_name), &json)?;
 
+    write_html_files(&ex_dir)?;
+
     Ok(())
 }
 
@@ -106,4 +108,21 @@ fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Compar
         }
         _ => Comparison::Unknown
     }
+}
+
+fn write_html_files(dir: &Path) -> Result<()> {
+    let html_in = include_str!("report.html");
+    let js_in = include_str!("report.js");
+    let css_in = include_str!("report.css");
+    let html_out = dir.join("index.html");
+    let js_out = dir.join("report.js");
+    let css_out = dir.join("report.css");
+
+    log!("writing report to {}", html_out.display());
+
+    file::write_string(&html_out, html_in)?;
+    file::write_string(&js_out, js_in)?;
+    file::write_string(&css_out, css_in)?;
+
+    Ok(())
 }

@@ -46,6 +46,7 @@ mod ex_run;
 mod toml_frobber;
 mod model;
 mod gh_mirrors;
+mod report;
 
 use clap::{App, Arg, AppSettings, SubCommand, ArgMatches};
 use errors::*;
@@ -135,6 +136,9 @@ fn main_() -> Result<()> {
         ("prepare-ex-local", Some(m)) => prepare_ex_local(m)?,
         ("fetch-deps", Some(m)) => fetch_deps(m)?,
         ("prepare-all-toolchains-for-ex", Some(m)) => prepare_all_toolchains_for_ex(m)?,
+
+        // Reporting
+        ("gen-report", Some(m)) => gen_report(m)?,
 
         // Misc
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
@@ -288,6 +292,16 @@ fn cli() -> App<'static, 'static> {
         .subcommand(
            SubCommand::with_name("prepare-all-toolchains-for-ex")
                 .about("prepare all toolchains for local experiment")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+
+
+        // Reporting
+        .subcommand(
+           SubCommand::with_name("gen-report")
+                .about("generate a report")
                 .arg(Arg::with_name("ex")
                      .long("ex")
                      .required(false)
@@ -483,6 +497,13 @@ fn run_unstable_features(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
     ex_run::run_unstable_features(ex_name, toolchain)
+}
+
+
+// Reporting
+
+fn gen_report(m: &ArgMatches) -> Result<()> {
+    panic!()
 }
 
 

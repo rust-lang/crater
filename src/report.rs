@@ -1,3 +1,4 @@
+use gh_mirrors;
 use std::path::{Path, PathBuf};
 use toolchain;
 use errors::*;
@@ -17,6 +18,7 @@ struct TestResults {
 
 #[derive(Serialize, Deserialize)]
 struct CrateResult {
+    name: String,
     res: Comparison,
     runs: [Option<BuildTestResult>; 2]
 }
@@ -49,7 +51,7 @@ pub fn gen(ex_name: &str) -> Result<()> {
             let ref tcs = toolchain::tc_to_string(tc);
             let res = ex_run::get_test_result(ex_name, &krate, tcs)?;
             // If there was no test result return an error
-            let res = res.ok_or_else(|| Error::from(""))?;
+            let res = res.ok_or_else(|| Error::from("no result"))?;
             let result_file = ex_run::result_file(ex_name, &krate, tcs)?;
             let result_log = ex_run::result_log(ex_name, &krate, tcs)?;
             let rel_log = relative(&ex_dir, &result_log)?;
@@ -66,6 +68,7 @@ pub fn gen(ex_name: &str) -> Result<()> {
         let comp = compare(&crate1, &crate2);
 
         CrateResult {
+            name: crate_to_name(&krate).unwrap_or("<unknown>".into()),
             res: comp,
             runs: [crate1, crate2]
         }
@@ -82,6 +85,16 @@ pub fn gen(ex_name: &str) -> Result<()> {
     write_html_files(&ex_dir)?;
 
     Ok(())
+}
+
+fn crate_to_name(c: &ex::ExCrate) -> Result<String> {
+    match *c {
+        ex::ExCrate::Version(ref n, ref v) => Ok(format!("{}-{}", n, v)),
+        ex::ExCrate::Repo(ref url, ref sha) => {
+            let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
+            Ok(format!("{}.{}.{}", org, name, sha))
+        }
+    }
 }
 
 fn relative(parent: &Path, child: &Path) -> Result<PathBuf> {

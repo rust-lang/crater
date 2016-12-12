@@ -412,8 +412,9 @@ fn prepare_ex(m: &ArgMatches) -> Result<()> {
 
 fn prepare_ex_shared(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
-    ex::download_crates(ex_name)?;
+    ex::fetch_gh_mirrors(ex_name)?;
     ex::capture_shas(ex_name)?;
+    ex::download_crates(ex_name)?;
     ex::frob_tomls(ex_name)?;
     ex::capture_lockfiles(ex_name, "stable", false)?;
 
@@ -425,14 +426,14 @@ fn fetch_gh_mirrors(m: &ArgMatches) -> Result<()> {
     ex::fetch_gh_mirrors(ex_name)
 }
 
-fn download_crates(m: &ArgMatches) -> Result<()> {
-    let ref ex_name = m.value_of("ex").expect("");
-    ex::download_crates(ex_name)
-}
-
 fn capture_shas(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     ex::capture_shas(ex_name)
+}
+
+fn download_crates(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex::download_crates(ex_name)
 }
 
 fn frob_cargo_tomls(m: &ArgMatches) -> Result<()> {

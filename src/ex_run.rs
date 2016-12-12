@@ -123,7 +123,7 @@ fn verify_toolchain(ex_name: &str, toolchain: &str) -> Result<()> {
     let tc = toolchain::parse_toolchain(toolchain)?;
     let config = load_config(ex_name)?;
     if !config.toolchains.contains(&tc) {
-        return Err(format!("toolchain {} not in experiment", toolchain).into());
+        bail!("toolchain {} not in experiment", toolchain);
     }
 
     Ok(())

@@ -1,7 +1,7 @@
 error_chain! {
     foreign_links {
-        ::std::io::Error, IoError;
-        ::url::ParseError, UrlParseError;
+        IoError(::std::io::Error);
+        UrlParseError(::url::ParseError);
     }
 
     errors {

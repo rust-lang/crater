@@ -213,10 +213,10 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
 
     if heartbeat_timed_out {
         log!("process killed after not generating output for {} s", HEARTBEAT_TIMEOUT_SECS);
-        return Err(Error::from(ErrorKind::Timeout));
+        bail!(ErrorKind::Timeout);
     } else if timed_out {
         log!("process killed after max time of {} s", MAX_TIMEOUT_SECS);
-        return Err(Error::from(ErrorKind::Timeout));
+        bail!(ErrorKind::Timeout);
     }
 
     Ok(ProcessOutput {

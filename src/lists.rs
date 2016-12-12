@@ -268,7 +268,7 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
     }
 
     if all.is_empty() {
-        return Err("no crates loaded. run `cargobomb prepare-lists`?".into());
+        bail!("no crates loaded. run `cargobomb prepare-lists`?");
     }
 
     let mut all: Vec<_> = all.drain().collect();

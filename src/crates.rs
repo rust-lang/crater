@@ -56,7 +56,7 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
     }
 
     if successes < list.len() / 2 {
-        return Err("unable to download a suspiciously-large number of crates".into());
+        bail!("unable to download a suspiciously-large number of crates");
     }
 
     Ok(())

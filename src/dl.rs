@@ -24,7 +24,7 @@ pub fn download_no_retry(url: &str) -> Result<Vec<u8>> {
         .chain_err(|| "unable to run curl")?;
 
     if !out.status.success() {
-        return Err(format!("failed to download {}", url).into());
+        bail!("failed to download {}", url);
     }
 
     Ok(out.stdout)

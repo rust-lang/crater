@@ -33,7 +33,7 @@ pub fn remove_dir_all(dir: &Path) -> Result<()> {
     try_hard_limit(10, || {
         fs::remove_dir_all(dir)?;
         if dir.exists() {
-            return Err("unable to remove directory".into());
+            bail!("unable to remove directory");
         } else {
             Ok(())
         }

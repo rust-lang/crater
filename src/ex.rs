@@ -284,6 +284,15 @@ pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: boo
             log!("crate {} has a lockfile. skipping", c);
             continue;
         }
+        // Sometimes repo's lockfiles disappear
+        match *c {
+            ExCrate::Repo(_, _) => {
+                log!("repo has no lockfile!");
+                continue;
+            }
+            _ => ()
+        }
+
         let captured_lockfile = lockfile(ex_name, c);
         if captured_lockfile.exists() && !recapture_existing {
             log!("skipping existing lockfile for {}", c);

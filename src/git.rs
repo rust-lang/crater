@@ -5,6 +5,8 @@ use std::path::Path;
 use errors::*;
 
 pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
+    let ref url = frob_url(url);
+
     if !dir.exists() {
         let r = util::try_hard(|| {
             log!("cloning {} into {}", url, dir.display());
@@ -37,6 +39,7 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
 /// first check whether it does, and if not do increasingly deep clones until it
 /// finds the commit.
 pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
+    let ref url = frob_url(url);
 
     log!("ensuring sha {} in {}", sha, url);
     let depths = &[1, 10, 100, 1000];
@@ -89,4 +92,10 @@ pub fn reset_to_sha(dir: &Path, sha: &str) -> Result<()> {
                 &["reset", "--hard", sha],
                 &[])
         .chain_err(|| format!("unable to reset {} to {}", dir.display(), sha))
+}
+
+fn frob_url(url: &str) -> String {
+    // With https git will interactively ask for a password for private repos.
+    // Switch to the unauthenticated git protocol to just generate an error instead.
+    url.replace("https://", "git://")
 }

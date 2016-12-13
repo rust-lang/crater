@@ -1,3 +1,51 @@
 <!DOCTYPE html>
 
-test
+<meta charset="utf-8">
+<style rel="report.css"></style>
+<script src="report.js"></script>
+
+<header>
+  <div>
+    Experiment:
+    <span id="ex-name"></span>
+  </div>
+  <div>
+    Toolchain 1:
+    <span id="ex-tc1"></span>
+  </div>  
+  <div>
+    Toolchain 2:
+    <span id="ex-tc2"></span>
+  </div>  
+
+  <div class="controls">
+    <span id="c-regressed">
+      regressed
+      <span class="count"></span>
+    </span>
+    <span id="c-fixed">
+      fixed
+      <span class="count"></span>
+    </span>
+    <span id="c-same-fail">
+      same-fail
+      <span class="count"></span>
+    </span>
+    <span id="c-same-build-pass">
+      same-build-pass
+      <span class="count"></span>
+    </span>
+    <span id="c-same-test-pass">
+      same-test-pass
+      <span class="count"></span>
+    </span>
+    <span id="c-unknown">
+      unknown
+      <span class="count"></span>
+    </span>
+  </div>
+
+<header>
+
+<table id="results">
+</table>

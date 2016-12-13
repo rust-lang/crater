@@ -25,12 +25,12 @@ struct CrateResult {
 
 #[derive(Serialize, Deserialize)]
 enum Comparison {
-    Unknown,
+    Regressed,
+    Fixed,
     SameFail,
     SameBuildPass,
     SameTestPass,
-    Regressed,
-    Fixed,
+    Unknown,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -1,5 +1,7 @@
 # not next
 
+- add a blacklist
+- update lockfiles for repos with outdated metadata sections?
 - investigate problems with toml frobbing
 - test that docker works before running tests
 - record durations tests take to run
@@ -137,10 +139,10 @@ distributed workers
     - download-crates
     - frob-tomls
     - capture-lockfiles
-  - prepare-ex-toolchains (todo)
+  - prepare-ex-custom-toolchains (todo)
   - prepare-ex-local
     - fetch-deps
-    - prepare-all-toolchains-for-ex (un-todo)
+    - prepare-all-toolchains-for-ex
 - run
 - gen-report
 

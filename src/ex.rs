@@ -266,12 +266,12 @@ fn lockfile_dir(ex_name: &str) -> PathBuf {
     Path::new(EXPERIMENT_DIR).join(ex_name).join("lockfiles")
 }
 
-fn lockfile(ex_name: &str, crate_: &ExCrate) -> PathBuf {
+fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
     let (crate_name, crate_vers) = match *crate_ {
         ExCrate::Version(ref n, ref v) => (n.to_string(), v.to_string()),
-        _ => panic!("unimplemented crate type in `lockfile`"),
+        _ => bail!("unimplemented crate type in `lockfile`"),
     };
-    lockfile_dir(ex_name).join(format!("{}-{}.lock", crate_name, crate_vers))
+    Ok(lockfile_dir(ex_name).join(format!("{}-{}.lock", crate_name, crate_vers)))
 }
 
 pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: bool) -> Result<()> {
@@ -284,16 +284,12 @@ pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: boo
             log!("crate {} has a lockfile. skipping", c);
             continue;
         }
-        // Sometimes repo's lockfiles disappear
-        match *c {
-            ExCrate::Repo(_, _) => {
-                log!("repo has no lockfile!");
-                continue;
-            }
-            _ => ()
-        }
-
         let captured_lockfile = lockfile(ex_name, c);
+        if let Err(e) = captured_lockfile {
+            util::report_error(&e);
+            continue;
+        }
+        let captured_lockfile = captured_lockfile.expect("");
         if captured_lockfile.exists() && !recapture_existing {
             log!("skipping existing lockfile for {}", c);
             continue;
@@ -319,7 +315,7 @@ fn capture_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path, toolchain: &st
         .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
 
     let ref src_lockfile = path.join("Cargo.lock");
-    let ref dst_lockfile = lockfile(ex_name, crate_);
+    let ref dst_lockfile = lockfile(ex_name, crate_)?;
     fs::copy(src_lockfile, dst_lockfile)
         .chain_err(|| format!("unable to copy lockfile from {} to {}",
                               src_lockfile.display(), dst_lockfile.display()))?;
@@ -334,7 +330,7 @@ pub fn with_captured_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path) -> R
     if dst_lockfile.exists() {
         return Ok(());
     }
-    let ref src_lockfile = lockfile(ex_name, crate_);
+    let ref src_lockfile = lockfile(ex_name, crate_)?;
     if src_lockfile.exists() {
         log!("using lockfile {}", src_lockfile.display());
         fs::copy(src_lockfile, dst_lockfile)

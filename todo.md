@@ -1,5 +1,6 @@
 # not next
 
+- investigate problems with toml frobbing
 - test that docker works before running tests
 - record durations tests take to run
 - record and report on remaining work to go

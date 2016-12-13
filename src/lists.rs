@@ -252,7 +252,7 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
         log!("failed to load recent list. ignoring");
     }
     if let Ok(second) = second { 
-       all.extend(second.into_iter().map(|(c, v)| Crate::Version(c, v)));
+       //all.extend(second.into_iter().map(|(c, v)| Crate::Version(c, v)));
     } else {
         log!("failed to load second list. ignoring");
     }

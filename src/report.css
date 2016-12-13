@@ -1,1 +1,86 @@
-* {  }
+body {
+    background-color: black;
+    color: white;
+}
+
+a {
+    color: white;
+}
+
+#controls, #results td {
+    color: white;
+}
+
+header, #controls, #results {
+    margin: 1rem;
+}
+
+header > div {
+    margin-top: 1rem;
+    margin-left: 0.2rem;
+}
+
+header {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+#controls > span {
+    margin: 0.2rem;
+}
+
+th {
+    text-align: left;
+}
+
+#controls > span, #results th, #results td {
+    padding: 0.2rem;
+}
+
+.regressed {
+    background-color: #DB3026;
+}
+
+.fixed {
+    background-color: #5630DB;
+}
+
+.same-fail {
+    background-color: #585D39;
+}
+
+.same-build-pass {
+    background-color: #3C543A;
+}
+
+.same-test-pass {
+    background-color: #2D8538;
+}
+
+.unknown {
+    background-color: #494B4A;
+}
+
+#results .invisible {
+    display: none;
+}
+
+#controls {
+    line-height: 2em;
+}
+
+#controls > span {
+    white-space: nowrap;
+}
+
+#controls:hover {
+    cursor: pointer;
+}
+
+#controls > span {
+    border: 2px solid white;
+}
+
+#controls > span.unselected {
+    border: 2px solid black;
+}

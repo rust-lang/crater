@@ -42,6 +42,7 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 
 #[derive(Serialize, Deserialize)]
 pub struct Experiment {
+    pub name: String,
     pub crates: Vec<Crate>,
     pub toolchains: Vec<Toolchain>,
 }
@@ -85,6 +86,7 @@ pub fn define_(ex_name: &str, toolchains: &[&str],
 
     log!("defining experiment {} for {} crates", ex_name, crates.len());
     let ex = Experiment {
+        name: ex_name.to_string(),
         crates: crates,
         toolchains: tcs,
     };

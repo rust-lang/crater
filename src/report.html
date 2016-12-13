@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <meta charset="utf-8">
-<style rel="report.css"></style>
+<link rel="stylesheet" href="report.css">
 <script src="report.js"></script>
 
 <header>
@@ -16,36 +16,38 @@
   <div>
     Toolchain 2:
     <span id="ex-tc2"></span>
-  </div>  
-
-  <div class="controls">
-    <span id="c-regressed">
-      regressed
-      <span class="count"></span>
-    </span>
-    <span id="c-fixed">
-      fixed
-      <span class="count"></span>
-    </span>
-    <span id="c-same-fail">
-      same-fail
-      <span class="count"></span>
-    </span>
-    <span id="c-same-build-pass">
-      same-build-pass
-      <span class="count"></span>
-    </span>
-    <span id="c-same-test-pass">
-      same-test-pass
-      <span class="count"></span>
-    </span>
-    <span id="c-unknown">
-      unknown
-      <span class="count"></span>
-    </span>
   </div>
+</header>
 
-<header>
+<div id="controls">
+  <span id="c-regressed" class="regressed">
+    regressed
+    <span class="count"></span>
+  </span>
+  <span id="c-fixed" class="fixed">
+    fixed
+    <span class="count"></span>
+  </span>
+  <span id="c-same-fail" class="same-fail">
+    same-fail
+    <span class="count"></span>
+  </span>
+  <span id="c-same-build-pass" class="same-build-pass">
+    same-build-pass
+    <span class="count"></span>
+  </span>
+  <span id="c-same-test-pass" class="same-test-pass">
+    same-test-pass
+    <span class="count"></span>
+  </span>
+  <span id="c-unknown" class="unknown">
+    unknown
+    <span class="count"></span>
+  </span>
+</div>
 
 <table id="results">
+  <tr>
+    <th>name</th><th>toolchain 1</th><th>toolchain 2</th>
+  </tr>
 </table>

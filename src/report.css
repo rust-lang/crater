@@ -84,3 +84,13 @@ th {
 #controls > span.unselected {
     border: 2px solid black;
 }
+
+.count::before {
+    content: "( ";
+    opacity: 0.5;
+}
+
+.count::after {
+    content: " )";
+    opacity: 0.5;
+}

@@ -107,7 +107,9 @@ pub fn fetch_gh_mirrors(ex_name: &str) -> Result<()> {
     for c in &config.crates {
         match *c {
             Crate::Repo(ref url) => {
-                gh_mirrors::fetch(url)?;
+                if let Err(e) = gh_mirrors::fetch(url) {
+                    util::report_error(&e);
+                }
             }
             _ => ()
         }

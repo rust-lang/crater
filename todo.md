@@ -8,6 +8,7 @@
   - total crates tested
   - filter results by crates.io vs gh
   - job timings
+  - #completed vs unknown per toolchain
 - generate lockfiles in parallel
 - add a blacklist
 - update lockfiles for repos with outdated metadata sections?

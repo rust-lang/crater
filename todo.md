@@ -1,5 +1,14 @@
 # not next
 
+- allow beta and stable builds in parallel
+  - work/test directory needs to change at least
+- add loading progress indicator
+- information to add to report
+  - toolchain versions (rustc and cargo)
+  - total crates tested
+  - filter results by crates.io vs gh
+  - job timings
+- generate lockfiles in parallel
 - add a blacklist
 - update lockfiles for repos with outdated metadata sections?
 - investigate problems with toml frobbing

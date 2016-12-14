@@ -62,8 +62,40 @@ th {
     background-color: #494B4A;
 }
 
-#results .invisible {
+#results > div {
     display: none;
+    margin-bottom: 1px;
+    width: 41em;
+}
+
+#results > div.header {
+    display: block;
+}
+
+#results > div.visible {
+    display: block;
+}
+
+#results > div > span {
+    word-break: keep-all;
+    overflow: hidden;
+    text-overflow: ellipses;
+    display: inline-block;
+}
+
+#results > div > span:first-child {
+    width: 24em;
+    max-width: 25em;
+}
+
+#results > div > span:nth-child(2) {
+    width: 8em;
+    max-width: 8em;
+}
+
+#results > div > span:nth-child(3) {
+    width: 8em;
+    max-width: 8em;
 }
 
 #controls {
@@ -74,16 +106,16 @@ th {
     white-space: nowrap;
 }
 
-#controls:hover {
+#controls > span:hover {
     cursor: pointer;
 }
 
 #controls > span {
-    border: 2px solid white;
+    border: 2px solid black;
 }
 
-#controls > span.unselected {
-    border: 2px solid black;
+#controls > span.selected {
+    border: 2px solid white;
 }
 
 .count::before {

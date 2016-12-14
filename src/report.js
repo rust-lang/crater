@@ -20,18 +20,18 @@ window.onload = function() {
 function loadConfig(req) {
     config = JSON.parse(req.responseText);
     if (config != null && results != null) {
-	begin();
+	begin(config, results);
     }
 }
 
 function loadResults(req) {
     results = JSON.parse(req.responseText);
     if (config != null && results != null) {
-	begin();
+	begin(config, results);
     }
 }
 
-function begin() {
+function begin(config, results) {
     let nameEl = document.getElementById("ex-name");
 
     nameEl.innerHTML = config.name;
@@ -45,7 +45,10 @@ function begin() {
     tc1el.innerHTML = tc1;
     tc2el.innerHTML = tc2;
 
-    let summary = calcSummary();
+    let cratesEl = document.getElementById("ex-crates");
+    cratesEl.innerHTML = config.crates.length;
+
+    let summary = calcSummary(results);
 
     let regressedEl = document.querySelector("#c-regressed .count");
     let fixedEl = document.querySelector("#c-fixed .count");
@@ -61,7 +64,14 @@ function begin() {
     sameTestPassEl.innerHTML = summary.sameTestPass;
     unknownEl.innerHTML = summary.unknown;
 
-    insertResults();
+    // Creating the document will take a second. Lay out the summary first.
+    let results_ = results;
+    window.setTimeout(function() {
+        insertResults(results_);
+    }, 1);
+
+    config = null;
+    results = null;
 }
 
 function parseToolchain(tc) {
@@ -72,7 +82,7 @@ function parseToolchain(tc) {
     }
 }
 
-function calcSummary() {
+function calcSummary(results) {
     let regressed = 0;
     let fixed = 0;
     let sameFail = 0;
@@ -108,7 +118,7 @@ function calcSummary() {
     };
 }
 
-function insertResults() {
+function insertResults(results) {
     let resultsTableEl = document.getElementById("results");
 
     for (crate of results.crates) {
@@ -117,15 +127,23 @@ function insertResults() {
 	let run1 = parseRunResult(crate.runs[0]);
 	let run2 = parseRunResult(crate.runs[1]);
 
+        function runToHtml(run) {
+            if (run.log) {
+	        return `<span><a href="${run.log}">${run.res}</a></span>`;
+            } else {
+	        return `<span>${run.res}</span>`;
+            }
+        }
+
 	let html1 = runToHtml(run1);
 	let html2 = runToHtml(run2);
 
 	let row = `
-	<tr class="${res}">
-	    <td>${name}</td>
+	<div class="${res}">
+	    <span>${name}</span>
 	    ${html1}
 	    ${html2}
-        </tr>
+        </div>
 	`;
 
 	let template = document.createElement("table");
@@ -133,14 +151,6 @@ function insertResults() {
 	let newNode = template.childNodes[1];
 
 	resultsTableEl.appendChild(newNode);
-    }
-}
-
-function runToHtml(run) {
-    if (run.log) {
-	return `<td><a href="${run.log}">${run.res}</a></td>`;
-    } else {
-	return `<td>${run.res}</td>`;
     }
 }
 
@@ -191,17 +201,19 @@ function jsonRunResToDisplay(res) {
 function setUpButtons() {
     let buttons = document.querySelectorAll("#controls > span");
 
-    for (button of buttons) {
+    for (button_ of buttons) {
+        let button = button_;
 	button.addEventListener("click", function(event) {
-	    let id = event.target.id;
+	    let id = button.id;
 	    let class_ = id.slice(2, id.length);
+            let selector = `#results .${class_}`;
 
-	    let rows = document.querySelectorAll(`#results .${class_}`);
+	    let rows = document.querySelectorAll(selector);
 	    for (row of rows) {
-		row.classList.toggle("invisible");
+		row.classList.toggle("visible");
 	    }
 
-	    event.target.classList.toggle("unselected");
+	    button.classList.toggle("selected");
 	});
     }
 }

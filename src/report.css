@@ -1,24 +1,23 @@
 body {
     font-family: sans-serif;
-    background-color: black;
-    color: white;
+    background-color: #111;
+    color: #eee;
+}
+
+body > * {
+    margin: 1rem;
 }
 
 a {
-    color: white;
+    color: #eee;
 }
 
 #controls, #results td {
-    color: white;
-}
-
-header, #controls, #results {
-    margin: 1rem;
+    color: #eee;
 }
 
 header > div {
     margin-top: 1rem;
-    margin-left: 0.2rem;
 }
 
 header {
@@ -26,16 +25,14 @@ header {
     margin-bottom: 2rem;
 }
 
-#controls > span {
-    margin: 0.2rem;
-}
-
 th {
     text-align: left;
 }
 
-#controls > span, #results th, #results td {
+#controls > span {
     padding: 0.2rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
 }
 
 .regressed {
@@ -47,25 +44,57 @@ th {
 }
 
 .same-fail {
-    background-color: #585D39;
+    background-color: #65461E;
 }
 
 .same-build-pass {
-    background-color: #3C543A;
+    background-color: #788843;
 }
 
 .same-test-pass {
-    background-color: #2D8538;
+    background-color: #72A156;
 }
 
 .unknown {
     background-color: #494B4A;
 }
 
+#controls {
+    line-height: 2em;
+    margin-bottom: 2rem;
+}
+
+#controls > span {
+    white-space: nowrap;
+}
+
+#controls > span:hover {
+    cursor: pointer;
+}
+
+#controls > span {
+    border: 0.2rem solid #111;
+}
+
+#controls > span.selected {
+    border: 0.2rem solid #eee;
+}
+
+#controls .count::before {
+    content: "( ";
+    opacity: 0.5;
+}
+
+#controls .count::after {
+    content: " )";
+    opacity: 0.5;
+}
+
 #results > div {
     display: none;
-    margin-bottom: 2px;
     width: 41em;
+    padding: 0.4em;
+    border-bottom: 0.2rem solid #222;
 }
 
 #results > div.header {
@@ -98,32 +127,3 @@ th {
     max-width: 8em;
 }
 
-#controls {
-    line-height: 2em;
-}
-
-#controls > span {
-    white-space: nowrap;
-}
-
-#controls > span:hover {
-    cursor: pointer;
-}
-
-#controls > span {
-    border: 2px solid black;
-}
-
-#controls > span.selected {
-    border: 2px solid white;
-}
-
-.count::before {
-    content: "( ";
-    opacity: 0.5;
-}
-
-.count::after {
-    content: " )";
-    opacity: 0.5;
-}

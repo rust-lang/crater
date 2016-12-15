@@ -115,3 +115,6 @@ th {
     width: 8em;
 }
 
+#results > div:first-child {
+    display: block;
+}

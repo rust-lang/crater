@@ -14,7 +14,6 @@ parallel access is consistent and race-free.
 */
 
 use errors::*;
-use self::slowio::{FreeDir, Blobject};
 
 // An experiment name
 struct Ex(String);
@@ -22,12 +21,14 @@ struct Ex(String);
 // or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
 struct Tc(String, String, String);
 
-enum Command {
+enum Cmd {
     /* Basic synchronous commands */
 
     // List creation
-    CreateLists { full: bool },
+    CreateLists,
+    CreateListsFull,
     CreateRecentList,
+    CreateSecondList,
     CreateHotList,
     CreateGhCandidateList,
     CreateGhAppList,
@@ -35,7 +36,7 @@ enum Command {
     CreateGhAppListFromCache,
 
     // Experiment prep
-    DefineEx(Ex, Tc),
+    DefineEx(Ex, Tc, Tc),
     PrepareEx(Ex),
 
     // Global experiment prep
@@ -44,7 +45,8 @@ enum Command {
     CaptureShas(Ex),
     DownloadCrates(Ex),
     FrobCargoTomls(Ex),
-    CaptureLockfiles { ex: Ex, tc: Tc, all: bool },
+    CaptureLockfiles(Ex, Tc),
+    CaptureAllLockfiles(Ex, Tc),
 
     // Local experiment prep
     PrepareExLocal(Ex),
@@ -64,51 +66,90 @@ enum Command {
     Sleep,
 }
 
-struct GlobalState {
-    master: MasterState,
-    local: LocalState,
-    shared: SharedState,
-    ex: ExData,
+mod state {
+    use super::slowio::{FreeDir, Blobject};
+
+    pub struct GlobalState {
+        master: MasterState,
+        local: LocalState,
+        shared: SharedState,
+        ex: ExData,
+    }
+
+    pub struct MasterState;
+
+    pub struct LocalState {
+        cargo_home: FreeDir,
+        rustup_home: FreeDir,
+        crates_io_index_mirror: FreeDir,
+        gh_clones: FreeDir,
+        target_dirs: FreeDir,
+        test_dir: FreeDir,
+    }
+
+    pub struct SharedState {
+        crates: FreeDir,
+        gh_mirrors: FreeDir,
+        lists: Lists,
+    }
+
+    pub struct Lists {
+        recent: Blobject,
+        second: Blobject,
+        hot: Blobject,
+        gh_repos: Blobject,
+        gh_apps: Blobject,
+    }
+
+    pub struct ExData {
+        config: Blobject,
+    }
 }
 
-struct MasterState;
+use self::state::GlobalState;
 
-struct LocalState {
-    cargo_home: FreeDir,
-    rustup_home: FreeDir,
-    crates_io_index_mirror: FreeDir,
-    gh_clones: FreeDir,
-    target_dirs: FreeDir,
-    test_dir: FreeDir,
-}
+impl rek::Process<GlobalState> for Cmd {
+    fn process(self, st: GlobalState) -> Result<(GlobalState, Vec<Cmd>)> {
+        use lists;
+        let mut cmds = Vec::new();
+        match self {
+            Cmd::CreateLists => {
+                cmds.extend(vec![Cmd::CreateRecentList,
+                                 Cmd::CreateSecondList,
+                                 Cmd::CreateHotList,
+                                 Cmd::CreateGhCandidateList,
+                                 Cmd::CreateGhAppList]);
+            }
+            Cmd::CreateListsFull => {
+                cmds.extend(vec![Cmd::CreateRecentList,
+                                 Cmd::CreateSecondList,
+                                 Cmd::CreateHotList,
+                                 Cmd::CreateGhCandidateListFromCache,
+                                 Cmd::CreateGhCandidateListFromCache]);
+            }
+            Cmd::CreateRecentList => lists::create_recent_list()?,
+            Cmd::CreateSecondList => lists::create_second_list()?,
+            Cmd::CreateHotList => lists::create_hot_list()?,
+            Cmd::CreateGhCandidateList => lists::create_gh_candidate_list()?,
+            Cmd::CreateGhAppList => lists::create_gh_app_list()?,
+            Cmd::CreateGhCandidateListFromCache => lists::create_gh_candidate_list_from_cache()?,
+            Cmd::CreateGhAppListFromCache => lists::create_gh_app_list_from_cache()?,
+            _ => unimplemented!()
+        }
 
-struct SharedState {
-    crates: FreeDir,
-    gh_mirrors: FreeDir,
-    lists: Lists,
-}
-
-struct Lists {
-    recent: Blobject,
-    second: Blobject,
-    hot: Blobject,
-    gh_repos: Blobject,
-    gh_apps: Blobject,
-}
-
-struct ExData {
-    config: Blobject,
+        Ok((st, cmds))
+    }
 }
 
 mod rek {
     use errors::*;
 
     pub trait Process<S> {
-        fn process(&self, s: S) -> Result<(S, Vec<Self>)>;
+        fn process(self, s: S) -> Result<(S, Vec<Self>)> where Self: Sized;
     }
 
-    pub fn run<St, Cmd>(mut state: St, cmd: Cmd) -> Result<St>
-        where Cmd: Process
+    pub fn run<S, C>(mut state: S, cmd: C) -> Result<S>
+        where C: Process<S>
     {
         let mut cmds = vec!(cmd);
         loop {

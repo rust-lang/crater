@@ -264,6 +264,11 @@ fn user_id() -> ::libc::uid_t {
     unsafe { ::libc::geteuid() }
 }
 
+#[cfg(windows)]
+fn user_id() -> u32 {
+    panic!("unimplemented user_id");
+}
+
 fn absolute(path: &Path) -> PathBuf {
     if path.is_absolute() {
         path.to_owned()

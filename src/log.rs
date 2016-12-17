@@ -146,16 +146,17 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     if !cfg!(unix) {
         panic!("process killing unimplemented");
     }
+    #[cfg(unix)]
     fn kill_process(id: u32) {
-        if cfg!(unix) {
-            use libc::{kill, SIGKILL, pid_t};
-            let r = unsafe { kill(id as pid_t, SIGKILL) };
-            if r != 0 {
-                // Something went wrong...
-            }
-        } else {
-            panic!("process killing unimplemented");
+        use libc::{kill, SIGKILL, pid_t};
+        let r = unsafe { kill(id as pid_t, SIGKILL) };
+        if r != 0 {
+            // Something went wrong...
         }
+    }
+    #[cfg(windows)]
+    fn kill_process(id: u32) {
+        panic!("process killing unimplemented");
     }
 
     // Have another thread kill the subprocess after the maximum timeout

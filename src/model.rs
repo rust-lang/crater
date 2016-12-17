@@ -1,4 +1,119 @@
-enum MasterState {
-    NotReady,
-    Ready { ex: String }, // After prepare-ex
+/*!
+
+Cargobomb works by serially processing a queue of commands, each of
+which transforms the application state in some discrete way, and
+designed to be resilient to I/O errors. The application state is
+backed by a directory in the filesystem, and optionally synchronized
+with s3.
+
+These command queues may be created dynamically and executed in
+parallel jobs, either locally, or distributed on e.g. AWS. The
+application state employs ownership techniques to ensure that
+parallel access is consistent and race-free.
+
+*/
+
+use errors::*;
+
+// An experiment name
+struct Ex(String);
+// A toolchain name, either a rustup channel identifier,
+// or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
+struct Tc(String, String, String);
+
+enum Command {
+    /* Basic synchronous commands */
+
+    // List creation
+    CreateLists { full: bool },
+    CreateRecentList,
+    CreateHotList,
+    CreateGhCandidateList,
+    CreateGhAppList,
+    CreateGhCandidateListFromCache,
+    CreateGhAppListFromCache,
+
+    // Experiment prep
+    DefineEx(Ex, Tc),
+    PrepareEx(Ex),
+
+    // Global experiment prep
+    PrepareExShared(Ex),
+    FetchGhMirrors(Ex) ,
+    CaptureShas(Ex),
+    DownloadCrates(Ex),
+    FrobCargoTomls(Ex),
+    CaptureLockfiles { ex: Ex, tc: Tc, all: bool },
+
+    // Local experiment prep
+    PrepareExLocal(Ex),
+    FetchDeps(Ex, Tc),
+    PrepareAllToolchainsForEx(Ex),
+
+    // Reporting
+    GenReport(Ex),
+
+    // Misc
+    PrepareToolchain(Tc),
+    LinkToolchain,
+    Run,
+    RunUnstableFeatures,
+    Summarize,
+    EasyTest,
+    Sleep,
+}
+
+struct GlobalState {
+    master: MasterState,
+    local: LocalState,
+    shared: SharedState,
+    ex: ExData,
+}
+
+struct MasterState;
+
+struct LocalState {
+    cargo_home: FreeDir,
+    rustup_home: FreeDir,
+    crates_io_index_mirror: FreeDir,
+    gh_clones: FreeDir,
+    target_dirs: FreeDir,
+    test_dir: FreeDir,
+}
+
+struct SharedState {
+    crates: FreeDir,
+    gh_mirrors: FreeDir,
+    lists: Lists,
+}
+
+struct Lists {
+    recent: Blobject,
+    second: Blobject,
+    hot: Blobject,
+    gh_repos: Blobject,
+    gh_apps: Blobject,
+}
+
+struct ExData {
+    config: Blobject,
+    
+}
+
+pub fn step(cmd: Command) -> Result<()> {
+    let state = load()?;
+    let state = run(state, cmd)?;
+    save(state)?;
+}
+
+fn load() -> Result<GlobalState> {
+    panic!()
+}
+
+fn run(state: GlobalState, cmd: Command) -> Result<GlobalState> {
+    panic!()
+}
+
+fn save(state: GlobalState) -> Result<()> {
+    panic!()
 }

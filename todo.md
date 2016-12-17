@@ -1,5 +1,16 @@
 # not next
 
+- run `rustc -Vv` before every test
+- build-pass -> test-fail
+- fail -> build-fail
+- link to lockfile
+- link to crate
+- link to froml
+- automatic bug report generation
+- report tooltips for last line of output
+- put time stamps in logs
+- capture regressed crates to new crate 'watch' list
+- set up docker init process correctly https://github.com/rust-lang/rust/pull/38340/files
 - allow beta and stable builds in parallel
   - work/test directory needs to change at least
 - add loading progress indicator
@@ -9,6 +20,7 @@
   - filter results by crates.io vs gh
   - job timings
   - #completed vs unknown per toolchain
+  - toolchain target
 - generate lockfiles in parallel
 - add a blacklist
 - update lockfiles for repos with outdated metadata sections?

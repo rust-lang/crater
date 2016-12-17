@@ -44,7 +44,7 @@ mod checkpoint;
 mod ex;
 mod ex_run;
 mod toml_frobber;
-//mod model;
+mod model;
 mod gh_mirrors;
 mod report;
 

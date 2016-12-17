@@ -14,6 +14,7 @@ parallel access is consistent and race-free.
 */
 
 use errors::*;
+use self::slowio::{FreeDir, Blobject};
 
 // An experiment name
 struct Ex(String);
@@ -97,23 +98,32 @@ struct Lists {
 
 struct ExData {
     config: Blobject,
-    
 }
 
-pub fn step(cmd: Command) -> Result<()> {
-    let state = load()?;
-    let state = run(state, cmd)?;
-    save(state)?;
+fn run(mut state: GlobalState, cmd: Command) -> Result<GlobalState> {
+    let mut cmds = vec!(cmd);
+    loop {
+        if let Some(cmd) = cmds.pop() {
+            let (state_, new_cmds) = step(state, cmd)?;
+            state = state_;
+
+            // Each command execution returns a list of new commands
+            // to execute, in order, before considering the original
+            // complete.
+            cmds.extend(new_cmds.into_iter().rev());
+        } else {
+            break;
+        }
+    }
+
+    Ok(state)
 }
 
-fn load() -> Result<GlobalState> {
+fn step(state: GlobalState, cmd: Command) -> Result<(GlobalState, Vec<Command>)> {
     panic!()
 }
 
-fn run(state: GlobalState, cmd: Command) -> Result<GlobalState> {
-    panic!()
-}
-
-fn save(state: GlobalState) -> Result<()> {
-    panic!()
+mod slowio {
+    pub struct FreeDir;
+    pub struct Blobject;
 }

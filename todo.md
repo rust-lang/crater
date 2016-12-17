@@ -1,5 +1,7 @@
 # not next
 
+- mount CARGO_HOME read-only
+- delete docker containers on exit
 - run `rustc -Vv` before every test
 - build-pass -> test-fail
 - fail -> build-fail

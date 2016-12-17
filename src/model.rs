@@ -100,27 +100,33 @@ struct ExData {
     config: Blobject,
 }
 
-fn run(mut state: GlobalState, cmd: Command) -> Result<GlobalState> {
-    let mut cmds = vec!(cmd);
-    loop {
-        if let Some(cmd) = cmds.pop() {
-            let (state_, new_cmds) = step(state, cmd)?;
-            state = state_;
+mod rek {
+    use errors::*;
 
-            // Each command execution returns a list of new commands
-            // to execute, in order, before considering the original
-            // complete.
-            cmds.extend(new_cmds.into_iter().rev());
-        } else {
-            break;
-        }
+    pub trait Process<S> {
+        fn process(&self, s: S) -> Result<(S, Vec<Self>)>;
     }
 
-    Ok(state)
-}
+    pub fn run<St, Cmd>(mut state: St, cmd: Cmd) -> Result<St>
+        where Cmd: Process
+    {
+        let mut cmds = vec!(cmd);
+        loop {
+            if let Some(cmd) = cmds.pop() {
+                let (state_, new_cmds) = cmd.process(state)?;
+                state = state_;
 
-fn step(state: GlobalState, cmd: Command) -> Result<(GlobalState, Vec<Command>)> {
-    panic!()
+                // Each command execution returns a list of new commands
+                // to execute, in order, before considering the original
+                // complete.
+                cmds.extend(new_cmds.into_iter().rev());
+            } else {
+                break;
+            }
+        }
+
+        Ok(state)
+    }
 }
 
 mod slowio {

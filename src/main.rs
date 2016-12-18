@@ -148,6 +148,7 @@ fn main_() -> Result<()> {
 
         // Experimenting
         ("run", Some(m)) => run(m)?,
+        ("run-tc", Some(m)) => run_tc(m)?,
         ("delete-all-results", Some(m)) => delete_all_results(m)?,
 
         // Reporting
@@ -358,8 +359,15 @@ fn cli() -> App<'static, 'static> {
         // Experimenting
         .subcommand(
             SubCommand::with_name("run")
+                .about("run an experiment on all toolchains")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("run-tc")
+                .about("run an experiment against a single toolchain")
                 .arg(Arg::with_name("toolchain")
-                     .long("toolchain")
                      .required(true)
                      .takes_value(true))
                 .arg(Arg::with_name("ex")
@@ -587,6 +595,11 @@ fn delete_all_target_dirs_for_ex(m: &ArgMatches) -> Result<()> {
 // Experiment running
 
 fn run(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex_run::run_ex_all_tcs(ex_name)
+}
+
+fn run_tc(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
     ex_run::run_ex(ex_name, toolchain)

@@ -47,14 +47,25 @@ fn crate_to_dir(c: &ExCrate) -> Result<String> {
     }
 }
 
-pub fn run_ex(ex_name: &str, toolchain: &str) -> Result<()> {
-    verify_toolchain(ex_name, toolchain)?;
+pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
+    let ref config = load_config(ex_name)?;
+    run_exts(config, &config.toolchains)
+}
 
-    let config = load_config(ex_name)?;
+pub fn run_ex(ex_name: &str, tc: &str) -> Result<()> {
+    let tc = toolchain::parse_toolchain(tc)?;
+    let ref config = load_config(ex_name)?;
+    run_exts(config, &vec![tc])
+}
+
+fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
+    verify_toolchains(config, tcs)?;
+
+    let ref ex_name = config.name;
     let crates = ex_crates_and_dirs(ex_name)?;
 
     // Just for reporting progress
-    let total_crates = crates.len();
+    let total_crates = crates.len() * tcs.len();
     let mut skipped_crates = 0;
     let mut completed_crates = 0;
 
@@ -75,79 +86,82 @@ pub fn run_ex(ex_name: &str, toolchain: &str) -> Result<()> {
 
     log!("running {} tests", total_crates);
     for (ref c, ref dir) in crates {
-        let r = {
-            let existing_result = get_test_result(ex_name, c, toolchain)?;
-            if let Some(r) = existing_result {
-                skipped_crates += 1;
+        for tc  in tcs {
+            let ref tc = toolchain::tc_to_string(tc);
+            let r = {
+                let existing_result = get_test_result(ex_name, c, tc)?;
+                if let Some(r) = existing_result {
+                    skipped_crates += 1;
 
-                log!("skipping crate {}. existing result: {}", c, r);
-                log!("delete result file to rerun test: {}",
-                     result_file(ex_name, c, toolchain)?.display());
-                Ok(r)
+                    log!("skipping crate {}. existing result: {}", c, r);
+                    log!("delete result file to rerun test: {}",
+                         result_file(ex_name, c, tc)?.display());
+                    Ok(r)
+                } else {
+                    completed_crates += 1;
+
+                    with_work_crate(ex_name, tc, c, |path| {
+                        with_frobbed_toml(ex_name, c, path)?;
+                        with_captured_lockfile(ex_name, c, path)?;
+
+                        run_single_test(ex_name, c, path, tc, &test_fn)
+                    })
+                }
+            };
+
+            match r {
+                Err(ref e) => {
+                    log_err!("error testing crate {}:  {}", c, e);
+                    util::report_error(e);
+                }
+                Ok(ref r) => {
+                    // FIXME: Should errors be recorded?
+                    record_test_result(ex_name, c, tc, *r);
+                }
+            }
+
+            match r {
+                Err(_) => {
+                    sum_errors += 1;
+                }
+                Ok(TestResult::BuildFail) => sum_build_fail += 1,
+                Ok(TestResult::TestFail) => sum_test_fail +=1,
+                Ok(TestResult::TestPass) => sum_test_pass += 1,
+            }
+
+            let elapsed = Instant::now().duration_since(start_time).as_secs();
+            let seconds_per_test = if completed_crates > 0 {
+                (elapsed as f64) / (completed_crates as f64)
             } else {
-                completed_crates += 1;
+                0.0
+            };
+            let remaining_tests = total_crates - completed_crates - skipped_crates;
+            let remaining_time = remaining_tests * seconds_per_test as usize;
 
-                with_work_crate(ex_name, toolchain, c, |path| {
-                    with_frobbed_toml(ex_name, c, path)?;
-                    with_captured_lockfile(ex_name, c, path)?;
+            let remaining_time_str = if remaining_time < 60 * 8 {
+                format!("{:0} seconds", remaining_time)
+            } else if remaining_time < 60 * 60 * 8 {
+                format!("{:0} minutes", remaining_time / 60)
+            } else {
+                format!("{:0} hours", remaining_time / 60 / 60)
+            };
 
-                    run_single_test(ex_name, c, path, toolchain, &test_fn)
-                })
-            }
-        };
-
-        match r {
-            Err(ref e) => {
-                log_err!("error testing crate {}:  {}", c, e);
-                util::report_error(e);
-            }
-            Ok(ref r) => {
-                // FIXME: Should errors be recorded?
-                record_test_result(ex_name, c, toolchain, *r);
-            }
+            log!("progress: {} / {}", completed_crates + skipped_crates, total_crates);
+            log!("{} crates tested in {} s. {:.2} s/crate. {} crates remaining. ~{}",
+                 completed_crates, elapsed, seconds_per_test, remaining_tests, remaining_time_str);
+            log!("results: {} build-fail / {} test-fail / {} test-pass / {} errors",
+                 sum_build_fail, sum_test_pass, sum_test_pass, sum_errors);
         }
-
-        match r {
-            Err(_) => {
-                sum_errors += 1;
-            }
-            Ok(TestResult::BuildFail) => sum_build_fail += 1,
-            Ok(TestResult::TestFail) => sum_test_fail +=1,
-            Ok(TestResult::TestPass) => sum_test_pass += 1,
-        }
-
-        let elapsed = Instant::now().duration_since(start_time).as_secs();
-        let seconds_per_test = if completed_crates > 0 {
-            (elapsed as f64) / (completed_crates as f64)
-        } else {
-            0.0
-        };
-        let remaining_tests = total_crates - completed_crates - skipped_crates;
-        let remaining_time = remaining_tests * seconds_per_test as usize;
-
-        let remaining_time_str = if remaining_time < 60 * 8 {
-            format!("{:0} seconds", remaining_time)
-        } else if remaining_time < 60 * 60 * 8 {
-            format!("{:0} minutes", remaining_time / 60)
-        } else {
-            format!("{:0} hours", remaining_time / 60 / 60)
-        };
-
-        log!("progress: {} / {}", completed_crates + skipped_crates, total_crates);
-        log!("{} crates tested in {} s. {:.2} s/crate. {} crates remaining. ~{}",
-             completed_crates, elapsed, seconds_per_test, remaining_tests, remaining_time_str);
-        log!("results: {} build-fail / {} test-fail / {} test-pass / {} errors",
-             sum_build_fail, sum_test_pass, sum_test_pass, sum_errors);
     }
 
     Ok(())
 }
 
-fn verify_toolchain(ex_name: &str, toolchain: &str) -> Result<()> {
-    let tc = toolchain::parse_toolchain(toolchain)?;
-    let config = load_config(ex_name)?;
-    if !config.toolchains.contains(&tc) {
-        bail!("toolchain {} not in experiment", toolchain);
+fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
+    for tc in tcs {
+        if !config.toolchains.contains(&tc) {
+            bail!("toolchain {} not in experiment", toolchain::tc_to_string(&tc));
+        }
     }
 
     Ok(())

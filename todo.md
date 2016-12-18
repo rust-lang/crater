@@ -157,7 +157,7 @@ distributed workers
       - report.md
       - todo
 
-# Work flow
+# Local workflow
 
 - prepare-local
   - prepare-toolchain stable
@@ -180,8 +180,7 @@ distributed workers
   - prepare-ex-local
     - fetch-deps
     - prepare-all-toolchains-for-ex
-- run --toolchain stable
-- run --toolchain beta
+- run
 - gen-report
 
 ```

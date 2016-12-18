@@ -111,6 +111,10 @@ fn main_() -> Result<()> {
     let ref matches = cli().get_matches();
 
     match matches.subcommand() {
+        // Local prep
+        ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
+        ("build-container", Some(_)) => build_container()?,
+
         // List creation
         ("create-lists", Some(m)) => create_lists(m)?,
         ("create-recent-list", Some(_)) => create_recent_list()?,
@@ -149,12 +153,10 @@ fn main_() -> Result<()> {
         ("gen-report", Some(m)) => gen_report(m)?,
 
         // Misc
-        ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
         ("link-toolchain", Some(m)) => panic!(),
         ("summarize", Some(_)) => panic!(),
         ("easy-test", Some(m)) => panic!(),
         ("sleep", Some(m)) => sleep(m)?,
-        ("build-container", Some(_)) => build_container()?,
         _ => unreachable!()
     }
 
@@ -168,6 +170,16 @@ fn cli() -> App<'static, 'static> {
         .setting(AppSettings::VersionlessSubcommands)
         .setting(AppSettings::DeriveDisplayOrder)
         .setting(AppSettings::SubcommandRequiredElseHelp)
+
+
+        // Local prep
+        .subcommand(
+            SubCommand::with_name("prepare-toolchain")
+                .about("install or update a toolchain")
+                .arg(Arg::with_name("toolchain").required(true)))
+        .subcommand(
+           SubCommand::with_name("build-container")
+                .about("build docker container needed by experiments"))
 
         // Lists
         .subcommand(
@@ -366,14 +378,6 @@ fn cli() -> App<'static, 'static> {
                      .required(false)
                      .default_value("default")))
 
-
-        // Toolchain management
-        .subcommand(
-            SubCommand::with_name("prepare-toolchain")
-                .about("install or update a toolchain")
-                .arg(Arg::with_name("toolchain").required(true)))
-
-
         // Misc
         .subcommand(
             SubCommand::with_name("summarize")
@@ -386,13 +390,21 @@ fn cli() -> App<'static, 'static> {
             SubCommand::with_name("sleep")
                 .arg(Arg::with_name("secs")
                      .required(true)))
-        .subcommand(
-           SubCommand::with_name("build-container")
-                .about("build docker container needed by experiments"))
 
 
 }
 
+
+// Local prep
+
+fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
+    let ref toolchain = m.value_of("toolchain").expect("");
+    toolchain::prepare_toolchain(toolchain)
+}
+
+fn build_container() -> Result<()> {
+    docker::build_container()
+}
 
 // List creation
 
@@ -595,13 +607,4 @@ fn sleep(m: &ArgMatches) -> Result<()> {
     let ref secs = m.value_of("secs").expect("");
     run::run("sleep", &[secs], &[]);
     Ok(())
-}
-
-fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
-    let ref toolchain = m.value_of("toolchain").expect("");
-    toolchain::prepare_toolchain(toolchain)
-}
-
-fn build_container() -> Result<()> {
-    docker::build_container()
 }

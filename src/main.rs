@@ -404,7 +404,7 @@ fn cli() -> App<'static, 'static> {
 
         .subcommand(
             SubCommand::with_name("cmd")
-                .subcommands(clap_cmds()))
+                .subcommands(model::conv::clap_cmds()))
 }
 
 
@@ -471,6 +471,7 @@ fn create_gh_app_list_from_cache() -> Result<()> {
 
 fn define_ex(m: &ArgMatches) -> Result<()> {
     use ex::*;
+    use model::{ExMode, ExCrateSelect};
 
     let ref ex_name = m.value_of("ex").expect("");
     let tc1 = m.value_of("tc1").expect("");
@@ -639,97 +640,10 @@ fn sleep(m: &ArgMatches) -> Result<()> {
 
 // Command-based cli
 
-use model::{Cmd, Tc, Ex, ExMode, ExCrateSelect};
-use model::state::GlobalState;
-use model::driver;
-
-fn clap_cmds() -> Vec<App<'static, 'static>> {
-    vec!(
-        // Local prep
-        SubCommand::with_name("prepare-local")
-            .about("acquire toolchains, build containers, build crate lists"),
-        SubCommand::with_name("prepare-toolchain")
-            .about("install or update a toolchain")
-            .arg(Arg::with_name("tc").required(true)),
-        SubCommand::with_name("build-container")
-            .about("build docker container needed by experiments"),
-
-        // List creation
-        SubCommand::with_name("create-lists")
-            .about("create all the lists of crates"),
-        SubCommand::with_name("create-lists-full")
-            .about("create all the lists of crates"),
-        SubCommand::with_name("create-recent-list")
-            .about("create the list of most recent crate versions"),
-        SubCommand::with_name("create-second-list")
-            .about("create the list of of second-most-recent crate versions"),
-        SubCommand::with_name("create-hot-list")
-            .about("create the list of popular crates"),
-        SubCommand::with_name("create-gh-candidate-list")
-            .about("crate the list of all GitHub Rust repos"),
-        SubCommand::with_name("create-gh-app-list")
-            .about("create the list of GitHub Rust applications"),
-        SubCommand::with_name("create-gh-candidate-list-from-cache")
-            .about("crate the list of all GitHub Rust repos from cache"),
-        SubCommand::with_name("create-gh-app-list-from-cache")
-            .about("create the list of GitHub Rust applications from cache"),
-
-        // Experiment prep
-        SubCommand::with_name("define-ex")
-            .about("define an experiment")
-            .arg(Arg::with_name("ex").long("ex").required(false).default_value("default"))
-            .arg(Arg::with_name("tc-1").required(true))
-            .arg(Arg::with_name("tc-2").required(true))
-            .arg(Arg::with_name("mode").long("mode").required(false)
-                 .default_value(ExMode::BuildAndTest.to_str())
-                 .possible_values(&[ExMode::BuildAndTest.to_str(),
-                                    ExMode::BuildOnly.to_str(),
-                                    ExMode::CheckOnly.to_str(),
-                                    ExMode::UnstableFeatures.to_str()]))
-            .arg(Arg::with_name("crate-select").long("crate-select").required(false)
-                 .default_value(ExCrateSelect::Demo.to_str())
-                 .possible_values(&[ExCrateSelect::Demo.to_str(),
-                                    ExCrateSelect::Full.to_str()]))
-    )
-}
-
-fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
-    Ok(match m.subcommand() {
-        // Local prep
-        ("prepare-local", _) => Cmd::PrepareLocal,
-        ("prepare-toolchain", Some(m)) => {
-            Cmd::PrepareToolchain(Tc::from_str(m.value_of("tc").expect(""))?)
-        }
-        ("build-container", _) => Cmd::BuildContainer,
-
-        // List creation
-        ("create-lists", _) => Cmd::CreateLists,
-        ("create-lists-full", _) => Cmd::CreateListsFull,
-        ("create-recent-list", _) => Cmd::CreateRecentList,
-        ("create-second-list", _) => Cmd::CreateSecondList,
-        ("create-hot-list", _) => Cmd::CreateHotList,
-        ("create-gh-candidate-list", _) => Cmd::CreateGhCandidateList,
-        ("create-gh-app-list", _) => Cmd::CreateGhAppList,
-        ("create-gh-candidate-list-from-cache", _) => Cmd::CreateGhCandidateListFromCache,
-        ("create-gh-app-list-from-cache", _) => Cmd::CreateGhAppListFromCache,
-
-        // Experiment prep
-        ("define-ex", Some(m)) => {
-            Cmd::DefineEx(Ex::from_str(m.value_of("ex").expect(""))?,
-                          Tc::from_str(m.value_of("tc-1").expect(""))?,
-                          Tc::from_str(m.value_of("tc-2").expect(""))?,
-                          ExMode::from_str(m.value_of("mode").expect(""))?,
-                          ExCrateSelect::from_str(m.value_of("crate-select").expect(""))?)
-        }
-
-        (s, _) => panic!("unimplemented args_to_cmd {}", s),
-    })
-}
-
 fn run_cmd(m: &ArgMatches) -> Result<()> {
-    let cmd = args_to_cmd(m)?;
-    let state = GlobalState::init();
-    let _ = driver::run(state, cmd)?;
+    let cmd = model::conv::args_to_cmd(m)?;
+    let state = model::state::GlobalState::init();
+    let _ = model::driver::run(state, cmd)?;
     Ok(())
 }
 

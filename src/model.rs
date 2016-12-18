@@ -153,6 +153,9 @@ impl Process<GlobalState> for Cmd {
                 cmds.extend(vec![Cmd::PrepareExShared(ex.clone()),
                                  Cmd::PrepareExLocal(ex)]);
             }
+            Cmd::CopyEx(ex1, ex2) => {
+                ex::copy(&ex1.0, &ex2.0)?
+            }
 
             cmd => panic!("unimplemented cmd {:?}", cmd),
         }
@@ -201,22 +204,26 @@ pub mod conv {
             // Experiment prep
             SubCommand::with_name("define-ex")
                 .about("define an experiment")
-                .arg(Arg::with_name("ex").long("ex").required(false).default_value("default"))
+                .arg(Arg::with_name("ex").required(false).long("ex").default_value("default"))
                 .arg(Arg::with_name("tc-1").required(true))
                 .arg(Arg::with_name("tc-2").required(true))
-                .arg(Arg::with_name("mode").long("mode").required(false)
+                .arg(Arg::with_name("mode").required(false).long("mode")
                      .default_value(ExMode::BuildAndTest.to_str())
                      .possible_values(&[ExMode::BuildAndTest.to_str(),
                                         ExMode::BuildOnly.to_str(),
                                         ExMode::CheckOnly.to_str(),
                                         ExMode::UnstableFeatures.to_str()]))
-                .arg(Arg::with_name("crate-select").long("crate-select").required(false)
+                .arg(Arg::with_name("crate-select").required(false).long("crate-select")
                      .default_value(ExCrateSelect::Demo.to_str())
                      .possible_values(&[ExCrateSelect::Demo.to_str(),
                                         ExCrateSelect::Full.to_str()])),
             SubCommand::with_name("prepare-ex")
                 .about("prepare shared and local data for experiment")
-                .arg(Arg::with_name("ex").long("ex").required(false).default_value("default"))
+                .arg(Arg::with_name("ex").required(false).long("ex").default_value("default")),
+            SubCommand::with_name("copy-ex")
+                .about("copy all data from one experiment to another")
+                .arg(Arg::with_name("ex-1").required(true))
+                .arg(Arg::with_name("ex-2").required(true)),
 
         ]
     }
@@ -251,6 +258,10 @@ pub mod conv {
             }
             ("prepare-ex", Some(m)) => {
                 Cmd::PrepareEx(Ex::from_str(m.value_of("ex").expect(""))?)
+            }
+            ("copy-ex", Some(m)) => {
+                Cmd::CopyEx(Ex::from_str(m.value_of("ex-1").expect(""))?,
+                            Ex::from_str(m.value_of("ex-2").expect(""))?)
             }
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),

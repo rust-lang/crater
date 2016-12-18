@@ -698,7 +698,7 @@ fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
         // Local prep
         ("prepare-local", _) => Cmd::PrepareLocal,
         ("prepare-toolchain", Some(m)) => {
-            Cmd::PrepareToolchain(tc_from_arg(m.value_of("tc"))?)
+            Cmd::PrepareToolchain(Tc::from_str(m.value_of("tc").expect(""))?)
         }
         ("build-container", _) => Cmd::BuildContainer,
 
@@ -715,35 +715,15 @@ fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
 
         // Experiment prep
         ("define-ex", Some(m)) => {
-            Cmd::DefineEx(ex_from_arg(m.value_of("ex"))?,
-                          tc_from_arg(m.value_of("tc-1"))?,
-                          tc_from_arg(m.value_of("tc-2"))?,
-                          ex_mode_from_arg(m.value_of("mode"))?,
-                          ex_crate_select_from_arg(m.value_of("crate-select"))?)
+            Cmd::DefineEx(Ex::from_str(m.value_of("ex").expect(""))?,
+                          Tc::from_str(m.value_of("tc-1").expect(""))?,
+                          Tc::from_str(m.value_of("tc-2").expect(""))?,
+                          ExMode::from_str(m.value_of("mode").expect(""))?,
+                          ExCrateSelect::from_str(m.value_of("crate-select").expect(""))?)
         }
 
         (s, _) => panic!("unimplemented args_to_cmd {}", s),
     })
-}
-
-fn ex_from_arg(arg: Option<&str>) -> Result<Ex> {
-    let arg = arg.expect("ex");
-    Ok(Ex::from_str(arg)?)
-}
-
-fn tc_from_arg(arg: Option<&str>) -> Result<Tc> {
-    let arg = arg.expect("tc");
-    Ok(Tc::from_str(arg)?)
-}
-
-fn ex_mode_from_arg(arg: Option<&str>) -> Result<ExMode> {
-    let arg = arg.expect("mode");
-    Ok(ExMode::from_str(arg)?)
-}
-
-fn ex_crate_select_from_arg(arg: Option<&str>) -> Result<ExCrateSelect> {
-    let arg = arg.expect("crate-select");
-    Ok(ExCrateSelect::from_str(arg)?)
 }
 
 fn run_cmd(m: &ArgMatches) -> Result<()> {

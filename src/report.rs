@@ -27,10 +27,10 @@ struct CrateResult {
 enum Comparison {
     Regressed,
     Fixed,
-    SameFail,
-    SameBuildPass,
-    SameTestPass,
     Unknown,
+    SameBuildFail,
+    SameTestFail,
+    SameTestPass,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -108,15 +108,15 @@ fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Compar
         (&Some(BuildTestResult { res: ref res1, .. }),
          &Some(BuildTestResult { res: ref res2, .. })) => {
             match (res1, res2) {
-                (&Fail, &Fail) => Comparison::SameFail,
-                (&BuildPass, &BuildPass) => Comparison::SameBuildPass,
+                (&BuildFail, &BuildFail) => Comparison::SameBuildFail,
+                (&TestFail, &TestFail) => Comparison::SameTestFail,
                 (&TestPass, &TestPass) => Comparison::SameTestPass,
-                (&Fail, &BuildPass) => Comparison::Fixed,
-                (&Fail, &TestPass) => Comparison::Fixed,
-                (&BuildPass, &TestPass) => Comparison::Fixed,
-                (&TestPass, &BuildPass) => Comparison::Regressed,
-                (&TestPass, &Fail) => Comparison::Regressed,
-                (&BuildPass, &Fail) => Comparison::Regressed,
+                (&BuildFail, &TestFail) => Comparison::Fixed,
+                (&BuildFail, &TestPass) => Comparison::Fixed,
+                (&TestFail, &TestPass) => Comparison::Fixed,
+                (&TestPass, &TestFail) => Comparison::Regressed,
+                (&TestPass, &BuildFail) => Comparison::Regressed,
+                (&TestFail, &BuildFail) => Comparison::Regressed,
             }
         }
         _ => Comparison::Unknown

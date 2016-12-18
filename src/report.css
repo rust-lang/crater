@@ -33,11 +33,11 @@ th {
     background-color: #5630DB;
 }
 
-.same-fail {
+.same-build-fail {
     background-color: #65461E;
 }
 
-.same-build-pass {
+.same-test-fail {
     background-color: #788843;
 }
 

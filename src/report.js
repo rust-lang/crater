@@ -52,17 +52,17 @@ function begin(config, results) {
 
     let regressedEl = document.querySelector("#c-regressed .count");
     let fixedEl = document.querySelector("#c-fixed .count");
-    let sameFailEl = document.querySelector("#c-same-fail .count");
-    let sameBuildPassEl = document.querySelector("#c-same-build-pass .count");
-    let sameTestPassEl = document.querySelector("#c-same-test-pass .count");
     let unknownEl = document.querySelector("#c-unknown .count");
+    let sameBuildFailEl = document.querySelector("#c-same-build-fail .count");
+    let sameTestFailEl = document.querySelector("#c-same-test-fail .count");
+    let sameTestPassEl = document.querySelector("#c-same-test-pass .count");
 
     regressedEl.innerHTML = summary.regressed;
     fixedEl.innerHTML = summary.fixed;
-    sameFailEl.innerHTML = summary.sameFail;
-    sameBuildPassEl.innerHTML = summary.sameBuildPass;
-    sameTestPassEl.innerHTML = summary.sameTestPass;
     unknownEl.innerHTML = summary.unknown;
+    sameBuildFailEl.innerHTML = summary.sameBuildFail;
+    sameTestFailEl.innerHTML = summary.sameTestFail;
+    sameTestPassEl.innerHTML = summary.sameTestPass;
 
     // Creating the document will take a second. Lay out the summary first.
     let results_ = results;
@@ -85,24 +85,24 @@ function parseToolchain(tc) {
 function calcSummary(results) {
     let regressed = 0;
     let fixed = 0;
-    let sameFail = 0;
-    let sameBuildPass = 0;
-    let sameTestPass = 0;
     let unknown = 0;
+    let sameBuildFail = 0;
+    let sameTestFail = 0;
+    let sameTestPass = 0;
 
     for (crate of results.crates) {
 	if (crate.res == "Regressed") {
 	    regressed += 1;
 	} else if (crate.res == "Fixed") {
 	    fixed += 1;
-	} else if (crate.res == "SameFail") {
-	    sameFail += 1;
-	} else if (crate.res == "SameBuildPass") {
-	    sameBuildPass += 1;
-	} else if (crate.res == "SameTestPass") {
-	    sameTestPass += 1;
 	} else if (crate.res == "Unknown") {
 	    unknown += 1;
+	} else if (crate.res == "SameBuildFail") {
+	    sameBuildFail += 1;
+	} else if (crate.res == "SameTestFail") {
+	    sameTestFail += 1;
+	} else if (crate.res == "SameTestPass") {
+	    sameTestPass += 1;
 	} else {
 	    throw "unknown test status";
 	}
@@ -111,10 +111,10 @@ function calcSummary(results) {
     return {
 	regressed: regressed,
 	fixed: fixed,
-	sameFail: sameFail,
-	sameBuildPass: sameBuildPass,
-	sameTestPass: sameTestPass,
-	unknown: unknown
+	unknown: unknown,
+	sameBuildFail: sameBuildFail,
+	sameTestFail: sameTestFail,
+	sameTestPass: sameTestPass
     };
 }
 
@@ -159,14 +159,14 @@ function jsonCrateResToCss(res) {
 	return "regressed";
     } else if (res == "Fixed") {
 	return "fixed";
-    } else if (res == "SameFail") {
-	return "same-fail";
-    } else if (res == "SameBuildPass") {
-	return "same-build-pass";
-    } else if (res == "SameTestPass") {
-	return "same-test-pass";
     } else if (res == "Unknown") {
 	return "unknown";
+    } else if (res == "SameBuildFail") {
+	return "same-build-fail";
+    } else if (res == "SameTestFail") {
+	return "same-test-fail";
+    } else if (res == "SameTestPass") {
+	return "same-test-pass";
     } else {
 	throw "unknown test status";
     }
@@ -187,10 +187,10 @@ function parseRunResult(res) {
 }
 
 function jsonRunResToDisplay(res) {
-    if (res == "Fail") {
-	return "fail";
-    } else if (res == "BuildPass") {
-	return "build-pass";
+    if (res == "BuildFail") {
+	return "build-fail";
+    } else if (res == "TestFail") {
+	return "test-fail";
     } else if (res == "TestPass") {
 	return "test-pass";
     } else {

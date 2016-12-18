@@ -66,8 +66,8 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
 
     // These should add up to total_crates
     let mut sum_errors = 0;
-    let mut sum_fail = 0;
-    let mut sum_build_pass = 0;
+    let mut sum_build_fail = 0;
+    let mut sum_test_fail = 0;
     let mut sum_test_pass = 0;
 
     let start_time = Instant::now();
@@ -110,8 +110,8 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
             Err(_) => {
                 sum_errors += 1;
             }
-            Ok(TestResult::Fail) => sum_fail += 1,
-            Ok(TestResult::BuildPass) => sum_build_pass +=1,
+            Ok(TestResult::BuildFail) => sum_build_fail += 1,
+            Ok(TestResult::TestFail) => sum_test_fail +=1,
             Ok(TestResult::TestPass) => sum_test_pass += 1,
         }
 
@@ -135,8 +135,8 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
         log!("progress: {} / {}", completed_crates + skipped_crates, total_crates);
         log!("{} crates tested in {} s. {:.2} s/crate. {} crates remaining. ~{}",
              completed_crates, elapsed, seconds_per_test, remaining_tests, remaining_time_str);
-        log!("results: {} fail / {} build-pass / {} test-pass / {} errors",
-             sum_fail, sum_build_pass, sum_test_pass, sum_errors);
+        log!("results: {} build-fail / {} test-fail / {} test-pass / {} errors",
+             sum_build_fail, sum_test_pass, sum_test_pass, sum_errors);
     }
 
     Ok(())
@@ -154,8 +154,8 @@ fn verify_toolchain(ex_name: &str, toolchain: &str) -> Result<()> {
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum TestResult {
-    Fail,
-    BuildPass,
+    BuildFail,
+    TestFail,
     TestPass,
 }
 
@@ -168,16 +168,16 @@ impl Display for TestResult {
 impl TestResult {
     fn from_str(s: &str) -> Result<TestResult> {
         match s {
-            "fail" => Ok(TestResult::Fail),
-            "build-pass" => Ok(TestResult::BuildPass),
+            "build-fail" => Ok(TestResult::BuildFail),
+            "test-fail" => Ok(TestResult::TestFail),
             "test-pass" => Ok(TestResult::TestPass),
             _ => Err(format!("bogus test result: {}", s).into())
         }
     }
     fn to_string(&self) -> String {
         match *self {
-            TestResult::Fail => "fail",
-            TestResult::BuildPass => "build-pass",
+            TestResult::BuildFail => "build-fail",
+            TestResult::TestFail => "test-fail",
             TestResult::TestPass => "test-pass",
         }.to_string()
     }
@@ -212,8 +212,8 @@ fn build_and_test(ex_name: &str, path: &Path, rustup_tc: &str) -> Result<TestRes
     }
 
     Ok(match (build_r, test_r) {
-        (Err(_), None) => TestResult::Fail,
-        (Ok(_), Some(Err(_))) => TestResult::BuildPass,
+        (Err(_), None) => TestResult::BuildFail,
+        (Ok(_), Some(Err(_))) => TestResult::TestFail,
         (Ok(_), Some(Ok(_))) => TestResult::TestPass,
         (_, _) => unreachable!()
     })

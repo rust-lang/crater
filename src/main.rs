@@ -140,13 +140,16 @@ fn main_() -> Result<()> {
         ("prepare-all-toolchains-for-ex", Some(m)) => prepare_all_toolchains_for_ex(m)?,
         ("delete-all-target-dirs-for-ex", Some(m)) => delete_all_target_dirs_for_ex(m)?,
 
+        // Experimenting
+        ("run", Some(m)) => run(m)?,
+        ("delete-all-results", Some(m)) => delete_all_results(m)?,
+
         // Reporting
         ("gen-report", Some(m)) => gen_report(m)?,
 
         // Misc
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
         ("link-toolchain", Some(m)) => panic!(),
-        ("run", Some(m)) => run(m)?,
         ("run-unstable-features", Some(m)) => run_unstable_features(m)?,
         ("summarize", Some(_)) => panic!(),
         ("easy-test", Some(m)) => panic!(),
@@ -323,6 +326,23 @@ fn cli() -> App<'static, 'static> {
                      .required(false)
                      .default_value("default")))
 
+        // Experimenting
+        .subcommand(
+            SubCommand::with_name("run")
+                .arg(Arg::with_name("toolchain")
+                     .long("toolchain")
+                     .required(true)
+                     .takes_value(true))
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("delete-all-results")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
 
         // Reporting
         .subcommand(
@@ -342,16 +362,6 @@ fn cli() -> App<'static, 'static> {
 
 
         // Misc
-        .subcommand(
-            SubCommand::with_name("run")
-                .arg(Arg::with_name("toolchain")
-                     .long("toolchain")
-                     .required(true)
-                     .takes_value(true))
-                .arg(Arg::with_name("ex")
-                     .long("ex")
-                     .required(false)
-                     .default_value("default")))
         .subcommand(
             SubCommand::with_name("run-unstable-features")
                 .arg(Arg::with_name("toolchain")
@@ -508,6 +518,7 @@ fn capture_lockfiles(m: &ArgMatches) -> Result<()> {
 
 fn prepare_ex_local(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
+    ex::delete_all_target_dirs(ex_name)?;
     ex::fetch_deps(ex_name, "stable")?;
     ex::prepare_all_toolchains(ex_name)?;
 
@@ -542,6 +553,11 @@ fn run_unstable_features(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
     ex_run::run_unstable_features(ex_name, toolchain)
+}
+
+fn delete_all_results(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex_run::delete_all_results(ex_name)
 }
 
 

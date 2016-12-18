@@ -1,14 +1,15 @@
 # not next
 
 - mount CARGO_HOME read-only
+- mount test dir readonly
+- allow beta and stable builds in parallel
+  - work/test directory needs to change at least
 - check mode?
 - delete docker containers on kill
 - run `rustc -Vv` before every test
 - print crate info before every test
 
 - delete cargo lockfile after build
-- allow beta and stable builds in parallel
-  - work/test directory needs to change at least
 
 - markdown logging
 - clean ex target directory

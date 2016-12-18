@@ -34,6 +34,10 @@ pub fn result_log(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf
     Ok(result_dir(ex_name, c, toolchain)?.join("log.txt"))
 }
 
+pub fn delete_all_results(ex_name: &str) -> Result<()> {
+    util::remove_dir_all(&ex_dir(ex_name).join("res"))
+}
+
 fn crate_to_dir(c: &ExCrate) -> Result<String> {
     match *c {
         ExCrate::Version(ref n, ref v) => Ok(format!("reg/{}-{}", n, v)),
@@ -233,8 +237,7 @@ fn run_in_docker(ex_name: &str, path: &Path, args: &[&str]) -> Result<()> {
     fs::create_dir_all(&target_dir);
 
     let test_mount = &format!("{}:/test", test_dir.display());
-    // FIXME this should be read-only https://github.com/rust-lang/cargo/issues/3256
-    let cargo_home_mount = &format!("{}:/cargo-home", cargo_home.display());
+    let cargo_home_mount = &format!("{}:/cargo-home:ro", cargo_home.display());
     let rustup_home_mount = &format!("{}:/rustup-home:ro", rustup_home.display());
     let target_mount = &format!("{}:/target", target_dir.display());
 

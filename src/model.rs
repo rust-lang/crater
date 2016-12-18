@@ -56,13 +56,16 @@ enum Cmd {
     PrepareAllToolchainsForEx(Ex),
     DeleteAllTargetDirsForEx(Ex),
 
+    // Experimenting
+    Run(Ex, Tc),
+    DeleteAllResults(Ex),
+
     // Reporting
     GenReport(Ex),
 
     // Misc
     PrepareToolchain(Tc),
     LinkToolchain,
-    Run,
     RunUnstableFeatures,
     Summarize,
     EasyTest,

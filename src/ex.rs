@@ -375,3 +375,18 @@ pub fn prepare_all_toolchains(ex_name: &str) -> Result<()> {
 
     Ok(())
 }
+
+pub fn copy(ex1_name: &str, ex2_name: &str) -> Result<()> {
+    let ref ex1_dir = ex_dir(ex1_name);
+    let ref ex2_dir = ex_dir(ex2_name);
+
+    if !ex1_dir.exists() {
+        bail!("experiment {} is not defined", ex1_name);
+    }
+
+    if ex2_dir.exists() {
+        bail!("experiment {} is already defined", ex2_name);
+    }
+
+    util::copy_dir(ex1_dir, ex2_dir)
+}

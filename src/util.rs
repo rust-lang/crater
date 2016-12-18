@@ -79,6 +79,8 @@ pub fn this_target() -> String {
 pub fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
     use walkdir::*;
 
+    log!("copying {} to {}", src_dir.display(), dest_dir.display());
+
     if dest_dir.exists() {
         remove_dir_all(dest_dir)
             .chain_err(|| "unable to remove test dir")?;

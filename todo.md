@@ -1,20 +1,24 @@
 # not next
 
+- copy-ex
 - mount CARGO_HOME read-only
-- delete docker containers on exit
+- delete docker containers on kill
 - run `rustc -Vv` before every test
 - build-pass -> test-fail
 - fail -> build-fail
-- link to lockfile
-- link to crate
-- link to froml
+
+- delete cargo lockfile after build
+- allow beta and stable builds in parallel
+  - work/test directory needs to change at least
+
+- markdown logging
+- clean ex target directory
+- clean ex target directory during prepare-ex-local
 - automatic bug report generation
 - report tooltips for last line of output
 - put time stamps in logs
 - capture regressed crates to new crate 'watch' list
 - set up docker init process correctly https://github.com/rust-lang/rust/pull/38340/files
-- allow beta and stable builds in parallel
-  - work/test directory needs to change at least
 - add loading progress indicator
 - information to add to report
   - toolchain versions (rustc and cargo)
@@ -23,6 +27,9 @@
   - job timings
   - #completed vs unknown per toolchain
   - toolchain target
+  - link to lockfile
+  - link to crate
+  - link to froml
 - generate lockfiles in parallel
 - add a blacklist
 - update lockfiles for repos with outdated metadata sections?
@@ -85,6 +92,16 @@ https://github.com/farseerfc/ydcv-rs
 8.6 GB after fetching deps
 3152 deps cached
 13 GB after building up to bytestool
+
+$ du work -hs
+69G     work
+$ du work/ex/default/ -hs
+295M    work/ex/default/
+$ du work/local/target-dirs/default/ -hs
+48G     work/local/target-dirs/default/
+$ du work/shared/crates/ -hs
+7.7G    work/shared/crates/
+
 
 # Building docker container
 

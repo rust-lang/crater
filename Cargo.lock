@@ -3,7 +3,7 @@ name = "cargobomb"
 version = "0.1.0"
 dependencies = [
  "chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "clap 2.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clap 2.19.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "json 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -78,7 +78,7 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.14.0"
+version = "2.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "ansi_term 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -491,7 +491,7 @@ dependencies = [
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum cfg-if 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "de1e760d7b6535af4241fca8bd8adf68e2e7edacc6b29f5d399050c5e48cf88c"
 "checksum chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)" = "9213f7cd7c27e95c2b57c49f0e69b1ea65b27138da84a170133fd21b07659c00"
-"checksum clap 2.14.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5fa304b03c49ccbb005784fc26e985b5d2310b1d37f2c311ce90dbcd18ea5fde"
+"checksum clap 2.19.2 (registry+https://github.com/rust-lang/crates.io-index)" = "305ad043f009db535a110200541d4567b63e172b1fe030313fbb92565da7ed24"
 "checksum dbghelp-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "97590ba53bcb8ac28279161ca943a924d1fd4a8fb3fa63302591647c4fc5b850"
 "checksum dtoa 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0dd841b58510c9618291ffa448da2e4e0f699d984d436122372f446dae62263d"
 "checksum error-chain 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1cd681735364a04cd5d69f01a4f6768e70473941f8d86d8c224faf6955a75799"

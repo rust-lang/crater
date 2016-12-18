@@ -123,6 +123,7 @@ fn main_() -> Result<()> {
         // Experiment prep
         ("define-ex", Some(m)) => define_ex(m)?,
         ("prepare-ex", Some(m)) => prepare_ex(m)?,
+        ("copy-ex", Some(m)) => copy_ex(m)?,
 
         // Global experiment prep
         ("prepare-ex-shared", Some(m)) => prepare_ex_shared(m)?,
@@ -216,6 +217,15 @@ fn cli() -> App<'static, 'static> {
                      .long("ex")
                      .required(false)
                      .default_value("default")))
+        .subcommand(
+            SubCommand::with_name("copy-ex")
+                .about("copy all data from one experiment to another")
+                .arg(Arg::with_name("ex1")
+                     .required(true)
+                     .takes_value(true))
+                .arg(Arg::with_name("ex2")
+                     .required(true)
+                     .takes_value(true)))
 
         // Global experiment prep
         .subcommand(
@@ -417,6 +427,14 @@ fn define_ex(m: &ArgMatches) -> Result<()> {
 fn prepare_ex(m: &ArgMatches) -> Result<()> {
     prepare_ex_shared(m)?;
     prepare_ex_local(m)?;
+
+    Ok(())
+}
+
+fn copy_ex(m: &ArgMatches) -> Result<()> {
+    let ref ex1_name = m.value_of("ex1").expect("");
+    let ref ex2_name = m.value_of("ex2").expect("");
+    ex::copy(ex1_name, ex2_name)?;
 
     Ok(())
 }

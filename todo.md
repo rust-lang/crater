@@ -1,7 +1,5 @@
 # not next
 
-- allow beta and stable builds in parallel
-  - work/test directory needs to change at least
 - check mode?
 - delete docker containers on kill
 - run `rustc -Vv` before every test

@@ -56,7 +56,7 @@ pub fn run_unstable_features(ex_name: &str, toolchain: &str) -> Result<()> {
 }
 
 pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
-    where F: Fn(&str, &Path, &str) -> Result<TestResult>
+    where F: Fn(&Path, &Path, &str) -> Result<TestResult>
 {
     verify_toolchain(ex_name, toolchain)?;
 
@@ -186,9 +186,9 @@ impl TestResult {
     }
 }
 
-fn run_single_test<F>(ex_name: &str, c: &ExCrate, path: &Path,
+fn run_single_test<F>(ex_name: &str, c: &ExCrate, source_path: &Path,
                       toolchain: &str, f: &F) -> Result<TestResult>
-    where F: Fn(&str, &Path, &str) -> Result<TestResult>
+    where F: Fn(&Path, &Path, &str) -> Result<TestResult>
 {
     let result_dir = result_dir(ex_name, c, toolchain)?;
     if result_dir.exists() {
@@ -199,17 +199,18 @@ fn run_single_test<F>(ex_name: &str, c: &ExCrate, path: &Path,
 
     log::redirect(&log_file, || {
         let tc = toolchain::rustup_toolchain_name(toolchain)?;
-        f(ex_name, path, &tc)
+        let target_path = toolchain::target_dir(ex_name, toolchain);
+        f(source_path, &target_path, &tc)
     })
 }
 
-fn build_and_test(ex_name: &str, path: &Path, rustup_tc: &str) -> Result<TestResult> {
+fn build_and_test(source_path: &Path, target_path: &Path, rustup_tc: &str) -> Result<TestResult> {
     let tc_arg = &format!("+{}", rustup_tc);
-    let build_r = run_in_docker(ex_name, path, &["cargo", tc_arg, "build", "--frozen"]);
+    let build_r = run_in_docker(source_path, target_path, &["cargo", tc_arg, "build", "--frozen"]);
     let test_r;
 
     if build_r.is_ok() {
-        test_r = Some(run_in_docker(ex_name, path, &["cargo", tc_arg, "test", "--frozen"]));
+        test_r = Some(run_in_docker(source_path, target_path, &["cargo", tc_arg, "test", "--frozen"]));
     } else {
         test_r = None;
     }
@@ -222,13 +223,13 @@ fn build_and_test(ex_name: &str, path: &Path, rustup_tc: &str) -> Result<TestRes
     })
 }
 
-fn run_in_docker(ex_name: &str, path: &Path, args: &[&str]) -> Result<()> {
+fn run_in_docker(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> {
 
-    let source_dir=absolute(path);
+    let source_dir=absolute(source_path);
     let cargo_home=absolute(Path::new(CARGO_HOME));
     let rustup_home=absolute(Path::new(RUSTUP_HOME));
     // This is configured as CARGO_TARGET_DIR by the docker container itself
-    let target_dir=absolute(&toolchain::target_dir(ex_name));
+    let target_dir=absolute(target_path);
 
     fs::create_dir_all(&source_dir);
     fs::create_dir_all(&cargo_home);
@@ -302,7 +303,7 @@ pub fn get_test_result(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<Op
     }
 }
 
-fn find_unstable_features(_ex_name: &str, path: &Path, _rustup_tc: &str) -> Result<TestResult> {
+fn find_unstable_features(source_path: &Path, target_path: &Path, _rustup_tc: &str) -> Result<TestResult> {
     use walkdir::*;
 
     fn is_hidden(entry: &DirEntry) -> bool {
@@ -314,7 +315,7 @@ fn find_unstable_features(_ex_name: &str, path: &Path, _rustup_tc: &str) -> Resu
 
     let mut features = HashSet::new();
 
-    for entry in WalkDir::new(path)
+    for entry in WalkDir::new(source_path)
         .into_iter()
         .filter_entry(|e| !is_hidden(e))
     {

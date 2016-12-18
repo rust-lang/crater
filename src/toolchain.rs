@@ -179,15 +179,19 @@ pub fn rustup_toolchain_name(toolchain: &str) -> Result<String> {
     })
 }
 
-pub fn target_dir(ex_name: &str) -> PathBuf {
+pub fn ex_target_dir(ex_name: &str) -> PathBuf {
     Path::new(TARGET_DIR).join(ex_name)
+}
+
+pub fn target_dir(ex_name: &str, toolchain: &str) -> PathBuf {
+    ex_target_dir(ex_name).join(toolchain)
 }
 
 pub fn run_cargo(toolchain: &str, ex_name: &str, args: &[&str]) -> Result<()> {
     let toolchain_name = rustup_toolchain_name(&toolchain)?;
-    let ex_target_dir = target_dir(ex_name);
+    let ex_target_dir = target_dir(ex_name, toolchain);
 
-    fs::create_dir_all(TARGET_DIR)?;
+    fs::create_dir_all(&ex_target_dir)?;
 
     let toolchain_arg = "+".to_string() + &toolchain_name;
     let ref mut full_args = [&*toolchain_arg].to_vec();

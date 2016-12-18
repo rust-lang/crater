@@ -1,9 +1,11 @@
 # not next
 
-- delete-ex-target-files
+- delete-ex
 - mount CARGO_HOME read-only
+- check mode?
 - delete docker containers on kill
 - run `rustc -Vv` before every test
+- print crate info before every test
 - build-pass -> test-fail
 - fail -> build-fail
 

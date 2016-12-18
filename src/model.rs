@@ -39,6 +39,7 @@ enum Cmd {
     DefineEx(Ex, Tc, Tc),
     PrepareEx(Ex),
     CopyEx(Ex, Ex),
+    DeleteEx(Ex),
 
     // Global experiment prep
     PrepareExShared(Ex),

@@ -124,6 +124,7 @@ fn main_() -> Result<()> {
         ("define-ex", Some(m)) => define_ex(m)?,
         ("prepare-ex", Some(m)) => prepare_ex(m)?,
         ("copy-ex", Some(m)) => copy_ex(m)?,
+        ("delete-ex", Some(m)) => delete_ex(m)?,
 
         // Global experiment prep
         ("prepare-ex-shared", Some(m)) => prepare_ex_shared(m)?,
@@ -227,6 +228,13 @@ fn cli() -> App<'static, 'static> {
                 .arg(Arg::with_name("ex2")
                      .required(true)
                      .takes_value(true)))
+        .subcommand(
+            SubCommand::with_name("delete-ex")
+                .about("delete shared data for experiment")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
 
         // Global experiment prep
         .subcommand(
@@ -443,6 +451,13 @@ fn copy_ex(m: &ArgMatches) -> Result<()> {
     let ref ex1_name = m.value_of("ex1").expect("");
     let ref ex2_name = m.value_of("ex2").expect("");
     ex::copy(ex1_name, ex2_name)?;
+
+    Ok(())
+}
+
+fn delete_ex(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex::delete(ex_name)?;
 
     Ok(())
 }

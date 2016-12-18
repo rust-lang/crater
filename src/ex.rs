@@ -399,3 +399,13 @@ pub fn delete_all_target_dirs(ex_name: &str) -> Result<()> {
 
     Ok(())
 }
+
+pub fn delete(ex_name: &str) -> Result<()> {
+    let ref ex_dir = ex_dir(ex_name);
+    if ex_dir.exists() {
+        util::remove_dir_all(ex_dir)?;
+    }
+
+    Ok(())
+}
+

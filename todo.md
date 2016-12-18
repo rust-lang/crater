@@ -3,7 +3,6 @@
 - check mode?
 - delete docker containers on kill
 - run `rustc -Vv` before every test
-- print crate info before every test
 
 - delete cargo lockfile after build
 

@@ -198,6 +198,7 @@ fn run_single_test<F>(ex_name: &str, c: &ExCrate, source_path: &Path,
     let log_file = result_log(ex_name, c, toolchain)?;
 
     log::redirect(&log_file, || {
+        log!("testing {} against {} for {}", c, toolchain, ex_name);
         let tc = toolchain::rustup_toolchain_name(toolchain)?;
         let target_path = toolchain::target_dir(ex_name, toolchain);
         f(source_path, &target_path, &tc)

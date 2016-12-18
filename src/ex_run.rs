@@ -47,19 +47,10 @@ fn crate_to_dir(c: &ExCrate) -> Result<String> {
     }
 }
 
-pub fn run_build_and_test_test(ex_name: &str, toolchain: &str) -> Result<()> {
-    run_test(ex_name, toolchain, build_and_test)
-}
-
-pub fn run_unstable_features(ex_name: &str, toolchain: &str) -> Result<()> {
-    run_test(ex_name, toolchain, find_unstable_features)
-}
-
-pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
-    where F: Fn(&Path, &Path, &str) -> Result<TestResult>
-{
+pub fn run_ex(ex_name: &str, toolchain: &str) -> Result<()> {
     verify_toolchain(ex_name, toolchain)?;
 
+    let config = load_config(ex_name)?;
     let crates = ex_crates_and_dirs(ex_name)?;
 
     // Just for reporting progress
@@ -74,6 +65,13 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
     let mut sum_test_pass = 0;
 
     let start_time = Instant::now();
+
+    let test_fn = match config.mode {
+        ExMode::BuildAndTest => test_build_and_test,
+        ExMode::BuildOnly => test_build_only,
+        ExMode::CheckOnly => test_check_only,
+        ExMode::UnstableFeatures => test_find_unstable_features,
+    };
 
     log!("running {} tests", total_crates);
     for (ref c, ref dir) in crates {
@@ -93,7 +91,7 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
                     with_frobbed_toml(ex_name, c, path)?;
                     with_captured_lockfile(ex_name, c, path)?;
 
-                    run_single_test(ex_name, c, path, toolchain, &f)
+                    run_single_test(ex_name, c, path, toolchain, &test_fn)
                 })
             }
         };
@@ -205,7 +203,7 @@ fn run_single_test<F>(ex_name: &str, c: &ExCrate, source_path: &Path,
     })
 }
 
-fn build_and_test(source_path: &Path, target_path: &Path, rustup_tc: &str) -> Result<TestResult> {
+fn test_build_and_test(source_path: &Path, target_path: &Path, rustup_tc: &str) -> Result<TestResult> {
     let tc_arg = &format!("+{}", rustup_tc);
     let build_r = run_in_docker(source_path, target_path, &["cargo", tc_arg, "build", "--frozen"]);
     let test_r;
@@ -222,6 +220,28 @@ fn build_and_test(source_path: &Path, target_path: &Path, rustup_tc: &str) -> Re
         (Ok(_), Some(Ok(_))) => TestResult::TestPass,
         (_, _) => unreachable!()
     })
+}
+
+fn test_build_only(source_path: &Path, target_path: &Path, rustup_tc: &str) -> Result<TestResult> {
+    let tc_arg = &format!("+{}", rustup_tc);
+    let r = run_in_docker(source_path, target_path, &["cargo", tc_arg, "build", "--frozen"]);
+
+    if r.is_ok() {
+        Ok(TestResult::TestPass)
+    } else {
+        Ok(TestResult::BuildFail)
+    }
+}
+
+fn test_check_only(source_path: &Path, target_path: &Path, rustup_tc: &str) -> Result<TestResult> {
+    let tc_arg = &format!("+{}", rustup_tc);
+    let r = run_in_docker(source_path, target_path, &["cargo", tc_arg, "check", "--frozen"]);
+
+    if r.is_ok() {
+        Ok(TestResult::TestPass)
+    } else {
+        Ok(TestResult::BuildFail)
+    }
 }
 
 fn run_in_docker(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> {
@@ -304,7 +324,7 @@ pub fn get_test_result(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<Op
     }
 }
 
-fn find_unstable_features(source_path: &Path, target_path: &Path, _rustup_tc: &str) -> Result<TestResult> {
+fn test_find_unstable_features(source_path: &Path, target_path: &Path, _rustup_tc: &str) -> Result<TestResult> {
     use walkdir::*;
 
     fn is_hidden(entry: &DirEntry) -> bool {

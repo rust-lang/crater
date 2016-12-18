@@ -150,7 +150,6 @@ fn main_() -> Result<()> {
         // Misc
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
         ("link-toolchain", Some(m)) => panic!(),
-        ("run-unstable-features", Some(m)) => run_unstable_features(m)?,
         ("summarize", Some(_)) => panic!(),
         ("easy-test", Some(m)) => panic!(),
         ("sleep", Some(m)) => sleep(m)?,
@@ -211,6 +210,18 @@ fn cli() -> App<'static, 'static> {
                      .required(true)
                      .multiple(true)
                      .takes_value(true))
+                .arg(Arg::with_name("type")
+                     .long("type")
+                     .required(false)
+                     .default_value("build-and-test")
+                     .possible_values(&["build-and-test",
+                                        "build-only",
+                                        "check-only",
+                                        "unstable-featureS"]))
+                .arg(Arg::with_name("check-only")
+                     .long("check-only")
+                     .required(false)
+                     .takes_value(false))
                 .arg(Arg::with_name("demo")
                      .long("demo")
                      .required(false)
@@ -363,16 +374,6 @@ fn cli() -> App<'static, 'static> {
 
         // Misc
         .subcommand(
-            SubCommand::with_name("run-unstable-features")
-                .arg(Arg::with_name("toolchain")
-                     .long("toolchain")
-                     .required(true)
-                     .takes_value(true))
-                .arg(Arg::with_name("ex")
-                     .long("ex")
-                     .required(false)
-                     .default_value("default")))
-        .subcommand(
             SubCommand::with_name("summarize")
                 .about("TODO"))
                 .arg(Arg::with_name("ex")
@@ -438,14 +439,34 @@ fn create_gh_app_list_from_cache() -> Result<()> {
 // Experiment prep
 
 fn define_ex(m: &ArgMatches) -> Result<()> {
+    use ex::*;
+
     let ref ex_name = m.value_of("ex").expect("");
     let toolchains = m.values_of("toolchain").expect("").collect::<Vec<_>>();
     let demo = m.is_present("demo");
-    if demo {
-        ex::define_demo(ex_name, &toolchains)?;
-    } else {
-        ex::define(ex_name, &toolchains)?;
+    let type_ = m.value_of("type").expect("");
+
+    let mut tcs = Vec::new();
+    for tc in toolchains {
+        tcs.push(toolchain::parse_toolchain(tc)?);
     }
+
+    let mode = match type_ {
+        "build-and-test" => ExMode::BuildAndTest,
+        "build-only" => ExMode::BuildOnly,
+        "check-only" => ExMode::CheckOnly,
+        "unstable-features" => ExMode::UnstableFeatures,
+        _ => panic!()
+    };
+
+    let opts = ExOpts {
+        name: ex_name.to_string(),
+        toolchains: tcs,
+        mode: mode,
+        crates: if demo { ExCrateSelect::Demo } else { ExCrateSelect:: Default },
+    };
+
+    ex::define(opts)?;
 
     Ok(())
 }
@@ -546,13 +567,7 @@ fn delete_all_target_dirs_for_ex(m: &ArgMatches) -> Result<()> {
 fn run(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     let ref toolchain = m.value_of("toolchain").expect("");
-    ex_run::run_build_and_test_test(ex_name, toolchain)
-}
-
-fn run_unstable_features(m: &ArgMatches) -> Result<()> {
-    let ref ex_name = m.value_of("ex").expect("");
-    let ref toolchain = m.value_of("toolchain").expect("");
-    ex_run::run_unstable_features(ex_name, toolchain)
+    ex_run::run_ex(ex_name, toolchain)
 }
 
 fn delete_all_results(m: &ArgMatches) -> Result<()> {

@@ -45,16 +45,38 @@ pub struct Experiment {
     pub name: String,
     pub crates: Vec<Crate>,
     pub toolchains: Vec<Toolchain>,
+    pub mode: ExMode,
 }
 
-/// Define an experiment, including selecting the crates to be tested
-pub fn define(ex_name: &str, toolchains: &[&str]) -> Result<()> {
-    let crates = lists::read_all_lists()?;
-    define_(ex_name, toolchains, crates)
+#[derive(Serialize, Deserialize)]
+pub enum ExMode {
+    BuildAndTest,
+    BuildOnly,
+    CheckOnly,
+    UnstableFeatures
 }
 
-pub fn define_demo(ex_name: &str, toolchains: &[&str]) -> Result<()> {
-    log!("defining demo");
+pub struct ExOpts {
+    pub name: String,
+    pub toolchains: Vec<Toolchain>,
+    pub mode: ExMode,
+    pub crates: ExCrateSelect
+}
+
+pub enum ExCrateSelect {
+    Default,
+    Demo,
+}
+
+pub fn define(opts: ExOpts) -> Result<()> {
+    let crates = match opts.crates {
+        ExCrateSelect::Default => lists::read_all_lists()?,
+        ExCrateSelect::Demo => demo_list()?,
+    };
+    define_(&opts.name, opts.toolchains, crates, opts.mode)
+}
+
+fn demo_list() -> Result<Vec<Crate>> {
     let demo_crate = "lazy_static";
     let demo_gh_app = "brson/hello-rs";
     let mut found_demo_crate = false;
@@ -74,21 +96,18 @@ pub fn define_demo(ex_name: &str, toolchains: &[&str]) -> Result<()> {
         }
     }).collect::<Vec<_>>();
     assert!(crates.len() == 2);
-    define_(ex_name, toolchains, crates)
+
+    Ok(crates)
 }
 
-pub fn define_(ex_name: &str, toolchains: &[&str],
-               crates: Vec<Crate>) -> Result<()> {
-    let mut tcs = Vec::new();
-    for tc in toolchains {
-        tcs.push(toolchain::parse_toolchain(tc)?);
-    }
-
+pub fn define_(ex_name: &str, tcs: Vec<Toolchain>,
+               crates: Vec<Crate>, mode: ExMode) -> Result<()> {
     log!("defining experiment {} for {} crates", ex_name, crates.len());
     let ex = Experiment {
         name: ex_name.to_string(),
         crates: crates,
         toolchains: tcs,
+        mode: mode,
     };
     fs::create_dir_all(&ex_dir(ex_name))?;
     let json = serde_json::to_string(&ex)?;

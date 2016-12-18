@@ -18,7 +18,6 @@ use util;
 use std::fmt::{self, Formatter, Display};
 use log;
 use toml_frobber;
-use TEST_DIR;
 use ex::*;
 
 pub fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
@@ -225,18 +224,18 @@ fn build_and_test(ex_name: &str, path: &Path, rustup_tc: &str) -> Result<TestRes
 
 fn run_in_docker(ex_name: &str, path: &Path, args: &[&str]) -> Result<()> {
 
-    let test_dir=absolute(path);
+    let source_dir=absolute(path);
     let cargo_home=absolute(Path::new(CARGO_HOME));
     let rustup_home=absolute(Path::new(RUSTUP_HOME));
     // This is configured as CARGO_TARGET_DIR by the docker container itself
     let target_dir=absolute(&toolchain::target_dir(ex_name));
 
-    fs::create_dir_all(&test_dir);
+    fs::create_dir_all(&source_dir);
     fs::create_dir_all(&cargo_home);
     fs::create_dir_all(&rustup_home);
     fs::create_dir_all(&target_dir);
 
-    let test_mount = &format!("{}:/test:ro", test_dir.display());
+    let test_mount = &format!("{}:/source:ro", source_dir.display());
     let cargo_home_mount = &format!("{}:/cargo-home:ro", cargo_home.display());
     let rustup_home_mount = &format!("{}:/rustup-home:ro", rustup_home.display());
     let target_mount = &format!("{}:/target", target_dir.display());

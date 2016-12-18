@@ -3,7 +3,7 @@ FROM ubuntu:16.10
 RUN apt-get update
 RUN apt-get install gcc -y
 
-WORKDIR /test
+WORKDIR /source
 
 # Create a cargobomb user that run.sh will map to the value of the host user via
 # the USER_ID environment variable, to make the files the container writes not

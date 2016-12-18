@@ -1,7 +1,5 @@
 # not next
 
-- mount CARGO_HOME read-only
-- mount test dir readonly
 - allow beta and stable builds in parallel
   - work/test directory needs to change at least
 - check mode?

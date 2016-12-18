@@ -69,7 +69,7 @@ const TARGET_DIR: &'static str = "./work/local/target-dirs";
 
 // The directory crates are unpacked to for running tests, mounted
 // in docker containers
-const TEST_DIR: &'static str = "./work/local/test";
+const TEST_SOURCE_DIR: &'static str = "./work/local/test-source";
 
 // Where GitHub crate mirrors are stored
 const GH_MIRRORS_DIR: &'static str = "./work/local/gh-mirrors";

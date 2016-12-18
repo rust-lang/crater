@@ -13,7 +13,6 @@ use git;
 use tar::Archive;
 use flate2::read::GzDecoder;
 use std::io::Read;
-use TEST_DIR;
 use gh_mirrors;
 
 const CRATES_ROOT: &'static str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
@@ -126,15 +125,3 @@ fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> R
     Ok(())
 }
 
-pub fn with_work_crate<F, R>(crate_: &ExCrate, f: F) -> Result<R>
-    where F: Fn(&Path) -> Result<R>
-{
-    let src_dir = crate_dir(crate_)?;
-    let dest_dir = Path::new(TEST_DIR);
-    log!("creating temporary build dir for {} in {}", crate_, dest_dir.display());
-
-    util::copy_dir(&src_dir, &dest_dir)?;
-    let r = f(&dest_dir);
-    util::remove_dir_all(dest_dir)?;
-    r
-}

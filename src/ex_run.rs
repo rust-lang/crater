@@ -89,7 +89,7 @@ pub fn run_test<F>(ex_name: &str, toolchain: &str, f: F) -> Result<()>
             } else {
                 completed_crates += 1;
 
-                crates::with_work_crate(c, |path| {
+                with_work_crate(ex_name, toolchain, c, |path| {
                     with_frobbed_toml(ex_name, c, path)?;
                     with_captured_lockfile(ex_name, c, path)?;
 

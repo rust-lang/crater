@@ -18,7 +18,7 @@ use util;
 use std::fmt::{self, Formatter, Display};
 use log;
 use toml_frobber;
-use TEST_DIR;
+use TEST_SOURCE_DIR;
 
 pub fn ex_dir(ex_name: &str) -> PathBuf {
     Path::new(EXPERIMENT_DIR).join(ex_name)
@@ -274,6 +274,23 @@ fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
     Ok(lockfile_dir(ex_name).join(format!("{}-{}.lock", crate_name, crate_vers)))
 }
 
+fn crate_work_dir(ex_name: &str, toolchain: &str) -> PathBuf {
+    Path::new(TEST_SOURCE_DIR).join(ex_name).join(toolchain)
+}
+
+pub fn with_work_crate<F, R>(ex_name: &str, toolchain: &str, crate_: &ExCrate, f: F) -> Result<R>
+    where F: Fn(&Path) -> Result<R>
+{
+    let src_dir = crates::crate_dir(crate_)?;
+    let dest_dir = crate_work_dir(ex_name, toolchain);
+    log!("creating temporary build dir for {} in {}", crate_, dest_dir.display());
+
+    util::copy_dir(&src_dir, &dest_dir)?;
+    let r = f(&dest_dir);
+    util::remove_dir_all(&dest_dir)?;
+    r
+}
+
 pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: bool) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(ex_name))?;
 
@@ -294,7 +311,7 @@ pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: boo
             log!("skipping existing lockfile for {}", c);
             continue;
         }
-        let r = crates::with_work_crate(c, |path| {
+        let r = with_work_crate(ex_name, toolchain, c, |path| {
             with_frobbed_toml(ex_name, c, path)?;
             capture_lockfile(ex_name, c, path, toolchain)
         }).chain_err(|| format!("failed to generate lockfile for {}", c));
@@ -344,7 +361,7 @@ pub fn with_captured_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path) -> R
 pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
     let crates = ex_crates_and_dirs(ex_name)?;
     for (ref c, ref dir) in crates {
-        let r = crates::with_work_crate(c, |path| {
+        let r = with_work_crate(ex_name, toolchain, c, |path| {
             with_frobbed_toml(ex_name, c, path)?;
             with_captured_lockfile(ex_name, c, path)?;
 

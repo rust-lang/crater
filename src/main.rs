@@ -639,18 +639,76 @@ fn sleep(m: &ArgMatches) -> Result<()> {
 
 // Command-based cli
 
-use model::Cmd;
+use model::{Cmd, Tc, Ex};
+use model::state::GlobalState;
+use model::driver;
 
 fn clap_cmds() -> Vec<App<'static, 'static>> {
-    Vec::new()
+    vec!(
+        // Local prep
+        SubCommand::with_name("prepare-local")
+            .about("acquire toolchains, build containers, build crate lists"),
+        SubCommand::with_name("prepare-toolchain")
+            .about("install or update a toolchain")
+            .arg(Arg::with_name("tc").required(true)),
+        SubCommand::with_name("build-container")
+            .about("build docker container needed by experiments"),
+
+        // List creation
+        SubCommand::with_name("create-lists")
+            .about("create all the lists of crates"),
+        SubCommand::with_name("create-lists-full")
+            .about("create all the lists of crates"),
+        SubCommand::with_name("create-recent-list")
+            .about("create the list of most recent crate versions"),
+        SubCommand::with_name("create-second-list")
+            .about("create the list of of second-most-recent crate versions"),
+        SubCommand::with_name("create-hot-list")
+            .about("create the list of popular crates"),
+        SubCommand::with_name("create-gh-candidate-list")
+            .about("crate the list of all GitHub Rust repos"),
+        SubCommand::with_name("create-gh-app-list")
+            .about("create the list of GitHub Rust applications"),
+        SubCommand::with_name("create-gh-candidate-list-from-cache")
+            .about("crate the list of all GitHub Rust repos from cache"),
+        SubCommand::with_name("create-gh-app-list-from-cache")
+            .about("create the list of GitHub Rust applications from cache"),
+    )
+}
+
+fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
+    Ok(match m.subcommand() {
+        // Local prep
+        ("prepare-local", _) => Cmd::PrepareLocal,
+        ("prepare-toolchain", Some(m)) => {
+            Cmd::PrepareToolchain(tc_from_arg(m.value_of("tc"))?)
+        }
+        ("build-container", _) => Cmd::BuildContainer,
+
+        // List creation
+        ("create-lists", _) => Cmd::CreateLists,
+        ("create-lists-full", _) => Cmd::CreateListsFull,
+        ("create-recent-list", _) => Cmd::CreateRecentList,
+        ("create-second-list", _) => Cmd::CreateSecondList,
+        ("create-hot-list", _) => Cmd::CreateHotList,
+        ("create-gh-candidate-list", _) => Cmd::CreateGhCandidateList,
+        ("create-gh-app-list", _) => Cmd::CreateGhAppList,
+        ("create-gh-candidate-list-from-cache", _) => Cmd::CreateGhCandidateListFromCache,
+        ("create-gh-app-list-from-cache", _) => Cmd::CreateGhAppListFromCache,
+
+        (s, _) => panic!("unimplemented args_to_cmd {}", s),
+    })
+}
+
+fn tc_from_arg(arg: Option<&str>) -> Result<Tc> {
+    let arg = arg.expect("tc argument");
+    Ok(Tc::from_str(arg)?)
 }
 
 fn run_cmd(m: &ArgMatches) -> Result<()> {
     let cmd = args_to_cmd(m)?;
-    panic!()
-}
-
-fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
-    panic!()
+    let state = GlobalState::init();
+    let _ = driver::run(state, cmd)?;
+    Ok(())
 }
 

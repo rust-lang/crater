@@ -16,11 +16,14 @@ parallel access is consistent and race-free.
 use errors::*;
 
 // An experiment name
+#[derive(Debug)]
 pub struct Ex(String);
 // A toolchain name, either a rustup channel identifier,
 // or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
-pub struct Tc(String, String, String);
+#[derive(Debug)]
+pub struct Tc(String);
 
+#[derive(Debug)]
 pub enum Cmd {
     /* Basic synchronous commands */
 
@@ -76,6 +79,63 @@ pub enum Cmd {
     Sleep,
 }
 
+impl Tc {
+    pub fn from_str(tc: &str) -> Result<Tc> {
+        use toolchain;
+        let _ = toolchain::parse_toolchain(tc)?;
+        Ok(Tc(tc.to_string()))
+    }
+}
+
+use driver::Process;
+use self::state::GlobalState;
+
+impl Process<GlobalState> for Cmd {
+    fn process(self, st: GlobalState) -> Result<(GlobalState, Vec<Cmd>)> {
+        use lists;
+        use toolchain;
+        use docker;
+
+        let mut cmds = Vec::new();
+        match self {
+            // Local prep
+            Cmd::PrepareLocal => {
+                cmds.extend(vec![Cmd::PrepareToolchain(Tc::from_str("stable")?),
+                                 Cmd::BuildContainer,
+                                 Cmd::CreateLists]);
+            }
+            Cmd::PrepareToolchain(tc) => toolchain::prepare_toolchain(&tc.0)?,
+            Cmd::BuildContainer => docker::build_container()?,
+
+            Cmd::CreateLists => {
+                cmds.extend(vec![Cmd::CreateRecentList,
+                                 Cmd::CreateSecondList,
+                                 Cmd::CreateHotList,
+                                 Cmd::CreateGhCandidateListFromCache,
+                                 Cmd::CreateGhCandidateListFromCache]);
+            }
+            Cmd::CreateListsFull => {
+                cmds.extend(vec![Cmd::CreateRecentList,
+                                 Cmd::CreateSecondList,
+                                 Cmd::CreateHotList,
+                                 Cmd::CreateGhCandidateList,
+                                 Cmd::CreateGhAppList]);
+            }
+            Cmd::CreateRecentList => lists::create_recent_list()?,
+            Cmd::CreateSecondList => lists::create_second_list()?,
+            Cmd::CreateHotList => lists::create_hot_list()?,
+            Cmd::CreateGhCandidateList => lists::create_gh_candidate_list()?,
+            Cmd::CreateGhAppList => lists::create_gh_app_list()?,
+            Cmd::CreateGhCandidateListFromCache => lists::create_gh_candidate_list_from_cache()?,
+            Cmd::CreateGhAppListFromCache => lists::create_gh_app_list_from_cache()?,
+            cmd => panic!("unimplemented cmd {:?}", cmd),
+        }
+
+        Ok((st, cmds))
+    }
+}
+
+
 pub mod state {
     use super::slowio::{FreeDir, Blobject};
 
@@ -94,7 +154,7 @@ pub mod state {
         crates_io_index_mirror: FreeDir,
         gh_clones: FreeDir,
         target_dirs: FreeDir,
-        test_dir: FreeDir,
+        test_source_dir: FreeDir,
     }
 
     pub struct SharedState {
@@ -114,44 +174,39 @@ pub mod state {
     pub struct ExData {
         config: Blobject,
     }
-}
 
-use self::state::GlobalState;
-
-impl rek::Process<GlobalState> for Cmd {
-    fn process(self, st: GlobalState) -> Result<(GlobalState, Vec<Cmd>)> {
-        use lists;
-        let mut cmds = Vec::new();
-        match self {
-            Cmd::CreateLists => {
-                cmds.extend(vec![Cmd::CreateRecentList,
-                                 Cmd::CreateSecondList,
-                                 Cmd::CreateHotList,
-                                 Cmd::CreateGhCandidateList,
-                                 Cmd::CreateGhAppList]);
+    impl GlobalState {
+        pub fn init() -> GlobalState {
+            GlobalState {
+                master: MasterState,
+                local: LocalState {
+                    cargo_home: FreeDir,
+                    rustup_home: FreeDir,
+                    crates_io_index_mirror: FreeDir,
+                    gh_clones: FreeDir,
+                    target_dirs: FreeDir,
+                    test_source_dir: FreeDir,
+                },
+                shared: SharedState {
+                    crates: FreeDir,
+                    gh_mirrors: FreeDir,
+                    lists: Lists {
+                        recent: Blobject,
+                        second: Blobject,
+                        hot: Blobject,
+                        gh_repos: Blobject,
+                        gh_apps:  Blobject,
+                    }
+                },
+                ex: ExData {
+                    config: Blobject,
+                }
             }
-            Cmd::CreateListsFull => {
-                cmds.extend(vec![Cmd::CreateRecentList,
-                                 Cmd::CreateSecondList,
-                                 Cmd::CreateHotList,
-                                 Cmd::CreateGhCandidateListFromCache,
-                                 Cmd::CreateGhCandidateListFromCache]);
-            }
-            Cmd::CreateRecentList => lists::create_recent_list()?,
-            Cmd::CreateSecondList => lists::create_second_list()?,
-            Cmd::CreateHotList => lists::create_hot_list()?,
-            Cmd::CreateGhCandidateList => lists::create_gh_candidate_list()?,
-            Cmd::CreateGhAppList => lists::create_gh_app_list()?,
-            Cmd::CreateGhCandidateListFromCache => lists::create_gh_candidate_list_from_cache()?,
-            Cmd::CreateGhAppListFromCache => lists::create_gh_app_list_from_cache()?,
-            _ => unimplemented!()
         }
-
-        Ok((st, cmds))
     }
 }
 
-pub mod rek {
+pub mod driver {
     use errors::*;
 
     pub trait Process<S> {
@@ -181,6 +236,8 @@ pub mod rek {
 }
 
 pub mod slowio {
+    #[derive(Default)]
     pub struct FreeDir;
+    #[derive(Default)]
     pub struct Blobject;
 }

@@ -159,6 +159,9 @@ fn main_() -> Result<()> {
         ("summarize", Some(_)) => panic!(),
         ("easy-test", Some(m)) => panic!(),
         ("sleep", Some(m)) => sleep(m)?,
+
+        // Command execution
+        ("cmd", Some(m)) => run_cmd(m)?,
         _ => unreachable!()
     }
 
@@ -398,6 +401,10 @@ fn cli() -> App<'static, 'static> {
             SubCommand::with_name("sleep")
                 .arg(Arg::with_name("secs")
                      .required(true)))
+
+        .subcommand(
+            SubCommand::with_name("cmd")
+                .subcommands(clap_cmds()))
 }
 
 
@@ -628,3 +635,22 @@ fn sleep(m: &ArgMatches) -> Result<()> {
     run::run("sleep", &[secs], &[]);
     Ok(())
 }
+
+
+// Command-based cli
+
+use model::Cmd;
+
+fn clap_cmds() -> Vec<App<'static, 'static>> {
+    Vec::new()
+}
+
+fn run_cmd(m: &ArgMatches) -> Result<()> {
+    let cmd = args_to_cmd(m)?;
+    panic!()
+}
+
+fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
+    panic!()
+}
+

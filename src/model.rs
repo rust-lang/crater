@@ -16,13 +16,18 @@ parallel access is consistent and race-free.
 use errors::*;
 
 // An experiment name
-struct Ex(String);
+pub struct Ex(String);
 // A toolchain name, either a rustup channel identifier,
 // or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
-struct Tc(String, String, String);
+pub struct Tc(String, String, String);
 
-enum Cmd {
+pub enum Cmd {
     /* Basic synchronous commands */
+
+    // Local prep
+    PrepareLocal,
+    PrepareToolchain(Tc),
+    BuildContainer,
 
     // List creation
     CreateLists,
@@ -64,7 +69,6 @@ enum Cmd {
     GenReport(Ex),
 
     // Misc
-    PrepareToolchain(Tc),
     LinkToolchain,
     RunUnstableFeatures,
     Summarize,
@@ -72,7 +76,7 @@ enum Cmd {
     Sleep,
 }
 
-mod state {
+pub mod state {
     use super::slowio::{FreeDir, Blobject};
 
     pub struct GlobalState {
@@ -147,7 +151,7 @@ impl rek::Process<GlobalState> for Cmd {
     }
 }
 
-mod rek {
+pub mod rek {
     use errors::*;
 
     pub trait Process<S> {
@@ -176,7 +180,7 @@ mod rek {
     }
 }
 
-mod slowio {
+pub mod slowio {
     pub struct FreeDir;
     pub struct Blobject;
 }

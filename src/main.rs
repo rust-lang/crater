@@ -137,6 +137,7 @@ fn main_() -> Result<()> {
         ("prepare-ex-local", Some(m)) => prepare_ex_local(m)?,
         ("fetch-deps", Some(m)) => fetch_deps(m)?,
         ("prepare-all-toolchains-for-ex", Some(m)) => prepare_all_toolchains_for_ex(m)?,
+        ("delete-all-target-dirs-for-ex", Some(m)) => delete_all_target_dirs_for_ex(m)?,
 
         // Reporting
         ("gen-report", Some(m)) => gen_report(m)?,
@@ -302,6 +303,13 @@ fn cli() -> App<'static, 'static> {
         .subcommand(
            SubCommand::with_name("prepare-all-toolchains-for-ex")
                 .about("prepare all toolchains for local experiment")
+                .arg(Arg::with_name("ex")
+                     .long("ex")
+                     .required(false)
+                     .default_value("default")))
+        .subcommand(
+           SubCommand::with_name("delete-all-target-dirs-for-ex")
+                .about("delete the cargo target dirs for an experiment")
                 .arg(Arg::with_name("ex")
                      .long("ex")
                      .required(false)
@@ -502,6 +510,10 @@ fn prepare_all_toolchains_for_ex(m: &ArgMatches) -> Result<()> {
     ex::prepare_all_toolchains(ex_name)
 }
 
+fn delete_all_target_dirs_for_ex(m: &ArgMatches) -> Result<()> {
+    let ref ex_name = m.value_of("ex").expect("");
+    ex::delete_all_target_dirs(ex_name)
+}
 
 // Experiment running
 

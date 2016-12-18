@@ -1,6 +1,6 @@
 # not next
 
-- copy-ex
+- delete-ex-target-files
 - mount CARGO_HOME read-only
 - delete docker containers on kill
 - run `rustc -Vv` before every test

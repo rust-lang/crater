@@ -53,6 +53,7 @@ enum Cmd {
     PrepareExLocal(Ex),
     FetchDeps(Ex, Tc),
     PrepareAllToolchainsForEx(Ex),
+    DeleteAllTargetDirsForEx(Ex),
 
     // Reporting
     GenReport(Ex),

@@ -390,3 +390,12 @@ pub fn copy(ex1_name: &str, ex2_name: &str) -> Result<()> {
 
     util::copy_dir(ex1_dir, ex2_dir)
 }
+
+pub fn delete_all_target_dirs(ex_name: &str) -> Result<()> {
+    let ref target_dir = toolchain::target_dir(ex_name);
+    if target_dir.exists() {
+        util::remove_dir_all(target_dir)?;
+    }
+
+    Ok(())
+}

@@ -1,6 +1,5 @@
 # not next
 
-- check mode?
 - delete docker containers on kill
 - run `rustc -Vv` before every test
 

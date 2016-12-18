@@ -16,12 +16,12 @@ parallel access is consistent and race-free.
 use errors::*;
 
 // An experiment name
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ex(String);
 
 // A toolchain name, either a rustup channel identifier,
 // or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tc(String);
 
 #[derive(Debug)]
@@ -116,6 +116,7 @@ impl Process<GlobalState> for Cmd {
             Cmd::PrepareToolchain(tc) => toolchain::prepare_toolchain(&tc.0)?,
             Cmd::BuildContainer => docker::build_container()?,
 
+            // List creation
             Cmd::CreateLists => {
                 cmds.extend(vec![Cmd::CreateRecentList,
                                  Cmd::CreateSecondList,
@@ -138,6 +139,7 @@ impl Process<GlobalState> for Cmd {
             Cmd::CreateGhCandidateListFromCache => lists::create_gh_candidate_list_from_cache()?,
             Cmd::CreateGhAppListFromCache => lists::create_gh_app_list_from_cache()?,
 
+            // Experiment prep
             Cmd::DefineEx(ex, tc1, tc2, mode, crates) => {
                 ex::define(ex::ExOpts {
                     name: ex.0,
@@ -146,6 +148,10 @@ impl Process<GlobalState> for Cmd {
                     mode: mode,
                     crates: crates
                 })?;
+            }
+            Cmd::PrepareEx(ex) => {
+                cmds.extend(vec![Cmd::PrepareExShared(ex.clone()),
+                                 Cmd::PrepareExLocal(ex)]);
             }
 
             cmd => panic!("unimplemented cmd {:?}", cmd),
@@ -162,7 +168,7 @@ pub mod conv {
     use clap::{App, SubCommand, Arg, ArgMatches};
 
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
-        vec!(
+        vec![
             // Local prep
             SubCommand::with_name("prepare-local")
                 .about("acquire toolchains, build containers, build crate lists"),
@@ -207,8 +213,12 @@ pub mod conv {
                 .arg(Arg::with_name("crate-select").long("crate-select").required(false)
                      .default_value(ExCrateSelect::Demo.to_str())
                      .possible_values(&[ExCrateSelect::Demo.to_str(),
-                                        ExCrateSelect::Full.to_str()]))
-        )
+                                        ExCrateSelect::Full.to_str()])),
+            SubCommand::with_name("prepare-ex")
+                .about("prepare shared and local data for experiment")
+                .arg(Arg::with_name("ex").long("ex").required(false).default_value("default"))
+
+        ]
     }
 
     pub fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
@@ -238,6 +248,9 @@ pub mod conv {
                               Tc::from_str(m.value_of("tc-2").expect(""))?,
                               ExMode::from_str(m.value_of("mode").expect(""))?,
                               ExCrateSelect::from_str(m.value_of("crate-select").expect(""))?)
+            }
+            ("prepare-ex", Some(m)) => {
+                Cmd::PrepareEx(Ex::from_str(m.value_of("ex").expect(""))?)
             }
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),

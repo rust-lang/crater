@@ -1,5 +1,6 @@
 # not next
 
+- round-trip subcommands through argument parser
 - delete docker containers on kill
 - run `rustc -Vv` before every test
 

@@ -236,7 +236,7 @@ fn run_in_docker(ex_name: &str, path: &Path, args: &[&str]) -> Result<()> {
     fs::create_dir_all(&rustup_home);
     fs::create_dir_all(&target_dir);
 
-    let test_mount = &format!("{}:/test", test_dir.display());
+    let test_mount = &format!("{}:/test:ro", test_dir.display());
     let cargo_home_mount = &format!("{}:/cargo-home:ro", cargo_home.display());
     let rustup_home_mount = &format!("{}:/rustup-home:ro", rustup_home.display());
     let target_mount = &format!("{}:/target", target_dir.display());

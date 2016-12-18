@@ -159,13 +159,15 @@ distributed workers
 
 # Work flow
 
-- prepare-toolchain stable
-- create-lists
-  - create-recent-list
-  - create-second-list
-  - create-hot-list
-  - create-gh-candidate-list-from-cache
-  - create-gh-app-list-from-cache
+- prepare-local
+  - prepare-toolchain stable
+  - build-container
+  - create-lists
+    - create-recent-list
+    - create-second-list
+    - create-hot-list
+    - create-gh-candidate-list-from-cache
+    - create-gh-app-list-from-cache
 - define-ex --demo - sets up experiment definition and per-experiment crate list
 - prepare-ex
   - prepare-ex-shared
@@ -178,6 +180,7 @@ distributed workers
   - prepare-ex-local
     - fetch-deps
     - prepare-all-toolchains-for-ex
+    - build-container
 - run
 - gen-report
 

@@ -47,6 +47,7 @@ mod toml_frobber;
 mod model;
 mod gh_mirrors;
 mod report;
+mod docker;
 
 use clap::{App, Arg, AppSettings, SubCommand, ArgMatches};
 use errors::*;
@@ -153,6 +154,7 @@ fn main_() -> Result<()> {
         ("summarize", Some(_)) => panic!(),
         ("easy-test", Some(m)) => panic!(),
         ("sleep", Some(m)) => sleep(m)?,
+        ("build-container", Some(_)) => build_container()?,
         _ => unreachable!()
     }
 
@@ -384,6 +386,9 @@ fn cli() -> App<'static, 'static> {
             SubCommand::with_name("sleep")
                 .arg(Arg::with_name("secs")
                      .required(true)))
+        .subcommand(
+           SubCommand::with_name("build-container")
+                .about("build docker container needed by experiments"))
 
 
 }
@@ -597,3 +602,6 @@ fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
     toolchain::prepare_toolchain(toolchain)
 }
 
+fn build_container() -> Result<()> {
+    docker::build_container()
+}

@@ -639,7 +639,7 @@ fn sleep(m: &ArgMatches) -> Result<()> {
 
 // Command-based cli
 
-use model::{Cmd, Tc, Ex};
+use model::{Cmd, Tc, Ex, ExMode, ExCrateSelect};
 use model::state::GlobalState;
 use model::driver;
 
@@ -673,6 +673,23 @@ fn clap_cmds() -> Vec<App<'static, 'static>> {
             .about("crate the list of all GitHub Rust repos from cache"),
         SubCommand::with_name("create-gh-app-list-from-cache")
             .about("create the list of GitHub Rust applications from cache"),
+
+        // Experiment prep
+        SubCommand::with_name("define-ex")
+            .about("define an experiment")
+            .arg(Arg::with_name("ex").long("ex").required(false).default_value("default"))
+            .arg(Arg::with_name("tc-1").required(true))
+            .arg(Arg::with_name("tc-2").required(true))
+            .arg(Arg::with_name("mode").long("mode").required(false)
+                 .default_value(ExMode::BuildAndTest.to_str())
+                 .possible_values(&[ExMode::BuildAndTest.to_str(),
+                                    ExMode::BuildOnly.to_str(),
+                                    ExMode::CheckOnly.to_str(),
+                                    ExMode::UnstableFeatures.to_str()]))
+            .arg(Arg::with_name("crate-select").long("crate-select").required(false)
+                 .default_value(ExCrateSelect::Demo.to_str())
+                 .possible_values(&[ExCrateSelect::Demo.to_str(),
+                                    ExCrateSelect::Full.to_str()]))
     )
 }
 
@@ -696,13 +713,37 @@ fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
         ("create-gh-candidate-list-from-cache", _) => Cmd::CreateGhCandidateListFromCache,
         ("create-gh-app-list-from-cache", _) => Cmd::CreateGhAppListFromCache,
 
+        // Experiment prep
+        ("define-ex", Some(m)) => {
+            Cmd::DefineEx(ex_from_arg(m.value_of("ex"))?,
+                          tc_from_arg(m.value_of("tc-1"))?,
+                          tc_from_arg(m.value_of("tc-2"))?,
+                          ex_mode_from_arg(m.value_of("mode"))?,
+                          ex_crate_select_from_arg(m.value_of("crate-select"))?)
+        }
+
         (s, _) => panic!("unimplemented args_to_cmd {}", s),
     })
 }
 
+fn ex_from_arg(arg: Option<&str>) -> Result<Ex> {
+    let arg = arg.expect("ex");
+    Ok(Ex::from_str(arg)?)
+}
+
 fn tc_from_arg(arg: Option<&str>) -> Result<Tc> {
-    let arg = arg.expect("tc argument");
+    let arg = arg.expect("tc");
     Ok(Tc::from_str(arg)?)
+}
+
+fn ex_mode_from_arg(arg: Option<&str>) -> Result<ExMode> {
+    let arg = arg.expect("mode");
+    Ok(ExMode::from_str(arg)?)
+}
+
+fn ex_crate_select_from_arg(arg: Option<&str>) -> Result<ExCrateSelect> {
+    let arg = arg.expect("crate-select");
+    Ok(ExCrateSelect::from_str(arg)?)
 }
 
 fn run_cmd(m: &ArgMatches) -> Result<()> {

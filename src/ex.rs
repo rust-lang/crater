@@ -19,6 +19,7 @@ use std::fmt::{self, Formatter, Display};
 use log;
 use toml_frobber;
 use TEST_SOURCE_DIR;
+use model::{ExMode, ExCrateSelect};
 
 pub fn ex_dir(ex_name: &str) -> PathBuf {
     Path::new(EXPERIMENT_DIR).join(ex_name)
@@ -48,24 +49,11 @@ pub struct Experiment {
     pub mode: ExMode,
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum ExMode {
-    BuildAndTest,
-    BuildOnly,
-    CheckOnly,
-    UnstableFeatures
-}
-
 pub struct ExOpts {
     pub name: String,
     pub toolchains: Vec<Toolchain>,
     pub mode: ExMode,
     pub crates: ExCrateSelect
-}
-
-pub enum ExCrateSelect {
-    Full,
-    Demo,
 }
 
 pub fn define(opts: ExOpts) -> Result<()> {

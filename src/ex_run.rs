@@ -19,6 +19,7 @@ use std::fmt::{self, Formatter, Display};
 use log;
 use toml_frobber;
 use ex::*;
+use model::ExMode;
 
 pub fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
     let tc = toolchain::rustup_toolchain_name(toolchain)?;

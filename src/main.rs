@@ -112,6 +112,7 @@ fn main_() -> Result<()> {
 
     match matches.subcommand() {
         // Local prep
+        ("prepare-local", Some(_)) => prepare_local()?,
         ("prepare-toolchain", Some(m)) => prepare_toolchain(m)?,
         ("build-container", Some(_)) => build_container()?,
 
@@ -173,6 +174,9 @@ fn cli() -> App<'static, 'static> {
 
 
         // Local prep
+        .subcommand(
+           SubCommand::with_name("prepare-local")
+                .about("acquire toolchains, build containers, build crate lists"))
         .subcommand(
             SubCommand::with_name("prepare-toolchain")
                 .about("install or update a toolchain")
@@ -397,6 +401,18 @@ fn cli() -> App<'static, 'static> {
 
 // Local prep
 
+fn prepare_local() -> Result<()> {
+    toolchain::prepare_toolchain("stable")?;
+    docker::build_container()?;
+
+    lists::create_recent_list()?;
+    lists::create_second_list()?;
+    lists::create_hot_list()?;
+    lists::create_all_lists(false)?;
+
+    Ok(())
+}
+
 fn prepare_toolchain(m: &ArgMatches) -> Result<()> {
     let ref toolchain = m.value_of("toolchain").expect("");
     toolchain::prepare_toolchain(toolchain)
@@ -410,18 +426,7 @@ fn build_container() -> Result<()> {
 
 fn create_lists(m: &ArgMatches) -> Result<()> {
     let full = m.value_of("full").is_some();
-    lists::create_recent_list()?;
-    lists::create_second_list()?;
-    lists::create_hot_list()?;
-    if full {
-        lists::create_gh_candidate_list()?;
-        lists::create_gh_app_list()?;
-    } else {
-        lists::create_gh_candidate_list_from_cache()?;
-        lists::create_gh_app_list_from_cache()?;
-    }
-
-    Ok(())
+    lists::create_all_lists(full)
 }
 
 fn create_recent_list() -> Result<()> {

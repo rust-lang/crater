@@ -180,8 +180,8 @@ distributed workers
   - prepare-ex-local
     - fetch-deps
     - prepare-all-toolchains-for-ex
-    - build-container
-- run
+- run --toolchain stable
+- run --toolchain beta
 - gen-report
 
 ```

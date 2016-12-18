@@ -35,6 +35,53 @@ _Cargobomb does not work yet. There is nothing to see here._
 
 [crater]: https://github.com/brson/taskcluster-crater
 
+## Basic local use
+
+These commands will run cargobomb, in local configuration, on the demo
+crate set. This is safe to run unsanboxed because the set of crates
+tested is limited to the 'demo' set. This requires the user have
+access to the docker daemon.
+
+Today cargobomb expects to be run out of its source directory.
+
+```
+cargo run -- prepare-local
+cargo run -- define-ex stable beta
+cargo run -- prepare-ex
+cargo run -- run
+cargo run -- gen-report
+```
+
+This will output a report to `./work/ex/default/index.html`.
+
+Here's what each of these steps does:
+
+* `prepare-local` - sets up the stable toolchain, builds the docker
+  container, builds lists of crates. This needs to be rerun
+  periodically, but not between every experiment.
+
+* `define-ex` - defines a new experiment, by default named
+  'default', performing a build-test experiment on the
+  'demo' set of crates.
+
+* `prepare-ex` - fetches repos from github and captures
+  thier commit shas, downloads all crates, hacks up
+  Cargo.toml files, captures lockfiles, fetches all
+  dependencies, and prepares toolchains.
+
+* `run` - runs tests on crates in the experiment,
+  against both toolchains
+
+* `gen-report` - summarize the experiment results
+  to work/ex/default/index.html
+
+cargo run -- define-ex
+cargo run -- prepare-ex
+cargo run -- run
+cargo run -- gen-report
+```
+
+
 ## License
 
 MIT / Apache 2.0

@@ -224,11 +224,10 @@ fn cli() -> App<'static, 'static> {
                      .long("ex")
                      .required(false)
                      .default_value("default"))
-                .arg(Arg::with_name("toolchain")
-                     .long("toolchain")
-                     .required(true)
-                     .multiple(true)
-                     .takes_value(true))
+                .arg(Arg::with_name("tc1")
+                     .required(true))
+                .arg(Arg::with_name("tc2")
+                     .required(true))
                 .arg(Arg::with_name("type")
                      .long("type")
                      .required(false)
@@ -467,12 +466,13 @@ fn define_ex(m: &ArgMatches) -> Result<()> {
     use ex::*;
 
     let ref ex_name = m.value_of("ex").expect("");
-    let toolchains = m.values_of("toolchain").expect("").collect::<Vec<_>>();
+    let tc1 = m.value_of("tc1").expect("");
+    let tc2 = m.value_of("tc2").expect("");
     let crate_list = m.value_of("crate-list").expect("");
     let type_ = m.value_of("type").expect("");
 
     let mut tcs = Vec::new();
-    for tc in toolchains {
+    for tc in &[tc1, tc2] {
         tcs.push(toolchain::parse_toolchain(tc)?);
     }
 

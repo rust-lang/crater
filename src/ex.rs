@@ -64,13 +64,13 @@ pub struct ExOpts {
 }
 
 pub enum ExCrateSelect {
-    Default,
+    Full,
     Demo,
 }
 
 pub fn define(opts: ExOpts) -> Result<()> {
     let crates = match opts.crates {
-        ExCrateSelect::Default => lists::read_all_lists()?,
+        ExCrateSelect::Full => lists::read_all_lists()?,
         ExCrateSelect::Demo => demo_list()?,
     };
     define_(&opts.name, opts.toolchains, crates, opts.mode)

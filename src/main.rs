@@ -237,14 +237,11 @@ fn cli() -> App<'static, 'static> {
                                         "build-only",
                                         "check-only",
                                         "unstable-featureS"]))
-                .arg(Arg::with_name("check-only")
-                     .long("check-only")
+                .arg(Arg::with_name("crate-list")
+                     .long("crate-list")
                      .required(false)
-                     .takes_value(false))
-                .arg(Arg::with_name("demo")
-                     .long("demo")
-                     .required(false)
-                     .takes_value(false)))
+                     .default_value("demo")
+                     .possible_values(&["demo", "full"])))
         .subcommand(
             SubCommand::with_name("prepare-ex")
                 .about("prepare shared and local data for experiment")
@@ -402,8 +399,6 @@ fn cli() -> App<'static, 'static> {
             SubCommand::with_name("sleep")
                 .arg(Arg::with_name("secs")
                      .required(true)))
-
-
 }
 
 
@@ -473,7 +468,7 @@ fn define_ex(m: &ArgMatches) -> Result<()> {
 
     let ref ex_name = m.value_of("ex").expect("");
     let toolchains = m.values_of("toolchain").expect("").collect::<Vec<_>>();
-    let demo = m.is_present("demo");
+    let crate_list = m.value_of("crate-list").expect("");
     let type_ = m.value_of("type").expect("");
 
     let mut tcs = Vec::new();
@@ -489,11 +484,17 @@ fn define_ex(m: &ArgMatches) -> Result<()> {
         _ => panic!()
     };
 
+    let crates = match crate_list {
+        "demo" => ExCrateSelect::Demo,
+        "full" => ExCrateSelect::Full,
+        _ => panic!()
+    };
+
     let opts = ExOpts {
         name: ex_name.to_string(),
         toolchains: tcs,
         mode: mode,
-        crates: if demo { ExCrateSelect::Demo } else { ExCrateSelect:: Default },
+        crates: crates,
     };
 
     ex::define(opts)?;
@@ -570,6 +571,7 @@ fn capture_lockfiles(m: &ArgMatches) -> Result<()> {
 fn prepare_ex_local(m: &ArgMatches) -> Result<()> {
     let ref ex_name = m.value_of("ex").expect("");
     ex::delete_all_target_dirs(ex_name)?;
+    ex_run::delete_all_results(ex_name)?;
     ex::fetch_deps(ex_name, "stable")?;
     ex::prepare_all_toolchains(ex_name)?;
 

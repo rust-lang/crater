@@ -165,6 +165,8 @@ impl Process<GlobalState> for Cmd {
                                  Cmd::CaptureLockfiles(ex, Tc::from_str("stable")?)]);
             }
             Cmd::FetchGhMirrors(ex) => ex::fetch_gh_mirrors(&ex.0)?,
+            Cmd::CaptureShas(ex) => ex::capture_shas(&ex.0)?,
+            Cmd::DownloadCrates(ex) => ex::download_crates(&ex.0)?,
 
             cmd => panic!("unimplemented cmd {:?}", cmd),
         }
@@ -267,6 +269,15 @@ pub mod conv {
             cmd("prepare-ex-shared",
                 "prepare shared data for experiment")
                 .arg(ex()),
+            cmd("fetch-gh-mirrors",
+                "fetch github repos for experiment")
+                .arg(ex()),
+            cmd("capture-shas",
+                "record the head commits of GitHub repos")
+                .arg(ex()),
+            cmd("download-crates",
+                "download crates to local disk")
+                .arg(ex()),
         ]
     }
 
@@ -330,6 +341,9 @@ pub mod conv {
 
             // Global experiment prep
             ("prepare-ex-shared", Some(m)) => Cmd::PrepareExShared(ex(m)?),
+            ("fetch-gh-mirrors", Some(m)) => Cmd::FetchGhMirrors(ex(m)?),
+            ("capture-shas", Some(m)) => Cmd::CaptureShas(ex(m)?),
+            ("download-crates", Some(m)) => Cmd::DownloadCrates(ex(m)?),
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),
         })

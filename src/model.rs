@@ -182,13 +182,13 @@ pub mod conv {
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
 
         // Types of arguments
-        let ex = opt("ex", "default");
-        let ex1 = req("ex-1");
-        let ex2 = req("ex-2");
-        let tc = req("tc");
-        let tc1 = req("tc-1");
-        let tc2 = req("tc-2");
-        let mode = Arg::with_name("mode")
+        let ex = || opt("ex", "default");
+        let ex1 = || req("ex-1");
+        let ex2 = || req("ex-2");
+        let tc = || req("tc");
+        let tc1 = || req("tc-1");
+        let tc2 = || req("tc-2");
+        let mode = || Arg::with_name("mode")
             .required(false)
             .long("mode")
             .default_value(ExMode::BuildAndTest.to_str())
@@ -196,7 +196,7 @@ pub mod conv {
                                ExMode::BuildOnly.to_str(),
                                ExMode::CheckOnly.to_str(),
                                ExMode::UnstableFeatures.to_str()]);
-        let crate_select = Arg::with_name("crate-select")
+        let crate_select = || Arg::with_name("crate-select")
             .required(false)
             .long("crate-select")
             .default_value(ExCrateSelect::Demo.to_str())
@@ -224,7 +224,7 @@ pub mod conv {
                 "acquire toolchains, build containers, build crate lists"),
             cmd("prepare-toolchain",
                 "install or update a toolchain")
-                .arg(tc.clone()),
+                .arg(tc()),
             cmd("build-container",
                 "build docker container needed by experiments"),
 
@@ -251,22 +251,22 @@ pub mod conv {
             // Master experiment prep
             cmd("define-ex",
                 "define an experiment")
-                .arg(ex.clone()).arg(tc1.clone()).arg(tc2.clone())
-                .arg(mode.clone()).arg(crate_select.clone()),
+                .arg(ex()).arg(tc1()).arg(tc2())
+                .arg(mode()).arg(crate_select()),
             cmd("prepare-ex",
                 "prepare shared and local data for experiment")
-                .arg(ex.clone()),
+                .arg(ex()),
             cmd("copy-ex",
                 "copy all data from one experiment to another")
-                .arg(ex1.clone()).arg(ex2),
+                .arg(ex1()).arg(ex2()),
             cmd("delete-ex",
                 "delete shared data for experiment")
-                .arg(ex.clone()),
+                .arg(ex()),
 
             // Global experiment prep
             cmd("prepare-ex-shared",
                 "prepare shared data for experiment")
-                .arg(ex.clone()),
+                .arg(ex()),
         ]
     }
 

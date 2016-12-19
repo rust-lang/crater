@@ -97,7 +97,7 @@ fn cli() -> App<'static, 'static> {
 }
 
 fn run_cmd(m: &ArgMatches) -> Result<()> {
-    let cmd = model::conv::args_to_cmd(m)?;
+    let cmd = model::conv::clap_args_to_cmd(m)?;
     let state = model::state::GlobalState::init();
     let _ = model::driver::run(state, cmd)?;
 

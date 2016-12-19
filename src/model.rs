@@ -200,7 +200,7 @@ impl Process<GlobalState> for Cmd {
 pub mod conv {
     use super::*;
     use errors::*;
-    use clap::{App, SubCommand, Arg, ArgMatches};
+    use clap::{App, SubCommand, Arg, ArgMatches, AppSettings};
 
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
 
@@ -343,7 +343,7 @@ pub mod conv {
         ]
     }
 
-    pub fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
+    pub fn clap_args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
 
         fn ex(m: &ArgMatches) -> Result<Ex> {
             Ex::from_str(m.value_of("ex").expect(""))
@@ -428,6 +428,85 @@ pub mod conv {
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),
         })
+    }
+
+    pub fn cmd_to_name(cmd: &Cmd) -> &'static str {
+        use super::Cmd::*;
+        match *cmd {
+            PrepareLocal => "prepare-local",
+            PrepareToolchain(..) => "prepare-toolchain",
+            BuildContainer => "build-container",
+
+            CreateLists => "create-lists",
+            CreateListsFull => "create-lists-full",
+            CreateRecentList => "create-recent-list",
+            CreateSecondList => "create-second-list",
+            CreateHotList => "create-hot-list",
+            CreateGhCandidateList => "create-gh-candidate-list",
+            CreateGhAppList => "create-gh-app-list",
+            CreateGhCandidateListFromCache => "create-gh-candidate-list-from-cache",
+            CreateGhAppListFromCache => "create-gh-app-list-from-cache",
+
+            DefineEx(..) => "define-ex",
+            PrepareEx(..) => "prepare-ex",
+            CopyEx(..) => "copy-ex",
+            DeleteEx(..) => "delete-ex",
+
+            PrepareExShared(..) => "prepare-ex-shared",
+            FetchGhMirrors(..) => "fetch-gh-mirrors",
+            CaptureShas(..) => "capture-shas",
+            DownloadCrates(..) => "download-crates",
+            FrobCargoTomls(..) => "frob-cargo-tomls",
+            CaptureLockfiles(..) => "capture-lockfiles",
+
+            PrepareExLocal(..) => "prepare-ex-local",
+            DeleteAllTargetDirs(..) => "delete-all-target-dirs",
+            DeleteAllResults(..) => "delete-all-results",
+            FetchDeps(..) => "fetch-deps",
+            PrepareAllToolchains(..) => "prepare-all-toolchains",
+
+            Run(..) => "run",
+            RunTc(..) => "run-tc",
+
+            GenReport(..) => "gen-report",
+
+            Sleep => "sleep",
+        }
+    }
+
+    pub fn cmd_to_args(cmd: Cmd) -> Vec<String> {
+        Some(cmd_to_name(&cmd)).into_iter()
+            .map(|s| s.to_string())
+            .chain(cmd_to_args_(cmd).into_iter())
+            .collect()
+    }
+
+    fn cmd_to_args_(cmd: Cmd) -> Vec<String> {
+        match cmd {
+            //PrepareToolchain(tc) => vec![tc(tc)],
+
+            _ => panic!("unimplemented cmd_to_args_: {:?}", cmd),
+        }
+    }
+
+    pub fn args_to_cmd(args: Vec<String>) -> Result<Cmd> {
+        let m = App::new("")
+            .setting(AppSettings::NoBinaryName)
+            .subcommands(clap_cmds())
+            .get_matches_from(&args);
+        clap_args_to_cmd(&m)
+    }
+
+    use super::driver::Arguable;
+
+    impl Arguable for Cmd {
+        fn from_args(args: Vec<String>) -> Result<Self> {
+            args_to_cmd(args)
+        }
+
+        fn to_args(self) -> Vec<String> {
+            cmd_to_args(self)
+        }
     }
 
     impl ExMode {
@@ -560,12 +639,23 @@ pub mod driver {
         fn process(self, s: S) -> Result<(S, Vec<Self>)> where Self: Sized;
     }
 
+    pub trait Arguable: Sized {
+        fn from_args(args: Vec<String>) -> Result<Self>;
+        fn to_args(self) -> Vec<String>;
+    }
+
     pub fn run<S, C>(mut state: S, cmd: C) -> Result<S>
-        where C: Process<S>
+        where C: Process<S>, C: Arguable
     {
         let mut cmds = vec!(cmd);
         loop {
             if let Some(cmd) = cmds.pop() {
+
+                // Round trip through command line argument parsing,
+                // just for testing purpose.
+                let cmd: Vec<String> = cmd.to_args();
+                let cmd: C = Arguable::from_args(cmd)?;
+
                 let (state_, new_cmds) = cmd.process(state)?;
                 state = state_;
 

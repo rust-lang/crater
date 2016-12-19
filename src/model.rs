@@ -44,13 +44,13 @@ pub enum Cmd {
     CreateGhCandidateListFromCache,
     CreateGhAppListFromCache,
 
-    // Experiment prep
+    // Master experiment prep
     DefineEx(Ex, Tc, Tc, ExMode, ExCrateSelect),
     PrepareEx(Ex),
     CopyEx(Ex, Ex),
     DeleteEx(Ex),
 
-    // Global experiment prep
+    // Shared experiment prep
     PrepareExShared(Ex),
     FetchGhMirrors(Ex) ,
     CaptureShas(Ex),
@@ -156,6 +156,9 @@ impl Process<GlobalState> for Cmd {
             Cmd::CopyEx(ex1, ex2) => {
                 ex::copy(&ex1.0, &ex2.0)?
             }
+            Cmd::DeleteEx(ex) => {
+                ex::delete(&ex.0)?
+            }
 
             cmd => panic!("unimplemented cmd {:?}", cmd),
         }
@@ -201,7 +204,7 @@ pub mod conv {
             SubCommand::with_name("create-gh-app-list-from-cache")
                 .about("create the list of GitHub Rust applications from cache"),
 
-            // Experiment prep
+            // Master experiment prep
             SubCommand::with_name("define-ex")
                 .about("define an experiment")
                 .arg(Arg::with_name("ex").required(false).long("ex").default_value("default"))
@@ -224,6 +227,9 @@ pub mod conv {
                 .about("copy all data from one experiment to another")
                 .arg(Arg::with_name("ex-1").required(true))
                 .arg(Arg::with_name("ex-2").required(true)),
+            SubCommand::with_name("delete-ex")
+                .about("delete shared data for experiment")
+                .arg(Arg::with_name("ex").required(false).long("ex").default_value("default"))
 
         ]
     }
@@ -248,7 +254,7 @@ pub mod conv {
             ("create-gh-candidate-list-from-cache", _) => Cmd::CreateGhCandidateListFromCache,
             ("create-gh-app-list-from-cache", _) => Cmd::CreateGhAppListFromCache,
 
-            // Experiment prep
+            // Master experiment prep
             ("define-ex", Some(m)) => {
                 Cmd::DefineEx(Ex::from_str(m.value_of("ex").expect(""))?,
                               Tc::from_str(m.value_of("tc-1").expect(""))?,
@@ -262,6 +268,9 @@ pub mod conv {
             ("copy-ex", Some(m)) => {
                 Cmd::CopyEx(Ex::from_str(m.value_of("ex-1").expect(""))?,
                             Ex::from_str(m.value_of("ex-2").expect(""))?)
+            }
+            ("delete-ex", Some(m)) => {
+                Cmd::DeleteEx(Ex::from_str(m.value_of("ex").expect(""))?)
             }
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),

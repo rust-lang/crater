@@ -219,7 +219,7 @@ fn cli() -> App<'static, 'static> {
             SubCommand::with_name("create-gh-app-list-from-cache")
                 .about("create the list of GitHub Rust applications from cache"))
 
-        // Experiment prep
+        // Master experiment prep
         .subcommand(
             SubCommand::with_name("define-ex")
                 .about("define an experiment")

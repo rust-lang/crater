@@ -57,17 +57,16 @@ pub enum Cmd {
     DownloadCrates(Ex),
     FrobCargoTomls(Ex),
     CaptureLockfiles(Ex, Tc),
-    CaptureAllLockfiles(Ex, Tc),
 
     // Local experiment prep
     PrepareExLocal(Ex),
+    DeleteAllTargetDirsForEx(Ex),
+    DeleteAllResults(Ex),
     FetchDeps(Ex, Tc),
     PrepareAllToolchainsForEx(Ex),
-    DeleteAllTargetDirsForEx(Ex),
 
     // Experimenting
     Run(Ex, Tc),
-    DeleteAllResults(Ex),
 
     // Reporting
     GenReport(Ex),
@@ -167,6 +166,16 @@ impl Process<GlobalState> for Cmd {
             Cmd::FetchGhMirrors(ex) => ex::fetch_gh_mirrors(&ex.0)?,
             Cmd::CaptureShas(ex) => ex::capture_shas(&ex.0)?,
             Cmd::DownloadCrates(ex) => ex::download_crates(&ex.0)?,
+            Cmd::FrobCargoTomls(ex) => ex::frob_tomls(&ex.0)?,
+            Cmd::CaptureLockfiles(ex, tc) => ex::capture_lockfiles(&ex.0, &tc.0, false)?,
+
+            // Local experiment prep
+            Cmd::PrepareExLocal(ex) => {
+                cmds.extend(vec![Cmd::DeleteAllTargetDirsForEx(ex.clone()),
+                                 Cmd::DeleteAllResults(ex.clone()),
+                                 Cmd::FetchDeps(ex.clone(), Tc::from_str("stable")?),
+                                 Cmd::PrepareAllToolchainsForEx(ex.clone())]);
+            }
 
             cmd => panic!("unimplemented cmd {:?}", cmd),
         }
@@ -187,7 +196,8 @@ pub mod conv {
         let ex = || opt("ex", "default");
         let ex1 = || req("ex-1");
         let ex2 = || req("ex-2");
-        let tc = || req("tc");
+        let req_tc = || req("tc");
+        let opt_tc = || opt("tc", "stable");
         let tc1 = || req("tc-1");
         let tc2 = || req("tc-2");
         let mode = || Arg::with_name("mode")
@@ -226,7 +236,7 @@ pub mod conv {
                 "acquire toolchains, build containers, build crate lists"),
             cmd("prepare-toolchain",
                 "install or update a toolchain")
-                .arg(tc()),
+                .arg(req_tc()),
             cmd("build-container",
                 "build docker container needed by experiments"),
 
@@ -265,7 +275,7 @@ pub mod conv {
                 "delete shared data for experiment")
                 .arg(ex()),
 
-            // Global experiment prep
+            // Shared experiment prep
             cmd("prepare-ex-shared",
                 "prepare shared data for experiment")
                 .arg(ex()),
@@ -277,6 +287,17 @@ pub mod conv {
                 .arg(ex()),
             cmd("download-crates",
                 "download crates to local disk")
+                .arg(ex()),
+            cmd("frob-cargo-tomls",
+                "frobsm tomls for experiment crates")
+                .arg(ex()),
+            cmd("capture-lockfiles",
+                "records lockfiles for all crates in experiment")
+                .arg(ex()).arg(opt_tc()),
+
+            // Local experiment prep
+            cmd("prepare-ex-local",
+                "prepare local data for experiment")
                 .arg(ex()),
         ]
     }
@@ -339,11 +360,16 @@ pub mod conv {
             ("copy-ex", Some(m)) => Cmd::CopyEx(ex1(m)?, ex2(m)?),
             ("delete-ex", Some(m)) => Cmd::DeleteEx(ex(m)?),
 
-            // Global experiment prep
+            // Shared experiment prep
             ("prepare-ex-shared", Some(m)) => Cmd::PrepareExShared(ex(m)?),
             ("fetch-gh-mirrors", Some(m)) => Cmd::FetchGhMirrors(ex(m)?),
             ("capture-shas", Some(m)) => Cmd::CaptureShas(ex(m)?),
             ("download-crates", Some(m)) => Cmd::DownloadCrates(ex(m)?),
+            ("frob-cargo-tomls", Some(m)) => Cmd::FrobCargoTomls(ex(m)?),
+            ("capture-lockfiles", Some(m)) => Cmd::CaptureLockfiles(ex(m)?, tc(m)?),
+
+            // Local experiment prep
+            ("prepare-ex-local", Some(m)) => Cmd::PrepareExLocal(ex(m)?),
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),
         })

@@ -75,13 +75,6 @@ Here's what each of these steps does:
 * `gen-report` - summarize the experiment results
   to work/ex/default/index.html
 
-cargo run -- define-ex
-cargo run -- prepare-ex
-cargo run -- run
-cargo run -- gen-report
-```
-
-
 ## License
 
 MIT / Apache 2.0

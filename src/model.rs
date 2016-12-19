@@ -153,11 +153,16 @@ impl Process<GlobalState> for Cmd {
                 cmds.extend(vec![Cmd::PrepareExShared(ex.clone()),
                                  Cmd::PrepareExLocal(ex)]);
             }
-            Cmd::CopyEx(ex1, ex2) => {
-                ex::copy(&ex1.0, &ex2.0)?
-            }
-            Cmd::DeleteEx(ex) => {
-                ex::delete(&ex.0)?
+            Cmd::CopyEx(ex1, ex2) => ex::copy(&ex1.0, &ex2.0)?,
+            Cmd::DeleteEx(ex) => ex::delete(&ex.0)?,
+
+            // Shared emperiment prep
+            Cmd::PrepareExShared(ex) => {
+                cmds.extend(vec![Cmd::FetchGhMirrors(ex.clone()),
+                                 Cmd::CaptureShas(ex.clone()),
+                                 Cmd::DownloadCrates(ex.clone()),
+                                 Cmd::FrobCargoTomls(ex.clone()),
+                                 Cmd::CaptureLockfiles(ex, Tc::from_str("stable")?)]);
             }
 
             cmd => panic!("unimplemented cmd {:?}", cmd),
@@ -253,6 +258,10 @@ pub mod conv {
                 .about("delete shared data for experiment")
                 .arg(ex.clone()),
 
+            // Global experiment prep
+            SubCommand::with_name("prepare-ex-shared")
+                .about("prepare shared data for experiment")
+                .arg(ex.clone()),
         ]
     }
 
@@ -313,6 +322,9 @@ pub mod conv {
             ("prepare-ex", Some(m)) => Cmd::PrepareEx(ex(m)?),
             ("copy-ex", Some(m)) => Cmd::CopyEx(ex1(m)?, ex2(m)?),
             ("delete-ex", Some(m)) => Cmd::DeleteEx(ex(m)?),
+
+            // Global experiment prep
+            ("prepare-ex-shared", Some(m)) => Cmd::PrepareExShared(ex(m)?),
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),
         })

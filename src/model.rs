@@ -482,10 +482,25 @@ pub mod conv {
     }
 
     fn cmd_to_args_(cmd: Cmd) -> Vec<String> {
-        match cmd {
-            //PrepareToolchain(tc) => vec![tc(tc)],
+        use super::Cmd::*;
 
-            _ => panic!("unimplemented cmd_to_args_: {:?}", cmd),
+        fn req_tc(tc: Tc) -> String {
+            format!("--tc={}", tc.0)
+        }
+
+        match cmd {
+            PrepareLocal | BuildContainer | CreateLists |
+            CreateListsFull | CreateRecentList | CreateSecondList |
+            CreateHotList | CreateGhCandidateList | CreateGhAppList |
+            CreateGhCandidateListFromCache | CreateGhAppListFromCache |
+            Sleep => vec!(),
+
+            PrepareToolchain(tc) => vec![req_tc(tc)],
+            /*DefineEx(ex, tc1, tc2, mode, crate_select) => {
+                vec![ex(ex), tc1(tc1), tc2(tc2), mode(mode), crate_select(crate_select)]
+            }*/
+
+            _ => panic!()
         }
     }
 

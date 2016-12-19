@@ -66,16 +66,13 @@ pub enum Cmd {
     PrepareAllToolchains(Ex),
 
     // Experimenting
-    Run(Ex, Tc),
+    Run(Ex),
+    RunTc(Ex, Tc),
 
     // Reporting
     GenReport(Ex),
 
     // Misc
-    LinkToolchain,
-    RunUnstableFeatures,
-    Summarize,
-    EasyTest,
     Sleep,
 }
 
@@ -104,6 +101,8 @@ impl Process<GlobalState> for Cmd {
         use docker;
         use ex;
         use ex_run;
+        use run;
+        use report;
 
         let mut cmds = Vec::new();
         match self {
@@ -182,7 +181,15 @@ impl Process<GlobalState> for Cmd {
             Cmd::FetchDeps(ex, tc) => ex::fetch_deps(&ex.0, &tc.0)?,
             Cmd::PrepareAllToolchains(ex) => ex::prepare_all_toolchains(&ex.0)?,
 
-            cmd => panic!("unimplemented cmd {:?}", cmd),
+            // Experimenting
+            Cmd::Run(ex) => ex_run::run_ex_all_tcs(&ex.0)?,
+            Cmd::RunTc(ex, tc) => ex_run::run_ex(&ex.0, &tc.0)?,
+
+            // Reporting
+            Cmd::GenReport(ex) => report::gen(&ex.0)?,
+
+            // Misc
+            Cmd::Sleep => run::run("sleep", &["5"], &[])?,
         }
 
         Ok((st, cmds))
@@ -316,6 +323,23 @@ pub mod conv {
             cmd("prepare-all-toolchains",
                 "prepare all toolchains for local experiment")
                 .arg(ex()),
+
+            // Experimenting
+            cmd("run",
+                "run an experiment, with all toolchains")
+                .arg(ex()),
+            cmd("run-tc",
+                "run an experiment, with a single toolchain")
+                .arg(ex()).arg(req_tc()),
+
+            // Reporting
+            cmd("gen-report",
+                "generate the experiment report")
+                .arg(ex()),
+
+            // Misc
+            cmd("sleep",
+                "sleep"),
         ]
     }
 
@@ -391,6 +415,16 @@ pub mod conv {
             ("delete-all-results", Some(m)) => Cmd::DeleteAllResults(ex(m)?),
             ("fetch-deps", Some(m)) => Cmd::FetchDeps(ex(m)?, tc(m)?),
             ("prepare-all-toolchains", Some(m)) => Cmd::PrepareAllToolchains(ex(m)?),
+
+            // Experimenting
+            ("run", Some(m)) => Cmd::Run(ex(m)?),
+            ("run-tc", Some(m)) => Cmd::RunTc(ex(m)?, tc(m)?),
+
+            // Reporting
+            ("gen-report", Some(m)) => Cmd::GenReport(ex(m)?),
+
+            // Misc
+            ("sleep", _) => Cmd::Sleep,
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),
         })

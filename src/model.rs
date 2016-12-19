@@ -174,13 +174,47 @@ pub mod conv {
     use clap::{App, SubCommand, Arg, ArgMatches};
 
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
+
+        // Types of arguments
+        let ex = opt("ex", "default");
+        let ex1 = req("ex-1");
+        let ex2 = req("ex-2");
+        let tc = req("tc");
+        let tc1 = req("tc-1");
+        let tc2 = req("tc-2");
+        let mode = Arg::with_name("mode")
+            .required(false)
+            .long("mode")
+            .default_value(ExMode::BuildAndTest.to_str())
+            .possible_values(&[ExMode::BuildAndTest.to_str(),
+                               ExMode::BuildOnly.to_str(),
+                               ExMode::CheckOnly.to_str(),
+                               ExMode::UnstableFeatures.to_str()]);
+        let crate_select = Arg::with_name("crate-select")
+            .required(false)
+            .long("crate-select")
+            .default_value(ExCrateSelect::Demo.to_str())
+            .possible_values(&[ExCrateSelect::Demo.to_str(),
+                               ExCrateSelect::Full.to_str()]);
+
+        fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
+            Arg::with_name(n)
+                .required(false)
+                .long(n)
+                .default_value(def)
+        }
+
+        fn req(n: &'static str) -> Arg<'static, 'static> {
+            Arg::with_name(n).required(true)
+        }
+
         vec![
             // Local prep
             SubCommand::with_name("prepare-local")
                 .about("acquire toolchains, build containers, build crate lists"),
             SubCommand::with_name("prepare-toolchain")
                 .about("install or update a toolchain")
-                .arg(Arg::with_name("tc").required(true)),
+                .arg(tc.clone()),
             SubCommand::with_name("build-container")
                 .about("build docker container needed by experiments"),
 
@@ -207,39 +241,32 @@ pub mod conv {
             // Master experiment prep
             SubCommand::with_name("define-ex")
                 .about("define an experiment")
-                .arg(Arg::with_name("ex").required(false).long("ex").default_value("default"))
-                .arg(Arg::with_name("tc-1").required(true))
-                .arg(Arg::with_name("tc-2").required(true))
-                .arg(Arg::with_name("mode").required(false).long("mode")
-                     .default_value(ExMode::BuildAndTest.to_str())
-                     .possible_values(&[ExMode::BuildAndTest.to_str(),
-                                        ExMode::BuildOnly.to_str(),
-                                        ExMode::CheckOnly.to_str(),
-                                        ExMode::UnstableFeatures.to_str()]))
-                .arg(Arg::with_name("crate-select").required(false).long("crate-select")
-                     .default_value(ExCrateSelect::Demo.to_str())
-                     .possible_values(&[ExCrateSelect::Demo.to_str(),
-                                        ExCrateSelect::Full.to_str()])),
+                .arg(ex.clone()).arg(tc1.clone()).arg(tc2.clone())
+                .arg(mode.clone()).arg(crate_select.clone()),
             SubCommand::with_name("prepare-ex")
                 .about("prepare shared and local data for experiment")
-                .arg(Arg::with_name("ex").required(false).long("ex").default_value("default")),
+                .arg(ex.clone()),
             SubCommand::with_name("copy-ex")
                 .about("copy all data from one experiment to another")
-                .arg(Arg::with_name("ex-1").required(true))
-                .arg(Arg::with_name("ex-2").required(true)),
+                .arg(ex1.clone()).arg(ex2),
             SubCommand::with_name("delete-ex")
                 .about("delete shared data for experiment")
-                .arg(Arg::with_name("ex").required(false).long("ex").default_value("default"))
+                .arg(ex.clone()),
 
         ]
     }
 
     pub fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
+
+        fn tc(m: &ArgMatches) -> Result<Tc> {
+            Tc::from_str(m.value_of("tc").expect(""))
+        }
+
         Ok(match m.subcommand() {
             // Local prep
             ("prepare-local", _) => Cmd::PrepareLocal,
             ("prepare-toolchain", Some(m)) => {
-                Cmd::PrepareToolchain(Tc::from_str(m.value_of("tc").expect(""))?)
+                Cmd::PrepareToolchain(tc(m)?)
             }
             ("build-container", _) => Cmd::BuildContainer,
 

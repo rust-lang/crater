@@ -484,8 +484,12 @@ pub mod conv {
     fn cmd_to_args_(cmd: Cmd) -> Vec<String> {
         use super::Cmd::*;
 
+        fn opt_ex(ex: Ex) -> String {
+            format!("--ex={}", ex.0)
+        }
+
         fn req_tc(tc: Tc) -> String {
-            format!("--tc={}", tc.0)
+            tc.0
         }
 
         match cmd {
@@ -499,6 +503,7 @@ pub mod conv {
             /*DefineEx(ex, tc1, tc2, mode, crate_select) => {
                 vec![ex(ex), tc1(tc1), tc2(tc2), mode(mode), crate_select(crate_select)]
             }*/
+            PrepareEx(ex) => vec![opt_ex(ex)],
 
             _ => panic!()
         }

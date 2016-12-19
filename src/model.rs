@@ -258,16 +258,42 @@ pub mod conv {
 
     pub fn args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
 
+        fn ex(m: &ArgMatches) -> Result<Ex> {
+            Ex::from_str(m.value_of("ex").expect(""))
+        }
+
+        fn ex1(m: &ArgMatches) -> Result<Ex> {
+            Ex::from_str(m.value_of("ex-1").expect(""))
+        }
+
+        fn ex2(m: &ArgMatches) -> Result<Ex> {
+            Ex::from_str(m.value_of("ex-2").expect(""))
+        }
+
         fn tc(m: &ArgMatches) -> Result<Tc> {
             Tc::from_str(m.value_of("tc").expect(""))
+        }
+
+        fn tc1(m: &ArgMatches) -> Result<Tc> {
+            Tc::from_str(m.value_of("tc-1").expect(""))
+        }
+
+        fn tc2(m: &ArgMatches) -> Result<Tc> {
+            Tc::from_str(m.value_of("tc-1").expect(""))
+        }
+
+        fn mode(m: &ArgMatches) -> Result<ExMode> {
+            ExMode::from_str(m.value_of("mode").expect(""))
+        }
+
+        fn crate_select(m: &ArgMatches) -> Result<ExCrateSelect> {
+            ExCrateSelect::from_str(m.value_of("crate-select").expect(""))
         }
 
         Ok(match m.subcommand() {
             // Local prep
             ("prepare-local", _) => Cmd::PrepareLocal,
-            ("prepare-toolchain", Some(m)) => {
-                Cmd::PrepareToolchain(tc(m)?)
-            }
+            ("prepare-toolchain", Some(m)) => Cmd::PrepareToolchain(tc(m)?),
             ("build-container", _) => Cmd::BuildContainer,
 
             // List creation
@@ -282,23 +308,11 @@ pub mod conv {
             ("create-gh-app-list-from-cache", _) => Cmd::CreateGhAppListFromCache,
 
             // Master experiment prep
-            ("define-ex", Some(m)) => {
-                Cmd::DefineEx(Ex::from_str(m.value_of("ex").expect(""))?,
-                              Tc::from_str(m.value_of("tc-1").expect(""))?,
-                              Tc::from_str(m.value_of("tc-2").expect(""))?,
-                              ExMode::from_str(m.value_of("mode").expect(""))?,
-                              ExCrateSelect::from_str(m.value_of("crate-select").expect(""))?)
-            }
-            ("prepare-ex", Some(m)) => {
-                Cmd::PrepareEx(Ex::from_str(m.value_of("ex").expect(""))?)
-            }
-            ("copy-ex", Some(m)) => {
-                Cmd::CopyEx(Ex::from_str(m.value_of("ex-1").expect(""))?,
-                            Ex::from_str(m.value_of("ex-2").expect(""))?)
-            }
-            ("delete-ex", Some(m)) => {
-                Cmd::DeleteEx(Ex::from_str(m.value_of("ex").expect(""))?)
-            }
+            ("define-ex", Some(m)) => Cmd::DefineEx(ex(m)?, tc1(m)?, tc2(m)?,
+                                                    mode(m)?, crate_select(m)?),
+            ("prepare-ex", Some(m)) => Cmd::PrepareEx(ex(m)?),
+            ("copy-ex", Some(m)) => Cmd::CopyEx(ex1(m)?, ex2(m)?),
+            ("delete-ex", Some(m)) => Cmd::DeleteEx(ex(m)?),
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),
         })

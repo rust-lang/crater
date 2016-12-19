@@ -164,6 +164,7 @@ impl Process<GlobalState> for Cmd {
                                  Cmd::FrobCargoTomls(ex.clone()),
                                  Cmd::CaptureLockfiles(ex, Tc::from_str("stable")?)]);
             }
+            Cmd::FetchGhMirrors(ex) => ex::fetch_gh_mirrors(&ex.0)?,
 
             cmd => panic!("unimplemented cmd {:?}", cmd),
         }
@@ -213,54 +214,58 @@ pub mod conv {
             Arg::with_name(n).required(true)
         }
 
+        fn cmd(n: &'static str, desc: &'static str) -> App<'static, 'static> {
+            SubCommand::with_name(n).about(desc)
+        }
+
         vec![
             // Local prep
-            SubCommand::with_name("prepare-local")
-                .about("acquire toolchains, build containers, build crate lists"),
-            SubCommand::with_name("prepare-toolchain")
-                .about("install or update a toolchain")
+            cmd("prepare-local",
+                "acquire toolchains, build containers, build crate lists"),
+            cmd("prepare-toolchain",
+                "install or update a toolchain")
                 .arg(tc.clone()),
-            SubCommand::with_name("build-container")
-                .about("build docker container needed by experiments"),
+            cmd("build-container",
+                "build docker container needed by experiments"),
 
             // List creation
-            SubCommand::with_name("create-lists")
-                .about("create all the lists of crates"),
-            SubCommand::with_name("create-lists-full")
-                .about("create all the lists of crates"),
-            SubCommand::with_name("create-recent-list")
-                .about("create the list of most recent crate versions"),
-            SubCommand::with_name("create-second-list")
-                .about("create the list of of second-most-recent crate versions"),
-            SubCommand::with_name("create-hot-list")
-                .about("create the list of popular crates"),
-            SubCommand::with_name("create-gh-candidate-list")
-                .about("crate the list of all GitHub Rust repos"),
-            SubCommand::with_name("create-gh-app-list")
-                .about("create the list of GitHub Rust applications"),
-            SubCommand::with_name("create-gh-candidate-list-from-cache")
-                .about("crate the list of all GitHub Rust repos from cache"),
-            SubCommand::with_name("create-gh-app-list-from-cache")
-                .about("create the list of GitHub Rust applications from cache"),
+            cmd("create-lists",
+                "create all the lists of crates"),
+            cmd("create-lists-full",
+                "create all the lists of crates"),
+            cmd("create-recent-list",
+                "create the list of most recent crate versions"),
+            cmd("create-second-list",
+                "create the list of of second-most-recent crate versions"),
+            cmd("create-hot-list",
+                "create the list of popular crates"),
+            cmd("create-gh-candidate-list",
+                "crate the list of all GitHub Rust repos"),
+            cmd("create-gh-app-list",
+                "create the list of GitHub Rust applications"),
+            cmd("create-gh-candidate-list-from-cache",
+                "crate the list of all GitHub Rust repos from cache"),
+            cmd("create-gh-app-list-from-cache",
+                "create the list of GitHub Rust applications from cache"),
 
             // Master experiment prep
-            SubCommand::with_name("define-ex")
-                .about("define an experiment")
+            cmd("define-ex",
+                "define an experiment")
                 .arg(ex.clone()).arg(tc1.clone()).arg(tc2.clone())
                 .arg(mode.clone()).arg(crate_select.clone()),
-            SubCommand::with_name("prepare-ex")
-                .about("prepare shared and local data for experiment")
+            cmd("prepare-ex",
+                "prepare shared and local data for experiment")
                 .arg(ex.clone()),
-            SubCommand::with_name("copy-ex")
-                .about("copy all data from one experiment to another")
+            cmd("copy-ex",
+                "copy all data from one experiment to another")
                 .arg(ex1.clone()).arg(ex2),
-            SubCommand::with_name("delete-ex")
-                .about("delete shared data for experiment")
+            cmd("delete-ex",
+                "delete shared data for experiment")
                 .arg(ex.clone()),
 
             // Global experiment prep
-            SubCommand::with_name("prepare-ex-shared")
-                .about("prepare shared data for experiment")
+            cmd("prepare-ex-shared",
+                "prepare shared data for experiment")
                 .arg(ex.clone()),
         ]
     }

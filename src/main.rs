@@ -48,44 +48,14 @@ mod model;
 mod gh_mirrors;
 mod report;
 mod docker;
+mod dirs;
 
 use clap::{App, Arg, AppSettings, SubCommand, ArgMatches};
 use errors::*;
 use std::panic;
 use std::env;
 use std::process;
-
-const WORK_DIR: &'static str = "./work";
-const LOCAL_DIR: &'static str = "./work/local";
-
-const CARGO_HOME: &'static str = "./work/local/cargo-home";
-const RUSTUP_HOME: &'static str = "./work/local/rustup-home";
-
-// Custom toolchains
-const TOOLCHAIN_DIR: &'static str = "./work/local/custom-tc";
-
-// Where cargo puts its output, when running outside a docker container,
-// CARGO_TARGET_DIR
-const TARGET_DIR: &'static str = "./work/local/target-dirs";
-
-// The directory crates are unpacked to for running tests, mounted
-// in docker containers
-const TEST_SOURCE_DIR: &'static str = "./work/local/test-source";
-
-// Where GitHub crate mirrors are stored
-const GH_MIRRORS_DIR: &'static str = "./work/local/gh-mirrors";
-
-// Where crates.io sources are stores
-const CRATES_DIR: &'static str = "./work/shared/crates";
-
-// Lists of crates
-const LIST_DIR: &'static str = "./work/shared/lists";
-
-// crates.io Cargo.toml files, modified to build correctly
-const FROB_DIR: &'static str = "./work/shared/fromls";
-
-const EXPERIMENT_DIR: &'static str = "./work/ex";
-const LOG_DIR: &'static str = "./work/logs";
+use dirs::*;
 
 fn main() {
     log::init();

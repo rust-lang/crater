@@ -60,10 +60,10 @@ pub enum Cmd {
 
     // Local experiment prep
     PrepareExLocal(Ex),
-    DeleteAllTargetDirsForEx(Ex),
+    DeleteAllTargetDirs(Ex),
     DeleteAllResults(Ex),
     FetchDeps(Ex, Tc),
-    PrepareAllToolchainsForEx(Ex),
+    PrepareAllToolchains(Ex),
 
     // Experimenting
     Run(Ex, Tc),
@@ -103,6 +103,7 @@ impl Process<GlobalState> for Cmd {
         use toolchain;
         use docker;
         use ex;
+        use ex_run;
 
         let mut cmds = Vec::new();
         match self {
@@ -171,11 +172,15 @@ impl Process<GlobalState> for Cmd {
 
             // Local experiment prep
             Cmd::PrepareExLocal(ex) => {
-                cmds.extend(vec![Cmd::DeleteAllTargetDirsForEx(ex.clone()),
+                cmds.extend(vec![Cmd::DeleteAllTargetDirs(ex.clone()),
                                  Cmd::DeleteAllResults(ex.clone()),
                                  Cmd::FetchDeps(ex.clone(), Tc::from_str("stable")?),
-                                 Cmd::PrepareAllToolchainsForEx(ex.clone())]);
+                                 Cmd::PrepareAllToolchains(ex)]);
             }
+            Cmd::DeleteAllTargetDirs(ex) => ex::delete_all_target_dirs(&ex.0)?,
+            Cmd::DeleteAllResults(ex) => ex_run::delete_all_results(&ex.0)?,
+            Cmd::FetchDeps(ex, tc) => ex::fetch_deps(&ex.0, &tc.0)?,
+            Cmd::PrepareAllToolchains(ex) => ex::prepare_all_toolchains(&ex.0)?,
 
             cmd => panic!("unimplemented cmd {:?}", cmd),
         }
@@ -299,6 +304,18 @@ pub mod conv {
             cmd("prepare-ex-local",
                 "prepare local data for experiment")
                 .arg(ex()),
+            cmd("delete-all-target-dirs",
+                "delete the cargo target dirs for an experiment")
+                .arg(ex()),
+            cmd("delete-all-results",
+                "delete all results for an experiment")
+                .arg(ex()),
+            cmd("fetch-deps",
+                "fetch all dependencies for an experiment")
+                .arg(ex()).arg(opt_tc()),
+            cmd("prepare-all-toolchains",
+                "prepare all toolchains for local experiment")
+                .arg(ex()),
         ]
     }
 
@@ -370,6 +387,10 @@ pub mod conv {
 
             // Local experiment prep
             ("prepare-ex-local", Some(m)) => Cmd::PrepareExLocal(ex(m)?),
+            ("delete-all-target-dirs", Some(m)) => Cmd::DeleteAllTargetDirs(ex(m)?),
+            ("delete-all-results", Some(m)) => Cmd::DeleteAllResults(ex(m)?),
+            ("fetch-deps", Some(m)) => Cmd::FetchDeps(ex(m)?, tc(m)?),
+            ("prepare-all-toolchains", Some(m)) => Cmd::PrepareAllToolchains(ex(m)?),
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),
         })

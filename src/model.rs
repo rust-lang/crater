@@ -488,8 +488,24 @@ pub mod conv {
             format!("--ex={}", ex.0)
         }
 
+        fn req_ex(ex: Ex) -> String {
+            format!("{}", ex.0)
+        }
+
+        fn opt_tc(tc: Tc) -> String {
+            format!("--tc={}", tc.0)
+        }
+
         fn req_tc(tc: Tc) -> String {
             tc.0
+        }
+
+        fn opt_mode(mode: ExMode) -> String {
+            format!("--mode={}", mode.to_str())
+        }
+
+        fn opt_crate_select(crate_select: ExCrateSelect) -> String {
+            format!("--crate-select={}", crate_select.to_str())
         }
 
         match cmd {
@@ -500,12 +516,31 @@ pub mod conv {
             Sleep => vec!(),
 
             PrepareToolchain(tc) => vec![req_tc(tc)],
-            /*DefineEx(ex, tc1, tc2, mode, crate_select) => {
-                vec![ex(ex), tc1(tc1), tc2(tc2), mode(mode), crate_select(crate_select)]
-            }*/
+            DefineEx(ex, tc1, tc2, mode, crate_select) => {
+                vec![opt_ex(ex), req_tc(tc1), req_tc(tc2),
+                     opt_mode(mode), opt_crate_select(crate_select)]
+            }
             PrepareEx(ex) => vec![opt_ex(ex)],
+            CopyEx(ex1, ex2) => vec![req_ex(ex1), req_ex(ex2)],
 
-            _ => panic!()
+            DeleteEx(ex) => vec![opt_ex(ex)],
+            PrepareExShared(ex) => vec![opt_ex(ex)],
+            FetchGhMirrors(ex) => vec![opt_ex(ex)],
+            CaptureShas(ex) => vec![opt_ex(ex)],
+            DownloadCrates(ex) => vec![opt_ex(ex)],
+            FrobCargoTomls(ex) => vec![opt_ex(ex)],
+            CaptureLockfiles(ex, tc) => vec![opt_ex(ex), opt_tc(tc)],
+
+            PrepareExLocal(ex) => vec![opt_ex(ex)],
+            DeleteAllTargetDirs(ex) => vec![opt_ex(ex)],
+            DeleteAllResults(ex) => vec![opt_ex(ex)],
+            FetchDeps(ex, tc) => vec![opt_ex(ex), opt_tc(tc)],
+            PrepareAllToolchains(ex) => vec![opt_ex(ex)],
+
+            Run(ex) => vec![opt_ex(ex)],
+            RunTc(ex, tc) => vec![opt_ex(ex), req_tc(tc)],
+
+            GenReport(ex) => vec![opt_ex(ex)],
         }
     }
 

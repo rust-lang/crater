@@ -207,23 +207,57 @@ pub mod conv {
 
     pub fn cmd_descs() -> Vec<CmdDesc> {
         vec![
-            CmdDesc {
-                name: "prepare-local",
-                args: vec![],
-            },
-            CmdDesc {
-                name: "prepare-toolchain",
-                args: vec![CmdArg::Opt("ex", "default")]
-            },
-            CmdDesc {
-                name: "build-container",
-                args: vec![],
-            },
-            CmdDesc {
-                name: "create-lists",
-                args: vec![],
-            },
-        ]
+            (
+                "prepare-local",
+                vec![],
+            ),
+            (
+                 "prepare-toolchain",
+                 vec![CmdArg::Opt("ex", "default")],
+            ),
+            (
+                "build-container",
+                vec![],
+            ),
+            (
+                "create-lists",
+                vec![],
+            ),
+            (
+                "create-lists-full",
+                vec![],
+            ),
+            (
+                "create-recent-list",
+                vec![],
+            ),
+            (
+                "create-second-list",
+                vec![],
+            ),
+            (
+                "create-hot-list",
+                vec![],
+            ),
+            (
+                "create-gh-candidate-list",
+                vec![],
+            ),
+            (
+                "create-gh-app-list",
+                vec![],
+            ),
+            (
+                "create-gh-candidate-list-from-cache",
+                vec![],
+            ),
+            (
+                "create-gh-app-list-from-cache",
+                vec![],
+            )
+        ].into_iter().map(|(a, b)| {
+            CmdDesc { name: a, args: b }
+        }).collect()
     }
 
     pub fn clap_cmd<'a>(desc: &CmdDesc) -> App<'a, 'a> {
@@ -255,7 +289,7 @@ pub mod conv {
             }
         }).collect::<Vec<_>>();
 
-        cmd(desc.name, "about")
+        cmd(desc.name, "todo")
             .args(&args)
     }
 

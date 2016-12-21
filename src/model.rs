@@ -202,6 +202,62 @@ pub mod conv {
     use errors::*;
     use clap::{App, SubCommand, Arg, ArgMatches, AppSettings};
 
+    use bmk::{CmdKey, CmdDesc, CmdArg};
+
+    pub fn cmd_descs() -> Vec<CmdDesc> {
+        vec![
+            CmdDesc {
+                name: "prepare-local",
+                args: vec![],
+            },
+            CmdDesc {
+                name: "prepare-toolchain",
+                args: vec![CmdArg::Opt("ex", "default")]
+            },
+            CmdDesc {
+                name: "build-container",
+                args: vec![],
+            },
+            CmdDesc {
+                name: "create-lists",
+                args: vec![],
+            },
+        ]
+    }
+
+    pub fn clap_cmd<'a>(desc: &CmdDesc) -> App<'a, 'a> {
+        fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
+            Arg::with_name(n)
+                .required(false)
+                .long(n)
+                .default_value(def)
+        }
+
+        fn req(n: &'static str) -> Arg<'static, 'static> {
+            Arg::with_name(n).required(true)
+        }
+
+        fn cmd(n: &'static str, desc: &'static str) -> App<'static, 'static> {
+            SubCommand::with_name(n).about(desc)
+        }
+
+        let arg_to_str = |cmdarg: &CmdArg| {
+            match *cmdarg {
+                CmdArg::Req(s) | CmdArg::Opt(s, _) => s
+            }
+        };
+
+        let args = desc.args.iter().map(|arg| {
+            match *arg {
+                CmdArg::Req(s) => req(s),
+                CmdArg::Opt(s, d) => opt(s, d),
+            }
+        }).collect::<Vec<_>>();
+
+        cmd(desc.name, "about")
+            .args(&args)
+    }
+
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
 
         // Types of arguments

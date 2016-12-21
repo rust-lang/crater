@@ -35,3 +35,18 @@ pub fn run<S, C>(mut state: S, cmd: C) -> Result<S>
 
     Ok(state)
 }
+
+// Types used for conversion between the command enum, clap, and HTTP
+
+/// The string representation of a command variant, or argument name
+pub type CmdKey = &'static str;
+
+pub struct CmdDesc {
+    pub name: CmdKey,
+    pub args: Vec<CmdArg>,
+}
+
+pub enum CmdArg {
+    Req(CmdKey),
+    Opt(CmdKey, &'static str),
+}

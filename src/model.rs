@@ -91,7 +91,7 @@ pub enum ExCrateSelect {
     Demo,
 }
 
-use self::driver::Process;
+use bmk::Process;
 use self::state::GlobalState;
 
 impl Process<GlobalState> for Cmd {
@@ -552,7 +552,7 @@ pub mod conv {
         clap_args_to_cmd(&m)
     }
 
-    use super::driver::Arguable;
+    use bmk::Arguable;
 
     impl Arguable for Cmd {
         fn from_args(args: Vec<String>) -> Result<Self> {
@@ -684,46 +684,6 @@ pub mod state {
                 }
             }
         }
-    }
-}
-
-pub mod driver {
-    use errors::*;
-
-    pub trait Process<S> {
-        fn process(self, s: S) -> Result<(S, Vec<Self>)> where Self: Sized;
-    }
-
-    pub trait Arguable: Sized {
-        fn from_args(args: Vec<String>) -> Result<Self>;
-        fn to_args(self) -> Vec<String>;
-    }
-
-    pub fn run<S, C>(mut state: S, cmd: C) -> Result<S>
-        where C: Process<S>, C: Arguable
-    {
-        let mut cmds = vec!(cmd);
-        loop {
-            if let Some(cmd) = cmds.pop() {
-
-                // Round trip through command line argument parsing,
-                // just for testing purpose.
-                let cmd: Vec<String> = cmd.to_args();
-                let cmd: C = Arguable::from_args(cmd)?;
-
-                let (state_, new_cmds) = cmd.process(state)?;
-                state = state_;
-
-                // Each command execution returns a list of new commands
-                // to execute, in order, before considering the original
-                // complete.
-                cmds.extend(new_cmds.into_iter().rev());
-            } else {
-                break;
-            }
-        }
-
-        Ok(state)
     }
 }
 

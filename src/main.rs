@@ -49,6 +49,7 @@ mod gh_mirrors;
 mod report;
 mod docker;
 mod dirs;
+mod bmk;
 
 use clap::{App, Arg, AppSettings, SubCommand, ArgMatches};
 use errors::*;
@@ -99,7 +100,7 @@ fn cli() -> App<'static, 'static> {
 fn run_cmd(m: &ArgMatches) -> Result<()> {
     let cmd = model::conv::clap_args_to_cmd(m)?;
     let state = model::state::GlobalState::init();
-    let _ = model::driver::run(state, cmd)?;
+    let _ = bmk::run(state, cmd)?;
 
     Ok(())
 }

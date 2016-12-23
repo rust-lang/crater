@@ -269,6 +269,8 @@ fn test_check_only(source_path: &Path, target_path: &Path, rustup_tc: &str) -> R
 
 fn run_in_docker(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> {
 
+    log!("running: {}", args.join(" "));
+
     let source_dir=absolute(source_path);
     let cargo_home=absolute(Path::new(CARGO_HOME));
     let rustup_home=absolute(Path::new(RUSTUP_HOME));

@@ -424,7 +424,7 @@ pub mod conv {
         }
 
         fn tc2(m: &ArgMatches) -> Result<Tc> {
-            Tc::from_str(m.value_of("tc-1").expect(""))
+            Tc::from_str(m.value_of("tc-2").expect(""))
         }
 
         fn mode(m: &ArgMatches) -> Result<ExMode> {

@@ -61,22 +61,23 @@ use dirs::*;
 
 fn main() {
     log::init();
-    let code = match panic::catch_unwind(main_) {
+    let success = match panic::catch_unwind(main_) {
         Ok(Ok(())) => {
-            0
+            true
         }
         Ok(Err(e)) => {
             use std::error::Error;
             util::report_error(&e);
-            1
+            false
         }
         Err(e) => {
             util::report_panic(&*e);
-            1
+            false
         }
     };
+    log!(if success { "command succeeded" } else { "command failed" });
     log::finish();
-    process::exit(code);
+    process::exit(if success { 0 } else { 1 });
 }
 
 fn main_() -> Result<()> {

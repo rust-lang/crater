@@ -7,6 +7,22 @@
 
 # not next
 
+- types of queries
+  - Which crates depend on this crate?
+  - Which crates call this function?
+  - Which functions depend on this function?
+  - Which crates depend on this functions?
+  - Which features are used the most, by which crates?
+  - Transitive unsafe usage?
+  - Run regex on every crate
+    - how many crate use unsafe blocks
+    - unsafe blocks not for ffi
+    - how many crates use x feature
+    - how many crates?
+    - where are lines in crates
+  - Run regex on every item body via syn
+- mass cross-crate refactorings
+- rust type system query language
 - select only most recent crates.io crates
 - api usage counts across ecosystem
 - create toolset for doing analysis on cargobomb

@@ -221,10 +221,13 @@ fn run_single_test<F>(ex_name: &str, c: &ExCrate, source_path: &Path,
 fn test_build_and_test(source_path: &Path, target_path: &Path, rustup_tc: &str) -> Result<TestResult> {
     let tc_arg = &format!("+{}", rustup_tc);
     let build_r = run_in_docker(source_path, target_path, &["cargo", tc_arg, "build", "--frozen"]);
-    let test_r;
+    let mut test_r;
 
     if build_r.is_ok() {
-        test_r = Some(run_in_docker(source_path, target_path, &["cargo", tc_arg, "test", "--frozen"]));
+        // First build, with --no-run
+        test_r = Some(run_in_docker(source_path, target_path, &["cargo", tc_arg, "test", "--frozen", "--no-run"]));
+        // Then run
+        test_r = test_r.map(|_| run_in_docker(source_path, target_path, &["cargo", tc_arg, "test", "--frozen"]));
     } else {
         test_r = None;
     }

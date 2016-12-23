@@ -4,6 +4,7 @@
 #![feature(proc_macro)]
 #![feature(receiver_try_iter)]
 
+extern crate rand;
 extern crate clap;
 #[macro_use]
 extern crate error_chain;

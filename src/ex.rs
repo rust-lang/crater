@@ -60,6 +60,7 @@ pub fn define(opts: ExOpts) -> Result<()> {
     let crates = match opts.crates {
         ExCrateSelect::Full => lists::read_all_lists()?,
         ExCrateSelect::Demo => demo_list()?,
+        ExCrateSelect::SmallRandom => small_random()?,
     };
     define_(&opts.name, opts.toolchains, crates, opts.mode)
 }
@@ -84,6 +85,21 @@ fn demo_list() -> Result<Vec<Crate>> {
         }
     }).collect::<Vec<_>>();
     assert!(crates.len() == 2);
+
+    Ok(crates)
+}
+
+fn small_random() -> Result<Vec<Crate>> {
+    use rand::{thread_rng, Rng};
+
+    const COUNT: usize = 20;
+
+    let mut crates = lists::read_all_lists()?;
+    let mut rng = thread_rng();
+    rng.shuffle(&mut crates);
+
+    crates.truncate(COUNT);
+    crates.sort();
 
     Ok(crates)
 }

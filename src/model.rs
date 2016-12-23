@@ -89,6 +89,7 @@ pub enum ExMode {
 pub enum ExCrateSelect {
     Full,
     Demo,
+    SmallRandom,
 }
 
 use bmk::Process;
@@ -281,7 +282,8 @@ pub mod conv {
             .long("crate-select")
             .default_value(ExCrateSelect::Demo.to_str())
             .possible_values(&[ExCrateSelect::Demo.to_str(),
-                               ExCrateSelect::Full.to_str()]);
+                               ExCrateSelect::Full.to_str(),
+                               ExCrateSelect::SmallRandom.to_str()]);
 
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
             Arg::with_name(n)
@@ -646,6 +648,7 @@ pub mod conv {
             Ok(match s {
                 "full" => ExCrateSelect::Full,
                 "demo" => ExCrateSelect::Demo,
+                "small-random" => ExCrateSelect::SmallRandom,
                 s => bail!("invalid crate-select: {}", s),
             })
         }
@@ -654,6 +657,7 @@ pub mod conv {
             match *self {
                 ExCrateSelect::Full => "full",
                 ExCrateSelect::Demo => "demo",
+                ExCrateSelect::SmallRandom => "small-random",
             }
         }
     }

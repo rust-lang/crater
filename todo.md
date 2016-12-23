@@ -7,6 +7,8 @@
 
 # not next
 
+- select only most recent crates.io crates
+- api usage counts across ecosystem
 - create toolset for doing analysis on cargobomb
 - analyze unsafe rust transitively
 - markdown logging
@@ -124,14 +126,14 @@ docker build -t cargobomb docker
     - hot.txt
     - gh-repos.txt
     - gh-apps.txt
-- ex/ - 
+- ex/
   - $ex/
     - config.json
     - crates.txt
     - lockfiles/
-    - custom-tc/ - ?
+    - custom-tc/
       - $host/
-    - res/ - 
+    - res/
       - $tc/
         - c/
 	  - $crate-id

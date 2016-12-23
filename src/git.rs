@@ -8,13 +8,11 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
     let ref url = frob_url(url);
 
     if !dir.exists() {
-        let r = util::try_hard(|| {
-            log!("cloning {} into {}", url, dir.display());
-            run::run("git",
-                     &["clone", "--depth", "1", url, &dir.to_string_lossy()],
-                     &[])
-                .chain_err(|| format!("unable to clone {}", url))
-        });
+        log!("cloning {} into {}", url, dir.display());
+        let r = run::run("git",
+                         &["clone", "--depth", "1", url, &dir.to_string_lossy()],
+                         &[])
+            .chain_err(|| format!("unable to clone {}", url));
 
         if r.is_err() {
             if dir.exists() {
@@ -24,14 +22,12 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
 
         r
     } else {
-        util::try_hard(|| {
-            log!("pulling existing url {} into {}", url, dir.display());
-            run::cd_run(&dir,
-                        "git",
-                        &["pull"],
-                        &[])
-                .chain_err(|| format!("unable to pull {}", url))
-        })
+        log!("pulling existing url {} into {}", url, dir.display());
+        run::cd_run(&dir,
+                    "git",
+                    &["pull"],
+                    &[])
+            .chain_err(|| format!("unable to pull {}", url))
     }
 }
 

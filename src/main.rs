@@ -75,7 +75,7 @@ fn main() {
             false
         }
     };
-    log!(if success { "command succeeded" } else { "command failed" });
+    log!("{}", if success { "command succeeded" } else { "command failed" });
     log::finish();
     process::exit(if success { 0 } else { 1 });
 }

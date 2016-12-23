@@ -1,11 +1,14 @@
-# not next
+# next
 
 - round-trip subcommands through argument parser
 - delete docker containers on kill
 - run `rustc -Vv` before every test
-
 - delete cargo lockfile after build
 
+# not next
+
+- create toolset for doing analysis on cargobomb
+- analyze unsafe rust transitively
 - markdown logging
 - clean ex target directory
 - clean ex target directory during prepare-ex-local
@@ -82,12 +85,6 @@ https://github.com/farseerfc/ydcv-rs
 
 # Data size
 
-5.5 GB for the most recent crates
-10M lines Rust in most recent crates
-8.6 GB after fetching deps
-3152 deps cached
-13 GB after building up to bytestool
-
 $ du work -hs
 69G     work
 $ du work/ex/default/ -hs
@@ -106,20 +103,17 @@ docker build -t cargobomb docker
 
 # Data model
 
-cargobomb works with a lot of data, and wants to coordinate that between
-distributed workers
-
-- master/
-  - state.json - atomic replace
-- local/
-  - cargo-home/ - mutable
+- master/ - 
+  - state.json
+- local/ - mutable state local to a machine
+  - cargo-home/
   - rustup-home/
   - crates.io-index/
   - gh-clones/
   - target-dirs/
   - test/
   - custom-tc/
-- shared/
+- shared/ - updated uniquely and shared immutably
   - crates/
   - gh-mirrors/
   - fromls/
@@ -130,15 +124,15 @@ distributed workers
     - hot.txt
     - gh-repos.txt
     - gh-apps.txt
-- ex/
-  - $ex-name/
+- ex/ - 
+  - $ex/
     - config.json
     - crates.txt
     - lockfiles/
     - custom-tc/ - ?
       - $host/
-    - run/
-      - $run-name/
+    - res/ - 
+      - $tc/
         - c/
 	  - $crate-id
             - result.txt
@@ -149,14 +143,6 @@ distributed workers
               - $sha/
                 - result.txt
                 - log.txt
-- report/
-  - index.html, etc.
-  - ex
-    - $ex-name
-      - info.json
-      - index.html
-      - report.md
-      - todo
 
 # Local workflow
 

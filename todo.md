@@ -7,6 +7,7 @@
 
 # not next
 
+- show disk usage
 - types of queries
   - Which crates depend on this crate?
   - Which crates call this function?

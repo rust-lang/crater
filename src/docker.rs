@@ -48,8 +48,7 @@ pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> 
                          "-e", cmd_env,
                          image_name];
 
-    run::run("docker", &args_, &[])
-        .chain_err(|| "cargo build failed")?;
+    run::run("docker", &args_, &[])?;
 
     Ok(())
 }

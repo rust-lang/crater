@@ -35,7 +35,12 @@ pub fn result_log(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf
 }
 
 pub fn delete_all_results(ex_name: &str) -> Result<()> {
-    util::remove_dir_all(&ex_dir(ex_name).join("res"))
+    let ref dir = ex_dir(ex_name).join("res");
+    if dir.exists() {
+        util::remove_dir_all(dir)?;
+    }
+
+    Ok(())
 }
 
 fn crate_to_dir(c: &ExCrate) -> Result<String> {

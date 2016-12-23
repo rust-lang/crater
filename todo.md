@@ -167,6 +167,8 @@ docker build -t cargobomb docker
     - capture-lockfiles
   - prepare-ex-custom-toolchains (todo)
   - prepare-ex-local
+    - delete-all-target-dirs
+    - delete-all-results
     - fetch-deps
     - prepare-all-toolchains-for-ex
 - run

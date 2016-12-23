@@ -1,6 +1,5 @@
 # next
 
-- round-trip subcommands through argument parser
 - delete docker containers on kill
 - run `rustc -Vv` before every test
 - delete cargo lockfile after build

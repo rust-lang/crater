@@ -25,7 +25,7 @@ pub struct Ex(String);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tc(String);
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Cmd {
     /* Basic synchronous commands */
 
@@ -81,7 +81,7 @@ pub enum Cmd {
 }
 
 #[derive(Serialize, Deserialize)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExMode {
     BuildAndTest,
     BuildOnly,
@@ -89,7 +89,7 @@ pub enum ExMode {
     UnstableFeatures
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ExCrateSelect {
     Full,
     Demo,

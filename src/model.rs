@@ -25,6 +25,9 @@ pub struct Ex(String);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tc(String);
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SayMsg(String);
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Cmd {
     /* Basic synchronous commands */
@@ -78,6 +81,7 @@ pub enum Cmd {
 
     // Misc
     Sleep,
+    Say(SayMsg),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -199,6 +203,7 @@ impl Process<GlobalState> for Cmd {
 
             // Misc
             Cmd::Sleep => run::run("sleep", &["5"], &[])?,
+            Cmd::Say(msg) => log!("{}", msg.0),
         }
 
         Ok((st, cmds))
@@ -329,6 +334,7 @@ pub mod conv {
             .possible_values(&[ExCrateSelect::Demo.to_str(),
                                ExCrateSelect::Full.to_str(),
                                ExCrateSelect::SmallRandom.to_str()]);
+        let say_msg = || req("say-msg");
 
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
             Arg::with_name(n)
@@ -452,6 +458,9 @@ pub mod conv {
             // Misc
             cmd("sleep",
                 "sleep"),
+            cmd("say",
+                "say something")
+                .arg(say_msg()),
         ]
     }
 
@@ -491,6 +500,10 @@ pub mod conv {
 
         fn cmd(m: &ArgMatches) -> Result<Box<Cmd>> {
             Ok(Box::new(clap_args_to_cmd(m)?))
+        }
+
+        fn say_msg(m: &ArgMatches) -> Result<SayMsg> {
+            Ok(SayMsg(m.value_of("say-msg").expect("").to_string()))
         }
 
         Ok(match m.subcommand() {
@@ -544,6 +557,7 @@ pub mod conv {
 
             // Misc
             ("sleep", _) => Cmd::Sleep,
+            ("say", Some(m)) => Cmd::Say(say_msg(m)?),
 
             (s, _) => panic!("unimplemented args_to_cmd {}", s),
         })
@@ -592,6 +606,7 @@ pub mod conv {
             CreateLocalJob(..) => "create-local-job",
 
             Sleep => "sleep",
+            Say(..) => "say",
         }
     }
 
@@ -629,6 +644,10 @@ pub mod conv {
             format!("--crate-select={}", crate_select.to_str())
         }
 
+        fn req_say_msg(say_msg: SayMsg) -> String {
+            say_msg.0
+        }
+
         match cmd {
             PrepareLocal | BuildContainer | CreateLists |
             CreateListsFull | CreateRecentList | CreateSecondList |
@@ -664,6 +683,8 @@ pub mod conv {
             GenReport(ex) => vec![opt_ex(ex)],
 
             CreateLocalJob(cmd) => cmd_to_args(*cmd),
+
+            Say(msg) => vec![req_say_msg(msg)],
         }
     }
 
@@ -740,6 +761,7 @@ pub mod conv {
             Ok(Tc(tc.to_string()))
         }
     }
+
 }
 
 pub mod state {

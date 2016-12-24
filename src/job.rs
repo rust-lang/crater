@@ -75,11 +75,11 @@ pub fn create_local(cmd: Cmd) -> Result<()> {
     Ok(())
 }
 
-pub fn run_local(job: JobId) -> Result<()> {
+pub fn run(job: JobId) -> Result<()> {
     let job = read_job(job)?;
     panic!("")
 }
 
-pub fn wait_local(job: JobId) -> Result<()> {
+pub fn wait(job: JobId) -> Result<()> {
     panic!("")
 }

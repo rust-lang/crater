@@ -21,6 +21,7 @@
     - how many crates?
     - where are lines in crates
   - Run regex on every item body via syn
+  - Who is using PhantomData and why?
 - mass cross-crate refactorings
 - rust type system query language
 - select only most recent crates.io crates

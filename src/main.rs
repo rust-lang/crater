@@ -2,7 +2,6 @@
 
 #![allow(unused)]
 #![feature(proc_macro)]
-#![feature(receiver_try_iter)]
 
 extern crate rand;
 extern crate clap;
@@ -51,6 +50,8 @@ mod report;
 mod docker;
 mod dirs;
 mod bmk;
+mod job;
+mod blobject;
 
 use clap::{App, Arg, AppSettings, SubCommand, ArgMatches};
 use errors::*;

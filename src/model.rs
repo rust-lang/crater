@@ -14,17 +14,18 @@ parallel access is consistent and race-free.
 */
 
 use errors::*;
+use serde::{Serialize, Deserialize};
 
 // An experiment name
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ex(String);
 
 // A toolchain name, either a rustup channel identifier,
 // or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tc(String);
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Cmd {
     /* Basic synchronous commands */
 
@@ -72,6 +73,9 @@ pub enum Cmd {
     // Reporting
     GenReport(Ex),
 
+    // Job control
+    CreateLocalJob(Box<Cmd>),
+
     // Misc
     Sleep,
 }
@@ -85,7 +89,7 @@ pub enum ExMode {
     UnstableFeatures
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ExCrateSelect {
     Full,
     Demo,
@@ -104,6 +108,7 @@ impl Process<GlobalState> for Cmd {
         use ex_run;
         use run;
         use report;
+        use job;
 
         let mut cmds = Vec::new();
         match self {
@@ -188,6 +193,9 @@ impl Process<GlobalState> for Cmd {
 
             // Reporting
             Cmd::GenReport(ex) => report::gen(&ex.0)?,
+
+            // Job control
+            Cmd::CreateLocalJob(cmd) => job::create_local(*cmd)?,
 
             // Misc
             Cmd::Sleep => run::run("sleep", &["5"], &[])?,
@@ -294,7 +302,10 @@ pub mod conv {
     }
 
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
+        clap_cmds_(true)
+    }
 
+    fn clap_cmds_(recurse: bool) -> Vec<App<'static, 'static>> {
         // Types of arguments
         let ex = || opt("ex", "default");
         let ex1 = || req("ex-1");
@@ -429,6 +440,15 @@ pub mod conv {
                 "generate the experiment report")
                 .arg(ex()),
 
+            // Job control
+            if recurse {
+                cmd("create-local-job",
+                    "start a local job in docker")
+                    .subcommands(clap_cmds_(false))
+            } else {
+                cmd("create-local-job", "nop")
+            },
+
             // Misc
             cmd("sleep",
                 "sleep"),
@@ -467,6 +487,10 @@ pub mod conv {
 
         fn crate_select(m: &ArgMatches) -> Result<ExCrateSelect> {
             ExCrateSelect::from_str(m.value_of("crate-select").expect(""))
+        }
+
+        fn cmd(m: &ArgMatches) -> Result<Box<Cmd>> {
+            Ok(Box::new(clap_args_to_cmd(m)?))
         }
 
         Ok(match m.subcommand() {
@@ -515,6 +539,9 @@ pub mod conv {
             // Reporting
             ("gen-report", Some(m)) => Cmd::GenReport(ex(m)?),
 
+            // Job control
+            ("create-local-job", Some(m)) => Cmd::CreateLocalJob(cmd(m)?),
+
             // Misc
             ("sleep", _) => Cmd::Sleep,
 
@@ -561,6 +588,8 @@ pub mod conv {
             RunTc(..) => "run-tc",
 
             GenReport(..) => "gen-report",
+
+            CreateLocalJob(..) => "create-local-job",
 
             Sleep => "sleep",
         }
@@ -633,6 +662,8 @@ pub mod conv {
             RunTc(ex, tc) => vec![opt_ex(ex), req_tc(tc)],
 
             GenReport(ex) => vec![opt_ex(ex)],
+
+            CreateLocalJob(cmd) => cmd_to_args(*cmd),
         }
     }
 

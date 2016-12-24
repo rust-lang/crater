@@ -30,3 +30,5 @@ pub const FROB_DIR: &'static str = "./work/shared/fromls";
 pub const EXPERIMENT_DIR: &'static str = "./work/ex";
 pub const LOG_DIR: &'static str = "./work/logs";
 
+// State for asynchronous job management
+pub const JOB_DIR: &'static str = "./work/jobs";

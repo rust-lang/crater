@@ -2,6 +2,8 @@ use errors::*;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write, BufRead, BufReader};
 use std::path::Path;
+use serde::{Serialize, Deserialize};
+use serde_json;
 
 pub fn write_string(path: &Path, s: &str) -> Result<()> {
     let mut f = File::create(path)?;
@@ -33,4 +35,17 @@ pub fn append_line(path: &Path, s: &str) -> Result<()> {
     f.write_all(s.as_bytes())?;
     f.write_all("\n".as_bytes())?;
     Ok(())
+}
+
+pub fn write_json<T>(path: &Path, t: &T) -> Result<()>
+    where T: Serialize + Deserialize
+{
+    let ref s = serde_json::to_string(t)?;
+    write_string(path, s)
+}
+
+pub fn read_json<T>(path: &Path, t: &T) -> Result<()> {
+    let ref s = read_string(path)?;
+    let t = serde_json::from_str(s)?;
+    Ok(t)
 }

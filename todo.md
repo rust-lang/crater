@@ -1,11 +1,11 @@
 # next
 
-- delete docker containers on kill
-- run `rustc -Vv` before every test
-- delete cargo lockfile after build
-
 # not next
 
+- add single crate mode
+- sort out model boilerplate
+- delete cargo lockfile after build
+- run `rustc -Vv` before every test
 - show disk usage
 - types of queries
   - Which crates depend on this crate?

@@ -177,7 +177,7 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
         }
     });
 
-    // Have another thread listening four heartbeats on stdout/stderr
+    // Have another thread listening for heartbeats on stdout/stderr
     let (heartbeat_timeout_tx, heartbeat_timeout_rx) = mpsc::channel();
     let (heartbeat_cancel_tx, heartbeat_cancel_rx) = mpsc::channel();
     thread::spawn(move || {

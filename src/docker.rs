@@ -38,9 +38,7 @@ pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> 
     let user_env = &format!("USER_ID={}", user_id());
     let cmd_env = &format!("CMD={}", args.join(" "));
 
-    let mut args_ = vec!["run", "-i",
-                         "--rm",
-                         "-v", test_mount,
+    let ref args_ = vec!["-v", test_mount,
                          "-v", cargo_home_mount,
                          "-v", rustup_home_mount,
                          "-v", target_mount,
@@ -48,9 +46,7 @@ pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> 
                          "-e", cmd_env,
                          image_name];
 
-    run::run("docker", &args_, &[])?;
-
-    Ok(())
+    run_in_docker(args_)
 }
 
 fn absolute(path: &Path) -> PathBuf {
@@ -70,4 +66,32 @@ fn user_id() -> ::libc::uid_t {
 #[cfg(windows)]
 fn user_id() -> u32 {
     panic!("unimplemented user_id");
+}
+
+fn run_in_docker(args: &[&str]) -> Result<()> {
+    let ref c = create_container(args)?;
+    defer!{{
+        delete_container(c);
+    }}
+    wait_for_container(c)?;
+    Ok(())
+}
+
+struct Container(String);
+
+fn create_container(args: &[&str]) -> Result<Container> {
+    let mut args_ = vec![
+        "create"
+    ];
+    args_.extend(args.iter());
+    let (out, _) = run::run_capture(None, "docker", &args_, &[])?;
+    Ok(Container(out[0].clone()))
+}
+
+fn wait_for_container(c: &Container) -> Result<()> {
+    run::run("docker", &["start", "-a", &c.0], &[])
+}
+
+fn delete_container(c: &Container) -> Result<()> {
+    run::run("docker", &["rm", "-f", &c.0], &[])
 }

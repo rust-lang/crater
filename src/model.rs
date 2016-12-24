@@ -15,6 +15,7 @@ parallel access is consistent and race-free.
 
 use errors::*;
 use serde::{Serialize, Deserialize};
+use job::JobId;
 
 // An experiment name
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,6 +28,9 @@ pub struct Tc(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SayMsg(String);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Job(JobId);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Cmd {
@@ -78,6 +82,7 @@ pub enum Cmd {
 
     // Job control
     CreateLocalJob(Box<Cmd>),
+    RunJob(Job),
 
     // Misc
     Sleep,
@@ -200,6 +205,7 @@ impl Process<GlobalState> for Cmd {
 
             // Job control
             Cmd::CreateLocalJob(cmd) => job::create_local(*cmd)?,
+            Cmd::RunJob(job) => job::run(job.0)?,
 
             // Misc
             Cmd::Sleep => run::run("sleep", &["5"], &[])?,
@@ -334,6 +340,7 @@ pub mod conv {
             .possible_values(&[ExCrateSelect::Demo.to_str(),
                                ExCrateSelect::Full.to_str(),
                                ExCrateSelect::SmallRandom.to_str()]);
+        let job = || req("job");
         let say_msg = || req("say-msg");
 
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
@@ -454,6 +461,9 @@ pub mod conv {
             } else {
                 cmd("create-local-job", "nop")
             },
+            cmd("run-job",
+                "run a job to completion")
+                .arg(job()),
 
             // Misc
             cmd("sleep",
@@ -500,6 +510,10 @@ pub mod conv {
 
         fn cmd(m: &ArgMatches) -> Result<Box<Cmd>> {
             Ok(Box::new(clap_args_to_cmd(m)?))
+        }
+
+        fn job(m: &ArgMatches) -> Result<Job> {
+            Job::from_str(m.value_of("crate-select").expect(""))
         }
 
         fn say_msg(m: &ArgMatches) -> Result<SayMsg> {
@@ -554,6 +568,7 @@ pub mod conv {
 
             // Job control
             ("create-local-job", Some(m)) => Cmd::CreateLocalJob(cmd(m)?),
+            ("run-job", Some(m)) => Cmd::RunJob(job(m)?),
 
             // Misc
             ("sleep", _) => Cmd::Sleep,
@@ -604,6 +619,7 @@ pub mod conv {
             GenReport(..) => "gen-report",
 
             CreateLocalJob(..) => "create-local-job",
+            RunJob(..) => "run-job",
 
             Sleep => "sleep",
             Say(..) => "say",
@@ -642,6 +658,10 @@ pub mod conv {
 
         fn opt_crate_select(crate_select: ExCrateSelect) -> String {
             format!("--crate-select={}", crate_select.to_str())
+        }
+
+        fn req_job(job: Job) -> String {
+            job.0.to_string()
         }
 
         fn req_say_msg(say_msg: SayMsg) -> String {
@@ -683,6 +703,7 @@ pub mod conv {
             GenReport(ex) => vec![opt_ex(ex)],
 
             CreateLocalJob(cmd) => cmd_to_args(*cmd),
+            RunJob(job) => vec![req_job(job)],
 
             Say(msg) => vec![req_say_msg(msg)],
         }
@@ -745,6 +766,13 @@ pub mod conv {
                 ExCrateSelect::Demo => "demo",
                 ExCrateSelect::SmallRandom => "small-random",
             }
+        }
+    }
+
+    impl Job {
+        pub fn from_str(job: &str) -> Result<Job> {
+            Ok(Job(JobId(job.parse()
+                         .chain_err(|| "parsing job id")?)))
         }
     }
 

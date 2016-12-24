@@ -9,8 +9,8 @@ use model::Cmd;
 use bmk::Arguable;
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, Copy, Clone)]
-pub struct JobId(u64);
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub struct JobId(pub u64);
 
 #[derive(Serialize, Deserialize)]
 struct Job {

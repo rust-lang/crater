@@ -52,6 +52,7 @@ mod dirs;
 mod bmk;
 mod job;
 mod blobject;
+mod home;
 
 use clap::{App, Arg, AppSettings, SubCommand, ArgMatches};
 use errors::*;

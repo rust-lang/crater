@@ -82,7 +82,7 @@ pub enum Cmd {
 
     // Job control
     CreateLocalJob(Box<Cmd>),
-    RunJob(Job),
+    StartJob(Job),
 
     // Misc
     Sleep,
@@ -205,7 +205,7 @@ impl Process<GlobalState> for Cmd {
 
             // Job control
             Cmd::CreateLocalJob(cmd) => job::create_local(*cmd)?,
-            Cmd::RunJob(job) => job::run(job.0)?,
+            Cmd::StartJob(job) => job::start(job.0)?,
 
             // Misc
             Cmd::Sleep => run::run("sleep", &["5"], &[])?,
@@ -461,8 +461,8 @@ pub mod conv {
             } else {
                 cmd("create-local-job", "nop")
             },
-            cmd("run-job",
-                "run a job to completion")
+            cmd("start-job",
+                "start a job asynchronously")
                 .arg(job()),
 
             // Misc
@@ -513,7 +513,7 @@ pub mod conv {
         }
 
         fn job(m: &ArgMatches) -> Result<Job> {
-            Job::from_str(m.value_of("crate-select").expect(""))
+            Job::from_str(m.value_of("job").expect(""))
         }
 
         fn say_msg(m: &ArgMatches) -> Result<SayMsg> {
@@ -568,7 +568,7 @@ pub mod conv {
 
             // Job control
             ("create-local-job", Some(m)) => Cmd::CreateLocalJob(cmd(m)?),
-            ("run-job", Some(m)) => Cmd::RunJob(job(m)?),
+            ("start-job", Some(m)) => Cmd::StartJob(job(m)?),
 
             // Misc
             ("sleep", _) => Cmd::Sleep,
@@ -619,7 +619,7 @@ pub mod conv {
             GenReport(..) => "gen-report",
 
             CreateLocalJob(..) => "create-local-job",
-            RunJob(..) => "run-job",
+            StartJob(..) => "start-job",
 
             Sleep => "sleep",
             Say(..) => "say",
@@ -703,7 +703,7 @@ pub mod conv {
             GenReport(ex) => vec![opt_ex(ex)],
 
             CreateLocalJob(cmd) => cmd_to_args(*cmd),
-            RunJob(job) => vec![req_job(job)],
+            StartJob(job) => vec![req_job(job)],
 
             Say(msg) => vec![req_say_msg(msg)],
         }

@@ -1,3 +1,7 @@
+use docker::{self, RustEnv, Perm};
+use model;
+use std::env;
+use home;
 use std::path::{Path, PathBuf};
 use JOB_DIR;
 use std::fs;
@@ -37,7 +41,7 @@ use std::fmt::{self, Display, Formatter};
 
 impl Display for JobId {
     fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
-        let s = format!("{:x}", self.0);
+        let s = format!("{0:}", self.0);
         s.fmt(f)
     }
 }
@@ -75,9 +79,65 @@ pub fn create_local(cmd: Cmd) -> Result<()> {
     Ok(())
 }
 
-pub fn run(job: JobId) -> Result<()> {
+pub fn start(job: JobId) -> Result<()> {
     let job = read_job(job)?;
-    panic!("")
+
+    match job.kind {
+        JobKind::Docker(None) => {
+
+            let work_dir = env::current_dir()?;
+            let cargo_home = home::cargo_home()?;
+            let rustup_home = home::rustup_home()?;
+            let target_dir = PathBuf::from("./target");
+
+            let self_exe = env::current_exe()?;
+            let exe = self_exe.strip_prefix(&work_dir)
+                .chain_err(|| "self exe prefix")?
+                .to_owned();
+
+            log!("job config:");
+            log!("work_dir: {}", work_dir.display());
+            log!("cargo_home: {}", cargo_home.display());
+            log!("rustup_home: {}", rustup_home.display());
+            log!("target_dir: {}", target_dir.display());
+            log!("self_exe: {}", self_exe.display());
+            log!("exe: {}", exe.display());
+
+            let args = model::conv::cmd_to_args(job.cmd.clone());
+            let args = args.iter().map(|s|&**s).collect::<Vec<_>>();
+            let exe = format!("{}", exe.display());
+            let mut args_ = vec![&*exe];
+            args_.extend(args);
+            let env = RustEnv {
+                args: &*args_,
+                work_dir: (work_dir, Perm::ReadWrite),
+                cargo_home: (cargo_home, Perm::ReadWrite),
+                rustup_home: (rustup_home, Perm::ReadWrite),
+                target_dir: (target_dir, Perm::ReadWrite),
+            };
+
+            let c = docker::create_rust_container(&env)?;
+            docker::start_container(&c)
+                .map_err(|e| {
+                    let _ = docker::delete_container(&c);
+                    e
+                })?;
+
+            let mut job = job;
+            job.kind = JobKind::Docker(Some(c.clone()));
+            write_job(&job)?;
+
+            log!("job {} started in container {}", job.id, c);
+        },
+        JobKind::Docker(Some(c)) => {
+            bail!("job {} already started in container {}", job.id, c);
+        }
+        JobKind::Ec2 => {
+            panic!("ec2");
+        }
+    }
+
+    Ok(())
 }
 
 pub fn wait(job: JobId) -> Result<()> {

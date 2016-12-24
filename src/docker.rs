@@ -17,11 +17,11 @@ pub fn build_container() -> Result<()> {
 pub enum Perm { ReadWrite, ReadOnly }
 
 pub struct RustEnv<'a> {
-    args: &'a [&'a str],
-    work_dir: (PathBuf, Perm),
-    cargo_home: (PathBuf, Perm),
-    rustup_home: (PathBuf, Perm),
-    target_dir: (PathBuf, Perm),
+    pub args: &'a [&'a str],
+    pub work_dir: (PathBuf, Perm),
+    pub cargo_home: (PathBuf, Perm),
+    pub rustup_home: (PathBuf, Perm),
+    pub target_dir: (PathBuf, Perm),
 }
 
 pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
@@ -124,8 +124,16 @@ fn run_in_docker(args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Container(String);
+
+use std::fmt::{self, Display, Formatter};
+
+impl Display for Container {
+    fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
+        self.0.fmt(f)
+    }
+}
 
 fn create_container(args: &[&str]) -> Result<Container> {
     let mut args_ = vec![
@@ -136,13 +144,21 @@ fn create_container(args: &[&str]) -> Result<Container> {
     Ok(Container(out[0].clone()))
 }
 
-pub fn run_container(c: &Container) -> Result<()> {
+fn run_container(c: &Container) -> Result<()> {
     defer!{{
         delete_container(c);
     }}
     run::run("docker", &["start", "-a", &c.0], &[])
 }
 
-fn delete_container(c: &Container) -> Result<()> {
+pub fn start_container(c: &Container) -> Result<()> {
+    run::run("docker", &["start", &c.0], &[])
+}
+
+pub fn wait_for_container(c: &Container) -> Result<()> {
+    run::run("docker", &["wait", &c.0], &[])
+}
+
+pub fn delete_container(c: &Container) -> Result<()> {
     run::run("docker", &["rm", "-f", &c.0], &[])
 }

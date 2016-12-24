@@ -13,6 +13,56 @@ pub fn build_container() -> Result<()> {
     run::run("docker", &["build", "-t", "cargobomb", "docker"], &[])
 }
 
+#[derive(Copy, Clone)]
+pub enum Perm { ReadWrite, ReadOnly }
+
+pub struct RustEnv<'a> {
+    args: &'a [&'a str],
+    work_dir: (PathBuf, Perm),
+    cargo_home: (PathBuf, Perm),
+    rustup_home: (PathBuf, Perm),
+    target_dir: (PathBuf, Perm),
+}
+
+pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
+    log!("creating container for: {}", env.args.join(" "));
+
+    fs::create_dir_all(&env.work_dir.0);
+    fs::create_dir_all(&env.cargo_home.0);
+    fs::create_dir_all(&env.rustup_home.0);
+    fs::create_dir_all(&env.target_dir.0);
+
+    let mount_arg = |host_path, container_path, perm| {
+        let perm = match perm {
+            Perm::ReadWrite => "rw",
+            Perm::ReadOnly => "ro",
+        };
+        format!("{}:{}:{}",
+                absolute(host_path).display(),
+                container_path, perm)
+    };
+
+    let work_mount = mount_arg(&env.work_dir.0, "/source", env.work_dir.1);
+    let cargo_home_mount = mount_arg(&env.cargo_home.0, "/cargo-home", env.cargo_home.1);
+    let rustup_home_mount = mount_arg(&env.rustup_home.0, "/rustup-home", env.rustup_home.1);
+    let target_mount = mount_arg(&env.target_dir.0, "/target", env.target_dir.1);
+
+    let image_name = "cargobomb";
+
+    let user_env = &format!("USER_ID={}", user_id());
+    let cmd_env = &format!("CMD={}", env.args.join(" "));
+
+    let ref args_ = vec!["-v", &work_mount,
+                         "-v", &cargo_home_mount,
+                         "-v", &rustup_home_mount,
+                         "-v", &target_mount,
+                         "-e", &user_env,
+                         "-e", &cmd_env,
+                         image_name];
+
+    create_container(args_)
+}
+
 pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> {
 
     log!("running: {}", args.join(" "));
@@ -70,10 +120,7 @@ fn user_id() -> u32 {
 
 fn run_in_docker(args: &[&str]) -> Result<()> {
     let ref c = create_container(args)?;
-    defer!{{
-        delete_container(c);
-    }}
-    wait_for_container(c)?;
+    run_container(c)?;
     Ok(())
 }
 
@@ -89,7 +136,10 @@ fn create_container(args: &[&str]) -> Result<Container> {
     Ok(Container(out[0].clone()))
 }
 
-fn wait_for_container(c: &Container) -> Result<()> {
+pub fn run_container(c: &Container) -> Result<()> {
+    defer!{{
+        delete_container(c);
+    }}
     run::run("docker", &["start", "-a", &c.0], &[])
 }
 

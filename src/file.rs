@@ -38,13 +38,15 @@ pub fn append_line(path: &Path, s: &str) -> Result<()> {
 }
 
 pub fn write_json<T>(path: &Path, t: &T) -> Result<()>
-    where T: Serialize + Deserialize
+    where T: Serialize
 {
     let ref s = serde_json::to_string(t)?;
     write_string(path, s)
 }
 
-pub fn read_json<T>(path: &Path, t: &T) -> Result<()> {
+pub fn read_json<T>(path: &Path) -> Result<T>
+    where T: Deserialize
+{
     let ref s = read_string(path)?;
     let t = serde_json::from_str(s)?;
     Ok(t)

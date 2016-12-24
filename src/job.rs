@@ -46,6 +46,18 @@ fn job_path(job: JobId) -> PathBuf {
     Path::new(JOB_DIR).join(&format!("{}.json", job))
 }
 
+fn write_job(job: &Job) -> Result<()> {
+    let ref job_path = job_path(job.id);
+    fs::create_dir_all(&Path::new(JOB_DIR))?;
+
+    file::write_json(job_path, job)
+}
+
+fn read_job(job: JobId) -> Result<Job> {
+    let ref job_path = job_path(job);
+    file::read_json(job_path)
+}
+
 pub fn create_local(cmd: Cmd) -> Result<()> {
     log!("create local job: {}", cmd.clone().to_args().join(" "));
 
@@ -56,17 +68,15 @@ pub fn create_local(cmd: Cmd) -> Result<()> {
         state: JobState::Created,
     };
 
-    let ref job_path = job_path(job.id);
-    fs::create_dir_all(&Path::new(JOB_DIR))?;
+    write_job(job)?;
 
-    file::write_json(job_path, job)?;
-
-    log!("job {} created in {}", job.id, job_path.display());
+    log!("job {} created in {}", job.id, job_path(job.id).display());
 
     Ok(())
 }
 
 pub fn run_local(job: JobId) -> Result<()> {
+    let job = read_job(job)?;
     panic!("")
 }
 

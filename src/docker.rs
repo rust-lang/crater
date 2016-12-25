@@ -144,7 +144,7 @@ fn create_container(args: &[&str]) -> Result<Container> {
     Ok(Container(out[0].clone()))
 }
 
-fn run_container(c: &Container) -> Result<()> {
+pub fn run_container(c: &Container) -> Result<()> {
     defer!{{
         delete_container(c);
     }}

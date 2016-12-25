@@ -80,6 +80,15 @@ pub fn create_local(cmd: Cmd) -> Result<()> {
 }
 
 pub fn start(job: JobId) -> Result<()> {
+    start_(job, false)
+}
+
+pub fn run(job: JobId) -> Result<()> {
+    start_(job, true)
+}
+
+fn start_(job: JobId, wait: bool) -> Result<()> {
+
     let job = read_job(job)?;
 
     match job.state {
@@ -109,7 +118,8 @@ pub fn start(job: JobId) -> Result<()> {
             log!("self_exe: {}", self_exe.display());
             log!("exe: {}", exe.display());
 
-            let args = model::conv::cmd_to_args(job.cmd.clone());
+            let cmd = Cmd::RunCmdForJob(model::Job(job.id));
+            let args = model::conv::cmd_to_args(cmd);
             let args = args.iter().map(|s|&**s).collect::<Vec<_>>();
             let exe = format!("{}", exe.display());
             let mut args_ = vec![&*exe];
@@ -123,11 +133,14 @@ pub fn start(job: JobId) -> Result<()> {
             };
 
             let c = docker::create_rust_container(&env)?;
-            docker::start_container(&c)
-                .map_err(|e| {
-                    let _ = docker::delete_container(&c);
-                    e
-                })?;
+            if wait {
+                docker::run_container(&c)
+            } else {
+                docker::start_container(&c)
+            }.map_err(|e| {
+                let _ = docker::delete_container(&c);
+                e
+            })?;
 
             let mut job = job;
             job.state = JobState::Running;
@@ -173,6 +186,21 @@ pub fn wait(job: JobId) -> Result<()> {
             panic!("ec2");
         }
     }
+
+    Ok(())
+}
+
+/// This is the command run inside the job container to execute
+/// the originally-requested command that defines the job
+pub fn run_cmd_for_job(job: JobId) -> Result<()> {
+    use bmk;
+
+    let job = read_job(job)?;
+
+    // FIXME: Instead of reinitializing the run loop here it would be better
+    // to just pass the cmd to be run back to the original loop.
+    let state = model::state::GlobalState::init();
+    let _ = bmk::run(state, job.cmd)?;
 
     Ok(())
 }

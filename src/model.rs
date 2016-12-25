@@ -30,7 +30,7 @@ pub struct Tc(String);
 pub struct SayMsg(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Job(JobId);
+pub struct Job(pub JobId);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Cmd {
@@ -84,6 +84,8 @@ pub enum Cmd {
     CreateDockerJob(Box<Cmd>),
     StartJob(Job),
     WaitForJob(Job),
+    RunJob(Job),
+    RunCmdForJob(Job),
 
     // Misc
     Sleep,
@@ -208,6 +210,8 @@ impl Process<GlobalState> for Cmd {
             Cmd::CreateDockerJob(cmd) => job::create_local(*cmd)?,
             Cmd::StartJob(job) => job::start(job.0)?,
             Cmd::WaitForJob(job) => job::wait(job.0)?,
+            Cmd::RunJob(job) => job::run(job.0)?,
+            Cmd::RunCmdForJob(job) => job::run_cmd_for_job(job.0)?,
 
             // Misc
             Cmd::Sleep => run::run("sleep", &["5"], &[])?,
@@ -469,6 +473,12 @@ pub mod conv {
             cmd("wait-for-job",
                 "wait for a job to complete")
                 .arg(job()),
+            cmd("run-job",
+                "run a pending job synchronously")
+                .arg(job()),
+            cmd("run-cmd-for-job",
+                "run a command for a job, inside the job environment")
+                .arg(job()),
 
             // Misc
             cmd("sleep",
@@ -575,6 +585,8 @@ pub mod conv {
             ("create-docker-job", Some(m)) => Cmd::CreateDockerJob(cmd(m)?),
             ("start-job", Some(m)) => Cmd::StartJob(job(m)?),
             ("wait-for-job", Some(m)) => Cmd::WaitForJob(job(m)?),
+            ("run-job", Some(m)) => Cmd::RunJob(job(m)?),
+            ("run-cmd-for-job", Some(m)) => Cmd::RunCmdForJob(job(m)?),
 
             // Misc
             ("sleep", _) => Cmd::Sleep,
@@ -627,6 +639,8 @@ pub mod conv {
             CreateDockerJob(..) => "create-docker-job",
             StartJob(..) => "start-job",
             WaitForJob(..) => "wait-for-job",
+            RunJob(..) => "run-job",
+            RunCmdForJob(..) => "run-cmd-for-job",
 
             Sleep => "sleep",
             Say(..) => "say",
@@ -712,6 +726,8 @@ pub mod conv {
             CreateDockerJob(cmd) => cmd_to_args(*cmd),
             StartJob(job) => vec![req_job(job)],
             WaitForJob(job) => vec![req_job(job)],
+            RunJob(job) => vec![req_job(job)],
+            RunCmdForJob(job) => vec![req_job(job)],
 
             Say(msg) => vec![req_say_msg(msg)],
         }

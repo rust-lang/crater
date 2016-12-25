@@ -120,6 +120,9 @@ fn user_id() -> u32 {
 
 fn run_in_docker(args: &[&str]) -> Result<()> {
     let ref c = create_container(args)?;
+    defer!{{
+        delete_container(c);
+    }}
     run_container(c)?;
     Ok(())
 }
@@ -145,9 +148,6 @@ fn create_container(args: &[&str]) -> Result<Container> {
 }
 
 pub fn run_container(c: &Container) -> Result<()> {
-    defer!{{
-        delete_container(c);
-    }}
     run::run("docker", &["start", "-a", &c.0], &[])
 }
 

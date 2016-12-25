@@ -19,8 +19,8 @@ pub fn cargo_home() -> Result<PathBuf> {
 }
 
 pub fn rustup_home() -> Result<PathBuf> {
-    if let Ok(p) = env::var("CARGO_HOME") {
+    if let Ok(p) = env::var("RUSTUP_HOME") {
         return Ok(PathBuf::from(p));
     }
-    Ok(home_dir()?.join(".cargo"))
+    Ok(home_dir()?.join(".rustup"))
 }

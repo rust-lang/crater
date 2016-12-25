@@ -80,21 +80,31 @@ pub fn create_local(cmd: Cmd) -> Result<()> {
 }
 
 pub fn start(job: JobId) -> Result<()> {
-    start_(job, false)
+    start_(job, false, false)
 }
 
 pub fn run(job: JobId) -> Result<()> {
-    start_(job, true)
+    start_(job, true, false)?;
+    wait(job)
 }
 
-fn start_(job: JobId, wait: bool) -> Result<()> {
+pub fn run_again(job: JobId) -> Result<()> {
+    start_(job, true, true)?;
+    wait(job)
+}
+
+fn start_(job: JobId, wait: bool, again: bool) -> Result<()> {
 
     let job = read_job(job)?;
 
     match job.state {
         JobState::Created => (),
         JobState::Running => bail!("job {} already running", job.id),
-        JobState::Done => bail!("job {} already done", job.id),
+        JobState::Done => {
+            if !again {
+                bail!("job {} already done", job.id)
+            }
+        }
     }
 
     match job.kind {

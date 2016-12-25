@@ -57,6 +57,7 @@ pub struct ExOpts {
 }
 
 pub fn define(opts: ExOpts) -> Result<()> {
+    delete(&opts.name)?;
     let crates = match opts.crates {
         ExCrateSelect::Full => lists::read_all_lists()?,
         ExCrateSelect::Demo => demo_list()?,

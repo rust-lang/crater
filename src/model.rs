@@ -83,6 +83,7 @@ pub enum Cmd {
     // Job control
     CreateLocalJob(Box<Cmd>),
     StartJob(Job),
+    WaitForJob(Job),
 
     // Misc
     Sleep,
@@ -206,6 +207,7 @@ impl Process<GlobalState> for Cmd {
             // Job control
             Cmd::CreateLocalJob(cmd) => job::create_local(*cmd)?,
             Cmd::StartJob(job) => job::start(job.0)?,
+            Cmd::WaitForJob(job) => job::wait(job.0)?,
 
             // Misc
             Cmd::Sleep => run::run("sleep", &["5"], &[])?,
@@ -464,6 +466,9 @@ pub mod conv {
             cmd("start-job",
                 "start a job asynchronously")
                 .arg(job()),
+            cmd("wait-for-job",
+                "wait for a job to complete")
+                .arg(job()),
 
             // Misc
             cmd("sleep",
@@ -569,6 +574,7 @@ pub mod conv {
             // Job control
             ("create-local-job", Some(m)) => Cmd::CreateLocalJob(cmd(m)?),
             ("start-job", Some(m)) => Cmd::StartJob(job(m)?),
+            ("wait-for-job", Some(m)) => Cmd::WaitForJob(job(m)?),
 
             // Misc
             ("sleep", _) => Cmd::Sleep,
@@ -620,6 +626,7 @@ pub mod conv {
 
             CreateLocalJob(..) => "create-local-job",
             StartJob(..) => "start-job",
+            WaitForJob(..) => "wait-for-job",
 
             Sleep => "sleep",
             Say(..) => "say",
@@ -704,6 +711,7 @@ pub mod conv {
 
             CreateLocalJob(cmd) => cmd_to_args(*cmd),
             StartJob(job) => vec![req_job(job)],
+            WaitForJob(job) => vec![req_job(job)],
 
             Say(msg) => vec![req_say_msg(msg)],
         }

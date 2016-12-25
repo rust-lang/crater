@@ -16,7 +16,7 @@ use serde::{Serialize, Deserialize};
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub struct JobId(pub u64);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct Job {
     id: JobId,
     cmd: Cmd,
@@ -24,13 +24,13 @@ struct Job {
     state: JobState,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 enum JobKind {
     Docker(Option<Container>),
     Ec2,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 enum JobState {
     Created,
     Running,
@@ -82,6 +82,12 @@ pub fn create_local(cmd: Cmd) -> Result<()> {
 pub fn start(job: JobId) -> Result<()> {
     let job = read_job(job)?;
 
+    match job.state {
+        JobState::Created => (),
+        JobState::Running => bail!("job {} already running", job.id),
+        JobState::Done => bail!("job {} already done", job.id),
+    }
+
     match job.kind {
         JobKind::Docker(None) => {
 
@@ -124,6 +130,7 @@ pub fn start(job: JobId) -> Result<()> {
                 })?;
 
             let mut job = job;
+            job.state = JobState::Running;
             job.kind = JobKind::Docker(Some(c.clone()));
             write_job(&job)?;
 
@@ -141,5 +148,31 @@ pub fn start(job: JobId) -> Result<()> {
 }
 
 pub fn wait(job: JobId) -> Result<()> {
-    panic!("")
+    let job = read_job(job)?;
+
+    match job.state {
+        JobState::Created => bail!("job {} not running", job.id),
+        JobState::Running => (),
+        JobState::Done => return Ok(()),
+    }
+
+    let job_ = job.clone();
+    match job.kind {
+        JobKind::Docker(Some(c)) => {
+            docker::wait_for_container(&c)?;
+            let mut job = job_;
+            job.state = JobState::Done;
+            job.kind = JobKind::Docker(None);
+            write_job(&job)?;
+            docker::delete_container(&c)?;
+        }
+        JobKind::Docker(None) => {
+            bail!("docker container not started for job {}", job.id);
+        }
+        JobKind::Ec2 => {
+            panic!("ec2");
+        }
+    }
+
+    Ok(())
 }

@@ -81,7 +81,7 @@ pub enum Cmd {
     GenReport(Ex),
 
     // Job control
-    CreateLocalJob(Box<Cmd>),
+    CreateDockerJob(Box<Cmd>),
     StartJob(Job),
     WaitForJob(Job),
 
@@ -205,7 +205,7 @@ impl Process<GlobalState> for Cmd {
             Cmd::GenReport(ex) => report::gen(&ex.0)?,
 
             // Job control
-            Cmd::CreateLocalJob(cmd) => job::create_local(*cmd)?,
+            Cmd::CreateDockerJob(cmd) => job::create_local(*cmd)?,
             Cmd::StartJob(job) => job::start(job.0)?,
             Cmd::WaitForJob(job) => job::wait(job.0)?,
 
@@ -457,11 +457,11 @@ pub mod conv {
 
             // Job control
             if recurse {
-                cmd("create-local-job",
-                    "start a local job in docker")
+                cmd("create-docker-job",
+                    "start a docker job in docker")
                     .subcommands(clap_cmds_(false))
             } else {
-                cmd("create-local-job", "nop")
+                cmd("create-docker-job", "nop")
             },
             cmd("start-job",
                 "start a job asynchronously")
@@ -572,7 +572,7 @@ pub mod conv {
             ("gen-report", Some(m)) => Cmd::GenReport(ex(m)?),
 
             // Job control
-            ("create-local-job", Some(m)) => Cmd::CreateLocalJob(cmd(m)?),
+            ("create-docker-job", Some(m)) => Cmd::CreateDockerJob(cmd(m)?),
             ("start-job", Some(m)) => Cmd::StartJob(job(m)?),
             ("wait-for-job", Some(m)) => Cmd::WaitForJob(job(m)?),
 
@@ -624,7 +624,7 @@ pub mod conv {
 
             GenReport(..) => "gen-report",
 
-            CreateLocalJob(..) => "create-local-job",
+            CreateDockerJob(..) => "create-docker-job",
             StartJob(..) => "start-job",
             WaitForJob(..) => "wait-for-job",
 
@@ -709,7 +709,7 @@ pub mod conv {
 
             GenReport(ex) => vec![opt_ex(ex)],
 
-            CreateLocalJob(cmd) => cmd_to_args(*cmd),
+            CreateDockerJob(cmd) => cmd_to_args(*cmd),
             StartJob(job) => vec![req_job(job)],
             WaitForJob(job) => vec![req_job(job)],
 

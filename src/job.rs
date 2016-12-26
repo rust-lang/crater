@@ -136,6 +136,7 @@ fn start_(job: JobId, wait: bool, again: bool) -> Result<()> {
             args_.extend(args);
             let env = RustEnv {
                 args: &*args_,
+                privileged: true,
                 work_dir: (work_dir, Perm::ReadWrite),
                 cargo_home: (cargo_home, Perm::ReadWrite),
                 rustup_home: (rustup_home, Perm::ReadWrite),

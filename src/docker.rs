@@ -18,6 +18,7 @@ pub enum Perm { ReadWrite, ReadOnly }
 
 pub struct RustEnv<'a> {
     pub args: &'a [&'a str],
+    pub privileged: bool,
     pub work_dir: (PathBuf, Perm),
     pub cargo_home: (PathBuf, Perm),
     pub rustup_home: (PathBuf, Perm),
@@ -52,13 +53,25 @@ pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
     let user_env = &format!("USER_ID={}", user_id());
     let cmd_env = &format!("CMD={}", env.args.join(" "));
 
-    let ref args_ = vec!["-v", &work_mount,
-                         "-v", &cargo_home_mount,
-                         "-v", &rustup_home_mount,
-                         "-v", &target_mount,
-                         "-e", &user_env,
-                         "-e", &cmd_env,
-                         image_name];
+    let mut docker_gid_ = None;
+    let ref mut args_ = vec!["-v", &work_mount,
+                             "-v", &cargo_home_mount,
+                             "-v", &rustup_home_mount,
+                             "-v", &target_mount,
+                             "-e", &user_env,
+                             "-e", &cmd_env];
+
+    // Let the container talk to the docker daemon
+    if env.privileged {
+        let docker_socket_mount = "/var/run/docker.sock:/var/run/docker.sock";
+        args_.push("-v");
+        args_.push(docker_socket_mount);
+        args_.push("-e");
+        docker_gid_ = Some(format!("DOCKER_GROUP_ID={}", docker_gid()));
+        args_.push(docker_gid_.as_ref().expect(""));
+    }
+
+    args_.push(image_name);
 
     create_container(args_)
 }
@@ -116,6 +129,39 @@ fn user_id() -> ::libc::uid_t {
 #[cfg(windows)]
 fn user_id() -> u32 {
     panic!("unimplemented user_id");
+}
+
+#[cfg(unix)]
+fn docker_gid() -> ::libc::gid_t {
+    unsafe {
+        use std::ffi::CString;
+        use libc::{group, gid_t, c_char, size_t, c_int};
+        use std::mem;
+        use std::ptr;
+        use std::iter;
+
+        extern {
+            fn getgrnam_r(name: *const c_char, grp: *mut group,
+                          buf: *mut c_char, buflen: size_t, result: *mut *mut group) -> c_int;
+        }
+
+        let name = CString::new("docker").expect("");
+        // FIXME don't guess bufer size
+        let mut buf = iter::repeat(0 as c_char).take(1024).collect::<Vec<_>>();
+        let mut group = mem::uninitialized();
+        let mut ptr = ptr::null_mut();
+        let r = getgrnam_r(name.as_ptr(), &mut group, buf.as_mut_ptr(), buf.len(), &mut ptr);
+        if r != 0 {
+            panic!("getgrnam_r failed retrieving docker gid");
+        }
+
+        group.gr_gid
+    }
+}
+
+#[cfg(windows)]
+fn docker_gid() -> u32 {
+    panic!("unimplemented docker_gid");
 }
 
 fn run_in_docker(args: &[&str]) -> Result<()> {

@@ -1,8 +1,15 @@
-FROM ubuntu:16.10
+FROM ubuntu:15.10
 
 RUN apt-get update
+
 RUN apt-get install gcc -y
 RUN apt-get install docker.io -y
+
+# Docker keys and debs
+#RUN apt-get install dirmmngr
+#RUN apt-get install apt-transport-https ca-certificates -y
+#RUN apt-key adv --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+#RUN echo "deb https://apt.dockerproject.org/repo ubuntu-yakkety main" > /etc/apt/sources.list.d/docker.list
 
 WORKDIR /source
 

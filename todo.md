@@ -1,5 +1,7 @@
 # next
 
+- RUSTFLAGS="--cap-lints=warn"
+
 # not next
 
 - add single crate mode
@@ -95,6 +97,10 @@
 - crusader testing
 - check for working docker before running tests
 - build docker image from cargobomb
+
+# Blacklist
+
+- notify-3.0.1 flaky tests
 
 # Apps I didn't find through search :-/
 

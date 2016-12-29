@@ -62,6 +62,7 @@ pub fn define(opts: ExOpts) -> Result<()> {
         ExCrateSelect::Full => lists::read_all_lists()?,
         ExCrateSelect::Demo => demo_list()?,
         ExCrateSelect::SmallRandom => small_random()?,
+        ExCrateSelect::Top100 => top_100()?,
     };
     define_(&opts.name, opts.toolchains, crates, opts.mode)
 }
@@ -103,6 +104,10 @@ fn small_random() -> Result<Vec<Crate>> {
     crates.sort();
 
     Ok(crates)
+}
+
+fn top_100() -> Result<Vec<Crate>> {
+    panic!()
 }
 
 pub fn define_(ex_name: &str, tcs: Vec<Toolchain>,

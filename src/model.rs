@@ -47,6 +47,7 @@ pub enum Cmd {
     CreateRecentList,
     CreateSecondList,
     CreateHotList,
+    CreatePopList,
     CreateGhCandidateList,
     CreateGhAppList,
     CreateGhCandidateListFromCache,
@@ -107,6 +108,7 @@ pub enum ExCrateSelect {
     Full,
     Demo,
     SmallRandom,
+    Top100,
 }
 
 use bmk::Process;
@@ -139,6 +141,7 @@ impl Process<GlobalState> for Cmd {
                 cmds.extend(vec![Cmd::CreateRecentList,
                                  Cmd::CreateSecondList,
                                  Cmd::CreateHotList,
+                                 Cmd::CreatePopList,
                                  Cmd::CreateGhCandidateListFromCache,
                                  Cmd::CreateGhAppListFromCache]);
             }
@@ -146,12 +149,14 @@ impl Process<GlobalState> for Cmd {
                 cmds.extend(vec![Cmd::CreateRecentList,
                                  Cmd::CreateSecondList,
                                  Cmd::CreateHotList,
+                                 Cmd::CreatePopList,
                                  Cmd::CreateGhCandidateList,
                                  Cmd::CreateGhAppList]);
             }
             Cmd::CreateRecentList => lists::create_recent_list()?,
             Cmd::CreateSecondList => lists::create_second_list()?,
             Cmd::CreateHotList => lists::create_hot_list()?,
+            Cmd::CreatePopList => lists::create_pop_list()?,
             Cmd::CreateGhCandidateList => lists::create_gh_candidate_list()?,
             Cmd::CreateGhAppList => lists::create_gh_app_list()?,
             Cmd::CreateGhCandidateListFromCache => lists::create_gh_candidate_list_from_cache()?,
@@ -347,7 +352,8 @@ pub mod conv {
             .default_value(ExCrateSelect::Demo.to_str())
             .possible_values(&[ExCrateSelect::Demo.to_str(),
                                ExCrateSelect::Full.to_str(),
-                               ExCrateSelect::SmallRandom.to_str()]);
+                               ExCrateSelect::SmallRandom.to_str(),
+                               ExCrateSelect::Top100.to_str()]);
         let job = || req("job");
         let say_msg = || req("say-msg");
 
@@ -386,6 +392,8 @@ pub mod conv {
             cmd("create-second-list",
                 "create the list of of second-most-recent crate versions"),
             cmd("create-hot-list",
+                "create the list of popular crates versions"),
+            cmd("create-pop-list",
                 "create the list of popular crates"),
             cmd("create-gh-candidate-list",
                 "crate the list of all GitHub Rust repos"),
@@ -552,6 +560,7 @@ pub mod conv {
             ("create-recent-list", _) => Cmd::CreateRecentList,
             ("create-second-list", _) => Cmd::CreateSecondList,
             ("create-hot-list", _) => Cmd::CreateHotList,
+            ("create-pop-list", _) => Cmd::CreatePopList,
             ("create-gh-candidate-list", _) => Cmd::CreateGhCandidateList,
             ("create-gh-app-list", _) => Cmd::CreateGhAppList,
             ("create-gh-candidate-list-from-cache", _) => Cmd::CreateGhCandidateListFromCache,
@@ -614,6 +623,7 @@ pub mod conv {
             CreateRecentList => "create-recent-list",
             CreateSecondList => "create-second-list",
             CreateHotList => "create-hot-list",
+            CreatePopList => "create-pop-list",
             CreateGhCandidateList => "create-gh-candidate-list",
             CreateGhAppList => "create-gh-app-list",
             CreateGhCandidateListFromCache => "create-gh-candidate-list-from-cache",
@@ -699,7 +709,7 @@ pub mod conv {
         match cmd {
             PrepareLocal | BuildContainer | CreateLists |
             CreateListsFull | CreateRecentList | CreateSecondList |
-            CreateHotList | CreateGhCandidateList | CreateGhAppList |
+            CreateHotList | CreatePopList | CreateGhCandidateList | CreateGhAppList |
             CreateGhCandidateListFromCache | CreateGhAppListFromCache |
             Sleep => vec!(),
 
@@ -788,6 +798,7 @@ pub mod conv {
                 "full" => ExCrateSelect::Full,
                 "demo" => ExCrateSelect::Demo,
                 "small-random" => ExCrateSelect::SmallRandom,
+                "top-100" => ExCrateSelect::Top100,
                 s => bail!("invalid crate-select: {}", s),
             })
         }
@@ -797,6 +808,7 @@ pub mod conv {
                 ExCrateSelect::Full => "full",
                 ExCrateSelect::Demo => "demo",
                 ExCrateSelect::SmallRandom => "small-random",
+                ExCrateSelect::Top100 => "top-100",
             }
         }
     }

@@ -88,8 +88,55 @@ fn split_crate_lines(lines: &[String]) -> Result<Vec<(String, String)>> {
     }).collect())
 }
 
+fn pop_path() -> PathBuf {
+    Path::new(LIST_DIR).join("pop-crates.txt")
+}
+
 fn hot_path() -> PathBuf {
     Path::new(LIST_DIR).join("hot-crates.txt")
+}
+
+pub fn create_pop_list() -> Result<()> {
+    log!("creating hot list");
+    fs::create_dir_all(LIST_DIR)?;
+
+    let crates = registry::find_registry_crates()?;
+    log!("mapping reverse deps");
+
+    // Count the reverse deps of each crate
+    let mut counts = HashMap::new();
+    for crate_ in &crates {
+        // Find all the crates this crate depends on
+        let mut seen = HashSet::new();
+        for &(_, ref deps) in &crate_.versions {
+            for &(ref name, ref req) in deps {
+                seen.insert(name.to_string());
+            }
+        }
+        // Each of those crates gets +1
+        for c in seen.drain() {
+            let count = counts.entry(c).or_insert(0);
+            *count += 1;
+        }
+    }
+
+    let mut crates = crates;
+
+    crates.sort_by(|a, b| {
+        let count_a = counts.get(&a.name).cloned().unwrap_or(0);
+        let count_b = counts.get(&b.name).cloned().unwrap_or(0);
+        count_a.cmp(&count_b)
+    });
+    let crates: Vec<_> = crates.into_iter().map(|c| (c.name.clone(), c.versions[0].0.clone())).collect();
+    write_crate_list(&pop_path(), &crates)?;
+    log!("pop crates written to {}", pop_path().display());
+    Ok(())
+}
+
+pub fn read_pop_list() -> Result<Vec<(String, String)>> {
+    let lines = file::read_lines(&pop_path())
+        .chain_err(|| "unable to read pop list. run `cargobomb create-pop-list`?")?;
+    split_crate_lines(&lines)
 }
 
 pub fn create_hot_list() -> Result<()> {

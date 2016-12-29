@@ -91,6 +91,9 @@ pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> 
     };
 
     let c = create_rust_container(&env)?;
+    defer!{{
+        delete_container(&c);
+    }}
     run_container(&c)
 }
 
@@ -144,15 +147,6 @@ fn docker_gid() -> ::libc::gid_t {
 #[cfg(windows)]
 fn docker_gid() -> u32 {
     panic!("unimplemented docker_gid");
-}
-
-fn run_in_docker(args: &[&str]) -> Result<()> {
-    let ref c = create_container(args)?;
-    defer!{{
-        delete_container(c);
-    }}
-    run_container(c)?;
-    Ok(())
 }
 
 #[derive(Serialize, Deserialize, Clone)]

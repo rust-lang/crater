@@ -267,6 +267,7 @@ pub fn frob_tomls(ex_name: &str) -> Result<()> {
     for (krate, dir) in ex_crates_and_dirs(ex_name)? {
         match krate {
             ExCrate::Version(ref name, ref vers) => {
+                fs::create_dir_all(&froml_dir(ex_name))?;
                 let out = froml_path(ex_name, name, vers);
                 let r = toml_frobber::frob_toml(&dir, name, vers, &out);
                 if let Err(e) = r {

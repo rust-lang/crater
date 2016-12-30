@@ -4,6 +4,10 @@
 
 # not next
 
+- add header output at beginning of task execution
+- clean up log prefixes
+- use github api to check head commits
+- set user agent on git, http requests
 - add single crate mode
 - sort out model boilerplate
 - delete cargo lockfile after build

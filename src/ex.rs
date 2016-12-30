@@ -107,7 +107,14 @@ fn small_random() -> Result<Vec<Crate>> {
 }
 
 fn top_100() -> Result<Vec<Crate>> {
-    panic!()
+    let mut crates = lists::read_pop_list()?;
+    crates.truncate(100);
+
+    let crates = crates.into_iter().map(|(c, v)| {
+        Crate::Version(c, v)
+    }).collect();
+
+    Ok(crates)
 }
 
 pub fn define_(ex_name: &str, tcs: Vec<Toolchain>,

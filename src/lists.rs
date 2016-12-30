@@ -125,7 +125,7 @@ pub fn create_pop_list() -> Result<()> {
     crates.sort_by(|a, b| {
         let count_a = counts.get(&a.name).cloned().unwrap_or(0);
         let count_b = counts.get(&b.name).cloned().unwrap_or(0);
-        count_a.cmp(&count_b)
+        count_b.cmp(&count_a)
     });
     let crates: Vec<_> = crates.into_iter().map(|c| (c.name.clone(), c.versions[0].0.clone())).collect();
     write_crate_list(&pop_path(), &crates)?;

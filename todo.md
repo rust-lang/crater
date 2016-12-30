@@ -4,6 +4,8 @@
 
 # not next
 
+- emscripten testing
+- single toolchain crate testing
 - add header output at beginning of task execution
 - clean up log prefixes
 - use github api to check head commits
@@ -105,6 +107,8 @@
 # Blacklist
 
 - notify-3.0.1 flaky tests
+- schedule_recv-0.1.0 timing-based tests
+- MortenLohne.rasher - slow tests
 
 # Apps I didn't find through search :-/
 

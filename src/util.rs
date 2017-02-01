@@ -63,6 +63,8 @@ pub fn this_target() -> String {
         "unknown-linux-gnu"
     } else if cfg!(target_os = "windows") {
         "pc-windows-msvc"
+    } else if cfg!(target_os = "macos") {
+        "apple-darwin"
     } else {
         panic!("unrecognized OS");
     };

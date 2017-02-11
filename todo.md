@@ -4,6 +4,7 @@
 
 # not next
 
+- custom toolchain support via rust-lang-ci
 - emscripten testing
 - single toolchain crate testing
 - add header output at beginning of task execution
@@ -112,6 +113,12 @@
 - fountaincode-0.0.8 - slow tests
 - https://github.com/tinco/rust-static_any_map - flaky tests
 - sacn-0.1.1 - flaky tests
+- psutil-1.0.0 - flaky tests
+- json-0.11.3 - flaky tests
+- bson-0.1.5 - flaky tests
+- canteen-0.3.5 - broken test
+- flame-0.1.10 - flaky tests
+- s_app_dir-0.0.0 - flaky tests
 
 # Apps I didn't find through search :-/
 

@@ -32,6 +32,7 @@
   - Run regex on every item body via syn
   - Who is using PhantomData and why?
   - What percent of Rust projects require unstable features
+  - diff mir after codegen changes
 - mass cross-crate refactorings
 - rust type system query language
 - select only most recent crates.io crates

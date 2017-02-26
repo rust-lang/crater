@@ -11,6 +11,10 @@ parallel jobs, either locally, or distributed on e.g. AWS. The
 application state employs ownership techniques to ensure that
 parallel access is consistent and race-free.
 
+NB: The design of this module is SERIOUSLY MESSED UP, with lots of
+duplication, the result of a deep yak shave that failed. It needs a
+rewrite.
+
 */
 
 use errors::*;

@@ -2,14 +2,20 @@ FROM ubuntu:15.10
 
 RUN apt-get update
 
-RUN apt-get install gcc -y
-RUN apt-get install docker.io -y
+# Tools
+RUN apt-get install -y gcc
+RUN apt-get install -y pkg-config
+RUN apt-get install -y cmake
 
-# Docker keys and debs
-#RUN apt-get install dirmmngr
-#RUN apt-get install apt-transport-https ca-certificates -y
-#RUN apt-key adv --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
-#RUN echo "deb https://apt.dockerproject.org/repo ubuntu-yakkety main" > /etc/apt/sources.list.d/docker.list
+# Native deps
+RUN apt-get build-dep -y openssl
+RUN apt-get install -y openssl
+RUN apt-get build-dep -y libfreetype6
+RUN apt-get install -y libfreetype6
+RUN apt-get build-dep -y libfontconfig1
+RUN apt-get install -y libfontconfig1
+RUN apt-get build-dep -y libgtk-3-0
+RUN apt-get install -y libgtk-3-0
 
 WORKDIR /source
 

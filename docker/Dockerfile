@@ -8,14 +8,9 @@ RUN apt-get install -y pkg-config
 RUN apt-get install -y cmake
 
 # Native deps
-RUN apt-get build-dep -y openssl
-RUN apt-get install -y openssl
-RUN apt-get build-dep -y libfreetype6
-RUN apt-get install -y libfreetype6
-RUN apt-get build-dep -y libfontconfig1
-RUN apt-get install -y libfontconfig1
+RUN apt-get install -y libssl-dev
+# Hopefully this pulls in lots of stuff
 RUN apt-get build-dep -y libgtk-3-0
-RUN apt-get install -y libgtk-3-0
 
 WORKDIR /source
 

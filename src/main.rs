@@ -25,6 +25,8 @@ extern crate toml;
 #[macro_use]
 extern crate scopeguard;
 extern crate libc;
+extern crate winapi;
+extern crate kernel32;
 
 #[macro_use]
 mod log;

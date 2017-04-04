@@ -17,6 +17,8 @@ use std::sync::mpsc::{Receiver, channel, Sender};
 use std::cell::RefCell;
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::time::Duration;
+use kernel32;
+use winapi;
 
 lazy_static! {
     static ref LOCK: Mutex<()> = Mutex::new(());
@@ -143,9 +145,6 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     let rx_out = sink(Box::new(stdout), log_child_stdout, capture, heartbeat_tx.clone());
     let rx_err = sink(Box::new(stderr), log_child_stderr, capture, heartbeat_tx);
 
-    if !cfg!(unix) {
-        panic!("process killing unimplemented");
-    }
     #[cfg(unix)]
     fn kill_process(id: u32) {
         use libc::{kill, SIGKILL, pid_t};
@@ -156,7 +155,13 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     }
     #[cfg(windows)]
     fn kill_process(id: u32) {
-        panic!("process killing unimplemented");
+        unsafe {
+            let handle = kernel32::OpenProcess(winapi::winnt::PROCESS_TERMINATE, 0, id);
+            kernel32::TerminateProcess(handle, 101);
+            if kernel32::CloseHandle(handle) == 0 {
+                panic!("CloseHandle for process {} failed", id);
+            }
+        };
     }
 
     // Have another thread kill the subprocess after the maximum timeout

@@ -30,9 +30,9 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
     let mut successes = 0;
     for &(ref crate_, ref dir) in list {
         match *crate_ {
-            ExCrate::Version(ref name, ref vers) => {
-                let r = dl_registry(name, &vers.to_string(), dir)
-                    .chain_err(|| format!("unable to download {}-{}", name, vers));
+            ExCrate::Version { ref name, ref version } => {
+                let r = dl_registry(name, &version.to_string(), dir)
+                    .chain_err(|| format!("unable to download {}-{}", name, version));
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {
@@ -40,7 +40,7 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
                 }
                 // crates.io doesn't rate limit. Go fast
             }
-            ExCrate::Repo(ref url, ref sha) => {
+            ExCrate::Repo { ref url, ref sha } => {
                 let r = dl_repo(url, dir, sha)
                     .chain_err(|| format!("unable to download {}", url));
                 if let Err(e) = r {
@@ -63,10 +63,10 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
 
 pub fn crate_dir(c: &ExCrate) -> Result<PathBuf> {
     match *c {
-        ExCrate::Version(ref name, ref vers) => {
-            Ok(registry_dir().join(format!("{}-{}", name, vers)))
+        ExCrate::Version { ref name, ref version } => {
+            Ok(registry_dir().join(format!("{}-{}", name, version)))
         }
-        ExCrate::Repo(ref url, ref sha) => {
+        ExCrate::Repo { ref url, ref sha } => {
             let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
             Ok(gh_dir().join(format!("{}.{}.{}", org, name, sha)))
         }

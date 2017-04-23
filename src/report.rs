@@ -89,8 +89,9 @@ pub fn gen(ex_name: &str) -> Result<()> {
 
 fn crate_to_name(c: &ex::ExCrate) -> Result<String> {
     match *c {
-        ex::ExCrate::Version(ref n, ref v) => Ok(format!("{}-{}", n, v)),
-        ex::ExCrate::Repo(ref url, ref sha) => {
+        ex::ExCrate::Version { ref name, ref version } =>
+            Ok(format!("{}-{}", name, version)),
+        ex::ExCrate::Repo { ref url, ref sha } => {
             let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
             Ok(format!("{}.{}.{}", org, name, sha))
         }

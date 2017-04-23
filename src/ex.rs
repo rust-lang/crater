@@ -73,16 +73,16 @@ fn demo_list() -> Result<Vec<Crate>> {
     let mut found_demo_crate = false;
     let crates = lists::read_all_lists()?.into_iter().filter(|c| {
         match *c {
-            Crate::Version(ref c, _) => {
-                if c == demo_crate && !found_demo_crate {
+            Crate::Version { ref name, .. } => {
+                if name == demo_crate && !found_demo_crate {
                     found_demo_crate = true;
                     true
                 } else {
                     false
                 }
             }
-            Crate::Repo(ref r) => {
-                r.contains(demo_gh_app)
+            Crate::Repo { ref url } => {
+                url.contains(demo_gh_app)
             }
         }
     }).collect::<Vec<_>>();
@@ -111,7 +111,7 @@ fn top_100() -> Result<Vec<Crate>> {
     crates.truncate(100);
 
     let crates = crates.into_iter().map(|(c, v)| {
-        Crate::Version(c, v)
+        Crate::Version { name: c, version: v }
     }).collect();
 
     Ok(crates)
@@ -142,7 +142,7 @@ pub fn fetch_gh_mirrors(ex_name: &str) -> Result<()> {
     let config = load_config(ex_name)?;
     for c in &config.crates {
         match *c {
-            Crate::Repo(ref url) => {
+            Crate::Repo { ref url }=> {
                 if let Err(e) = gh_mirrors::fetch(url) {
                     util::report_error(&e);
                 }
@@ -159,7 +159,7 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
     let config = load_config(ex_name)?;
     for krate in config.crates {
         match krate {
-            Crate::Repo(url) => {
+            Crate::Repo { url } => {
                 let dir = gh_mirrors::repo_dir(&url)?;
                 let r = run::run_capture(Some(&dir),
                                          "git",
@@ -204,15 +204,21 @@ fn load_shas(ex_name: &str) -> Result<HashMap<String, String>> {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub enum ExCrate {
-    Version(String, String), // name, vers
-    Repo(String, String) // url, sha
+    Version {
+        name: String,
+        version: String,
+    },
+    Repo {
+        url: String,
+        sha: String,
+    }
 }
 
 impl Display for ExCrate {
     fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
         let s = match *self {
-            ExCrate::Version(ref n, ref v) => format!("{}-{}", n, v),
-            ExCrate::Repo(ref u, ref s) => format!("{}#{}", u, s)
+            ExCrate::Version { ref name, ref version } => format!("{}-{}", name, version),
+            ExCrate::Repo { ref url, ref sha } => format!("{}#{}", url, sha)
         };
         s.fmt(f)
     }
@@ -220,12 +226,12 @@ impl Display for ExCrate {
 
 fn crate_to_ex_crate(c: Crate, shas: &HashMap<String, String>) -> Result<ExCrate> {
     match c {
-        Crate::Version(n, v) => Ok(ExCrate::Version(n, v)),
-        Crate::Repo(u) => {
-            if let Some(sha) = shas.get(&u) {
-                Ok(ExCrate::Repo(u, sha.to_string()))
+        Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
+        Crate::Repo { url } => {
+            if let Some(sha) = shas.get(&url) {
+                Ok(ExCrate::Repo { url, sha: sha.to_string() })
             } else {
-                Err(format!("missing sha for {}", u).into())
+                Err(format!("missing sha for {}", url).into())
             }
         }
     }
@@ -233,8 +239,8 @@ fn crate_to_ex_crate(c: Crate, shas: &HashMap<String, String>) -> Result<ExCrate
 
 fn ex_crate_to_crate(c: ExCrate) -> Result<Crate> {
     match c {
-        ExCrate::Version(n, v) => Ok(Crate::Version(n, v)),
-        ExCrate::Repo(u, _) => Ok(Crate::Repo(u))
+        ExCrate::Version { name, version } => Ok(Crate::Version { name , version }),
+        ExCrate::Repo { url, sha } => Ok(Crate::Repo { url })
     }
 }
 
@@ -266,10 +272,10 @@ pub fn download_crates(ex_name: &str) -> Result<()> {
 pub fn frob_tomls(ex_name: &str) -> Result<()> {
     for (krate, dir) in ex_crates_and_dirs(ex_name)? {
         match krate {
-            ExCrate::Version(ref name, ref vers) => {
+            ExCrate::Version { ref name, ref version } => {
                 fs::create_dir_all(&froml_dir(ex_name))?;
-                let out = froml_path(ex_name, name, vers);
-                let r = toml_frobber::frob_toml(&dir, name, vers, &out);
+                let out = froml_path(ex_name, name, version);
+                let r = toml_frobber::frob_toml(&dir, name, version, &out);
                 if let Err(e) = r {
                     log!("couldn't frob: {}", e);
                     util::report_error(&e);
@@ -284,7 +290,7 @@ pub fn frob_tomls(ex_name: &str) -> Result<()> {
 
 pub fn with_frobbed_toml(ex_name: &str, crate_: &ExCrate, path: &Path) -> Result<()> {
     let (crate_name, crate_vers) = match *crate_ {
-        ExCrate::Version(ref n, ref v) => (n.to_string(), v.to_string()),
+        ExCrate::Version { ref name, ref version } => (name.to_string(), version.to_string()),
         _ => return Ok(())
     };
     let ref src_froml = froml_path(ex_name, &crate_name, &crate_vers);
@@ -305,7 +311,7 @@ fn lockfile_dir(ex_name: &str) -> PathBuf {
 
 fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
     let (crate_name, crate_vers) = match *crate_ {
-        ExCrate::Version(ref n, ref v) => (n.to_string(), v.to_string()),
+        ExCrate::Version { ref name, ref version } => (name.to_string(), version.to_string()),
         _ => bail!("unimplemented crate type in `lockfile`"),
     };
     Ok(lockfile_dir(ex_name).join(format!("{}-{}.lock", crate_name, crate_vers)))

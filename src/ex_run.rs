@@ -46,8 +46,9 @@ pub fn delete_all_results(ex_name: &str) -> Result<()> {
 
 fn crate_to_dir(c: &ExCrate) -> Result<String> {
     match *c {
-        ExCrate::Version(ref n, ref v) => Ok(format!("reg/{}-{}", n, v)),
-        ExCrate::Repo(ref url, ref sha) => {
+        ExCrate::Version { ref name, ref version } =>
+            Ok(format!("reg/{}-{}", name, version)),
+        ExCrate::Repo { ref url, ref sha } => {
             let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
             Ok(format!("gh/{}.{}.{}", org, name, sha))
         }

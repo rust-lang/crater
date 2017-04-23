@@ -289,15 +289,20 @@ pub fn read_gh_app_list() -> Result<Vec<String>> {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub enum Crate {
-    Version(String, String), // name, vers
-    Repo(String)
+    Version {
+        name: String,
+        version: String,
+    },
+    Repo {
+        url: String,
+    },
 }
 
 impl Display for Crate {
     fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
         let s = match *self {
-            Crate::Version(ref n, ref v) => format!("{}-{}", n, v),
-            Crate::Repo(ref u) => u.to_string(),
+            Crate::Version { ref name, ref version } => format!("{}-{}", name, version),
+            Crate::Repo { ref url } => url.to_string(),
         };
         s.fmt(f)
     }
@@ -311,7 +316,7 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
     let gh_apps = read_gh_app_list();
 
     if let Ok(recent) = recent {
-        all.extend(recent.into_iter().map(|(c, v)| Crate::Version(c, v)));
+        all.extend(recent.into_iter().map(|(c, v)| Crate::Version { name: c, version: v }));
     } else {
         log!("failed to load recent list. ignoring");
     }
@@ -321,12 +326,12 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
         log!("failed to load second list. ignoring");
     }
     if let Ok(hot) = hot {
-        all.extend(hot.into_iter().map(|(c, v)| Crate::Version(c, v)));
+        all.extend(hot.into_iter().map(|(c, v)| Crate::Version { name: c, version: v }));
     } else {
         log!("failed to load hot list. ignoring");
     }
     if let Ok(gh_apps) = gh_apps {
-        all.extend(gh_apps.into_iter().map(|c| Crate::Repo(c)));
+        all.extend(gh_apps.into_iter().map(|c| Crate::Repo { url: c }));
     } else {
         log!("failed to load gh-app list. ignoring");
     }

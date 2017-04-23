@@ -63,7 +63,7 @@ pub fn redirect<F, R>(path: &Path, f: F) -> Result<R>
     let mut old = swap_redirect(path.to_owned());
     defer!{{
         let old = old.take();
-        old.and_then(|old_| swap_redirect(old_));
+        old.and_then(swap_redirect);
     }}
     f()
 }

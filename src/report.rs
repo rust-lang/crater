@@ -112,11 +112,11 @@ fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Compar
                 (&BuildFail, &BuildFail) => Comparison::SameBuildFail,
                 (&TestFail, &TestFail) => Comparison::SameTestFail,
                 (&TestPass, &TestPass) => Comparison::SameTestPass,
-                (&BuildFail, &TestFail) => Comparison::Fixed,
-                (&BuildFail, &TestPass) => Comparison::Fixed,
+                (&BuildFail, &TestFail) |
+                (&BuildFail, &TestPass) |
                 (&TestFail, &TestPass) => Comparison::Fixed,
-                (&TestPass, &TestFail) => Comparison::Regressed,
-                (&TestPass, &BuildFail) => Comparison::Regressed,
+                (&TestPass, &TestFail) |
+                (&TestPass, &BuildFail) |
                 (&TestFail, &BuildFail) => Comparison::Regressed,
             }
         }

@@ -71,7 +71,7 @@ fn read_crate(path: &Path) -> Result<Crate> {
     let mut crate_versions = Vec::new();
     let mut file = BufReader::new(File::open(path)?);
     for line in file.lines() {
-        let ref line = line?;
+        let line = &line?;
         let json = json::parse(line).chain_err(|| "parsing json")?;
         let mut deps = Vec::new();
         let name = json["name"].as_str();

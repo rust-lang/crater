@@ -5,12 +5,12 @@ use std::path::Path;
 use errors::*;
 
 pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
-    let ref url = frob_url(url);
+    let url = frob_url(url);
 
     if !dir.exists() {
         log!("cloning {} into {}", url, dir.display());
         let r = run::run("git",
-                         &["clone", "--depth", "1", url, &dir.to_string_lossy()],
+                         &["clone", "--depth", "1", &url, &dir.to_string_lossy()],
                          &[])
             .chain_err(|| format!("unable to clone {}", url));
 
@@ -33,7 +33,7 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
 /// first check whether it does, and if not do increasingly deep clones until it
 /// finds the commit.
 pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
-    let ref url = frob_url(url);
+    let url = frob_url(url);
 
     log!("ensuring sha {} in {}", sha, url);
     let depths = &[1, 10, 100, 1000];
@@ -60,7 +60,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
         util::try_hard(|| {
             run::run("git",
                      &["clone", "--depth", &format!("{}", depth),
-                       url, &dir.to_string_lossy()],
+                       &url, &dir.to_string_lossy()],
                      &[])
         }).chain_err(|| format!("unable to clone {}", url))?;
 
@@ -69,7 +69,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
 
     util::try_hard(|| {
             run::run("git",
-                     &["clone", url, &dir.to_string_lossy()],
+                     &["clone", &url, &dir.to_string_lossy()],
                      &[])
     }).chain_err(|| format!("unable to clone {}", url))?;
 

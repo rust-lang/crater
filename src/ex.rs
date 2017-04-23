@@ -273,8 +273,8 @@ pub fn with_frobbed_toml(ex_name: &str, crate_: &ExCrate, path: &Path) -> Result
         ExCrate::Version { ref name, ref version } => (name.to_string(), version.to_string()),
         _ => return Ok(())
     };
-    let ref src_froml = froml_path(ex_name, &crate_name, &crate_vers);
-    let ref dst_froml = path.join("Cargo.toml");
+    let src_froml = &froml_path(ex_name, &crate_name, &crate_vers);
+    let dst_froml = &path.join("Cargo.toml");
     if src_froml.exists() {
         log!("using frobbed toml {}", src_froml.display());
         fs::copy(src_froml, dst_froml)
@@ -354,8 +354,8 @@ fn capture_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path, toolchain: &st
     toolchain::run_cargo(toolchain, ex_name, args)
         .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
 
-    let ref src_lockfile = path.join("Cargo.lock");
-    let ref dst_lockfile = lockfile(ex_name, crate_)?;
+    let src_lockfile = &path.join("Cargo.lock");
+    let dst_lockfile = &lockfile(ex_name, crate_)?;
     fs::copy(src_lockfile, dst_lockfile)
         .chain_err(|| format!("unable to copy lockfile from {} to {}",
                               src_lockfile.display(), dst_lockfile.display()))?;
@@ -366,11 +366,11 @@ fn capture_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path, toolchain: &st
 }
 
 pub fn with_captured_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path) -> Result<()> {
-    let ref dst_lockfile = path.join("Cargo.lock");
+    let dst_lockfile = &path.join("Cargo.lock");
     if dst_lockfile.exists() {
         return Ok(());
     }
-    let ref src_lockfile = lockfile(ex_name, crate_)?;
+    let src_lockfile = &lockfile(ex_name, crate_)?;
     if src_lockfile.exists() {
         log!("using lockfile {}", src_lockfile.display());
         fs::copy(src_lockfile, dst_lockfile)
@@ -417,8 +417,8 @@ pub fn prepare_all_toolchains(ex_name: &str) -> Result<()> {
 }
 
 pub fn copy(ex1_name: &str, ex2_name: &str) -> Result<()> {
-    let ref ex1_dir = ex_dir(ex1_name);
-    let ref ex2_dir = ex_dir(ex2_name);
+    let ex1_dir = &ex_dir(ex1_name);
+    let ex2_dir = &ex_dir(ex2_name);
 
     if !ex1_dir.exists() {
         bail!("experiment {} is not defined", ex1_name);
@@ -441,9 +441,9 @@ pub fn delete_all_target_dirs(ex_name: &str) -> Result<()> {
 }
 
 pub fn delete(ex_name: &str) -> Result<()> {
-    let ref ex_dir = ex_dir(ex_name);
+    let ex_dir = ex_dir(ex_name);
     if ex_dir.exists() {
-        util::remove_dir_all(ex_dir)?;
+        util::remove_dir_all(&ex_dir)?;
     }
 
     Ok(())

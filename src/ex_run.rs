@@ -36,9 +36,9 @@ pub fn result_log(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf
 }
 
 pub fn delete_all_results(ex_name: &str) -> Result<()> {
-    let ref dir = ex_dir(ex_name).join("res");
+    let dir = ex_dir(ex_name).join("res");
     if dir.exists() {
-        util::remove_dir_all(dir)?;
+        util::remove_dir_all(&dir)?;
     }
 
     Ok(())
@@ -56,20 +56,20 @@ fn crate_to_dir(c: &ExCrate) -> Result<String> {
 }
 
 pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
-    let ref config = load_config(ex_name)?;
+    let config = &load_config(ex_name)?;
     run_exts(config, &config.toolchains)
 }
 
 pub fn run_ex(ex_name: &str, tc: &str) -> Result<()> {
     let tc = toolchain::parse_toolchain(tc)?;
-    let ref config = load_config(ex_name)?;
-    run_exts(config, &[tc])
+    let config = load_config(ex_name)?;
+    run_exts(&config, &[tc])
 }
 
 fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     verify_toolchains(config, tcs)?;
 
-    let ref ex_name = config.name;
+    let ex_name = &config.name;
     let crates = ex_crates_and_dirs(ex_name)?;
 
     // Just for reporting progress
@@ -95,7 +95,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     log!("running {} tests", total_crates);
     for (ref c, ref dir) in crates {
         for tc  in tcs {
-            let ref tc = toolchain::tc_to_string(tc);
+            let tc = &toolchain::tc_to_string(tc);
             let r = {
                 let existing_result = get_test_result(ex_name, c, tc)?;
                 if let Some(r) = existing_result {

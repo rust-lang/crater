@@ -93,12 +93,12 @@ fn rustup_run(name: &str,
 
 fn install_rustup() -> Result<()> {
     log!("installing rustup");
-    let ref rustup_url = format!("{}/{}/rustup-init{}",
-                                 RUSTUP_BASE_URL, &util::this_target(), EXE_SUFFIX);
+    let rustup_url = &format!("{}/{}/rustup-init{}",
+                              RUSTUP_BASE_URL, &util::this_target(), EXE_SUFFIX);
     let buf = dl::download(rustup_url).chain_err(|| "unable to download rustup")?;
 
     let tempdir = TempDir::new("cargobomb")?;
-    let ref installer = tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
+    let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
     {
         let mut file = File::create(installer)?;
         file.write_all(&buf)?;
@@ -161,7 +161,7 @@ fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
     log!("installing toolchain {}#{}", repo, sha);
 
     fs::create_dir_all(TOOLCHAIN_DIR)?;
-    let ref dir = Path::new(TOOLCHAIN_DIR).join(sha);
+    let dir = &Path::new(TOOLCHAIN_DIR).join(sha);
     git::shallow_clone_or_pull(repo, dir)?;
     git::shallow_fetch_sha(repo, dir, sha)?;
     git::reset_to_sha(dir, sha)?;
@@ -194,11 +194,11 @@ pub fn run_cargo(toolchain: &str, ex_name: &str, args: &[&str]) -> Result<()> {
     fs::create_dir_all(&ex_target_dir)?;
 
     let toolchain_arg = "+".to_string() + &toolchain_name;
-    let ref mut full_args = [&*toolchain_arg].to_vec();
+    let mut full_args = vec![&*toolchain_arg];
     full_args.extend_from_slice(args);
 
     let cargo = Path::new(CARGO_HOME).join("bin/cargo");
     rustup_run(&cargo.to_string_lossy(),
-               full_args,
+               &full_args,
                &[("CARGO_TARGET_DIR", &ex_target_dir.to_string_lossy())])
 }

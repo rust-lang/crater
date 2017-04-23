@@ -48,7 +48,7 @@ pub fn gen(ex_name: &str) -> Result<()> {
     let res = ex::ex_crates_and_dirs(ex_name)?.into_iter().map(|(krate, _)| {
         // Any errors here will turn into unknown results
         let crate_results = config.toolchains.iter().map(|tc| -> Result<BuildTestResult> {
-            let ref tcs = toolchain::tc_to_string(tc);
+            let tcs = &toolchain::tc_to_string(tc);
             let res = ex_run::get_test_result(ex_name, &krate, tcs)?;
             // If there was no test result return an error
             let res = res.ok_or_else(|| Error::from("no result"))?;

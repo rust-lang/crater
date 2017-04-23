@@ -63,7 +63,7 @@ pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
 pub fn run_ex(ex_name: &str, tc: &str) -> Result<()> {
     let tc = toolchain::parse_toolchain(tc)?;
     let ref config = load_config(ex_name)?;
-    run_exts(config, &vec![tc])
+    run_exts(config, &[tc])
 }
 
 fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {

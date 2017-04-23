@@ -165,7 +165,7 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
             match r {
                 Ok((stdout, stderr)) => {
                     if let Some(shaline) = stdout.get(0) {
-                        if shaline.len() > 0 {
+                        if !shaline.is_empty() {
                             log!("sha for {}: {}", url, shaline);
                             shas.insert(url, shaline.to_string());
                         } else {

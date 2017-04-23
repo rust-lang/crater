@@ -21,6 +21,7 @@ use log;
 use toml_frobber;
 use ex::*;
 use model::ExMode;
+use std::str::FromStr;
 
 pub fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
     let tc = toolchain::rustup_toolchain_name(toolchain)?;
@@ -188,7 +189,9 @@ impl Display for TestResult {
     }
 }
 
-impl TestResult {
+impl FromStr for TestResult {
+    type Err = Error;
+
     fn from_str(s: &str) -> Result<TestResult> {
         match s {
             "build-fail" => Ok(TestResult::BuildFail),
@@ -197,6 +200,9 @@ impl TestResult {
             _ => Err(format!("bogus test result: {}", s).into())
         }
     }
+}
+
+impl TestResult {
     fn to_string(&self) -> String {
         match *self {
             TestResult::BuildFail => "build-fail",
@@ -283,7 +289,7 @@ pub fn get_test_result(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<Op
     let result_file = result_file(ex_name, c, toolchain)?;
     if result_file.exists() {
         let s = file::read_string(&result_file)?;
-        let r = TestResult::from_str(&s)
+        let r = s.parse::<TestResult>()
             .chain_err(|| format!("invalid test result value: '{}'", s))?;
         Ok(Some(r))
     } else {

@@ -133,7 +133,7 @@ impl Process<GlobalState> for Cmd {
         match self {
             // Local prep
             Cmd::PrepareLocal => {
-                cmds.extend(vec![Cmd::PrepareToolchain(Tc::from_str("stable")?),
+                cmds.extend(vec![Cmd::PrepareToolchain("stable".parse::<Tc>()?),
                                  Cmd::BuildContainer,
                                  Cmd::CreateLists]);
             }
@@ -189,7 +189,7 @@ impl Process<GlobalState> for Cmd {
                                  Cmd::CaptureShas(ex.clone()),
                                  Cmd::DownloadCrates(ex.clone()),
                                  Cmd::FrobCargoTomls(ex.clone()),
-                                 Cmd::CaptureLockfiles(ex, Tc::from_str("stable")?)]);
+                                 Cmd::CaptureLockfiles(ex, "stable".parse::<Tc>()?)]);
             }
             Cmd::FetchGhMirrors(ex) => ex::fetch_gh_mirrors(&ex.0)?,
             Cmd::CaptureShas(ex) => ex::capture_shas(&ex.0)?,
@@ -201,7 +201,7 @@ impl Process<GlobalState> for Cmd {
             Cmd::PrepareExLocal(ex) => {
                 cmds.extend(vec![Cmd::DeleteAllTargetDirs(ex.clone()),
                                  Cmd::DeleteAllResults(ex.clone()),
-                                 Cmd::FetchDeps(ex.clone(), Tc::from_str("stable")?),
+                                 Cmd::FetchDeps(ex.clone(), "stable".parse::<Tc>()?),
                                  Cmd::PrepareAllToolchains(ex)]);
             }
             Cmd::DeleteAllTargetDirs(ex) => ex::delete_all_target_dirs(&ex.0)?,
@@ -238,6 +238,7 @@ pub mod conv {
     use super::*;
     use errors::*;
     use clap::{App, SubCommand, Arg, ArgMatches, AppSettings};
+    use std::str::FromStr;
 
     use bmk::{CmdKey, CmdDesc, CmdArg};
 
@@ -509,35 +510,35 @@ pub mod conv {
     pub fn clap_args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
 
         fn ex(m: &ArgMatches) -> Result<Ex> {
-            Ex::from_str(m.value_of("ex").expect(""))
+            m.value_of("ex").expect("").parse::<Ex>()
         }
 
         fn ex1(m: &ArgMatches) -> Result<Ex> {
-            Ex::from_str(m.value_of("ex-1").expect(""))
+            m.value_of("ex-1").expect("").parse::<Ex>()
         }
 
         fn ex2(m: &ArgMatches) -> Result<Ex> {
-            Ex::from_str(m.value_of("ex-2").expect(""))
+            m.value_of("ex-2").expect("").parse::<Ex>()
         }
 
         fn tc(m: &ArgMatches) -> Result<Tc> {
-            Tc::from_str(m.value_of("tc").expect(""))
+            m.value_of("tc").expect("").parse::<Tc>()
         }
 
         fn tc1(m: &ArgMatches) -> Result<Tc> {
-            Tc::from_str(m.value_of("tc-1").expect(""))
+            m.value_of("tc-1").expect("").parse::<Tc>()
         }
 
         fn tc2(m: &ArgMatches) -> Result<Tc> {
-            Tc::from_str(m.value_of("tc-2").expect(""))
+            m.value_of("tc-2").expect("").parse::<Tc>()
         }
 
         fn mode(m: &ArgMatches) -> Result<ExMode> {
-            ExMode::from_str(m.value_of("mode").expect(""))
+            m.value_of("mode").expect("").parse::<ExMode>()
         }
 
         fn crate_select(m: &ArgMatches) -> Result<ExCrateSelect> {
-            ExCrateSelect::from_str(m.value_of("crate-select").expect(""))
+            m.value_of("crate-select").expect("").parse::<ExCrateSelect>()
         }
 
         fn cmd(m: &ArgMatches) -> Result<Box<Cmd>> {
@@ -545,7 +546,7 @@ pub mod conv {
         }
 
         fn job(m: &ArgMatches) -> Result<Job> {
-            Job::from_str(m.value_of("job").expect(""))
+            m.value_of("job").expect("").parse::<Job>()
         }
 
         fn say_msg(m: &ArgMatches) -> Result<SayMsg> {
@@ -775,8 +776,10 @@ pub mod conv {
         }
     }
 
-    impl ExMode {
-        pub fn from_str(s: &str) -> Result<ExMode> {
+    impl FromStr for ExMode {
+        type Err = Error;
+
+        fn from_str(s: &str) -> Result<ExMode> {
             Ok(match s {
                 "build-and-test" => ExMode::BuildAndTest,
                 "build-only" => ExMode::BuildOnly,
@@ -785,7 +788,9 @@ pub mod conv {
                 s => bail!("invalid ex-mode: {}", s),
             })
         }
+    }
 
+    impl ExMode {
         pub fn to_str(&self) -> &'static str {
             match *self {
                 ExMode::BuildAndTest => "build-and-test",
@@ -796,8 +801,10 @@ pub mod conv {
         }
     }
 
-    impl ExCrateSelect {
-        pub fn from_str(s: &str) -> Result<ExCrateSelect> {
+    impl FromStr for ExCrateSelect {
+        type Err = Error;
+
+        fn from_str(s: &str) -> Result<ExCrateSelect> {
             Ok(match s {
                 "full" => ExCrateSelect::Full,
                 "demo" => ExCrateSelect::Demo,
@@ -806,7 +813,9 @@ pub mod conv {
                 s => bail!("invalid crate-select: {}", s),
             })
         }
+    }
 
+    impl ExCrateSelect {
         pub fn to_str(&self) -> &'static str {
             match *self {
                 ExCrateSelect::Full => "full",
@@ -817,27 +826,32 @@ pub mod conv {
         }
     }
 
-    impl Job {
-        pub fn from_str(job: &str) -> Result<Job> {
+    impl FromStr for Job {
+        type Err = Error;
+
+        fn from_str(job: &str) -> Result<Job> {
             Ok(Job(JobId(job.parse()
                          .chain_err(|| "parsing job id")?)))
         }
     }
 
-    impl Ex {
-        pub fn from_str(ex: &str) -> Result<Ex> {
+    impl FromStr for Ex {
+        type Err = Error;
+
+        fn from_str(ex: &str) -> Result<Ex> {
             Ok(Ex(ex.to_string()))
         }
     }
 
-    impl Tc {
-        pub fn from_str(tc: &str) -> Result<Tc> {
+    impl FromStr for Tc {
+        type Err = Error;
+
+        fn from_str(tc: &str) -> Result<Tc> {
             use toolchain;
             let _ = toolchain::parse_toolchain(tc)?;
             Ok(Tc(tc.to_string()))
         }
     }
-
 }
 
 pub mod state {

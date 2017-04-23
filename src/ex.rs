@@ -361,7 +361,7 @@ fn capture_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path, toolchain: &st
                               src_lockfile.display(), dst_lockfile.display()))?;
 
     log!("generated lockfile for {} at {}", crate_, dst_lockfile.display());
-    
+
     Ok(())
 }
 

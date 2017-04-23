@@ -172,7 +172,7 @@ pub fn create_hot_list() -> Result<()> {
                         let semver_rev = Version::parse(rev);
                         match (&semver_req, semver_rev) {
                             (&Ok(ref req), Ok(ref rev)) => {
-                                if req.matches(&rev) {
+                                if req.matches(rev) {
                                     *count += 1;
                                 }
                             }

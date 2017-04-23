@@ -167,7 +167,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
 
 fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     for tc in tcs {
-        if !config.toolchains.contains(&tc) {
+        if !config.toolchains.contains(tc) {
             bail!("toolchain {} not in experiment", toolchain::tc_to_string(&tc));
         }
     }

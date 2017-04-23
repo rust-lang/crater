@@ -58,8 +58,8 @@ pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
                              "-v", &cargo_home_mount,
                              "-v", &rustup_home_mount,
                              "-v", &target_mount,
-                             "-e", &user_env,
-                             "-e", &cmd_env];
+                             "-e", user_env,
+                             "-e", cmd_env];
 
     // Let the container talk to the docker daemon
     if env.privileged {

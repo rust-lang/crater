@@ -21,7 +21,7 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
         r
     } else {
         log!("pulling existing url {} into {}", url, dir.display());
-        run::cd_run(&dir,
+        run::cd_run(dir,
                     "git",
                     &["pull"],
                     &[])

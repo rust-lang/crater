@@ -188,7 +188,7 @@ pub fn target_dir(ex_name: &str, toolchain: &str) -> PathBuf {
 }
 
 pub fn run_cargo(toolchain: &str, ex_name: &str, args: &[&str]) -> Result<()> {
-    let toolchain_name = rustup_toolchain_name(&toolchain)?;
+    let toolchain_name = rustup_toolchain_name(toolchain)?;
     let ex_target_dir = target_dir(ex_name, toolchain);
 
     fs::create_dir_all(&ex_target_dir)?;

@@ -86,7 +86,7 @@ fn demo_list() -> Result<Vec<Crate>> {
             }
         }
     }).collect::<Vec<_>>();
-    assert!(crates.len() == 2);
+    assert_eq!(crates.len(), 2);
 
     Ok(crates)
 }

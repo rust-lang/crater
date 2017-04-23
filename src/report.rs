@@ -41,7 +41,7 @@ struct BuildTestResult {
 
 pub fn gen(ex_name: &str) -> Result<()> {
     let config = ex::load_config(ex_name)?;
-    assert!(config.toolchains.len() == 2);
+    assert_eq!(config.toolchains.len(), 2);
 
     let ex_dir = ex::ex_dir(ex_name);
 

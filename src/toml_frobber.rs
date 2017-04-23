@@ -21,26 +21,20 @@ pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
     // Convert path dependencies to registry dependencies
     for section in &["dependencies", "dev-dependencies", "build-dependencies"] {
         let maybe_deps = toml.get_mut(*section);
-        match maybe_deps {
-            Some(&mut Value::Table(ref mut deps)) => {
-                // Iterate through the "name = { ... }", removing any "path"
-                // keys in the dependency definition
-                for (dep_name, v) in deps.iter_mut() {
-                    match v {
-                        &mut Value::Table(ref mut dep_props) => {
-                            if dep_props.contains_key("path") {
-                                log!("removing path from {} in {}-{}",
-                                     dep_name, name, vers);
-                            }
-                            if dep_props.remove("path").is_some() {
-                                changed = true;
-                            }
-                        }
-                        _ => ()
+        if let Some(&mut Value::Table(ref mut deps)) = maybe_deps {
+            // Iterate through the "name = { ... }", removing any "path"
+            // keys in the dependency definition
+            for (dep_name, v) in deps.iter_mut() {
+                if let &mut Value::Table(ref mut dep_props) = v {
+                    if dep_props.contains_key("path") {
+                        log!("removing path from {} in {}-{}",
+                                dep_name, name, vers);
+                    }
+                    if dep_props.remove("path").is_some() {
+                        changed = true;
                     }
                 }
             }
-            _ => ()
         }
     }
 

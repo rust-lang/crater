@@ -79,19 +79,13 @@ fn read_crate(path: &Path) -> Result<Crate> {
         for json in json["deps"].members() {
             let dep_name = json["name"].as_str();
             let dep_req = json["req"].as_str();
-            match (dep_name, dep_req) {
-                (Some(n), Some(r)) => {
-                    deps.push((n.to_string(), r.to_string()));
-                }
-                _ => ()
+            if let (Some(n), Some(r)) = (dep_name, dep_req) {
+                deps.push((n.to_string(), r.to_string()));
             }
         }
-        match (name, vers) {
-            (Some(n), Some(v)) => {
-                crate_name = n.to_string();
-                crate_versions.push((v.to_string(), deps));
-            }
-            _ => ()
+        if let (Some(n), Some(v)) = (name, vers) {
+            crate_name = n.to_string();
+            crate_versions.push((v.to_string(), deps));
         }
     }
 

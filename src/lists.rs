@@ -170,13 +170,10 @@ pub fn create_hot_list() -> Result<()> {
                     let semver_req = VersionReq::parse(req);
                     for &mut (ref rev, ref mut count) in dep_versions.iter_mut() {
                         let semver_rev = Version::parse(rev);
-                        match (&semver_req, semver_rev) {
-                            (&Ok(ref req), Ok(ref rev)) => {
-                                if req.matches(rev) {
-                                    *count += 1;
-                                }
+                        if let (&Ok(ref req), Ok(ref rev)) = (&semver_req, semver_rev) {
+                            if req.matches(rev) {
+                                *count += 1;
                             }
-                            _ => ()
                         }
                     }
                 }

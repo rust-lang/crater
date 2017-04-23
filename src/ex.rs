@@ -141,13 +141,10 @@ pub fn load_config(ex_name: &str) -> Result<Experiment> {
 pub fn fetch_gh_mirrors(ex_name: &str) -> Result<()> {
     let config = load_config(ex_name)?;
     for c in &config.crates {
-        match *c {
-            Crate::Repo { ref url }=> {
-                if let Err(e) = gh_mirrors::fetch(url) {
-                    util::report_error(&e);
-                }
+        if let Crate::Repo { ref url } = *c {
+            if let Err(e) = gh_mirrors::fetch(url) {
+                util::report_error(&e);
             }
-            _ => ()
         }
     }
 
@@ -158,33 +155,30 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
     let mut shas: HashMap<String, String> = HashMap::new();
     let config = load_config(ex_name)?;
     for krate in config.crates {
-        match krate {
-            Crate::Repo { url } => {
-                let dir = gh_mirrors::repo_dir(&url)?;
-                let r = run::run_capture(Some(&dir),
-                                         "git",
-                                         &["log", "-n1", "--pretty=%H"],
-                                         &[]);
+        if let Crate::Repo { url } = krate {
+            let dir = gh_mirrors::repo_dir(&url)?;
+            let r = run::run_capture(Some(&dir),
+                                        "git",
+                                        &["log", "-n1", "--pretty=%H"],
+                                        &[]);
 
-                match r {
-                    Ok((stdout, stderr)) => {
-                        if let Some(shaline) = stdout.get(0) {
-                            if shaline.len() > 0 {
-                                log!("sha for {}: {}", url, shaline);
-                                shas.insert(url, shaline.to_string());
-                            } else {
-                                log_err!("bogus output from git log for {}", dir.display());
-                            }
+            match r {
+                Ok((stdout, stderr)) => {
+                    if let Some(shaline) = stdout.get(0) {
+                        if shaline.len() > 0 {
+                            log!("sha for {}: {}", url, shaline);
+                            shas.insert(url, shaline.to_string());
                         } else {
                             log_err!("bogus output from git log for {}", dir.display());
                         }
-                    }
-                    Err(e) => {
-                        log_err!("unable to capture sha for {}: {}", dir.display(), e);
+                    } else {
+                        log_err!("bogus output from git log for {}", dir.display());
                     }
                 }
+                Err(e) => {
+                    log_err!("unable to capture sha for {}: {}", dir.display(), e);
+                }
             }
-            _ => ()
         }
     }
 
@@ -251,17 +245,14 @@ pub fn download_crates(ex_name: &str) -> Result<()> {
 
 pub fn frob_tomls(ex_name: &str) -> Result<()> {
     for (krate, dir) in ex_crates_and_dirs(ex_name)? {
-        match krate {
-            ExCrate::Version { ref name, ref version } => {
-                fs::create_dir_all(&froml_dir(ex_name))?;
-                let out = froml_path(ex_name, name, version);
-                let r = toml_frobber::frob_toml(&dir, name, version, &out);
-                if let Err(e) = r {
-                    log!("couldn't frob: {}", e);
-                    util::report_error(&e);
-                }
+        if let ExCrate::Version { ref name, ref version } = krate {
+            fs::create_dir_all(&froml_dir(ex_name))?;
+            let out = froml_path(ex_name, name, version);
+            let r = toml_frobber::frob_toml(&dir, name, version, &out);
+            if let Err(e) = r {
+                log!("couldn't frob: {}", e);
+                util::report_error(&e);
             }
-            _ => ()
         }
     }
 

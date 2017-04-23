@@ -224,19 +224,6 @@ impl Display for ExCrate {
     }
 }
 
-fn crate_to_ex_crate(c: Crate, shas: &HashMap<String, String>) -> Result<ExCrate> {
-    match c {
-        Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
-        Crate::Repo { url } => {
-            if let Some(sha) = shas.get(&url) {
-                Ok(ExCrate::Repo { url, sha: sha.to_string() })
-            } else {
-                Err(format!("missing sha for {}", url).into())
-            }
-        }
-    }
-}
-
 fn ex_crate_to_crate(c: ExCrate) -> Result<Crate> {
     match c {
         ExCrate::Version { name, version } => Ok(Crate::Version { name , version }),
@@ -248,7 +235,7 @@ pub fn ex_crates_and_dirs(ex_name: &str) -> Result<Vec<(ExCrate, PathBuf)>> {
     let config = load_config(ex_name)?;
     let shas = load_shas(ex_name)?;
     let crates = config.crates.clone().into_iter().filter_map(|c| {
-        let c = crate_to_ex_crate(c, &shas);
+        let c = c.into_ex_crate(&shas);
         if let Err(e) = c {
             util::report_error(&e);
             return None;

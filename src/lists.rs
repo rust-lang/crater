@@ -1,5 +1,6 @@
 use std::fs;
 use errors::*;
+use ex::ExCrate;
 use registry;
 use LIST_DIR;
 use file;
@@ -296,6 +297,21 @@ pub enum Crate {
     Repo {
         url: String,
     },
+}
+
+impl Crate {
+    pub fn into_ex_crate(self, shas: &HashMap<String, String>) -> Result<ExCrate> {
+        match self {
+            Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
+            Crate::Repo { url } => {
+                if let Some(sha) = shas.get(&url) {
+                    Ok(ExCrate::Repo { url, sha: sha.to_string() })
+                } else {
+                    Err(format!("missing sha for {}", url).into())
+                }
+            }
+        }
+    }
 }
 
 impl Display for Crate {

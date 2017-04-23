@@ -68,7 +68,7 @@ pub fn gen(ex_name: &str) -> Result<()> {
         let comp = compare(&crate1, &crate2);
 
         CrateResult {
-            name: crate_to_name(&krate).unwrap_or("<unknown>".into()),
+            name: crate_to_name(&krate).unwrap_or_else(|_| "<unknown>".into()),
             res: comp,
             runs: [crate1, crate2]
         }

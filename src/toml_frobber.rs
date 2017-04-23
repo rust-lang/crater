@@ -14,7 +14,7 @@ pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
         .chain_err(|| "no cargo.toml?")?;
     let mut parser = Parser::new(&toml_str);
     let mut toml = parser.parse()
-        .ok_or(Error::from(format!("unable to parse Cargo.toml at {}", dir.display())))?;
+        .ok_or_else(|| Error::from(format!("unable to parse Cargo.toml at {}", dir.display())))?;
 
     let mut changed = false;
 

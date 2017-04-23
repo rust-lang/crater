@@ -44,11 +44,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
                                 "git",
                                 &["log", sha],
                                 &[]);
-            if r.is_ok() {
-                true
-            } else {
-                false
-            }
+            r.is_ok()
         } else {
             false
         }

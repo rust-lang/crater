@@ -297,7 +297,7 @@ fn test_find_unstable_features(source_path: &Path, target_path: &Path, _rustup_t
     fn is_hidden(entry: &DirEntry) -> bool {
         entry.file_name()
             .to_str()
-            .map(|s| s.starts_with("."))
+            .map(|s| s.starts_with('.'))
             .unwrap_or(false)
     }
 

@@ -43,7 +43,7 @@ pub fn prepare_toolchain_(toolchain: &Toolchain) -> Result<()> {
 
 pub fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {
     if toolchain.starts_with("https://") {
-        if let Some(hash_idx) = toolchain.find("#") {
+        if let Some(hash_idx) = toolchain.find('#') {
             let repo = &toolchain[.. hash_idx];
             let sha = &toolchain[hash_idx + 1 ..];
             Ok(Toolchain::Repo(repo.to_string(), sha.to_string()))

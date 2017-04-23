@@ -224,13 +224,6 @@ impl Display for ExCrate {
     }
 }
 
-fn ex_crate_to_crate(c: ExCrate) -> Result<Crate> {
-    match c {
-        ExCrate::Version { name, version } => Ok(Crate::Version { name , version }),
-        ExCrate::Repo { url, sha } => Ok(Crate::Repo { url })
-    }
-}
-
 pub fn ex_crates_and_dirs(ex_name: &str) -> Result<Vec<(ExCrate, PathBuf)>> {
     let config = load_config(ex_name)?;
     let shas = load_shas(ex_name)?;

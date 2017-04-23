@@ -14,10 +14,8 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
                          &[])
             .chain_err(|| format!("unable to clone {}", url));
 
-        if r.is_err() {
-            if dir.exists() {
-                fs::remove_dir_all(dir)?;
-            }
+        if r.is_err() && dir.exists() {
+            fs::remove_dir_all(dir)?;
         }
 
         r

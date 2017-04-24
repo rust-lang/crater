@@ -616,7 +616,7 @@ pub mod conv {
         })
     }
 
-    pub fn cmd_to_name(cmd: &Cmd) -> &'static str {
+    fn cmd_to_name(cmd: &Cmd) -> &'static str {
         use super::Cmd::*;
         match *cmd {
             PrepareLocal => "prepare-local",

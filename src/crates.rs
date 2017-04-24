@@ -17,14 +17,6 @@ use gh_mirrors;
 
 const CRATES_ROOT: &'static str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
-fn gh_dir() -> PathBuf {
-    Path::new(CRATES_DIR).join("gh")
-}
-
-fn registry_dir() -> PathBuf {
-    Path::new(CRATES_DIR).join("reg")
-}
-
 pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
     log!("preparing {} crates", list.len());
     let mut successes = 0;
@@ -59,18 +51,6 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn crate_dir(c: &ExCrate) -> Result<PathBuf> {
-    match *c {
-        ExCrate::Version { ref name, ref version } => {
-            Ok(registry_dir().join(format!("{}-{}", name, version)))
-        }
-        ExCrate::Repo { ref url, ref sha } => {
-            let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-            Ok(gh_dir().join(format!("{}.{}.{}", org, name, sha)))
-        }
-    }
 }
 
 fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {

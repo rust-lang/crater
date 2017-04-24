@@ -2,6 +2,7 @@ use gh_mirrors;
 use std::time::Instant;
 use RUSTUP_HOME;
 use CARGO_HOME;
+use CRATES_DIR;
 use std::env;
 use std::fs;
 use errors::*;
@@ -23,6 +24,14 @@ use model::{ExMode, ExCrateSelect};
 
 pub fn ex_dir(ex_name: &str) -> PathBuf {
     Path::new(EXPERIMENT_DIR).join(ex_name)
+}
+
+fn gh_dir() -> PathBuf {
+    Path::new(CRATES_DIR).join("gh")
+}
+
+fn registry_dir() -> PathBuf {
+    Path::new(CRATES_DIR).join("reg")
 }
 
 fn shafile(ex_name: &str) -> PathBuf {
@@ -208,6 +217,20 @@ pub enum ExCrate {
     }
 }
 
+impl ExCrate {
+    fn dir(&self) -> Result<PathBuf> {
+        match *self {
+            ExCrate::Version { ref name, ref version } => {
+                Ok(registry_dir().join(format!("{}-{}", name, version)))
+            }
+            ExCrate::Repo { ref url, ref sha } => {
+                let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
+                Ok(gh_dir().join(format!("{}.{}.{}", org, name, sha)))
+            }
+        }
+    }
+}
+
 impl Display for ExCrate {
     fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
         let s = match *self {
@@ -228,7 +251,7 @@ pub fn ex_crates_and_dirs(ex_name: &str) -> Result<Vec<(ExCrate, PathBuf)>> {
             return None;
         }
         let c = c.expect("");
-        let dir = crates::crate_dir(&c);
+        let dir = c.dir();
         if let Err(e) = dir {
             util::report_error(&e);
             return None;
@@ -295,7 +318,7 @@ fn crate_work_dir(ex_name: &str, toolchain: &str) -> PathBuf {
 pub fn with_work_crate<F, R>(ex_name: &str, toolchain: &str, crate_: &ExCrate, f: F) -> Result<R>
     where F: Fn(&Path) -> Result<R>
 {
-    let src_dir = crates::crate_dir(crate_)?;
+    let src_dir = crate_.dir()?;
     let dest_dir = crate_work_dir(ex_name, toolchain);
     log!("creating temporary build dir for {} in {}", crate_, dest_dir.display());
 

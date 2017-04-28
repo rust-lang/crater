@@ -92,12 +92,8 @@ pub fn is_rust_app(name: &str) -> Result<bool> {
     let is_app = if let Ok(buf) = dl::download_no_retry(&url) {
         if let Ok(content) = String::from_utf8(buf) {
             // GitHub returns a successful result when the file doesn't exist
-            if !content.contains("404: Not Found")
-                && !content.is_empty() {
-                true
-            } else {
-                false
-            }
+            !content.contains("404: Not Found")
+                && !content.is_empty()
         } else {
             false
         }

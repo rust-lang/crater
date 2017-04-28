@@ -54,12 +54,12 @@ pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
     let cmd_env = &format!("CMD={}", env.args.join(" "));
 
     let mut docker_gid_ = None;
-    let ref mut args_ = vec!["-v", &work_mount,
-                             "-v", &cargo_home_mount,
-                             "-v", &rustup_home_mount,
-                             "-v", &target_mount,
-                             "-e", &user_env,
-                             "-e", &cmd_env];
+    let mut args_ = vec!["-v", &work_mount,
+                         "-v", &cargo_home_mount,
+                         "-v", &rustup_home_mount,
+                         "-v", &target_mount,
+                         "-e", user_env,
+                         "-e", cmd_env];
 
     // Let the container talk to the docker daemon
     if env.privileged {
@@ -73,7 +73,7 @@ pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
 
     args_.push(image_name);
 
-    create_container(args_)
+    create_container(&args_)
 }
 
 pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> {

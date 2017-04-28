@@ -51,21 +51,21 @@ fn job_path(job: JobId) -> PathBuf {
 }
 
 fn write_job(job: &Job) -> Result<()> {
-    let ref job_path = job_path(job.id);
+    let job_path = &job_path(job.id);
     fs::create_dir_all(&Path::new(JOB_DIR))?;
 
     file::write_json(job_path, job)
 }
 
 fn read_job(job: JobId) -> Result<Job> {
-    let ref job_path = job_path(job);
+    let job_path = &job_path(job);
     file::read_json(job_path)
 }
 
 pub fn create_local(cmd: Cmd) -> Result<()> {
     log!("create local job: {}", cmd.clone().to_args().join(" "));
 
-    let ref job = Job {
+    let job = &Job {
         id: JobId(rand::random()),
         cmd: cmd,
         kind: JobKind::Docker(None),

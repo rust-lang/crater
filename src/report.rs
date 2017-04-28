@@ -41,14 +41,14 @@ struct BuildTestResult {
 
 pub fn gen(ex_name: &str) -> Result<()> {
     let config = ex::load_config(ex_name)?;
-    assert!(config.toolchains.len() == 2);
+    assert_eq!(config.toolchains.len(), 2);
 
     let ex_dir = ex::ex_dir(ex_name);
 
     let res = ex::ex_crates_and_dirs(ex_name)?.into_iter().map(|(krate, _)| {
         // Any errors here will turn into unknown results
         let crate_results = config.toolchains.iter().map(|tc| -> Result<BuildTestResult> {
-            let ref tcs = toolchain::tc_to_string(tc);
+            let tcs = &toolchain::tc_to_string(tc);
             let res = ex_run::get_test_result(ex_name, &krate, tcs)?;
             // If there was no test result return an error
             let res = res.ok_or_else(|| Error::from("no result"))?;
@@ -68,7 +68,7 @@ pub fn gen(ex_name: &str) -> Result<()> {
         let comp = compare(&crate1, &crate2);
 
         CrateResult {
-            name: crate_to_name(&krate).unwrap_or("<unknown>".into()),
+            name: crate_to_name(&krate).unwrap_or_else(|_| "<unknown>".into()),
             res: comp,
             runs: [crate1, crate2]
         }
@@ -89,8 +89,9 @@ pub fn gen(ex_name: &str) -> Result<()> {
 
 fn crate_to_name(c: &ex::ExCrate) -> Result<String> {
     match *c {
-        ex::ExCrate::Version(ref n, ref v) => Ok(format!("{}-{}", n, v)),
-        ex::ExCrate::Repo(ref url, ref sha) => {
+        ex::ExCrate::Version { ref name, ref version } =>
+            Ok(format!("{}-{}", name, version)),
+        ex::ExCrate::Repo { ref url, ref sha } => {
             let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
             Ok(format!("{}.{}.{}", org, name, sha))
         }
@@ -111,11 +112,11 @@ fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Compar
                 (&BuildFail, &BuildFail) => Comparison::SameBuildFail,
                 (&TestFail, &TestFail) => Comparison::SameTestFail,
                 (&TestPass, &TestPass) => Comparison::SameTestPass,
-                (&BuildFail, &TestFail) => Comparison::Fixed,
-                (&BuildFail, &TestPass) => Comparison::Fixed,
+                (&BuildFail, &TestFail) |
+                (&BuildFail, &TestPass) |
                 (&TestFail, &TestPass) => Comparison::Fixed,
-                (&TestPass, &TestFail) => Comparison::Regressed,
-                (&TestPass, &BuildFail) => Comparison::Regressed,
+                (&TestPass, &TestFail) |
+                (&TestPass, &BuildFail) |
                 (&TestFail, &BuildFail) => Comparison::Regressed,
             }
         }

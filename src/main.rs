@@ -85,9 +85,9 @@ fn main() {
 }
 
 fn main_() -> Result<()> {
-    let ref matches = cli().get_matches();
+    let matches = cli().get_matches();
 
-    run_cmd(matches)?;
+    run_cmd(&matches)?;
 
     Ok(())
 }

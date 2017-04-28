@@ -93,7 +93,7 @@ pub fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
     fn is_hidden(entry: &DirEntry) -> bool {
         entry.file_name()
             .to_str()
-            .map(|s| s.starts_with("."))
+            .map(|s| s.starts_with('.'))
             .unwrap_or(false)
     }
 

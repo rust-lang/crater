@@ -1,5 +1,6 @@
 use std::fs;
 use errors::*;
+use ex::ExCrate;
 use registry;
 use LIST_DIR;
 use file;
@@ -82,7 +83,7 @@ fn write_crate_list(path: &Path, crates: &[(String, String)]) -> Result<()> {
 
 fn split_crate_lines(lines: &[String]) -> Result<Vec<(String, String)>> {
     Ok(lines.iter().filter_map(|line| {
-        line.find(":").map(|i| {
+        line.find(':').map(|i| {
             (line[..i].to_string(), line[i + 1..].to_string())
         })
     }).collect())
@@ -169,13 +170,10 @@ pub fn create_hot_list() -> Result<()> {
                     let semver_req = VersionReq::parse(req);
                     for &mut (ref rev, ref mut count) in dep_versions.iter_mut() {
                         let semver_rev = Version::parse(rev);
-                        match (&semver_req, semver_rev) {
-                            (&Ok(ref req), Ok(ref rev)) => {
-                                if req.matches(&rev) {
-                                    *count += 1;
-                                }
+                        if let (&Ok(ref req), Ok(ref rev)) = (&semver_req, semver_rev) {
+                            if req.matches(rev) {
+                                *count += 1;
                             }
-                            _ => ()
                         }
                     }
                 }
@@ -289,15 +287,35 @@ pub fn read_gh_app_list() -> Result<Vec<String>> {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub enum Crate {
-    Version(String, String), // name, vers
-    Repo(String)
+    Version {
+        name: String,
+        version: String,
+    },
+    Repo {
+        url: String,
+    },
+}
+
+impl Crate {
+    pub fn into_ex_crate(self, shas: &HashMap<String, String>) -> Result<ExCrate> {
+        match self {
+            Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
+            Crate::Repo { url } => {
+                if let Some(sha) = shas.get(&url) {
+                    Ok(ExCrate::Repo { url, sha: sha.to_string() })
+                } else {
+                    Err(format!("missing sha for {}", url).into())
+                }
+            }
+        }
+    }
 }
 
 impl Display for Crate {
     fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
         let s = match *self {
-            Crate::Version(ref n, ref v) => format!("{}-{}", n, v),
-            Crate::Repo(ref u) => u.to_string(),
+            Crate::Version { ref name, ref version } => format!("{}-{}", name, version),
+            Crate::Repo { ref url } => url.to_string(),
         };
         s.fmt(f)
     }
@@ -311,7 +329,7 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
     let gh_apps = read_gh_app_list();
 
     if let Ok(recent) = recent {
-        all.extend(recent.into_iter().map(|(c, v)| Crate::Version(c, v)));
+        all.extend(recent.into_iter().map(|(c, v)| Crate::Version { name: c, version: v }));
     } else {
         log!("failed to load recent list. ignoring");
     }
@@ -321,12 +339,12 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
         log!("failed to load second list. ignoring");
     }
     if let Ok(hot) = hot {
-        all.extend(hot.into_iter().map(|(c, v)| Crate::Version(c, v)));
+        all.extend(hot.into_iter().map(|(c, v)| Crate::Version { name: c, version: v }));
     } else {
         log!("failed to load hot list. ignoring");
     }
     if let Ok(gh_apps) = gh_apps {
-        all.extend(gh_apps.into_iter().map(|c| Crate::Repo(c)));
+        all.extend(gh_apps.into_iter().map(|c| Crate::Repo { url: c }));
     } else {
         log!("failed to load gh-app list. ignoring");
     }

@@ -21,6 +21,7 @@ use log;
 use toml_frobber;
 use ex::*;
 use model::ExMode;
+use std::str::FromStr;
 
 pub fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
     let tc = toolchain::rustup_toolchain_name(toolchain)?;
@@ -36,9 +37,9 @@ pub fn result_log(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf
 }
 
 pub fn delete_all_results(ex_name: &str) -> Result<()> {
-    let ref dir = ex_dir(ex_name).join("res");
+    let dir = ex_dir(ex_name).join("res");
     if dir.exists() {
-        util::remove_dir_all(dir)?;
+        util::remove_dir_all(&dir)?;
     }
 
     Ok(())
@@ -46,8 +47,9 @@ pub fn delete_all_results(ex_name: &str) -> Result<()> {
 
 fn crate_to_dir(c: &ExCrate) -> Result<String> {
     match *c {
-        ExCrate::Version(ref n, ref v) => Ok(format!("reg/{}-{}", n, v)),
-        ExCrate::Repo(ref url, ref sha) => {
+        ExCrate::Version { ref name, ref version } =>
+            Ok(format!("reg/{}-{}", name, version)),
+        ExCrate::Repo { ref url, ref sha } => {
             let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
             Ok(format!("gh/{}.{}.{}", org, name, sha))
         }
@@ -55,20 +57,20 @@ fn crate_to_dir(c: &ExCrate) -> Result<String> {
 }
 
 pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
-    let ref config = load_config(ex_name)?;
+    let config = &load_config(ex_name)?;
     run_exts(config, &config.toolchains)
 }
 
 pub fn run_ex(ex_name: &str, tc: &str) -> Result<()> {
     let tc = toolchain::parse_toolchain(tc)?;
-    let ref config = load_config(ex_name)?;
-    run_exts(config, &vec![tc])
+    let config = load_config(ex_name)?;
+    run_exts(&config, &[tc])
 }
 
 fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     verify_toolchains(config, tcs)?;
 
-    let ref ex_name = config.name;
+    let ex_name = &config.name;
     let crates = ex_crates_and_dirs(ex_name)?;
 
     // Just for reporting progress
@@ -94,7 +96,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     log!("running {} tests", total_crates);
     for (ref c, ref dir) in crates {
         for tc  in tcs {
-            let ref tc = toolchain::tc_to_string(tc);
+            let tc = &toolchain::tc_to_string(tc);
             let r = {
                 let existing_result = get_test_result(ex_name, c, tc)?;
                 if let Some(r) = existing_result {
@@ -166,7 +168,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
 
 fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     for tc in tcs {
-        if !config.toolchains.contains(&tc) {
+        if !config.toolchains.contains(tc) {
             bail!("toolchain {} not in experiment", toolchain::tc_to_string(&tc));
         }
     }
@@ -187,7 +189,9 @@ impl Display for TestResult {
     }
 }
 
-impl TestResult {
+impl FromStr for TestResult {
+    type Err = Error;
+
     fn from_str(s: &str) -> Result<TestResult> {
         match s {
             "build-fail" => Ok(TestResult::BuildFail),
@@ -196,6 +200,9 @@ impl TestResult {
             _ => Err(format!("bogus test result: {}", s).into())
         }
     }
+}
+
+impl TestResult {
     fn to_string(&self) -> String {
         match *self {
             TestResult::BuildFail => "build-fail",
@@ -282,7 +289,7 @@ pub fn get_test_result(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<Op
     let result_file = result_file(ex_name, c, toolchain)?;
     if result_file.exists() {
         let s = file::read_string(&result_file)?;
-        let r = TestResult::from_str(&s)
+        let r = s.parse::<TestResult>()
             .chain_err(|| format!("invalid test result value: '{}'", s))?;
         Ok(Some(r))
     } else {
@@ -296,7 +303,7 @@ fn test_find_unstable_features(source_path: &Path, target_path: &Path, _rustup_t
     fn is_hidden(entry: &DirEntry) -> bool {
         entry.file_name()
             .to_str()
-            .map(|s| s.starts_with("."))
+            .map(|s| s.starts_with('.'))
             .unwrap_or(false)
     }
 

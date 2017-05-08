@@ -1,11 +1,11 @@
-use gh_mirrors;
-use std::path::{Path, PathBuf};
-use toolchain;
 use errors::*;
 use ex;
 use ex_run;
-use serde_json;
 use file;
+use gh_mirrors;
+use serde_json;
+use std::path::{Path, PathBuf};
+use toolchain;
 
 fn results_file(ex_name: &str) -> PathBuf {
     ex::ex_dir(ex_name).join("results.json")
@@ -13,14 +13,14 @@ fn results_file(ex_name: &str) -> PathBuf {
 
 #[derive(Serialize, Deserialize)]
 struct TestResults {
-    crates: Vec<CrateResult>
+    crates: Vec<CrateResult>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct CrateResult {
     name: String,
     res: Comparison,
-    runs: [Option<BuildTestResult>; 2]
+    runs: [Option<BuildTestResult>; 2],
 }
 
 #[derive(Serialize, Deserialize)]
@@ -45,38 +45,42 @@ pub fn gen(ex_name: &str) -> Result<()> {
 
     let ex_dir = ex::ex_dir(ex_name);
 
-    let res = ex::ex_crates_and_dirs(ex_name)?.into_iter().map(|(krate, _)| {
-        // Any errors here will turn into unknown results
-        let crate_results = config.toolchains.iter().map(|tc| -> Result<BuildTestResult> {
-            let tcs = &toolchain::tc_to_string(tc);
-            let res = ex_run::get_test_result(ex_name, &krate, tcs)?;
-            // If there was no test result return an error
-            let res = res.ok_or_else(|| Error::from("no result"))?;
-            let result_file = ex_run::result_file(ex_name, &krate, tcs)?;
-            let result_log = ex_run::result_log(ex_name, &krate, tcs)?;
-            let rel_log = relative(&ex_dir, &result_log)?;
+    let res = ex::ex_crates_and_dirs(ex_name)?
+        .into_iter()
+        .map(|(krate, _)| {
+            // Any errors here will turn into unknown results
+            let crate_results = config
+                .toolchains
+                .iter()
+                .map(|tc| -> Result<BuildTestResult> {
+                    let tcs = &toolchain::tc_to_string(tc);
+                    let res = ex_run::get_test_result(ex_name, &krate, tcs)?;
+                    // If there was no test result return an error
+                    let res = res.ok_or_else(|| Error::from("no result"))?;
+                    let result_file = ex_run::result_file(ex_name, &krate, tcs)?;
+                    let result_log = ex_run::result_log(ex_name, &krate, tcs)?;
+                    let rel_log = relative(&ex_dir, &result_log)?;
 
-            Ok(BuildTestResult {
-                res: res,
-                log: format!("{}", rel_log.display())
-            })
-        });
-        // Convert errors to Nones
-        let mut crate_results = crate_results.map(|r| r.ok()).collect::<Vec<_>>();
-        let crate2 = crate_results.pop().expect("");
-        let crate1 = crate_results.pop().expect("");
-        let comp = compare(&crate1, &crate2);
+                    Ok(BuildTestResult {
+                           res: res,
+                           log: format!("{}", rel_log.display()),
+                       })
+                });
+            // Convert errors to Nones
+            let mut crate_results = crate_results.map(|r| r.ok()).collect::<Vec<_>>();
+            let crate2 = crate_results.pop().expect("");
+            let crate1 = crate_results.pop().expect("");
+            let comp = compare(&crate1, &crate2);
 
-        CrateResult {
-            name: crate_to_name(&krate).unwrap_or_else(|_| "<unknown>".into()),
-            res: comp,
-            runs: [crate1, crate2]
-        }
-    }).collect::<Vec<_>>();
+            CrateResult {
+                name: crate_to_name(&krate).unwrap_or_else(|_| "<unknown>".into()),
+                res: comp,
+                runs: [crate1, crate2],
+            }
+        })
+        .collect::<Vec<_>>();
 
-    let res = TestResults {
-        crates: res
-    };
+    let res = TestResults { crates: res };
 
     let json = serde_json::to_string(&res)?;
     log!("writing results to {}", results_file(ex_name).display());
@@ -89,8 +93,10 @@ pub fn gen(ex_name: &str) -> Result<()> {
 
 fn crate_to_name(c: &ex::ExCrate) -> Result<String> {
     match *c {
-        ex::ExCrate::Version { ref name, ref version } =>
-            Ok(format!("{}-{}", name, version)),
+        ex::ExCrate::Version {
+            ref name,
+            ref version,
+        } => Ok(format!("{}-{}", name, version)),
         ex::ExCrate::Repo { ref url, ref sha } => {
             let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
             Ok(format!("{}.{}.{}", org, name, sha))
@@ -99,8 +105,10 @@ fn crate_to_name(c: &ex::ExCrate) -> Result<String> {
 }
 
 fn relative(parent: &Path, child: &Path) -> Result<PathBuf> {
-    Ok(child.strip_prefix(parent)
-       .chain_err(|| "calculating relative log file")?.into())
+    Ok(child
+           .strip_prefix(parent)
+           .chain_err(|| "calculating relative log file")?
+           .into())
 }
 
 fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Comparison {
@@ -120,7 +128,7 @@ fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Compar
                 (&TestFail, &BuildFail) => Comparison::Regressed,
             }
         }
-        _ => Comparison::Unknown
+        _ => Comparison::Unknown,
     }
 }
 

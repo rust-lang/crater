@@ -1,10 +1,10 @@
-use errors::*;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::env;
-use run;
 use CARGO_HOME;
 use RUSTUP_HOME;
+use errors::*;
+use run;
+use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Builds the docker container image, 'cargobomb', what will be used
 /// to isolate builds from each other. This expects the Dockerfile
@@ -14,7 +14,10 @@ pub fn build_container() -> Result<()> {
 }
 
 #[derive(Copy, Clone)]
-pub enum Perm { ReadWrite, ReadOnly }
+pub enum Perm {
+    ReadWrite,
+    ReadOnly,
+}
 
 pub struct RustEnv<'a> {
     pub args: &'a [&'a str],
@@ -40,7 +43,8 @@ pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
         };
         format!("{}:{}:{}",
                 absolute(host_path).display(),
-                container_path, perm)
+                container_path,
+                perm)
     };
 
     let work_mount = mount_arg(&env.work_dir.0, "/source", env.work_dir.1);
@@ -54,12 +58,20 @@ pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
     let cmd_env = &format!("CMD={}", env.args.join(" "));
 
     let mut docker_gid_ = None;
-    let mut args_ = vec!["-v", &work_mount,
-                         "-v", &cargo_home_mount,
-                         "-v", &rustup_home_mount,
-                         "-v", &target_mount,
-                         "-e", user_env,
-                         "-e", cmd_env];
+    let mut args_ = vec![
+        "-v",
+        &work_mount,
+        "-v",
+        &cargo_home_mount,
+        "-v",
+        &rustup_home_mount,
+        "-v",
+        &target_mount,
+        "-e",
+        user_env,
+        "-e",
+        cmd_env,
+    ];
 
     // Let the container talk to the docker daemon
     if env.privileged {
@@ -120,14 +132,18 @@ fn user_id() -> u32 {
 fn docker_gid() -> ::libc::gid_t {
     unsafe {
         use std::ffi::CString;
-        use libc::{group, gid_t, c_char, size_t, c_int};
+        use libc::{c_char, c_int, gid_t, group, size_t};
         use std::mem;
         use std::ptr;
         use std::iter;
 
-        extern {
-            fn getgrnam_r(name: *const c_char, grp: *mut group,
-                          buf: *mut c_char, buflen: size_t, result: *mut *mut group) -> c_int;
+        extern "C" {
+            fn getgrnam_r(name: *const c_char,
+                          grp: *mut group,
+                          buf: *mut c_char,
+                          buflen: size_t,
+                          result: *mut *mut group)
+                          -> c_int;
         }
 
         let name = CString::new("docker").expect("");
@@ -135,7 +151,11 @@ fn docker_gid() -> ::libc::gid_t {
         let mut buf = iter::repeat(0 as c_char).take(1024).collect::<Vec<_>>();
         let mut group = mem::uninitialized();
         let mut ptr = ptr::null_mut();
-        let r = getgrnam_r(name.as_ptr(), &mut group, buf.as_mut_ptr(), buf.len(), &mut ptr);
+        let r = getgrnam_r(name.as_ptr(),
+                           &mut group,
+                           buf.as_mut_ptr(),
+                           buf.len(),
+                           &mut ptr);
         if r != 0 {
             panic!("getgrnam_r failed retrieving docker gid");
         }
@@ -161,9 +181,7 @@ impl Display for Container {
 }
 
 fn create_container(args: &[&str]) -> Result<Container> {
-    let mut args_ = vec![
-        "create"
-    ];
+    let mut args_ = vec!["create"];
     args_.extend(args.iter());
     let (out, _) = run::run_capture(None, "docker", &args_, &[])?;
     Ok(Container(out[0].clone()))

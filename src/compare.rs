@@ -10,7 +10,8 @@ pub struct Config {
 }
 
 pub enum Mode {
-    Debug, Release
+    Debug,
+    Release,
 }
 
 pub enum Crate {

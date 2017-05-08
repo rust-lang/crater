@@ -10,9 +10,10 @@ pub trait Arguable: Sized {
 }
 
 pub fn run<S, C>(mut state: S, cmd: C) -> Result<S>
-    where C: Process<S>, C: Arguable
+    where C: Process<S>,
+          C: Arguable
 {
-    let mut cmds = vec!(cmd);
+    let mut cmds = vec![cmd];
     while let Some(cmd) = cmds.pop() {
         // Round trip through command line argument parsing,
         // just for testing purpose.

@@ -4,6 +4,11 @@ cache: cargo
 rust:
   - stable
   - nightly
+# Don't require nightly to build, since we aren't clippy clean yet.
+matrix:
+  allow_failures:
+  - rust: nightly
+  fast_finish: true
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
   - type -p cargo-install-update || cargo install --force cargo-update

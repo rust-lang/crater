@@ -1,7 +1,6 @@
 #![recursion_limit = "1024"]
 
 #![allow(unused)]
-#![feature(proc_macro)]
 
 extern crate rand;
 extern crate clap;

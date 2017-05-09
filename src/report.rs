@@ -53,7 +53,7 @@ pub fn gen(ex_name: &str) -> Result<()> {
                 .toolchains
                 .iter()
                 .map(|tc| -> Result<BuildTestResult> {
-                    let tcs = &toolchain::tc_to_string(tc);
+                    let tcs = &tc.to_string();
                     let res = ex_run::get_test_result(ex_name, &krate, tcs)?;
                     // If there was no test result return an error
                     let res = res.ok_or_else(|| Error::from("no result"))?;

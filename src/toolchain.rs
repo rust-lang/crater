@@ -38,6 +38,15 @@ impl Toolchain {
     }
 }
 
+impl ToString for Toolchain {
+    fn to_string(&self) -> String {
+        match *self {
+            Toolchain::Dist(ref s) => s.clone(),
+            Toolchain::Repo(ref url, ref sha) => format!("{}#{}", url, sha),
+        }
+    }
+}
+
 pub fn prepare_toolchain(toolchain: &str) -> Result<()> {
     parse_toolchain(toolchain)?.prepare()
 }
@@ -53,13 +62,6 @@ pub fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {
         }
     } else {
         Ok(Toolchain::Dist(toolchain.to_string()))
-    }
-}
-
-pub fn tc_to_string(tc: &Toolchain) -> String {
-    match *tc {
-        Toolchain::Dist(ref s) => s.clone(),
-        Toolchain::Repo(ref url, ref sha) => format!("{}#{}", url, sha),
     }
 }
 

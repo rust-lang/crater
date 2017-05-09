@@ -17,9 +17,12 @@ rewrite.
 
 */
 
+use docker;
 use errors::*;
 use job::JobId;
+use lists;
 use serde::{Deserialize, Serialize};
+use toolchain;
 
 // An experiment name
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,6 +100,169 @@ pub enum Cmd {
     Sleep,
     Say(SayMsg),
 }
+
+trait NewCmd {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>> where Self: Sized;
+}
+
+struct PrepareLocal;
+
+impl NewCmd for PrepareLocal {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        Ok(vec![
+            Box::new(PrepareToolchain("stable".parse::<Tc>()?)),
+            Box::new(BuildContainer),
+            Box::new(CreateLists),
+        ])
+    }
+}
+
+struct PrepareToolchain(Tc);
+
+impl NewCmd for PrepareToolchain {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        toolchain::prepare_toolchain(&(self.0).0)?;
+        Ok(vec![])
+    }
+}
+
+struct BuildContainer;
+
+impl NewCmd for BuildContainer {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        docker::build_container()?;
+        Ok(vec![])
+    }
+}
+
+struct CreateLists;
+
+impl NewCmd for CreateLists {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        Ok(vec![
+            Box::new(CreateRecentList),
+            Box::new(Cmd::CreateSecondList),
+            Box::new(Cmd::CreateHotList),
+            Box::new(Cmd::CreatePopList),
+            // Box::new(Cmd::CreateGhCandidateListFromCache),
+            // Box::new(Cmd::CreateGhAppListFromCache),
+        ])
+    }
+}
+
+struct CreateListsFull;
+
+struct CreateRecentList;
+
+impl NewCmd for CreateRecentList {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        lists::create_recent_list()?;
+        Ok(vec![])
+    }
+}
+
+struct CreateSecondList;
+
+impl NewCmd for CreateSecondList {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        lists::create_second_list()?;
+        Ok(vec![])
+    }
+}
+
+struct CreateHotList;
+
+impl NewCmd for CreateHotList {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        lists::create_hot_list()?;
+        Ok(vec![])
+    }
+}
+
+struct CreatePopList;
+
+impl NewCmd for CreatePopList {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        lists::create_pop_list()?;
+        Ok(vec![])
+    }
+}
+
+struct CreateGhCandidateList;
+
+struct CreateGhAppList;
+
+struct CreateGhCandidateListFromCache;
+
+struct CreateGhAppListFromCache;
+
+struct DefineEx(Ex, Tc, Tc, ExMode, ExCrateSelect);
+
+struct PrepareEx(Ex);
+
+struct CopyEx(Ex, Ex);
+
+struct DeleteEx(Ex);
+
+struct PrepareExShared(Ex);
+
+struct FetchGhMirrors(Ex);
+
+struct CaptureShas(Ex);
+
+struct DownloadCrates(Ex);
+
+struct FrobCargoTomls(Ex);
+
+struct CaptureLockfiles(Ex, Tc);
+
+struct PrepareExLocal(Ex);
+
+struct DeleteAllTargetDirs(Ex);
+
+struct DeleteAllResults(Ex);
+
+struct FetchDeps(Ex, Tc);
+
+struct PrepareAllToolchains(Ex);
+
+struct Run(Ex);
+
+struct RunTc(Ex, Tc);
+
+struct GenReport(Ex);
+
+struct CreateDockerJob(Box<Cmd>);
+
+struct StartJob(Job);
+
+struct WaitForJob(Job);
+
+struct RunJob(Job);
+
+struct RunJobAgain(Job);
+
+struct RunCmdForJob(Job);
+
+struct Sleep;
+
+struct Say(SayMsg);
 
 #[derive(Serialize, Deserialize)]
 #[derive(Debug, Clone)]

@@ -19,7 +19,9 @@ rewrite.
 
 use docker;
 use errors::*;
+use ex;
 use job::JobId;
+
 use lists;
 use serde::{Deserialize, Serialize};
 use toolchain;
@@ -206,7 +208,25 @@ impl NewCmd for CreatePopList {
 
 struct CreateGhCandidateList;
 
+impl NewCmd for CreateGhCandidateList {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        lists::create_gh_candidate_list()?;
+        Ok(vec![])
+    }
+}
+
 struct CreateGhAppList;
+
+impl NewCmd for CreateGhAppList {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        lists::create_gh_app_list()?;
+        Ok(vec![])
+    }
+}
 
 struct CreateGhCandidateListFromCache;
 
@@ -231,6 +251,23 @@ impl NewCmd for CreateGhAppListFromCache {
 }
 
 struct DefineEx(Ex, Tc, Tc, ExMode, ExCrateSelect);
+
+impl NewCmd for DefineEx {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::define(ex::ExOpts {
+                       name: (self.0).0,
+                       toolchains: vec![
+            toolchain::parse_toolchain(&(self.1).0)?,
+            toolchain::parse_toolchain(&(self.2).0)?,
+        ],
+                       mode: self.3,
+                       crates: self.4,
+                   })?;
+        Ok(vec![])
+    }
+}
 
 struct PrepareEx(Ex);
 

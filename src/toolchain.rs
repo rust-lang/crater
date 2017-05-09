@@ -25,20 +25,21 @@ pub enum Toolchain {
     Repo(String, String), // Url, Sha
 }
 
-pub fn prepare_toolchain(toolchain: &str) -> Result<()> {
-    let toolchain = parse_toolchain(toolchain)?;
-    prepare_toolchain_(&toolchain)
+impl Toolchain {
+    pub fn prepare(&self) -> Result<()> {
+        init_rustup()?;
+
+        match *self {
+            Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
+            Toolchain::Repo(ref repo, ref sha) => init_toolchain_from_repo(repo, sha)?,
+        }
+
+        Ok(())
+    }
 }
 
-pub fn prepare_toolchain_(toolchain: &Toolchain) -> Result<()> {
-    init_rustup()?;
-
-    match *toolchain {
-        Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
-        Toolchain::Repo(ref repo, ref sha) => init_toolchain_from_repo(repo, sha)?,
-    }
-
-    Ok(())
+pub fn prepare_toolchain(toolchain: &str) -> Result<()> {
+    parse_toolchain(toolchain)?.prepare()
 }
 
 pub fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {

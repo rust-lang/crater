@@ -66,10 +66,6 @@ impl FromStr for Toolchain {
     }
 }
 
-pub fn prepare_toolchain(toolchain: &str) -> Result<()> {
-    toolchain.parse::<Toolchain>()?.prepare()
-}
-
 fn init_rustup() -> Result<()> {
     fs::create_dir_all(CARGO_HOME)?;
     fs::create_dir_all(RUSTUP_HOME)?;

@@ -139,7 +139,7 @@ impl Process<GlobalState> for Cmd {
                     Cmd::CreateLists,
                 ]);
             }
-            Cmd::PrepareToolchain(tc) => toolchain::prepare_toolchain(&tc.0)?,
+            Cmd::PrepareToolchain(tc) => tc.0.parse::<toolchain::Toolchain>()?.prepare()?,
             Cmd::BuildContainer => docker::build_container()?,
 
             // List creation

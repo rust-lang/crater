@@ -23,7 +23,7 @@ const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist"
 #[derive(Serialize, Deserialize, PartialEq)]
 pub enum Toolchain {
     Dist(String), // rustup toolchain spec
-    Repo(String, String), // Url, Sha
+    Repo { url: String, sha: String },
 }
 
 impl Toolchain {
@@ -32,7 +32,7 @@ impl Toolchain {
 
         match *self {
             Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
-            Toolchain::Repo(ref repo, ref sha) => init_toolchain_from_repo(repo, sha)?,
+            Toolchain::Repo { ref url, ref sha } => init_toolchain_from_repo(url, sha)?,
         }
 
         Ok(())
@@ -43,7 +43,7 @@ impl ToString for Toolchain {
     fn to_string(&self) -> String {
         match *self {
             Toolchain::Dist(ref s) => s.clone(),
-            Toolchain::Repo(ref url, ref sha) => format!("{}#{}", url, sha),
+            Toolchain::Repo { ref url, ref sha } => format!("{}#{}", url, sha),
         }
     }
 }
@@ -56,7 +56,10 @@ impl FromStr for Toolchain {
             if let Some(hash_idx) = s.find('#') {
                 let repo = &s[..hash_idx];
                 let sha = &s[hash_idx + 1..];
-                Ok(Toolchain::Repo(repo.to_string(), sha.to_string()))
+                Ok(Toolchain::Repo {
+                       url: repo.to_string(),
+                       sha: sha.to_string(),
+                   })
             } else {
                 Err("no sha for git toolchain".into())
             }
@@ -174,7 +177,7 @@ fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
 pub fn rustup_toolchain_name(toolchain: &str) -> Result<String> {
     Ok(match toolchain.parse::<Toolchain>()? {
            Toolchain::Dist(ref n) => n.to_string(),
-           Toolchain::Repo(_, _) => panic!(),
+           Toolchain::Repo { .. } => panic!(),
        })
 }
 

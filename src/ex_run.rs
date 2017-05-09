@@ -67,7 +67,7 @@ pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
 }
 
 pub fn run_ex(ex_name: &str, tc: &str) -> Result<()> {
-    let tc = toolchain::parse_toolchain(tc)?;
+    let tc = tc.parse::<toolchain::Toolchain>()?;
     let config = load_config(ex_name)?;
     run_exts(&config, &[tc])
 }

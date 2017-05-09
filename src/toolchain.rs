@@ -12,6 +12,7 @@ use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use tempdir::TempDir;
 use toolchain;
 use url::Url;
@@ -47,22 +48,26 @@ impl ToString for Toolchain {
     }
 }
 
-pub fn prepare_toolchain(toolchain: &str) -> Result<()> {
-    parse_toolchain(toolchain)?.prepare()
+impl FromStr for Toolchain {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        if s.starts_with("https://") {
+            if let Some(hash_idx) = s.find('#') {
+                let repo = &s[..hash_idx];
+                let sha = &s[hash_idx + 1..];
+                Ok(Toolchain::Repo(repo.to_string(), sha.to_string()))
+            } else {
+                Err("no sha for git toolchain".into())
+            }
+        } else {
+            Ok(Toolchain::Dist(s.to_string()))
+        }
+    }
 }
 
-pub fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {
-    if toolchain.starts_with("https://") {
-        if let Some(hash_idx) = toolchain.find('#') {
-            let repo = &toolchain[..hash_idx];
-            let sha = &toolchain[hash_idx + 1..];
-            Ok(Toolchain::Repo(repo.to_string(), sha.to_string()))
-        } else {
-            Err("no sha for git toolchain".into())
-        }
-    } else {
-        Ok(Toolchain::Dist(toolchain.to_string()))
-    }
+pub fn prepare_toolchain(toolchain: &str) -> Result<()> {
+    toolchain.parse::<Toolchain>()?.prepare()
 }
 
 fn init_rustup() -> Result<()> {
@@ -171,8 +176,7 @@ fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
 }
 
 pub fn rustup_toolchain_name(toolchain: &str) -> Result<String> {
-    let toolchain = parse_toolchain(toolchain)?;
-    Ok(match toolchain {
+    Ok(match toolchain.parse::<Toolchain>()? {
            Toolchain::Dist(ref n) => n.to_string(),
            Toolchain::Repo(_, _) => panic!(),
        })

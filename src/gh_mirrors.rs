@@ -1,8 +1,8 @@
-use git;
-use errors::*;
-use std::path::{Path, PathBuf};
 use GH_MIRRORS_DIR;
 use crates;
+use errors::*;
+use git;
+use std::path::{Path, PathBuf};
 
 pub fn repo_dir(url: &str) -> Result<PathBuf> {
     let (org, name) = gh_url_to_org_and_name(url)?;

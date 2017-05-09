@@ -1,23 +1,23 @@
-use std::time::Instant;
-use std::mem;
-use std::env;
-use std::io::{self, Write, Read, BufReader, BufRead};
-use file;
-use std::path::{PathBuf, Path};
-use std::time::SystemTime;
-use chrono::UTC;
 use LOG_DIR;
-use std::fs;
-use std::process::{Command, ExitStatus, Stdio};
-use std::thread;
-use std::ops::Deref;
+use chrono::UTC;
 use errors::*;
-use std::sync::Mutex;
-use std::sync::mpsc::{Receiver, channel, Sender};
-use std::cell::RefCell;
-use std::sync::mpsc::{self, RecvTimeoutError};
-use std::time::Duration;
+use file;
 use kernel32;
+use std::cell::RefCell;
+use std::env;
+use std::fs;
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::mem;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitStatus, Stdio};
+use std::sync::Mutex;
+use std::sync::mpsc::{self, RecvTimeoutError};
+use std::sync::mpsc::{Receiver, Sender, channel};
+use std::thread;
+use std::time::Duration;
+use std::time::Instant;
+use std::time::SystemTime;
 use winapi;
 
 lazy_static! {
@@ -128,8 +128,7 @@ const MAX_TIMEOUT_SECS: u64 = 60 * 10 * 2;
 const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 2;
 
 pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
-    let mut child = cmd
-        .stdout(Stdio::piped())
+    let mut child = cmd.stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
 
@@ -142,12 +141,15 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     // Child's stdio needs to produce output to avoid being killed
     let (heartbeat_tx, heartbeat_rx) = mpsc::channel();
 
-    let rx_out = sink(Box::new(stdout), log_child_stdout, capture, heartbeat_tx.clone());
+    let rx_out = sink(Box::new(stdout),
+                      log_child_stdout,
+                      capture,
+                      heartbeat_tx.clone());
     let rx_err = sink(Box::new(stderr), log_child_stderr, capture, heartbeat_tx);
 
     #[cfg(unix)]
     fn kill_process(id: u32) {
-        use libc::{kill, SIGKILL, pid_t};
+        use libc::{SIGKILL, kill, pid_t};
         let r = unsafe { kill(id as pid_t, SIGKILL) };
         if r != 0 {
             // Something went wrong...
@@ -178,7 +180,7 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
                 kill_process(child_id);
                 timeout_tx.send(());
             }
-            _ => { panic!() }
+            _ => panic!(),
         }
     });
 
@@ -203,7 +205,7 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
                         heartbeat_timeout_tx.send(());
                     }
                 }
-                _ => { panic!() }
+                _ => panic!(),
             }
         }
     });
@@ -218,7 +220,8 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     let stderr = rx_err.recv().expect("");
 
     if heartbeat_timed_out {
-        log!("process killed after not generating output for {} s", HEARTBEAT_TIMEOUT_SECS);
+        log!("process killed after not generating output for {} s",
+             HEARTBEAT_TIMEOUT_SECS);
         bail!(ErrorKind::Timeout);
     } else if timed_out {
         log!("process killed after max time of {} s", MAX_TIMEOUT_SECS);
@@ -226,10 +229,10 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     }
 
     Ok(ProcessOutput {
-        status: status,
-        stdout: stdout,
-        stderr: stderr,
-    })
+           status: status,
+           stdout: stdout,
+           stderr: stderr,
+       })
 }
 
 pub fn log_child_stdout(line: &str) {
@@ -240,8 +243,11 @@ pub fn log_child_stderr(line: &str) {
     log(&format!("kablam! {}", line));
 }
 
-fn sink(reader: Box<Read + Send>, log: fn (&str),
-        capture: bool, heartbeat_tx: Sender<()>) -> Receiver<Vec<String>> {
+fn sink(reader: Box<Read + Send>,
+        log: fn(&str),
+        capture: bool,
+        heartbeat_tx: Sender<()>)
+        -> Receiver<Vec<String>> {
     let (tx, rx) = channel();
     thread::spawn(move || {
         let mut buf = Vec::new();
@@ -271,7 +277,8 @@ lazy_static! {
 
 pub fn init() {
     START_TIME.deref();
-    log!("program args: {}", env::args().skip(1).collect::<Vec<_>>().join(" "));
+    log!("program args: {}",
+         env::args().skip(1).collect::<Vec<_>>().join(" "));
 }
 
 pub fn finish() {

@@ -1,0 +1,25 @@
+sudo: false
+language: rust
+cache: cargo
+rust:
+  - stable
+  - nightly
+# Don't require nightly to build, since we aren't clippy clean yet.
+matrix:
+  allow_failures:
+  - rust: nightly
+  fast_finish: true
+before_script:
+  - export PATH=$HOME/.cargo/bin:$PATH
+  - type -p cargo-install-update || cargo install --force cargo-update
+  - |
+    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || cargo install-update -i clippy
+  - cargo install-update -i rustfmt
+script:
+  - |
+    RUSTFLAGS=-Dwarnings cargo build &&
+    cargo test
+  - |
+    cargo fmt -- --write-mode diff
+  - |
+    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || RUSTFLAGS=-Dwarnings cargo clippy

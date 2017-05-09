@@ -1,11 +1,10 @@
 use errors::*;
-use std::path::PathBuf;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::marker::PhantomData;
+use std::path::PathBuf;
 
-pub struct Blobject<T>(PathBuf, PhantomData<T>)
-    where T: Serialize + Deserialize;
+pub struct Blobject<T>(PathBuf, PhantomData<T>) where T: Serialize + Deserialize;
 
 impl<T> Blobject<T>
     where T: Serialize + Deserialize

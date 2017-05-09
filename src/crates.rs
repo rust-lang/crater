@@ -1,19 +1,19 @@
-use std::path::{Path, PathBuf};
 use CRATES_DIR;
+use dl;
+use errors::*;
 use ex::ExCrate;
+use flate2::read::GzDecoder;
+use gh_mirrors;
+use git;
+use run;
+use semver::Version;
+use std::fs;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
-use semver::Version;
-use run;
-use util;
-use dl;
-use std::fs;
-use errors::*;
-use git;
 use tar::Archive;
-use flate2::read::GzDecoder;
-use std::io::Read;
-use gh_mirrors;
+use util;
 
 const CRATES_ROOT: &'static str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
@@ -22,7 +22,10 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
     let mut successes = 0;
     for &(ref crate_, ref dir) in list {
         match *crate_ {
-            ExCrate::Version { ref name, ref version } => {
+            ExCrate::Version {
+                ref name,
+                ref version,
+            } => {
                 let r = dl_registry(name, &version.to_string(), dir)
                     .chain_err(|| format!("unable to download {}-{}", name, version));
                 if let Err(e) = r {
@@ -33,8 +36,7 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
                 // crates.io doesn't rate limit. Go fast
             }
             ExCrate::Repo { ref url, ref sha } => {
-                let r = dl_repo(url, dir, sha)
-                    .chain_err(|| format!("unable to download {}", url));
+                let r = dl_repo(url, dir, sha).chain_err(|| format!("unable to download {}", url));
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {
@@ -55,7 +57,10 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
 
 fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     if dir.exists() {
-        log!("crate {}-{} exists at {}. skipping", name, vers, dir.display());
+        log!("crate {}-{} exists at {}. skipping",
+             name,
+             vers,
+             dir.display());
         return Ok(());
     }
     log!("downloading crate {}-{} to {}", name, vers, dir.display());
@@ -66,8 +71,7 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     fs::create_dir_all(&dir)?;
 
     let mut tar = Archive::new(GzDecoder::new(&*bin)?);
-    let r = unpack_without_first_dir(&mut tar, dir)
-        .chain_err(|| "unable to unpack crate tarball");
+    let r = unpack_without_first_dir(&mut tar, dir).chain_err(|| "unable to unpack crate tarball");
 
     if r.is_err() {
         let _ = util::remove_dir_all(dir);
@@ -104,4 +108,3 @@ fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> R
 
     Ok(())
 }
-

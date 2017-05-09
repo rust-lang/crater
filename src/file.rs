@@ -1,9 +1,9 @@
 use errors::*;
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write, BufRead, BufReader};
-use std::path::Path;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json;
+use std::fs::{self, File, OpenOptions};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::path::Path;
 
 pub fn write_string(path: &Path, s: &str) -> Result<()> {
     let mut f = File::create(path)?;
@@ -24,14 +24,18 @@ pub fn write_lines(path: &Path, lines: &[String]) -> Result<()> {
 
 pub fn read_lines(path: &Path) -> Result<Vec<String>> {
     let contents = read_string(path)?;
-    Ok(contents.lines()
-       .map(|l| l.to_string())
-       .filter(|l| !l.chars().all(|c| c.is_whitespace()))
-       .collect())
+    Ok(contents
+           .lines()
+           .map(|l| l.to_string())
+           .filter(|l| !l.chars().all(|c| c.is_whitespace()))
+           .collect())
 }
 
 pub fn append_line(path: &Path, s: &str) -> Result<()> {
-    let mut f = OpenOptions::new().create(true).append(true).open(path)?;
+    let mut f = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
     f.write_all(s.as_bytes())?;
     f.write_all(b"\n")?;
     Ok(())

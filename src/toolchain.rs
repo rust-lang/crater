@@ -1,21 +1,21 @@
-use tempdir::TempDir;
-use errors::*;
-use std::env::consts::EXE_SUFFIX;
-use url::Url;
-use std::path::{Path, PathBuf};
 use CARGO_HOME;
 use RUSTUP_HOME;
-use std::fs::{self, File};
-use std::cell::RefCell;
-use std::io::Write;
+use TARGET_DIR;
+use TOOLCHAIN_DIR;
 use dl;
-use util;
+use errors::*;
+use git;
 use log;
 use run;
-use TOOLCHAIN_DIR;
-use git;
-use TARGET_DIR;
+use std::cell::RefCell;
+use std::env::consts::EXE_SUFFIX;
+use std::fs::{self, File};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use tempdir::TempDir;
 use toolchain;
+use url::Url;
+use util;
 
 const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";
 
@@ -44,8 +44,8 @@ pub fn prepare_toolchain_(toolchain: &Toolchain) -> Result<()> {
 pub fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {
     if toolchain.starts_with("https://") {
         if let Some(hash_idx) = toolchain.find('#') {
-            let repo = &toolchain[.. hash_idx];
-            let sha = &toolchain[hash_idx + 1 ..];
+            let repo = &toolchain[..hash_idx];
+            let sha = &toolchain[hash_idx + 1..];
             Ok(Toolchain::Repo(repo.to_string(), sha.to_string()))
         } else {
             Err("no sha for git toolchain".into())
@@ -82,11 +82,8 @@ fn rustup_exists() -> bool {
     Path::new(&rustup_exe()).exists()
 }
 
-fn rustup_run(name: &str,
-              args: &[&str],
-              env: &[(&str, &str)]) -> Result<()> {
-    let mut full_env = [("CARGO_HOME", CARGO_HOME),
-                   ("RUSTUP_HOME", RUSTUP_HOME)].to_vec();
+fn rustup_run(name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
+    let mut full_env = [("CARGO_HOME", CARGO_HOME), ("RUSTUP_HOME", RUSTUP_HOME)].to_vec();
     full_env.extend(env.iter());
     run::run(name, args, &full_env)
 }
@@ -94,8 +91,11 @@ fn rustup_run(name: &str,
 fn install_rustup() -> Result<()> {
     log!("installing rustup");
     let rustup_url = &format!("{}/{}/rustup-init{}",
-                              RUSTUP_BASE_URL, &util::this_target(), EXE_SUFFIX);
-    let buf = dl::download(rustup_url).chain_err(|| "unable to download rustup")?;
+                              RUSTUP_BASE_URL,
+                              &util::this_target(),
+                              EXE_SUFFIX);
+    let buf = dl::download(rustup_url)
+        .chain_err(|| "unable to download rustup")?;
 
     let tempdir = TempDir::new("cargobomb")?;
     let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
@@ -107,11 +107,11 @@ fn install_rustup() -> Result<()> {
 
     // FIXME: Wish I could install rustup without installing a toolchain
     util::try_hard(|| {
-        rustup_run(&installer.to_string_lossy(),
-                   &["-y", "--no-modify-path"],
-                   &[])
-            .chain_err(|| "unable to run rustup-init")
-    })
+                       rustup_run(&installer.to_string_lossy(),
+                                  &["-y", "--no-modify-path"],
+                                  &[])
+                               .chain_err(|| "unable to run rustup-init")
+                   })
 }
 
 pub fn make_executable(path: &Path) -> Result<()> {
@@ -140,21 +140,19 @@ pub fn make_executable(path: &Path) -> Result<()> {
 fn update_rustup() -> Result<()> {
     log!("updating rustup");
     util::try_hard(|| {
-        rustup_run(&rustup_exe(),
+                       rustup_run(&rustup_exe(),
                    &["self", "update"],
                    &[])
             .chain_err(|| "unable to run rustup self-update")
-    })
+                   })
 }
 
 fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
     log!("installing toolchain {}", toolchain);
     util::try_hard(|| {
-        rustup_run(&rustup_exe(),
-                   &["toolchain", "install", toolchain],
-                   &[])
-            .chain_err(|| "unable to install toolchain via rustup")
-    })
+                       rustup_run(&rustup_exe(), &["toolchain", "install", toolchain], &[])
+                           .chain_err(|| "unable to install toolchain via rustup")
+                   })
 }
 
 fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
@@ -172,11 +170,9 @@ fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
 pub fn rustup_toolchain_name(toolchain: &str) -> Result<String> {
     let toolchain = parse_toolchain(toolchain)?;
     Ok(match toolchain {
-        Toolchain::Dist(ref n) => n.to_string(),
-        Toolchain::Repo(_, _) => {
-            panic!()
-        }
-    })
+           Toolchain::Dist(ref n) => n.to_string(),
+           Toolchain::Repo(_, _) => panic!(),
+       })
 }
 
 pub fn ex_target_dir(ex_name: &str) -> PathBuf {

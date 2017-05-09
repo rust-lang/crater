@@ -1,17 +1,17 @@
-use docker::{self, RustEnv, Perm};
-use model;
-use std::env;
-use home;
-use std::path::{Path, PathBuf};
 use JOB_DIR;
-use std::fs;
-use rand;
-use file;
+use bmk::Arguable;
+use docker::{self, Perm, RustEnv};
 use docker::Container;
 use errors::*;
+use file;
+use home;
+use model;
 use model::Cmd;
-use bmk::Arguable;
-use serde::{Serialize, Deserialize};
+use rand;
+use serde::{Deserialize, Serialize};
+use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub struct JobId(pub u64);
@@ -34,7 +34,7 @@ enum JobKind {
 enum JobState {
     Created,
     Running,
-    Done
+    Done,
 }
 
 use std::fmt::{self, Display, Formatter};
@@ -66,11 +66,11 @@ pub fn create_local(cmd: Cmd) -> Result<()> {
     log!("create local job: {}", cmd.clone().to_args().join(" "));
 
     let job = &Job {
-        id: JobId(rand::random()),
-        cmd: cmd,
-        kind: JobKind::Docker(None),
-        state: JobState::Created,
-    };
+                   id: JobId(rand::random()),
+                   cmd: cmd,
+                   kind: JobKind::Docker(None),
+                   state: JobState::Created,
+               };
 
     write_job(job)?;
 
@@ -116,7 +116,8 @@ fn start_(job: JobId, wait: bool, again: bool) -> Result<()> {
             let target_dir = PathBuf::from("./target");
 
             let self_exe = env::current_exe()?;
-            let exe = self_exe.strip_prefix(&work_dir)
+            let exe = self_exe
+                .strip_prefix(&work_dir)
                 .chain_err(|| "self exe prefix")?
                 .to_owned();
 
@@ -130,7 +131,7 @@ fn start_(job: JobId, wait: bool, again: bool) -> Result<()> {
 
             let cmd = Cmd::RunCmdForJob(model::Job(job.id));
             let args = model::conv::cmd_to_args(cmd);
-            let args = args.iter().map(|s|&**s).collect::<Vec<_>>();
+            let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
             let exe = format!("{}", exe.display());
             let mut args_ = vec![&*exe];
             args_.extend(args);
@@ -145,13 +146,14 @@ fn start_(job: JobId, wait: bool, again: bool) -> Result<()> {
 
             let c = docker::create_rust_container(&env)?;
             if wait {
-                docker::run_container(&c)
-            } else {
-                docker::start_container(&c)
-            }.map_err(|e| {
-                let _ = docker::delete_container(&c);
-                e
-            })?;
+                    docker::run_container(&c)
+                } else {
+                    docker::start_container(&c)
+                }
+                .map_err(|e| {
+                             let _ = docker::delete_container(&c);
+                             e
+                         })?;
 
             let mut job = job;
             job.state = JobState::Running;
@@ -159,7 +161,7 @@ fn start_(job: JobId, wait: bool, again: bool) -> Result<()> {
             write_job(&job)?;
 
             log!("job {} started in container {}", job.id, c);
-        },
+        }
         JobKind::Docker(Some(c)) => {
             bail!("job {} already started in container {}", job.id, c);
         }

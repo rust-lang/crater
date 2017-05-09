@@ -1,20 +1,20 @@
-use errors::*;
 use LOCAL_DIR;
-use std::fs::{self, File};
-use std::thread;
-use std::path::{Path, PathBuf};
-use std::time::Duration;
-use std::io::{BufReader, Read, BufRead};
-use util;
+use errors::*;
+use git;
 use log;
 use run;
-use git;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, Read};
+use std::path::{Path, PathBuf};
+use std::thread;
+use std::time::Duration;
+use util;
 
 const REGISTRY: &'static str = "https://github.com/rust-lang/crates.io-index.git";
 
 pub struct Crate {
     pub name: String,
-    pub versions: Vec<(String, Vec<Dep>)>
+    pub versions: Vec<(String, Vec<Dep>)>,
 }
 
 pub type Dep = (String, String);
@@ -29,8 +29,7 @@ pub fn find_registry_crates() -> Result<Vec<Crate>> {
 }
 
 fn update_registry() -> Result<()> {
-    git::shallow_clone_or_pull(REGISTRY, &repo_path())
-        .chain_err(|| "unable to update registry")
+    git::shallow_clone_or_pull(REGISTRY, &repo_path()).chain_err(|| "unable to update registry")
 }
 
 fn repo_path() -> PathBuf {
@@ -41,7 +40,8 @@ fn read_registry() -> Result<Vec<Crate>> {
     use walkdir::*;
 
     fn is_hidden(entry: &DirEntry) -> bool {
-        entry.file_name()
+        entry
+            .file_name()
             .to_str()
             .map(|s| s.starts_with('.'))
             .unwrap_or(false)
@@ -50,12 +50,15 @@ fn read_registry() -> Result<Vec<Crate>> {
     let mut crates = Vec::new();
 
     for entry in WalkDir::new(&repo_path())
-        .into_iter()
-        .filter_entry(|e| !is_hidden(e))
-    {
+            .into_iter()
+            .filter_entry(|e| !is_hidden(e)) {
         let entry = entry.chain_err(|| "walk dir")?;
-        if !entry.file_type().is_file() { continue }
-        if entry.file_name() == "config.json" { continue }
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        if entry.file_name() == "config.json" {
+            continue;
+        }
 
         crates.push(read_crate(entry.path())?);
     }
@@ -90,7 +93,7 @@ fn read_crate(path: &Path) -> Result<Crate> {
     }
 
     Ok(Crate {
-        name: crate_name,
-        versions: crate_versions,
-    })
+           name: crate_name,
+           versions: crate_versions,
+       })
 }

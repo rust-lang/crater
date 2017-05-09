@@ -5,8 +5,7 @@ use std::env;
 use std::path::PathBuf;
 
 pub fn home_dir() -> Result<PathBuf> {
-    env::home_dir()
-        .ok_or_else(|| "no home directory".into())
+    env::home_dir().ok_or_else(|| "no home directory".into())
 }
 
 pub fn cargo_home() -> Result<PathBuf> {

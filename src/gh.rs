@@ -1,8 +1,8 @@
 use dl;
+use errors::*;
+use std::collections::HashSet;
 use std::thread;
 use std::time::Duration;
-use std::collections::HashSet;
-use errors::*;
 
 // search repos for "language:rust stars:>0"
 // curl -L "https://api.github.com/search/repositories?q=language:rust+stars:>0&sort=stars&page=1"
@@ -35,19 +35,21 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
     use json::*;
 
     log!("making up to {} queries. time: {} s. take a break",
-             QUERIES.len() * QUERIES_PER, QUERIES.len() * QUERIES_PER * TIME_PER);
+         QUERIES.len() * QUERIES_PER,
+         QUERIES.len() * QUERIES_PER * TIME_PER);
 
     let mut urls = HashSet::new();
     'next_query: for q in QUERIES {
-        for page in 1 .. (QUERIES_PER + 1) {
+        for page in 1..(QUERIES_PER + 1) {
             let url = format!("{}&page={}", q, page);
             log!("downloading {}", url);
 
             let buf = if page < 20 {
-                dl::download_limit(&url, 10000)
-            } else {
-                dl::download_no_retry(&url)
-            }.chain_err(|| "unable to query github for rust repos");
+                    dl::download_limit(&url, 10000)
+                } else {
+                    dl::download_no_retry(&url)
+                }
+                .chain_err(|| "unable to query github for rust repos");
 
             // After some point, errors indicate the end of available results
             let buf = if page > 20 && buf.is_err() {
@@ -57,7 +59,7 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
             } else {
                 buf?
             };
-            
+
             let response = String::from_utf8(buf)
                 .chain_err(|| "non-utf8 github response")?;
 
@@ -73,7 +75,7 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
                 if let Some(name) = item["full_name"].as_str() {
                     log!("found rust repo {}", name);
                     urls.insert(name.to_string());
-                }            
+                }
             }
 
             thread::sleep(Duration::from_secs(TIME_PER as u64));
@@ -87,13 +89,13 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
 }
 
 pub fn is_rust_app(name: &str) -> Result<bool> {
-    let url = format!("https://raw.githubusercontent.com/{}/master/Cargo.lock", name);
+    let url = format!("https://raw.githubusercontent.com/{}/master/Cargo.lock",
+                      name);
     log!("testing {}", url);
     let is_app = if let Ok(buf) = dl::download_no_retry(&url) {
         if let Ok(content) = String::from_utf8(buf) {
             // GitHub returns a successful result when the file doesn't exist
-            !content.contains("404: Not Found")
-                && !content.is_empty()
+            !content.contains("404: Not Found") && !content.is_empty()
         } else {
             false
         }

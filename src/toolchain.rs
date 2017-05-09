@@ -72,10 +72,10 @@ impl FromStr for Toolchain {
 fn init_rustup() -> Result<()> {
     fs::create_dir_all(CARGO_HOME)?;
     fs::create_dir_all(RUSTUP_HOME)?;
-    if !rustup_exists() {
-        install_rustup()?;
-    } else {
+    if rustup_exists() {
         update_rustup()?;
+    } else {
+        install_rustup()?;
     }
 
     Ok(())

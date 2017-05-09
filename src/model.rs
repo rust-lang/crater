@@ -149,11 +149,11 @@ impl NewCmd for CreateLists {
     {
         Ok(vec![
             Box::new(CreateRecentList),
-            Box::new(Cmd::CreateSecondList),
-            Box::new(Cmd::CreateHotList),
-            Box::new(Cmd::CreatePopList),
-            // Box::new(Cmd::CreateGhCandidateListFromCache),
-            // Box::new(Cmd::CreateGhAppListFromCache),
+            Box::new(CreateSecondList),
+            Box::new(CreateHotList),
+            Box::new(CreatePopList),
+            Box::new(CreateGhCandidateListFromCache),
+            Box::new(CreateGhAppListFromCache),
         ])
     }
 }
@@ -210,7 +210,25 @@ struct CreateGhAppList;
 
 struct CreateGhCandidateListFromCache;
 
+impl NewCmd for CreateGhCandidateListFromCache {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        lists::create_gh_candidate_list_from_cache()?;
+        Ok(vec![])
+    }
+}
+
 struct CreateGhAppListFromCache;
+
+impl NewCmd for CreateGhAppListFromCache {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        lists::create_gh_candidate_list_from_cache()?;
+        Ok(vec![])
+    }
+}
 
 struct DefineEx(Ex, Tc, Tc, ExMode, ExCrateSelect);
 

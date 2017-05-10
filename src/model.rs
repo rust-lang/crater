@@ -105,6 +105,7 @@ pub enum Cmd {
 
 trait NewCmd {
     fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>> where Self: Sized;
+    // TODO: add a `sub_cmds` function
 }
 
 struct PrepareLocal;
@@ -271,21 +272,91 @@ impl NewCmd for DefineEx {
 
 struct PrepareEx(Ex);
 
+impl NewCmd for PrepareEx {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        Ok(vec![
+            Box::new(PrepareExShared(self.0.clone())),
+            Box::new(PrepareExLocal(self.0)),
+        ])
+    }
+}
+
 struct CopyEx(Ex, Ex);
 
 struct DeleteEx(Ex);
 
 struct PrepareExShared(Ex);
 
+impl NewCmd for PrepareExShared {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        Ok(vec![
+            Box::new(FetchGhMirrors(ex.clone())),
+            Box::new(CaptureShas(ex.clone())),
+            Box::new(DownloadCrates(ex.clone())),
+            Box::new(FrobCargoTomls(ex.clone())),
+            Box::new(CaptureLockfiles(ex, "stable".parse::<Tc>()?)),
+        ])
+    }
+}
+
 struct FetchGhMirrors(Ex);
+
+impl NewCmd for FetchGhMirrors {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::fetch_gh_mirrors(&ex.0)?;
+        Ok(vec![])
+    }
+}
 
 struct CaptureShas(Ex);
 
+impl NewCmd for CaptureShas {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::capture_shas(&ex.0)?;
+        Ok(vec![])
+    }
+}
+
 struct DownloadCrates(Ex);
+
+impl NewCmd for DownloadCrates {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::download_crates(&ex.0)?;
+        Ok(vec![])
+    }
+}
 
 struct FrobCargoTomls(Ex);
 
+impl NewCmd for FrobCargoTomls {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::frob_tomls(&ex.0)?;
+        Ok(vec![])
+    }
+}
+
 struct CaptureLockfiles(Ex, Tc);
+
+impl NewCmd for CaptureLockfiles {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::capture_lockfiles(&ex.0, &tc.0, false)?;
+        Ok(vec![])
+    }
+}
 
 struct PrepareExLocal(Ex);
 

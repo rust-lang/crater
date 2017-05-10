@@ -113,11 +113,10 @@ pub enum ExCrateSelect {
     Top100,
 }
 
-use self::state::GlobalState;
 use bmk::Process;
 
-impl Process<GlobalState> for Cmd {
-    fn process(self, st: GlobalState) -> Result<(GlobalState, Vec<Cmd>)> {
+impl Process for Cmd {
+    fn process(self) -> Result<Vec<Cmd>> {
         use lists;
         use toolchain;
         use docker;
@@ -235,7 +234,7 @@ impl Process<GlobalState> for Cmd {
             Cmd::Say(msg) => log!("{}", msg.0),
         }
 
-        Ok((st, cmds))
+        Ok(cmds)
     }
 }
 
@@ -750,77 +749,4 @@ pub mod conv {
             Ok(Tc(tc.to_string()))
         }
     }
-}
-
-pub mod state {
-    use super::slowio::{Blobject, FreeDir};
-
-    pub struct GlobalState {
-        master: MasterState,
-        local: LocalState,
-        shared: SharedState,
-        ex: ExData,
-    }
-
-    pub struct MasterState;
-
-    pub struct LocalState {
-        cargo_home: FreeDir,
-        rustup_home: FreeDir,
-        crates_io_index_mirror: FreeDir,
-        gh_clones: FreeDir,
-        target_dirs: FreeDir,
-        test_source_dir: FreeDir,
-    }
-
-    pub struct SharedState {
-        crates: FreeDir,
-        gh_mirrors: FreeDir,
-        lists: Lists,
-    }
-
-    pub struct Lists {
-        recent: Blobject,
-        hot: Blobject,
-        gh_repos: Blobject,
-        gh_apps: Blobject,
-    }
-
-    pub struct ExData {
-        config: Blobject,
-    }
-
-    impl GlobalState {
-        pub fn init() -> GlobalState {
-            GlobalState {
-                master: MasterState,
-                local: LocalState {
-                    cargo_home: FreeDir,
-                    rustup_home: FreeDir,
-                    crates_io_index_mirror: FreeDir,
-                    gh_clones: FreeDir,
-                    target_dirs: FreeDir,
-                    test_source_dir: FreeDir,
-                },
-                shared: SharedState {
-                    crates: FreeDir,
-                    gh_mirrors: FreeDir,
-                    lists: Lists {
-                        recent: Blobject,
-                        hot: Blobject,
-                        gh_repos: Blobject,
-                        gh_apps: Blobject,
-                    },
-                },
-                ex: ExData { config: Blobject },
-            }
-        }
-    }
-}
-
-pub mod slowio {
-    #[derive(Default)]
-    pub struct FreeDir;
-    #[derive(Default)]
-    pub struct Blobject;
 }

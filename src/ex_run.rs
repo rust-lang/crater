@@ -168,7 +168,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                  remaining_time_str);
             log!("results: {} build-fail / {} test-fail / {} test-pass / {} errors",
                  sum_build_fail,
-                 sum_test_pass,
+                 sum_test_fail,
                  sum_test_pass,
                  sum_errors);
         }

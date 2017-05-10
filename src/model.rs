@@ -19,7 +19,6 @@ rewrite.
 
 use errors::*;
 use job::JobId;
-use serde::{Deserialize, Serialize};
 
 // An experiment name
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -248,9 +247,8 @@ impl Process<GlobalState> for Cmd {
 pub mod conv {
     use super::*;
 
-    use bmk::{CmdArg, CmdDesc, CmdKey};
+    use bmk::{CmdArg, CmdDesc};
     use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
-    use errors::*;
     use std::str::FromStr;
 
     pub fn cmd_descs() -> Vec<CmdDesc> {

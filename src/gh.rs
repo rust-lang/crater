@@ -32,7 +32,6 @@ const TIME_PER: usize = 6;
 
 pub fn get_candidate_repos() -> Result<Vec<String>> {
     use json;
-    use json::*;
 
     log!("making up to {} queries. time: {} s. take a break",
          QUERIES.len() * QUERIES_PER,

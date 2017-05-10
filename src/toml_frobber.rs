@@ -1,12 +1,7 @@
-use FROB_DIR;
-use crates;
 use errors::*;
 use file;
-use lists::Crate;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use toml::{Parser, Value};
-use util;
 
 pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
     log!("frobbing {}-{}", name, vers);

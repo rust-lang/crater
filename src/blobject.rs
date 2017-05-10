@@ -1,6 +1,5 @@
 use errors::*;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 

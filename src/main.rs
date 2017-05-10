@@ -1,6 +1,7 @@
 #![recursion_limit = "1024"]
 
 #![allow(unused)]
+#![deny(unused_imports)]
 
 extern crate rand;
 extern crate clap;
@@ -55,10 +56,9 @@ mod job;
 mod blobject;
 mod home;
 
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, ArgMatches};
 use dirs::*;
 use errors::*;
-use std::env;
 use std::panic;
 use std::process;
 
@@ -69,7 +69,6 @@ fn main() {
             true
         }
         Ok(Err(e)) => {
-            use std::error::Error;
             util::report_error(&e);
             false
         }

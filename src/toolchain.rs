@@ -5,17 +5,13 @@ use TOOLCHAIN_DIR;
 use dl;
 use errors::*;
 use git;
-use log;
 use run;
-use std::cell::RefCell;
 use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use tempdir::TempDir;
-use toolchain;
-use url::Url;
 use util;
 
 const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";

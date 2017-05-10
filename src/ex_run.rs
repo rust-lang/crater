@@ -1,25 +1,16 @@
-use CARGO_HOME;
-use EXPERIMENT_DIR;
-use RUSTUP_HOME;
-use crates;
 use docker;
 use errors::*;
 use ex::*;
 use file;
 use gh_mirrors;
-use lists::{self, Crate};
 use log;
 use model::ExMode;
-use run;
-use serde_json;
-use std::collections::{HashMap, HashSet};
-use std::env;
+use std::collections::HashSet;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Instant;
-use toml_frobber;
 use toolchain::{self, Toolchain};
 use util;
 

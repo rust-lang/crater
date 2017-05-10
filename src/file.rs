@@ -1,8 +1,8 @@
 use errors::*;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, Read, Write};
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, Read, Write};
 use std::path::Path;
 
 pub fn write_string(path: &Path, s: &str) -> Result<()> {

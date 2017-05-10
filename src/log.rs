@@ -2,8 +2,6 @@ use LOG_DIR;
 use chrono::UTC;
 use errors::*;
 use file;
-use kernel32;
-use std::cell::RefCell;
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
@@ -17,8 +15,6 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
-use std::time::SystemTime;
-use winapi;
 
 lazy_static! {
     static ref LOCK: Mutex<()> = Mutex::new(());

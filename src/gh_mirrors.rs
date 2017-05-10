@@ -1,5 +1,4 @@
 use GH_MIRRORS_DIR;
-use crates;
 use errors::*;
 use git;
 use std::path::{Path, PathBuf};

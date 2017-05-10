@@ -11,5 +11,7 @@ pub fn checkpoint<Load, Resolve, Instruction, Resolution>
           Instruction: Serialize + Deserialize + Eq,
           Resolution: Serialize + Deserialize
 {
+    ::std::mem::drop(load);
+    ::std::mem::drop(resolve);
     panic!()
 }

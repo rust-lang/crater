@@ -2,6 +2,7 @@
 
 #![allow(unused)]
 #![deny(unused_imports)]
+#![deny(dead_code)]
 
 extern crate rand;
 extern crate clap;

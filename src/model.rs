@@ -127,7 +127,7 @@ impl NewCmd for PrepareToolchain {
     fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
         where Self: Sized
     {
-        toolchain::prepare_toolchain(&(self.0).0)?;
+        (self.0).0.parse::<toolchain::Toolchain>()?;
         Ok(vec![])
     }
 }
@@ -259,8 +259,8 @@ impl NewCmd for DefineEx {
         ex::define(ex::ExOpts {
                        name: (self.0).0,
                        toolchains: vec![
-            toolchain::parse_toolchain(&(self.1).0)?,
-            toolchain::parse_toolchain(&(self.2).0)?,
+            (self.1).0.parse::<toolchain::Toolchain>()?,
+            (self.2).0.parse::<toolchain::Toolchain>()?,
         ],
                        mode: self.3,
                        crates: self.4,

@@ -5,7 +5,6 @@ use file;
 use gh_mirrors;
 use serde_json;
 use std::path::{Path, PathBuf};
-use toolchain;
 
 fn results_file(ex_name: &str) -> PathBuf {
     ex::ex_dir(ex_name).join("results.json")

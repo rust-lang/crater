@@ -8,7 +8,6 @@ use home;
 use model;
 use model::Cmd;
 use rand;
-use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};

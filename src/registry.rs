@@ -1,14 +1,9 @@
 use LOCAL_DIR;
 use errors::*;
 use git;
-use log;
-use run;
 use std::fs::{self, File};
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::thread;
-use std::time::Duration;
-use util;
 
 const REGISTRY: &'static str = "https://github.com/rust-lang/crates.io-index.git";
 
@@ -68,7 +63,6 @@ fn read_registry() -> Result<Vec<Crate>> {
 
 fn read_crate(path: &Path) -> Result<Crate> {
     use json;
-    use json::*;
 
     let mut crate_name = String::new();
     let mut crate_versions = Vec::new();

@@ -1,7 +1,5 @@
 use errors::*;
-use std::cell::RefCell;
 use std::process::Command;
-use url::Url;
 use util;
 
 pub fn download(url: &str) -> Result<Vec<u8>> {

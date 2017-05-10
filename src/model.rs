@@ -275,10 +275,7 @@ pub mod conv {
 
     pub fn clap_cmd<'a>(desc: &CmdDesc) -> App<'a, 'a> {
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
-            Arg::with_name(n)
-                .required(false)
-                .long(n)
-                .default_value(def)
+            Arg::with_name(n).required(false).long(n).default_value(def)
         }
 
         fn req(n: &'static str) -> Arg<'static, 'static> {
@@ -346,10 +343,7 @@ pub mod conv {
         let say_msg = || req("say-msg");
 
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
-            Arg::with_name(n)
-                .required(false)
-                .long(n)
-                .default_value(def)
+            Arg::with_name(n).required(false).long(n).default_value(def)
         }
 
         fn req(n: &'static str) -> Arg<'static, 'static> {

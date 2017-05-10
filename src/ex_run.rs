@@ -25,10 +25,7 @@ use util;
 
 pub fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
     let tc = toolchain::rustup_toolchain_name(toolchain)?;
-    Ok(ex_dir(ex_name)
-           .join("res")
-           .join(tc)
-           .join(crate_to_dir(c)?))
+    Ok(ex_dir(ex_name).join("res").join(tc).join(crate_to_dir(c)?))
 }
 
 pub fn result_file(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {

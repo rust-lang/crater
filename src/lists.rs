@@ -16,20 +16,6 @@ fn recent_path() -> PathBuf {
     Path::new(LIST_DIR).join("recent-crates.txt")
 }
 
-pub fn create_all_lists(full: bool) -> Result<()> {
-    create_recent_list()?;
-    create_hot_list()?;
-    if full {
-        create_gh_candidate_list()?;
-        create_gh_app_list()?;
-    } else {
-        create_gh_candidate_list_from_cache()?;
-        create_gh_app_list_from_cache()?;
-    }
-
-    Ok(())
-}
-
 pub fn create_recent_list() -> Result<()> {
     log!("creating recent list");
     fs::create_dir_all(LIST_DIR)?;

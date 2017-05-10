@@ -374,17 +374,6 @@ fn parse_features(path: &Path) -> Result<Vec<String>> {
     let mut features = Vec::new();
     let contents = file::read_string(path)?;
     for (hash_idx, _) in contents.match_indices('#') {
-        fn ten_bytes(s: Option<&str>) -> String {
-            if let Some(s) = s {
-                if s.len() < 10 {
-                    s.to_string()
-                } else {
-                    s[..10].to_string()
-                }
-            } else {
-                String::from("<none>")
-            }
-        }
         let contents = &contents[hash_idx + 1..];
         let contents = eat_token(Some(contents), "!").or_else(|| Some(contents));
         let contents = eat_token(contents, "[");

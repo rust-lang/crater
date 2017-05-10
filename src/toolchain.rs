@@ -98,9 +98,9 @@ fn rustup_run(name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
 fn install_rustup() -> Result<()> {
     log!("installing rustup");
     let rustup_url = &format!("{}/{}/rustup-init{}",
-                              RUSTUP_BASE_URL,
-                              &util::this_target(),
-                              EXE_SUFFIX);
+            RUSTUP_BASE_URL,
+            &util::this_target(),
+            EXE_SUFFIX);
     let buf = dl::download(rustup_url)
         .chain_err(|| "unable to download rustup")?;
 
@@ -147,10 +147,8 @@ pub fn make_executable(path: &Path) -> Result<()> {
 fn update_rustup() -> Result<()> {
     log!("updating rustup");
     util::try_hard(|| {
-                       rustup_run(&rustup_exe(),
-                   &["self", "update"],
-                   &[])
-            .chain_err(|| "unable to run rustup self-update")
+                       rustup_run(&rustup_exe(), &["self", "update"], &[])
+                           .chain_err(|| "unable to run rustup self-update")
                    })
 }
 

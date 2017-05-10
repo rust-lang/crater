@@ -75,10 +75,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
 }
 
 pub fn reset_to_sha(dir: &Path, sha: &str) -> Result<()> {
-    run::cd_run(dir,
-                "git",
-                &["reset", "--hard", sha],
-                &[])
+    run::cd_run(dir, "git", &["reset", "--hard", sha], &[])
         .chain_err(|| format!("unable to reset {} to {}", dir.display(), sha))
 }
 

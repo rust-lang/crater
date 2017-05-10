@@ -39,9 +39,7 @@ fn shafile(ex_name: &str) -> PathBuf {
 }
 
 fn config_file(ex_name: &str) -> PathBuf {
-    Path::new(EXPERIMENT_DIR)
-        .join(ex_name)
-        .join("config.json")
+    Path::new(EXPERIMENT_DIR).join(ex_name).join("config.json")
 }
 
 fn froml_dir(ex_name: &str) -> PathBuf {

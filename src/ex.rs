@@ -170,7 +170,7 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
             let r = run::run_capture(Some(&dir), "git", &["log", "-n1", "--pretty=%H"], &[]);
 
             match r {
-                Ok((stdout, stderr)) => {
+                Ok((stdout, _)) => {
                     if let Some(shaline) = stdout.get(0) {
                         if !shaline.is_empty() {
                             log!("sha for {}: {}", url, shaline);
@@ -432,7 +432,7 @@ pub fn with_captured_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path) -> R
 
 pub fn fetch_deps(ex_name: &str, toolchain: &Toolchain) -> Result<()> {
     let crates = ex_crates_and_dirs(ex_name)?;
-    for (ref c, ref dir) in crates {
+    for (ref c, _) in crates {
         let r = with_work_crate(ex_name, toolchain, c, |path| {
             with_frobbed_toml(ex_name, c, path)?;
             with_captured_lockfile(ex_name, c, path)?;

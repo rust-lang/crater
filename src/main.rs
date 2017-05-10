@@ -3,6 +3,8 @@
 #![allow(unused)]
 #![deny(unused_imports)]
 #![deny(dead_code)]
+#![deny(unused_assignments)]
+#![deny(unused_variables)]
 
 extern crate rand;
 extern crate clap;

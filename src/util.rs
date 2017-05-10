@@ -14,7 +14,7 @@ pub fn try_hard<F, R>(f: F) -> Result<R>
 pub fn try_hard_limit<F, R>(ms: usize, f: F) -> Result<R>
     where F: Fn() -> Result<R>
 {
-    let mut r = Err("".into());
+    let mut r;
     for i in 1..3 {
         r = f();
         if r.is_ok() {

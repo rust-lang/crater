@@ -76,7 +76,7 @@ pub fn create_pop_list() -> Result<()> {
         // Find all the crates this crate depends on
         let mut seen = HashSet::new();
         for &(_, ref deps) in &crate_.versions {
-            for &(ref name, ref req) in deps {
+            for &(ref name, _) in deps {
                 seen.insert(name.to_string());
             }
         }

@@ -395,7 +395,7 @@ fn parse_features(path: &Path) -> Result<Vec<String>> {
             }
         }
         let contents = &contents[hash_idx + 1..];
-        let contents = eat_token(Some(contents), "!").or(Some(contents));
+        let contents = eat_token(Some(contents), "!").or_else(|| Some(contents));
         let contents = eat_token(contents, "[");
         let contents = eat_token(contents, "feature");
         let new_features = parse_list(contents, "(", ")");

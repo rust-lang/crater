@@ -622,6 +622,7 @@ pub mod conv {
     }
 
     fn cmd_to_args_(cmd: Cmd) -> Vec<String> {
+        #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
         use super::Cmd::*;
 
         fn opt_ex(ex: Ex) -> String {
@@ -629,7 +630,7 @@ pub mod conv {
         }
 
         fn req_ex(ex: Ex) -> String {
-            format!("{}", ex.0)
+            ex.0
         }
 
         fn opt_tc(tc: Tc) -> String {
@@ -656,6 +657,7 @@ pub mod conv {
             say_msg.0
         }
 
+        #[cfg_attr(feature = "cargo-clippy", allow(match_same_arms))]
         match cmd {
             PrepareLocal |
             BuildContainer |

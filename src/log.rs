@@ -86,19 +86,27 @@ fn redirected_file() -> Option<PathBuf> {
 
 macro_rules! log {
     ($fmt:expr) => {
-        $crate::log::log_local_stdout(&format!($fmt))
+        $crate::log::log_local_stdout(
+            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
+            &format!($fmt))
     };
     ($fmt:expr, $($arg:tt)*) => {
-        $crate::log::log_local_stdout(&format!($fmt, $($arg)*))
+        $crate::log::log_local_stdout(
+            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
+            &format!($fmt, $($arg)*))
     };
 }
 
 macro_rules! log_err {
     ($fmt:expr) => {
-        $crate::log::log_local_stderr(&format!($fmt))
+        $crate::log::log_local_stderr(
+            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
+            &format!($fmt))
     };
     ($fmt:expr, $($arg:tt)*) => {
-        $crate::log::log_local_stderr(&format!($fmt, $($arg)*))
+        $crate::log::log_local_stderr(
+            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
+            &format!($fmt, $($arg)*))
     };
 }
 

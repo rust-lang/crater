@@ -14,7 +14,7 @@ pub fn cd_run(cd: &Path, name: &str, args: &[&str], env: &[(&str, &str)]) -> Res
 }
 
 pub fn run_full(cd: Option<&Path>, name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
-    let cmdstr = make_cmdstr(name, args, env);
+    let cmdstr = make_cmdstr(name, args);
     let mut cmd = Command::new(name);
 
     cmd.args(args);
@@ -41,7 +41,7 @@ pub fn run_capture(cd: Option<&Path>,
                    args: &[&str],
                    env: &[(&str, &str)])
                    -> Result<(Vec<String>, Vec<String>)> {
-    let cmdstr = make_cmdstr(name, args, env);
+    let cmdstr = make_cmdstr(name, args);
     let mut cmd = Command::new(name);
 
     cmd.args(args);
@@ -63,7 +63,7 @@ pub fn run_capture(cd: Option<&Path>,
     }
 }
 
-pub fn make_cmdstr(name: &str, args: &[&str], env: &[(&str, &str)]) -> String {
+pub fn make_cmdstr(name: &str, args: &[&str]) -> String {
     assert!(!args.is_empty(), "case not handled");
     format!("{} {}", name, args.join(" "))
 }

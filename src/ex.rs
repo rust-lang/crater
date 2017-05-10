@@ -449,7 +449,7 @@ pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
 pub fn prepare_all_toolchains(ex_name: &str) -> Result<()> {
     let config = load_config(ex_name)?;
     for tc in &config.toolchains {
-        toolchain::prepare_toolchain_(tc)?;
+        tc.prepare()?;
     }
 
     Ok(())

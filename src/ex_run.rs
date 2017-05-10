@@ -67,7 +67,7 @@ pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
 }
 
 pub fn run_ex(ex_name: &str, tc: &str) -> Result<()> {
-    let tc = toolchain::parse_toolchain(tc)?;
+    let tc = tc.parse::<toolchain::Toolchain>()?;
     let config = load_config(ex_name)?;
     run_exts(&config, &[tc])
 }
@@ -101,7 +101,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     log!("running {} tests", total_crates);
     for (ref c, ref dir) in crates {
         for tc in tcs {
-            let tc = &toolchain::tc_to_string(tc);
+            let tc = &tc.to_string();
             let r = {
                 let existing_result = get_test_result(ex_name, c, tc)?;
                 if let Some(r) = existing_result {
@@ -183,8 +183,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
 fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     for tc in tcs {
         if !config.toolchains.contains(tc) {
-            bail!("toolchain {} not in experiment",
-                  toolchain::tc_to_string(&tc));
+            bail!("toolchain {} not in experiment", tc.to_string());
         }
     }
 

@@ -12,6 +12,7 @@ use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use tempdir::TempDir;
 use toolchain;
 use url::Url;
@@ -22,53 +23,59 @@ const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist"
 #[derive(Serialize, Deserialize, PartialEq)]
 pub enum Toolchain {
     Dist(String), // rustup toolchain spec
-    Repo(String, String), // Url, Sha
+    Repo { url: String, sha: String },
 }
 
-pub fn prepare_toolchain(toolchain: &str) -> Result<()> {
-    let toolchain = parse_toolchain(toolchain)?;
-    prepare_toolchain_(&toolchain)
-}
+impl Toolchain {
+    pub fn prepare(&self) -> Result<()> {
+        init_rustup()?;
 
-pub fn prepare_toolchain_(toolchain: &Toolchain) -> Result<()> {
-    init_rustup()?;
-
-    match *toolchain {
-        Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
-        Toolchain::Repo(ref repo, ref sha) => init_toolchain_from_repo(repo, sha)?,
-    }
-
-    Ok(())
-}
-
-pub fn parse_toolchain(toolchain: &str) -> Result<Toolchain> {
-    if toolchain.starts_with("https://") {
-        if let Some(hash_idx) = toolchain.find('#') {
-            let repo = &toolchain[..hash_idx];
-            let sha = &toolchain[hash_idx + 1..];
-            Ok(Toolchain::Repo(repo.to_string(), sha.to_string()))
-        } else {
-            Err("no sha for git toolchain".into())
+        match *self {
+            Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
+            Toolchain::Repo { ref url, ref sha } => init_toolchain_from_repo(url, sha)?,
         }
-    } else {
-        Ok(Toolchain::Dist(toolchain.to_string()))
+
+        Ok(())
     }
 }
 
-pub fn tc_to_string(tc: &Toolchain) -> String {
-    match *tc {
-        Toolchain::Dist(ref s) => s.clone(),
-        Toolchain::Repo(ref url, ref sha) => format!("{}#{}", url, sha),
+impl ToString for Toolchain {
+    fn to_string(&self) -> String {
+        match *self {
+            Toolchain::Dist(ref s) => s.clone(),
+            Toolchain::Repo { ref url, ref sha } => format!("{}#{}", url, sha),
+        }
+    }
+}
+
+impl FromStr for Toolchain {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        if s.starts_with("https://") {
+            if let Some(hash_idx) = s.find('#') {
+                let repo = &s[..hash_idx];
+                let sha = &s[hash_idx + 1..];
+                Ok(Toolchain::Repo {
+                       url: repo.to_string(),
+                       sha: sha.to_string(),
+                   })
+            } else {
+                Err("no sha for git toolchain".into())
+            }
+        } else {
+            Ok(Toolchain::Dist(s.to_string()))
+        }
     }
 }
 
 fn init_rustup() -> Result<()> {
     fs::create_dir_all(CARGO_HOME)?;
     fs::create_dir_all(RUSTUP_HOME)?;
-    if !rustup_exists() {
-        install_rustup()?;
-    } else {
+    if rustup_exists() {
         update_rustup()?;
+    } else {
+        install_rustup()?;
     }
 
     Ok(())
@@ -168,10 +175,9 @@ fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
 }
 
 pub fn rustup_toolchain_name(toolchain: &str) -> Result<String> {
-    let toolchain = parse_toolchain(toolchain)?;
-    Ok(match toolchain {
+    Ok(match toolchain.parse::<Toolchain>()? {
            Toolchain::Dist(ref n) => n.to_string(),
-           Toolchain::Repo(_, _) => panic!(),
+           Toolchain::Repo { .. } => panic!(),
        })
 }
 

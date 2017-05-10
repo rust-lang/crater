@@ -139,7 +139,7 @@ impl Process<GlobalState> for Cmd {
                     Cmd::CreateLists,
                 ]);
             }
-            Cmd::PrepareToolchain(tc) => toolchain::prepare_toolchain(&tc.0)?,
+            Cmd::PrepareToolchain(tc) => tc.0.parse::<toolchain::Toolchain>()?.prepare()?,
             Cmd::BuildContainer => docker::build_container()?,
 
             // List creation
@@ -177,8 +177,8 @@ impl Process<GlobalState> for Cmd {
                 ex::define(ex::ExOpts {
                                name: ex.0,
                                toolchains: vec![
-                    toolchain::parse_toolchain(&tc1.0)?,
-                    toolchain::parse_toolchain(&tc2.0)?,
+                    tc1.0.parse::<toolchain::Toolchain>()?,
+                    tc2.0.parse::<toolchain::Toolchain>()?,
                 ],
                                mode: mode,
                                crates: crates,
@@ -811,7 +811,7 @@ pub mod conv {
 
         fn from_str(tc: &str) -> Result<Tc> {
             use toolchain;
-            let _ = toolchain::parse_toolchain(tc)?;
+            let _ = tc.parse::<toolchain::Toolchain>()?;
             Ok(Tc(tc.to_string()))
         }
     }

@@ -49,7 +49,6 @@ pub enum Cmd {
     CreateLists,
     CreateListsFull,
     CreateRecentList,
-    CreateSecondList,
     CreateHotList,
     CreatePopList,
     CreateGhCandidateList,
@@ -146,7 +145,6 @@ impl Process<GlobalState> for Cmd {
             Cmd::CreateLists => {
                 cmds.extend(vec![
                     Cmd::CreateRecentList,
-                    Cmd::CreateSecondList,
                     Cmd::CreateHotList,
                     Cmd::CreatePopList,
                     Cmd::CreateGhCandidateListFromCache,
@@ -156,7 +154,6 @@ impl Process<GlobalState> for Cmd {
             Cmd::CreateListsFull => {
                 cmds.extend(vec![
                     Cmd::CreateRecentList,
-                    Cmd::CreateSecondList,
                     Cmd::CreateHotList,
                     Cmd::CreatePopList,
                     Cmd::CreateGhCandidateList,
@@ -164,7 +161,6 @@ impl Process<GlobalState> for Cmd {
                 ]);
             }
             Cmd::CreateRecentList => lists::create_recent_list()?,
-            Cmd::CreateSecondList => lists::create_second_list()?,
             Cmd::CreateHotList => lists::create_hot_list()?,
             Cmd::CreatePopList => lists::create_pop_list()?,
             Cmd::CreateGhCandidateList => lists::create_gh_candidate_list()?,
@@ -367,8 +363,6 @@ pub mod conv {
             cmd("create-lists-full", "create all the lists of crates"),
             cmd("create-recent-list",
                 "create the list of most recent crate versions"),
-            cmd("create-second-list",
-                "create the list of of second-most-recent crate versions"),
             cmd("create-hot-list",
                 "create the list of popular crates versions"),
             cmd("create-pop-list", "create the list of popular crates"),
@@ -506,7 +500,6 @@ pub mod conv {
                ("create-lists", _) => Cmd::CreateLists,
                ("create-lists-full", _) => Cmd::CreateListsFull,
                ("create-recent-list", _) => Cmd::CreateRecentList,
-               ("create-second-list", _) => Cmd::CreateSecondList,
                ("create-hot-list", _) => Cmd::CreateHotList,
                ("create-pop-list", _) => Cmd::CreatePopList,
                ("create-gh-candidate-list", _) => Cmd::CreateGhCandidateList,
@@ -570,7 +563,6 @@ pub mod conv {
             CreateLists => "create-lists",
             CreateListsFull => "create-lists-full",
             CreateRecentList => "create-recent-list",
-            CreateSecondList => "create-second-list",
             CreateHotList => "create-hot-list",
             CreatePopList => "create-pop-list",
             CreateGhCandidateList => "create-gh-candidate-list",
@@ -662,7 +654,6 @@ pub mod conv {
             CreateLists |
             CreateListsFull |
             CreateRecentList |
-            CreateSecondList |
             CreateHotList |
             CreatePopList |
             CreateGhCandidateList |
@@ -840,7 +831,6 @@ pub mod state {
 
     pub struct Lists {
         recent: Blobject,
-        second: Blobject,
         hot: Blobject,
         gh_repos: Blobject,
         gh_apps: Blobject,
@@ -867,7 +857,6 @@ pub mod state {
                     gh_mirrors: FreeDir,
                     lists: Lists {
                         recent: Blobject,
-                        second: Blobject,
                         hot: Blobject,
                         gh_repos: Blobject,
                         gh_apps: Blobject,

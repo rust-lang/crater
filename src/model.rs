@@ -62,10 +62,8 @@ pub enum ExCrateSelect {
     Top100,
 }
 
-use bmk::Process;
-
-impl Process for Cmd {
-    fn process(self) -> Result<()> {
+impl Cmd {
+    pub fn process(self) -> Result<()> {
         use lists;
         use docker;
         use ex;

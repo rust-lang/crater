@@ -86,7 +86,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     };
 
     log!("running {} tests", total_crates);
-    for (ref c, ref dir) in crates {
+    for (ref c, _) in crates {
         for tc in tcs {
             let r = {
                 let existing_result = get_test_result(ex_name, c, tc)?;
@@ -332,7 +332,7 @@ pub fn get_test_result(ex_name: &str,
 }
 
 fn test_find_unstable_features(source_path: &Path,
-                               target_path: &Path,
+                               _target_path: &Path,
                                _rustup_tc: &str)
                                -> Result<TestResult> {
     use walkdir::*;

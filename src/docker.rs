@@ -57,7 +57,7 @@ pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
     let user_env = &format!("USER_ID={}", user_id());
     let cmd_env = &format!("CMD={}", env.args.join(" "));
 
-    let mut docker_gid_ = None;
+    let docker_gid_;
     let mut args_ = vec![
         "-v",
         &work_mount,

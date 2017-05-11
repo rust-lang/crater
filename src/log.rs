@@ -121,11 +121,11 @@ pub struct ProcessOutput {
     pub stderr: Vec<String>,
 }
 
-pub fn log_command(mut cmd: Command) -> Result<ProcessOutput> {
+pub fn log_command(cmd: Command) -> Result<ProcessOutput> {
     log_command_(cmd, false)
 }
 
-pub fn log_command_capture(mut cmd: Command) -> Result<ProcessOutput> {
+pub fn log_command_capture(cmd: Command) -> Result<ProcessOutput> {
     log_command_(cmd, true)
 }
 
@@ -256,7 +256,7 @@ fn sink(reader: Box<Read + Send>,
         let mut buf = Vec::new();
         let reader = BufReader::new(reader);
         for line_bytes in reader.split(b'\n') {
-            if let Ok(mut line_bytes) = line_bytes {
+            if let Ok(line_bytes) = line_bytes {
                 let line = String::from_utf8_lossy(&line_bytes);
                 log(line.deref());
                 heartbeat_tx.send(());

@@ -8,7 +8,13 @@ before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
   - type -p cargo-install-update || cargo install --force cargo-update
   - |
-    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || cargo install-update -i clippy
+    if [[  $TRAVIS_RUST_VERSION =~ nightly-* ]]; then
+      if type -p cargo-clippy && cargo-clippy -V; then
+         cargo install-update -i clippy
+      else
+         cargo install --force clippy
+      fi
+    fi
   - cargo install-update -i rustfmt
 script:
   - |

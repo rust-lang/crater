@@ -18,7 +18,6 @@ rewrite.
 */
 
 use errors::*;
-use job::JobId;
 use toolchain::Toolchain;
 
 // An experiment name
@@ -27,9 +26,6 @@ pub struct Ex(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SayMsg(String);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Job(pub JobId);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Cmd {
@@ -79,14 +75,6 @@ pub enum Cmd {
     // Reporting
     GenReport(Ex),
 
-    // Job control
-    CreateDockerJob(Box<Cmd>),
-    StartJob(Job),
-    WaitForJob(Job),
-    RunJob(Job),
-    RunJobAgain(Job),
-    RunCmdForJob(Job),
-
     // Misc
     Sleep,
     Say(SayMsg),
@@ -119,7 +107,6 @@ impl Process for Cmd {
         use ex_run;
         use run;
         use report;
-        use job;
 
         let mut cmds = Vec::new();
         match self {
@@ -213,14 +200,6 @@ impl Process for Cmd {
             // Reporting
             Cmd::GenReport(ex) => report::gen(&ex.0)?,
 
-            // Job control
-            Cmd::CreateDockerJob(cmd) => job::create_local(*cmd)?,
-            Cmd::StartJob(job) => job::start(job.0)?,
-            Cmd::WaitForJob(job) => job::wait(job.0)?,
-            Cmd::RunJob(job) => job::run(job.0)?,
-            Cmd::RunJobAgain(job) => job::run_again(job.0)?,
-            Cmd::RunCmdForJob(job) => job::run_cmd_for_job(job.0)?,
-
             // Misc
             Cmd::Sleep => run::run("sleep", &["5"], &[])?,
             Cmd::Say(msg) => log!("{}", msg.0),
@@ -238,10 +217,6 @@ pub mod conv {
     use std::str::FromStr;
 
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
-        clap_cmds_(true)
-    }
-
-    fn clap_cmds_(recurse: bool) -> Vec<App<'static, 'static>> {
         // Types of arguments
         let ex = || opt("ex", "default");
         let ex1 = || req("ex-1");
@@ -274,7 +249,6 @@ pub mod conv {
                     ExCrateSelect::Top100.to_str(),
                 ])
         };
-        let job = || req("job");
         let say_msg = || req("say-msg");
 
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
@@ -360,21 +334,6 @@ pub mod conv {
             // Reporting
             cmd("gen-report", "generate the experiment report").arg(ex()),
 
-            // Job control
-            if recurse {
-                cmd("create-docker-job", "start a docker job in docker")
-                    .subcommands(clap_cmds_(false))
-            } else {
-                cmd("create-docker-job", "nop")
-            },
-            cmd("start-job", "start a job asynchronously").arg(job()),
-            cmd("wait-for-job", "wait for a job to complete").arg(job()),
-            cmd("run-job", "run a pending job synchronously").arg(job()),
-            cmd("run-job-again", "run a completed job again synchronously").arg(job()),
-            cmd("run-cmd-for-job",
-                "run a command for a job, inside the job environment")
-                    .arg(job()),
-
             // Misc
             cmd("sleep", "sleep"),
             cmd("say", "say something").arg(say_msg()),
@@ -415,14 +374,6 @@ pub mod conv {
             m.value_of("crate-select")
                 .expect("")
                 .parse::<ExCrateSelect>()
-        }
-
-        fn cmd(m: &ArgMatches) -> Result<Box<Cmd>> {
-            Ok(Box::new(clap_args_to_cmd(m)?))
-        }
-
-        fn job(m: &ArgMatches) -> Result<Job> {
-            m.value_of("job").expect("").parse::<Job>()
         }
 
         fn say_msg(m: &ArgMatches) -> Result<SayMsg> {
@@ -476,14 +427,6 @@ pub mod conv {
                // Reporting
                ("gen-report", Some(m)) => Cmd::GenReport(ex(m)?),
 
-               // Job control
-               ("create-docker-job", Some(m)) => Cmd::CreateDockerJob(cmd(m)?),
-               ("start-job", Some(m)) => Cmd::StartJob(job(m)?),
-               ("wait-for-job", Some(m)) => Cmd::WaitForJob(job(m)?),
-               ("run-job", Some(m)) => Cmd::RunJob(job(m)?),
-               ("run-job-again", Some(m)) => Cmd::RunJobAgain(job(m)?),
-               ("run-cmd-for-job", Some(m)) => Cmd::RunCmdForJob(job(m)?),
-
                // Misc
                ("sleep", _) => Cmd::Sleep,
                ("say", Some(m)) => Cmd::Say(say_msg(m)?),
@@ -532,13 +475,6 @@ pub mod conv {
 
             GenReport(..) => "gen-report",
 
-            CreateDockerJob(..) => "create-docker-job",
-            StartJob(..) => "start-job",
-            WaitForJob(..) => "wait-for-job",
-            RunJob(..) => "run-job",
-            RunJobAgain(..) => "run-job-again",
-            RunCmdForJob(..) => "run-cmd-for-job",
-
             Sleep => "sleep",
             Say(..) => "say",
         }
@@ -578,10 +514,6 @@ pub mod conv {
 
         fn opt_crate_select(crate_select: ExCrateSelect) -> String {
             format!("--crate-select={}", crate_select.to_str())
-        }
-
-        fn req_job(job: Job) -> String {
-            job.0.to_string()
         }
 
         fn req_say_msg(say_msg: SayMsg) -> String {
@@ -634,13 +566,6 @@ pub mod conv {
             RunTc(ex, tc) => vec![opt_ex(ex), req_tc(tc)],
 
             GenReport(ex) => vec![opt_ex(ex)],
-
-            CreateDockerJob(cmd) => cmd_to_args(*cmd),
-            StartJob(job) => vec![req_job(job)],
-            WaitForJob(job) => vec![req_job(job)],
-            RunJob(job) => vec![req_job(job)],
-            RunJobAgain(job) => vec![req_job(job)],
-            RunCmdForJob(job) => vec![req_job(job)],
 
             Say(msg) => vec![req_say_msg(msg)],
         }
@@ -713,14 +638,6 @@ pub mod conv {
                 ExCrateSelect::SmallRandom => "small-random",
                 ExCrateSelect::Top100 => "top-100",
             }
-        }
-    }
-
-    impl FromStr for Job {
-        type Err = Error;
-
-        fn from_str(job: &str) -> Result<Job> {
-            Ok(Job(JobId(job.parse().chain_err(|| "parsing job id")?)))
         }
     }
 

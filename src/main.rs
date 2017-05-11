@@ -51,8 +51,6 @@ mod report;
 mod docker;
 mod dirs;
 mod bmk;
-mod job;
-mod home;
 
 use clap::{App, AppSettings, ArgMatches};
 use dirs::*;

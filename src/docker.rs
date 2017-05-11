@@ -191,14 +191,6 @@ pub fn run_container(c: &Container) -> Result<()> {
     run::run("docker", &["start", "-a", &c.0], &[])
 }
 
-pub fn start_container(c: &Container) -> Result<()> {
-    run::run("docker", &["start", &c.0], &[])
-}
-
-pub fn wait_for_container(c: &Container) -> Result<()> {
-    run::run("docker", &["wait", &c.0], &[])
-}
-
 pub fn delete_container(c: &Container) -> Result<()> {
     run::run("docker", &["rm", "-f", &c.0], &[])
 }

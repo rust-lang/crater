@@ -116,7 +116,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                 }
                 Ok(ref r) => {
                     // FIXME: Should errors be recorded?
-                    record_test_result(ex_name, c, tc, *r);
+                    record_test_result(ex_name, c, tc, *r)?;
                 }
             }
 

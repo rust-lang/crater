@@ -1,12 +1,8 @@
-use CRATES_DIR;
 use dl;
 use errors::*;
 use ex::ExCrate;
 use flate2::read::GzDecoder;
 use gh_mirrors;
-use git;
-use run;
-use semver::Version;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};

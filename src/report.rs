@@ -5,7 +5,6 @@ use file;
 use gh_mirrors;
 use serde_json;
 use std::path::{Path, PathBuf};
-use toolchain;
 
 fn results_file(ex_name: &str) -> PathBuf {
     ex::ex_dir(ex_name).join("results.json")
@@ -53,12 +52,12 @@ pub fn gen(ex_name: &str) -> Result<()> {
                 .toolchains
                 .iter()
                 .map(|tc| -> Result<BuildTestResult> {
-                    let tcs = &tc.to_string();
-                    let res = ex_run::get_test_result(ex_name, &krate, tcs)?;
+                    let res = ex_run::get_test_result(ex_name, &krate, tc)?;
                     // If there was no test result return an error
                     let res = res.ok_or_else(|| Error::from("no result"))?;
-                    let result_file = ex_run::result_file(ex_name, &krate, tcs)?;
-                    let result_log = ex_run::result_log(ex_name, &krate, tcs)?;
+                    let result_file = ex_run::result_file(ex_name, &krate, tc)?;
+                    let result_log = ex_run::result_log(ex_name, &krate, tc)?;
+                    let result_log = ex_run::result_log(ex_name, &krate, tc)?;
                     let rel_log = relative(&ex_dir, &result_log)?;
 
                     Ok(BuildTestResult {

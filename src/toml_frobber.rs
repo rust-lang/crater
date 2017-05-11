@@ -1,12 +1,7 @@
-use FROB_DIR;
-use crates;
 use errors::*;
 use file;
-use lists::Crate;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use toml::{Parser, Value};
-use util;
 
 pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
     log!("frobbing {}-{}", name, vers);
@@ -25,7 +20,7 @@ pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
             // Iterate through the "name = { ... }", removing any "path"
             // keys in the dependency definition
             for (dep_name, v) in deps.iter_mut() {
-                if let &mut Value::Table(ref mut dep_props) = v {
+                if let Value::Table(ref mut dep_props) = *v {
                     if dep_props.contains_key("path") {
                         log!("removing path from {} in {}-{}", dep_name, name, vers);
                     }

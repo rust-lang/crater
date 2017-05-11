@@ -2,8 +2,6 @@ use LOG_DIR;
 use chrono::UTC;
 use errors::*;
 use file;
-use kernel32;
-use std::cell::RefCell;
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
@@ -17,8 +15,6 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
-use std::time::SystemTime;
-use winapi;
 
 lazy_static! {
     static ref LOCK: Mutex<()> = Mutex::new(());
@@ -30,6 +26,7 @@ fn log(line: &str) {
     log_to_file(&out_file(), line);
 }
 
+#[allow(dead_code)]
 fn log_err(line: &str) {
     let _g = LOCK.lock();
     writeln!(&mut io::stderr(), "{}", line);
@@ -86,19 +83,27 @@ fn redirected_file() -> Option<PathBuf> {
 
 macro_rules! log {
     ($fmt:expr) => {
-        $crate::log::log_local_stdout(&format!($fmt))
+        $crate::log::log_local_stdout(
+            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
+            &format!($fmt))
     };
     ($fmt:expr, $($arg:tt)*) => {
-        $crate::log::log_local_stdout(&format!($fmt, $($arg)*))
+        $crate::log::log_local_stdout(
+            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
+            &format!($fmt, $($arg)*))
     };
 }
 
 macro_rules! log_err {
     ($fmt:expr) => {
-        $crate::log::log_local_stderr(&format!($fmt))
+        $crate::log::log_local_stderr(
+            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
+            &format!($fmt))
     };
     ($fmt:expr, $($arg:tt)*) => {
-        $crate::log::log_local_stderr(&format!($fmt, $($arg)*))
+        $crate::log::log_local_stderr(
+            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
+            &format!($fmt, $($arg)*))
     };
 }
 

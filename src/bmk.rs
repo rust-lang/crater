@@ -1,7 +1,7 @@
 use errors::*;
 
-pub trait Process<S> {
-    fn process(self, s: S) -> Result<(S, Vec<Self>)> where Self: Sized;
+pub trait Process {
+    fn process(self) -> Result<Vec<Self>> where Self: Sized;
 }
 
 pub trait Arguable: Sized {
@@ -9,8 +9,8 @@ pub trait Arguable: Sized {
     fn to_args(self) -> Vec<String>;
 }
 
-pub fn run<S, C>(mut state: S, cmd: C) -> Result<S>
-    where C: Process<S>,
+pub fn run<C>(cmd: C) -> Result<()>
+    where C: Process,
           C: Arguable
 {
     let mut cmds = vec![cmd];
@@ -21,8 +21,7 @@ pub fn run<S, C>(mut state: S, cmd: C) -> Result<S>
         let cmd: C = Arguable::from_args(cmd)
             .chain_err(|| "error round-tripping cmd through args")?;
 
-        let (state_, new_cmds) = cmd.process(state)?;
-        state = state_;
+        let new_cmds = cmd.process()?;
 
         // Each command execution returns a list of new commands
         // to execute, in order, before considering the original
@@ -30,20 +29,5 @@ pub fn run<S, C>(mut state: S, cmd: C) -> Result<S>
         cmds.extend(new_cmds.into_iter().rev());
     }
 
-    Ok(state)
-}
-
-// Types used for conversion between the command enum, clap, and HTTP
-
-/// The string representation of a command variant, or argument name
-pub type CmdKey = &'static str;
-
-pub struct CmdDesc {
-    pub name: CmdKey,
-    pub args: Vec<CmdArg>,
-}
-
-pub enum CmdArg {
-    Req(CmdKey),
-    Opt(CmdKey, &'static str),
+    Ok(())
 }

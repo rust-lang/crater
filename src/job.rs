@@ -8,7 +8,6 @@ use home;
 use model;
 use model::Cmd;
 use rand;
-use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -212,8 +211,7 @@ pub fn run_cmd_for_job(job: JobId) -> Result<()> {
 
     // FIXME: Instead of reinitializing the run loop here it would be better
     // to just pass the cmd to be run back to the original loop.
-    let state = model::state::GlobalState::init();
-    let _ = bmk::run(state, job.cmd)?;
+    bmk::run(job.cmd)?;
 
     Ok(())
 }

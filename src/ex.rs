@@ -1,23 +1,18 @@
-use CARGO_HOME;
 use CRATES_DIR;
 use EXPERIMENT_DIR;
-use RUSTUP_HOME;
 use TEST_SOURCE_DIR;
 use crates;
 use errors::*;
 use file;
 use gh_mirrors;
 use lists::{self, Crate};
-use log;
 use model::{ExCrateSelect, ExMode};
 use run;
 use serde_json;
-use std::collections::{HashMap, HashSet};
-use std::env;
+use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 use toml_frobber;
 use toolchain::{self, Toolchain};
 use util;
@@ -330,11 +325,17 @@ fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
     Ok(lockfile_dir(ex_name).join(format!("{}-{}.lock", crate_name, crate_vers)))
 }
 
-fn crate_work_dir(ex_name: &str, toolchain: &str) -> PathBuf {
-    Path::new(TEST_SOURCE_DIR).join(ex_name).join(toolchain)
+fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
+    Path::new(TEST_SOURCE_DIR)
+        .join(ex_name)
+        .join(toolchain.to_string())
 }
 
-pub fn with_work_crate<F, R>(ex_name: &str, toolchain: &str, crate_: &ExCrate, f: F) -> Result<R>
+pub fn with_work_crate<F, R>(ex_name: &str,
+                             toolchain: &Toolchain,
+                             crate_: &ExCrate,
+                             f: F)
+                             -> Result<R>
     where F: Fn(&Path) -> Result<R>
 {
     let src_dir = crate_.dir()?;
@@ -349,7 +350,10 @@ pub fn with_work_crate<F, R>(ex_name: &str, toolchain: &str, crate_: &ExCrate, f
     r
 }
 
-pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: bool) -> Result<()> {
+pub fn capture_lockfiles(ex_name: &str,
+                         toolchain: &Toolchain,
+                         recapture_existing: bool)
+                         -> Result<()> {
     fs::create_dir_all(&lockfile_dir(ex_name))?;
 
     let crates = ex_crates_and_dirs(ex_name)?;
@@ -382,10 +386,15 @@ pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: boo
     Ok(())
 }
 
-fn capture_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path, toolchain: &str) -> Result<()> {
+fn capture_lockfile(ex_name: &str,
+                    crate_: &ExCrate,
+                    path: &Path,
+                    toolchain: &Toolchain)
+                    -> Result<()> {
     let manifest_path = path.join("Cargo.toml").to_string_lossy().to_string();
     let args = &["generate-lockfile", "--manifest-path", &*manifest_path];
-    toolchain::run_cargo(toolchain, ex_name, args)
+    toolchain
+        .run_cargo(ex_name, args)
         .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
 
     let src_lockfile = &path.join("Cargo.lock");
@@ -423,7 +432,7 @@ pub fn with_captured_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path) -> R
     Ok(())
 }
 
-pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
+pub fn fetch_deps(ex_name: &str, toolchain: &Toolchain) -> Result<()> {
     let crates = ex_crates_and_dirs(ex_name)?;
     for (ref c, ref dir) in crates {
         let r = with_work_crate(ex_name, toolchain, c, |path| {
@@ -432,7 +441,8 @@ pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
 
             let manifest_path = path.join("Cargo.toml").to_string_lossy().to_string();
             let args = &["fetch", "--locked", "--manifest-path", &*manifest_path];
-            toolchain::run_cargo(toolchain, ex_name, args)
+            toolchain
+                .run_cargo(ex_name, args)
                 .chain_err(|| format!("unable to fetch deps for {}", c))?;
 
             Ok(())
@@ -471,7 +481,7 @@ pub fn copy(ex1_name: &str, ex2_name: &str) -> Result<()> {
 }
 
 pub fn delete_all_target_dirs(ex_name: &str) -> Result<()> {
-    let ref target_dir = toolchain::ex_target_dir(ex_name);
+    let target_dir = &toolchain::ex_target_dir(ex_name);
     if target_dir.exists() {
         util::remove_dir_all(target_dir)?;
     }

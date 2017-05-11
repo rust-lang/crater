@@ -132,7 +132,7 @@ fn user_id() -> u32 {
 fn docker_gid() -> ::libc::gid_t {
     unsafe {
         use std::ffi::CString;
-        use libc::{c_char, c_int, gid_t, group, size_t};
+        use libc::{c_char, c_int, group, size_t};
         use std::mem;
         use std::ptr;
         use std::iter;

@@ -1,6 +1,8 @@
 #![recursion_limit = "1024"]
 
 #![allow(unused)]
+#![deny(unused_imports)]
+#![deny(dead_code)]
 
 extern crate rand;
 extern crate clap;
@@ -31,7 +33,6 @@ extern crate kernel32;
 mod log;
 mod errors;
 mod toolchain;
-mod compare;
 mod registry;
 mod lists;
 mod file;
@@ -41,7 +42,6 @@ mod util;
 mod run;
 mod crates;
 mod git;
-mod checkpoint;
 mod ex;
 mod ex_run;
 mod toml_frobber;
@@ -52,13 +52,11 @@ mod docker;
 mod dirs;
 mod bmk;
 mod job;
-mod blobject;
 mod home;
 
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, ArgMatches};
 use dirs::*;
 use errors::*;
-use std::env;
 use std::panic;
 use std::process;
 
@@ -69,7 +67,6 @@ fn main() {
             true
         }
         Ok(Err(e)) => {
-            use std::error::Error;
             util::report_error(&e);
             false
         }
@@ -108,8 +105,7 @@ fn cli() -> App<'static, 'static> {
 
 fn run_cmd(m: &ArgMatches) -> Result<()> {
     let cmd = model::conv::clap_args_to_cmd(m)?;
-    let state = model::state::GlobalState::init();
-    let _ = bmk::run(state, cmd)?;
+    bmk::run(cmd)?;
 
     Ok(())
 }

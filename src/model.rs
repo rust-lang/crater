@@ -17,6 +17,8 @@ rewrite.
 
 */
 
+#![allow(dead_code)]
+
 use docker;
 use errors::*;
 use ex;
@@ -25,17 +27,11 @@ use job::{self, JobId};
 use lists;
 use report;
 use run;
-use serde::{Deserialize, Serialize};
-use toolchain;
+use toolchain::Toolchain;
 
 // An experiment name
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ex(String);
-
-// A toolchain name, either a rustup channel identifier,
-// or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Tc(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SayMsg(String);
@@ -49,14 +45,13 @@ pub enum Cmd {
 
     // Local prep
     PrepareLocal,
-    PrepareToolchain(Tc),
+    PrepareToolchain(Toolchain),
     BuildContainer,
 
     // List creation
     CreateLists,
     CreateListsFull,
     CreateRecentList,
-    CreateSecondList,
     CreateHotList,
     CreatePopList,
     CreateGhCandidateList,
@@ -65,7 +60,7 @@ pub enum Cmd {
     CreateGhAppListFromCache,
 
     // Master experiment prep
-    DefineEx(Ex, Tc, Tc, ExMode, ExCrateSelect),
+    DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect),
     PrepareEx(Ex),
     CopyEx(Ex, Ex),
     DeleteEx(Ex),
@@ -76,18 +71,18 @@ pub enum Cmd {
     CaptureShas(Ex),
     DownloadCrates(Ex),
     FrobCargoTomls(Ex),
-    CaptureLockfiles(Ex, Tc),
+    CaptureLockfiles(Ex, Toolchain),
 
     // Local experiment prep
     PrepareExLocal(Ex),
     DeleteAllTargetDirs(Ex),
     DeleteAllResults(Ex),
-    FetchDeps(Ex, Tc),
+    FetchDeps(Ex, Toolchain),
     PrepareAllToolchains(Ex),
 
     // Experimenting
     Run(Ex),
-    RunTc(Ex, Tc),
+    RunTc(Ex, Toolchain),
 
     // Reporting
     GenReport(Ex),
@@ -106,17 +101,13 @@ pub enum Cmd {
 }
 
 trait NewCmd {
-    fn name() -> &'static str;
+    fn name(&self) -> &'static str;
 
-    fn process(self, st: &mut GlobalState) -> Result<()>
-        where Self: Sized
-    {
+    fn process(&self) -> Result<()> {
         Ok(())
     }
 
-    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![])
     }
 }
@@ -124,40 +115,40 @@ trait NewCmd {
 struct PrepareLocal;
 
 impl NewCmd for PrepareLocal {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "prepare-local"
     }
 
-    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
-            Box::new(PrepareToolchain("stable".parse::<Tc>()?)),
+            Box::new(PrepareToolchain("stable".parse()?)),
             Box::new(BuildContainer),
             Box::new(CreateLists),
         ])
     }
 }
 
-struct PrepareToolchain(Tc);
+struct PrepareToolchain(Toolchain);
 
 impl NewCmd for PrepareToolchain {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "prepare-toolchain"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
-        (self.0).0.parse::<toolchain::Toolchain>().map(|_| ())
+    fn process(&self) -> Result<()> {
+        self.0.prepare()
     }
 }
 
 struct BuildContainer;
 
 impl NewCmd for BuildContainer {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "build-container"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         docker::build_container()
     }
 }
@@ -165,15 +156,14 @@ impl NewCmd for BuildContainer {
 struct CreateLists;
 
 impl NewCmd for CreateLists {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "create-lists"
 
     }
 
-    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(CreateRecentList),
-            Box::new(CreateSecondList),
             Box::new(CreateHotList),
             Box::new(CreatePopList),
             Box::new(CreateGhCandidateListFromCache),
@@ -185,15 +175,14 @@ impl NewCmd for CreateLists {
 struct CreateListsFull;
 
 impl NewCmd for CreateListsFull {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "create-lists-full"
 
     }
 
-    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(CreateRecentList),
-            Box::new(CreateSecondList),
             Box::new(CreateHotList),
             Box::new(CreatePopList),
             Box::new(CreateGhCandidateList),
@@ -205,38 +194,25 @@ impl NewCmd for CreateListsFull {
 struct CreateRecentList;
 
 impl NewCmd for CreateRecentList {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "create-recent-list"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         lists::create_recent_list()
-    }
-}
-
-struct CreateSecondList;
-
-impl NewCmd for CreateSecondList {
-    fn name() -> &'static str {
-        "create-second-list"
-
-    }
-
-    fn process(self, st: &mut GlobalState) -> Result<()> {
-        lists::create_second_list()
     }
 }
 
 struct CreateHotList;
 
 impl NewCmd for CreateHotList {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "create-hot-list"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         lists::create_hot_list()
     }
 }
@@ -244,12 +220,12 @@ impl NewCmd for CreateHotList {
 struct CreatePopList;
 
 impl NewCmd for CreatePopList {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "create-pop-list"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         lists::create_pop_list()
     }
 }
@@ -257,12 +233,12 @@ impl NewCmd for CreatePopList {
 struct CreateGhCandidateList;
 
 impl NewCmd for CreateGhCandidateList {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "create-gh-candidate-list"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         lists::create_gh_candidate_list()
     }
 }
@@ -270,12 +246,12 @@ impl NewCmd for CreateGhCandidateList {
 struct CreateGhAppList;
 
 impl NewCmd for CreateGhAppList {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "create-gh-app-list"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         lists::create_gh_app_list()
     }
 }
@@ -283,12 +259,12 @@ impl NewCmd for CreateGhAppList {
 struct CreateGhCandidateListFromCache;
 
 impl NewCmd for CreateGhCandidateListFromCache {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "create-gh-candidate-list-from-cache"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         lists::create_gh_candidate_list_from_cache()
     }
 }
@@ -296,33 +272,30 @@ impl NewCmd for CreateGhCandidateListFromCache {
 struct CreateGhAppListFromCache;
 
 impl NewCmd for CreateGhAppListFromCache {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "create-gh-app-list-from-cache"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         lists::create_gh_candidate_list_from_cache()
     }
 }
 
-struct DefineEx(Ex, Tc, Tc, ExMode, ExCrateSelect);
+struct DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect);
 
 impl NewCmd for DefineEx {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "define-ex"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex::define(ex::ExOpts {
-                       name: (self.0).0,
-                       toolchains: vec![
-            (self.1).0.parse::<toolchain::Toolchain>()?,
-            (self.2).0.parse::<toolchain::Toolchain>()?,
-        ],
-                       mode: self.3,
-                       crates: self.4,
+                       name: (self.0).0.clone(),
+                       toolchains: vec![self.1.clone(), self.2.clone()],
+                       mode: self.3.clone(),
+                       crates: self.4.clone(),
                    })
     }
 }
@@ -330,15 +303,15 @@ impl NewCmd for DefineEx {
 struct PrepareEx(Ex);
 
 impl NewCmd for PrepareEx {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "prepare-ex"
 
     }
 
-    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(PrepareExShared(self.0.clone())),
-            Box::new(PrepareExLocal(self.0)),
+            Box::new(PrepareExLocal(self.0.clone())),
         ])
     }
 }
@@ -346,12 +319,12 @@ impl NewCmd for PrepareEx {
 struct CopyEx(Ex, Ex);
 
 impl NewCmd for CopyEx {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
 
         "copy-ex"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex::copy(&(self.0).0, &(self.1).0)
     }
 }
@@ -359,12 +332,12 @@ impl NewCmd for CopyEx {
 struct DeleteEx(Ex);
 
 impl NewCmd for DeleteEx {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "delete-ex"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex::delete(&(self.0).0)
     }
 }
@@ -372,18 +345,18 @@ impl NewCmd for DeleteEx {
 struct PrepareExShared(Ex);
 
 impl NewCmd for PrepareExShared {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "prepare-ex-shared"
 
     }
 
-    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(FetchGhMirrors(self.0.clone())),
             Box::new(CaptureShas(self.0.clone())),
             Box::new(DownloadCrates(self.0.clone())),
             Box::new(FrobCargoTomls(self.0.clone())),
-            Box::new(CaptureLockfiles(self.0, "stable".parse::<Tc>()?)),
+            Box::new(CaptureLockfiles(self.0.clone(), "stable".parse()?)),
         ])
     }
 }
@@ -391,12 +364,12 @@ impl NewCmd for PrepareExShared {
 struct FetchGhMirrors(Ex);
 
 impl NewCmd for FetchGhMirrors {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
 
         "fetch-gh-mirrors"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex::fetch_gh_mirrors(&(self.0).0)
     }
 }
@@ -404,12 +377,12 @@ impl NewCmd for FetchGhMirrors {
 struct CaptureShas(Ex);
 
 impl NewCmd for CaptureShas {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "capture-shas"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex::capture_shas(&(self.0).0)
     }
 }
@@ -417,12 +390,12 @@ impl NewCmd for CaptureShas {
 struct DownloadCrates(Ex);
 
 impl NewCmd for DownloadCrates {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
 
         "download-crates"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex::download_crates(&(self.0).0)
     }
 }
@@ -430,43 +403,43 @@ impl NewCmd for DownloadCrates {
 struct FrobCargoTomls(Ex);
 
 impl NewCmd for FrobCargoTomls {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
 
         "frob-cargo-tomls"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex::frob_tomls(&(self.0).0)
     }
 }
 
-struct CaptureLockfiles(Ex, Tc);
+struct CaptureLockfiles(Ex, Toolchain);
 
 impl NewCmd for CaptureLockfiles {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "capture-lockfiles"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
-        ex::capture_lockfiles(&(self.0).0, &(self.1).0, false)
+    fn process(&self) -> Result<()> {
+        ex::capture_lockfiles(&(self.0).0, &self.1, false)
     }
 }
 
 struct PrepareExLocal(Ex);
 
 impl NewCmd for PrepareExLocal {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "prepare-ex-local"
 
     }
 
-    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(DeleteAllTargetDirs(self.0.clone())),
             Box::new(DeleteAllResults(self.0.clone())),
-            Box::new(FetchDeps(self.0.clone(), "stable".parse::<Tc>()?)),
-            Box::new(PrepareAllToolchains(self.0)),
+            Box::new(FetchDeps(self.0.clone(), "stable".parse()?)),
+            Box::new(PrepareAllToolchains(self.0.clone())),
         ])
     }
 }
@@ -474,12 +447,12 @@ impl NewCmd for PrepareExLocal {
 struct DeleteAllTargetDirs(Ex);
 
 impl NewCmd for DeleteAllTargetDirs {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "delete-all-target-dirs"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex::delete_all_target_dirs(&(self.0).0)
     }
 }
@@ -487,43 +460,42 @@ impl NewCmd for DeleteAllTargetDirs {
 struct DeleteAllResults(Ex);
 
 impl NewCmd for DeleteAllResults {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "delete-all-results"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex_run::delete_all_results(&(self.0).0)
     }
 }
 
-struct FetchDeps(Ex, Tc);
+struct FetchDeps(Ex, Toolchain);
 
 impl NewCmd for FetchDeps {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "fetch-deps"
 
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
-        ex::fetch_deps(&(self.0).0, &(self.1).0)
+    fn process(&self) -> Result<()> {
+        ex::fetch_deps(&(self.0).0, &self.1)
     }
 }
 
 struct PrepareAllToolchains(Ex);
 
 impl NewCmd for PrepareAllToolchains {
-    fn name() -> &'static str {
-
+    fn name(&self) -> &'static str {
         "prepare-all-toolchains"
     }
 
-    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(DeleteAllTargetDirs(self.0.clone())),
             Box::new(DeleteAllResults(self.0.clone())),
-            Box::new(FetchDeps(self.0.clone(), "stable".parse::<Tc>()?)),
-            Box::new(PrepareAllToolchains(self.0)),
+            Box::new(FetchDeps(self.0.clone(), "stable".parse()?)),
+            Box::new(PrepareAllToolchains(self.0.clone())),
         ])
     }
 }
@@ -531,38 +503,35 @@ impl NewCmd for PrepareAllToolchains {
 struct Run(Ex);
 
 impl NewCmd for Run {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "run"
-
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         ex_run::run_ex_all_tcs(&(self.0).0)
     }
 }
 
-struct RunTc(Ex, Tc);
+struct RunTc(Ex, Toolchain);
 
 impl NewCmd for RunTc {
-    fn name() -> &'static str {
-
+    fn name(&self) -> &'static str {
         "run-tc"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
-        ex_run::run_ex(&(self.0).0, &(self.1).0)
+    fn process(&self) -> Result<()> {
+        ex_run::run_ex(&(self.0).0, self.1.clone())
     }
 }
 
 struct GenReport(Ex);
 
 impl NewCmd for GenReport {
-    fn name() -> &'static str {
-
+    fn name(&self) -> &'static str {
         "gen-report"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         report::gen(&(self.0).0)
     }
 }
@@ -570,25 +539,23 @@ impl NewCmd for GenReport {
 struct CreateDockerJob(Box<Cmd>);
 
 impl NewCmd for CreateDockerJob {
-    fn name() -> &'static str {
-
+    fn name(&self) -> &'static str {
         "create-docker-job"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
-        job::create_local(*(self.0))
+    fn process(&self) -> Result<()> {
+        job::create_local(*(self.0.clone()))
     }
 }
 
 struct StartJob(Job);
 
 impl NewCmd for StartJob {
-    fn name() -> &'static str {
-
+    fn name(&self) -> &'static str {
         "start-job"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         job::start((self.0).0)
     }
 }
@@ -596,12 +563,11 @@ impl NewCmd for StartJob {
 struct WaitForJob(Job);
 
 impl NewCmd for WaitForJob {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "wait-for-job"
-
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         job::wait((self.0).0)
     }
 }
@@ -609,12 +575,11 @@ impl NewCmd for WaitForJob {
 struct RunJob(Job);
 
 impl NewCmd for RunJob {
-    fn name() -> &'static str {
-
+    fn name(&self) -> &'static str {
         "run-job"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         job::run((self.0).0)
     }
 }
@@ -622,12 +587,11 @@ impl NewCmd for RunJob {
 struct RunJobAgain(Job);
 
 impl NewCmd for RunJobAgain {
-    fn name() -> &'static str {
-
+    fn name(&self) -> &'static str {
         "run-job-again"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         job::run_again((self.0).0)
     }
 }
@@ -635,12 +599,12 @@ impl NewCmd for RunJobAgain {
 struct RunCmdForJob(Job);
 
 impl NewCmd for RunCmdForJob {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
 
         "run-cmd-for-job"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         job::run_cmd_for_job((self.0).0)
     }
 }
@@ -648,12 +612,12 @@ impl NewCmd for RunCmdForJob {
 struct Sleep;
 
 impl NewCmd for Sleep {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
 
         "sleep"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         run::run("sleep", &["5"], &[])
     }
 }
@@ -661,12 +625,12 @@ impl NewCmd for Sleep {
 struct Say(SayMsg);
 
 impl NewCmd for Say {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
 
         "say"
     }
 
-    fn process(self, st: &mut GlobalState) -> Result<()> {
+    fn process(&self) -> Result<()> {
         log!("{}", (self.0).0);
         Ok(())
     }
@@ -689,13 +653,11 @@ pub enum ExCrateSelect {
     Top100,
 }
 
-use self::state::GlobalState;
 use bmk::Process;
 
-impl Process<GlobalState> for Cmd {
-    fn process(self, st: GlobalState) -> Result<(GlobalState, Vec<Cmd>)> {
+impl Process for Cmd {
+    fn process(self) -> Result<Vec<Cmd>> {
         use lists;
-        use toolchain;
         use docker;
         use ex;
         use ex_run;
@@ -708,19 +670,18 @@ impl Process<GlobalState> for Cmd {
             // Local prep
             Cmd::PrepareLocal => {
                 cmds.extend(vec![
-                    Cmd::PrepareToolchain("stable".parse::<Tc>()?),
+                    Cmd::PrepareToolchain("stable".parse()?),
                     Cmd::BuildContainer,
                     Cmd::CreateLists,
                 ]);
             }
-            Cmd::PrepareToolchain(tc) => tc.0.parse::<toolchain::Toolchain>()?.prepare()?,
+            Cmd::PrepareToolchain(tc) => tc.prepare()?,
             Cmd::BuildContainer => docker::build_container()?,
 
             // List creation
             Cmd::CreateLists => {
                 cmds.extend(vec![
                     Cmd::CreateRecentList,
-                    Cmd::CreateSecondList,
                     Cmd::CreateHotList,
                     Cmd::CreatePopList,
                     Cmd::CreateGhCandidateListFromCache,
@@ -730,7 +691,6 @@ impl Process<GlobalState> for Cmd {
             Cmd::CreateListsFull => {
                 cmds.extend(vec![
                     Cmd::CreateRecentList,
-                    Cmd::CreateSecondList,
                     Cmd::CreateHotList,
                     Cmd::CreatePopList,
                     Cmd::CreateGhCandidateList,
@@ -738,7 +698,6 @@ impl Process<GlobalState> for Cmd {
                 ]);
             }
             Cmd::CreateRecentList => lists::create_recent_list()?,
-            Cmd::CreateSecondList => lists::create_second_list()?,
             Cmd::CreateHotList => lists::create_hot_list()?,
             Cmd::CreatePopList => lists::create_pop_list()?,
             Cmd::CreateGhCandidateList => lists::create_gh_candidate_list()?,
@@ -750,10 +709,7 @@ impl Process<GlobalState> for Cmd {
             Cmd::DefineEx(ex, tc1, tc2, mode, crates) => {
                 ex::define(ex::ExOpts {
                                name: ex.0,
-                               toolchains: vec![
-                    tc1.0.parse::<toolchain::Toolchain>()?,
-                    tc2.0.parse::<toolchain::Toolchain>()?,
-                ],
+                               toolchains: vec![tc1, tc2],
                                mode: mode,
                                crates: crates,
                            })?;
@@ -771,32 +727,32 @@ impl Process<GlobalState> for Cmd {
                     Cmd::CaptureShas(ex.clone()),
                     Cmd::DownloadCrates(ex.clone()),
                     Cmd::FrobCargoTomls(ex.clone()),
-                    Cmd::CaptureLockfiles(ex, "stable".parse::<Tc>()?),
+                    Cmd::CaptureLockfiles(ex, "stable".parse()?),
                 ]);
             }
             Cmd::FetchGhMirrors(ex) => ex::fetch_gh_mirrors(&ex.0)?,
             Cmd::CaptureShas(ex) => ex::capture_shas(&ex.0)?,
             Cmd::DownloadCrates(ex) => ex::download_crates(&ex.0)?,
             Cmd::FrobCargoTomls(ex) => ex::frob_tomls(&ex.0)?,
-            Cmd::CaptureLockfiles(ex, tc) => ex::capture_lockfiles(&ex.0, &tc.0, false)?,
+            Cmd::CaptureLockfiles(ex, tc) => ex::capture_lockfiles(&ex.0, &tc, false)?,
 
             // Local experiment prep
             Cmd::PrepareExLocal(ex) => {
                 cmds.extend(vec![
                     Cmd::DeleteAllTargetDirs(ex.clone()),
                     Cmd::DeleteAllResults(ex.clone()),
-                    Cmd::FetchDeps(ex.clone(), "stable".parse::<Tc>()?),
+                    Cmd::FetchDeps(ex.clone(), "stable".parse()?),
                     Cmd::PrepareAllToolchains(ex),
                 ]);
             }
             Cmd::DeleteAllTargetDirs(ex) => ex::delete_all_target_dirs(&ex.0)?,
             Cmd::DeleteAllResults(ex) => ex_run::delete_all_results(&ex.0)?,
-            Cmd::FetchDeps(ex, tc) => ex::fetch_deps(&ex.0, &tc.0)?,
+            Cmd::FetchDeps(ex, tc) => ex::fetch_deps(&ex.0, &tc)?,
             Cmd::PrepareAllToolchains(ex) => ex::prepare_all_toolchains(&ex.0)?,
 
             // Experimenting
             Cmd::Run(ex) => ex_run::run_ex_all_tcs(&ex.0)?,
-            Cmd::RunTc(ex, tc) => ex_run::run_ex(&ex.0, &tc.0)?,
+            Cmd::RunTc(ex, tc) => ex_run::run_ex(&ex.0, tc)?,
 
             // Reporting
             Cmd::GenReport(ex) => report::gen(&ex.0)?,
@@ -814,7 +770,7 @@ impl Process<GlobalState> for Cmd {
             Cmd::Say(msg) => log!("{}", msg.0),
         }
 
-        Ok((st, cmds))
+        Ok(cmds)
     }
 }
 
@@ -822,62 +778,8 @@ impl Process<GlobalState> for Cmd {
 pub mod conv {
     use super::*;
 
-    use bmk::{CmdArg, CmdDesc, CmdKey};
     use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
-    use errors::*;
     use std::str::FromStr;
-
-    pub fn cmd_descs() -> Vec<CmdDesc> {
-        vec![
-            ("prepare-local", vec![]),
-            ("prepare-toolchain", vec![CmdArg::Opt("ex", "default")]),
-            ("build-container", vec![]),
-            ("create-lists", vec![]),
-            ("create-lists-full", vec![]),
-            ("create-recent-list", vec![]),
-            ("create-second-list", vec![]),
-            ("create-hot-list", vec![]),
-            ("create-gh-candidate-list", vec![]),
-            ("create-gh-app-list", vec![]),
-            ("create-gh-candidate-list-from-cache", vec![]),
-            ("create-gh-app-list-from-cache", vec![]),
-        ]
-                .into_iter()
-                .map(|(a, b)| CmdDesc { name: a, args: b })
-                .collect()
-    }
-
-    pub fn clap_cmd<'a>(desc: &CmdDesc) -> App<'a, 'a> {
-        fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
-            Arg::with_name(n)
-                .required(false)
-                .long(n)
-                .default_value(def)
-        }
-
-        fn req(n: &'static str) -> Arg<'static, 'static> {
-            Arg::with_name(n).required(true)
-        }
-
-        fn cmd(n: &'static str, desc: &'static str) -> App<'static, 'static> {
-            SubCommand::with_name(n).about(desc)
-        }
-
-        let arg_to_str = |cmdarg: &CmdArg| match *cmdarg {
-            CmdArg::Req(s) |
-            CmdArg::Opt(s, _) => s,
-        };
-
-        let args = desc.args
-            .iter()
-            .map(|arg| match *arg {
-                     CmdArg::Req(s) => req(s),
-                     CmdArg::Opt(s, d) => opt(s, d),
-                 })
-            .collect::<Vec<_>>();
-
-        cmd(desc.name, "todo").args(&args)
-    }
 
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
         clap_cmds_(true)
@@ -947,8 +849,6 @@ pub mod conv {
             cmd("create-lists-full", "create all the lists of crates"),
             cmd("create-recent-list",
                 "create the list of most recent crate versions"),
-            cmd("create-second-list",
-                "create the list of of second-most-recent crate versions"),
             cmd("create-hot-list",
                 "create the list of popular crates versions"),
             cmd("create-pop-list", "create the list of popular crates"),
@@ -1042,16 +942,16 @@ pub mod conv {
             m.value_of("ex-2").expect("").parse::<Ex>()
         }
 
-        fn tc(m: &ArgMatches) -> Result<Tc> {
-            m.value_of("tc").expect("").parse::<Tc>()
+        fn tc(m: &ArgMatches) -> Result<Toolchain> {
+            m.value_of("tc").expect("").parse()
         }
 
-        fn tc1(m: &ArgMatches) -> Result<Tc> {
-            m.value_of("tc-1").expect("").parse::<Tc>()
+        fn tc1(m: &ArgMatches) -> Result<Toolchain> {
+            m.value_of("tc-1").expect("").parse()
         }
 
-        fn tc2(m: &ArgMatches) -> Result<Tc> {
-            m.value_of("tc-2").expect("").parse::<Tc>()
+        fn tc2(m: &ArgMatches) -> Result<Toolchain> {
+            m.value_of("tc-2").expect("").parse()
         }
 
         fn mode(m: &ArgMatches) -> Result<ExMode> {
@@ -1086,7 +986,6 @@ pub mod conv {
                ("create-lists", _) => Cmd::CreateLists,
                ("create-lists-full", _) => Cmd::CreateListsFull,
                ("create-recent-list", _) => Cmd::CreateRecentList,
-               ("create-second-list", _) => Cmd::CreateSecondList,
                ("create-hot-list", _) => Cmd::CreateHotList,
                ("create-pop-list", _) => Cmd::CreatePopList,
                ("create-gh-candidate-list", _) => Cmd::CreateGhCandidateList,
@@ -1150,7 +1049,6 @@ pub mod conv {
             CreateLists => "create-lists",
             CreateListsFull => "create-lists-full",
             CreateRecentList => "create-recent-list",
-            CreateSecondList => "create-second-list",
             CreateHotList => "create-hot-list",
             CreatePopList => "create-pop-list",
             CreateGhCandidateList => "create-gh-candidate-list",
@@ -1202,6 +1100,7 @@ pub mod conv {
     }
 
     fn cmd_to_args_(cmd: Cmd) -> Vec<String> {
+        #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
         use super::Cmd::*;
 
         fn opt_ex(ex: Ex) -> String {
@@ -1209,15 +1108,15 @@ pub mod conv {
         }
 
         fn req_ex(ex: Ex) -> String {
-            format!("{}", ex.0)
+            ex.0
         }
 
-        fn opt_tc(tc: Tc) -> String {
-            format!("--tc={}", tc.0)
+        fn opt_tc(tc: Toolchain) -> String {
+            format!("--tc={}", tc.to_string())
         }
 
-        fn req_tc(tc: Tc) -> String {
-            tc.0
+        fn req_tc(tc: Toolchain) -> String {
+            tc.to_string()
         }
 
         fn opt_mode(mode: ExMode) -> String {
@@ -1236,13 +1135,13 @@ pub mod conv {
             say_msg.0
         }
 
+        #[cfg_attr(feature = "cargo-clippy", allow(match_same_arms))]
         match cmd {
             PrepareLocal |
             BuildContainer |
             CreateLists |
             CreateListsFull |
             CreateRecentList |
-            CreateSecondList |
             CreateHotList |
             CreatePopList |
             CreateGhCandidateList |
@@ -1294,11 +1193,11 @@ pub mod conv {
         }
     }
 
-    pub fn args_to_cmd(args: Vec<String>) -> Result<Cmd> {
+    pub fn args_to_cmd(args: &[String]) -> Result<Cmd> {
         let m = App::new("")
             .setting(AppSettings::NoBinaryName)
             .subcommands(clap_cmds())
-            .get_matches_from(&args);
+            .get_matches_from(args);
         clap_args_to_cmd(&m)
     }
 
@@ -1306,7 +1205,7 @@ pub mod conv {
 
     impl Arguable for Cmd {
         fn from_args(args: Vec<String>) -> Result<Self> {
-            args_to_cmd(args)
+            args_to_cmd(&args)
         }
 
         fn to_args(self) -> Vec<String> {
@@ -1379,89 +1278,4 @@ pub mod conv {
             Ok(Ex(ex.to_string()))
         }
     }
-
-    impl FromStr for Tc {
-        type Err = Error;
-
-        fn from_str(tc: &str) -> Result<Tc> {
-            use toolchain;
-            let _ = tc.parse::<toolchain::Toolchain>()?;
-            Ok(Tc(tc.to_string()))
-        }
-    }
-}
-
-pub mod state {
-    use super::slowio::{Blobject, FreeDir};
-
-    pub struct GlobalState {
-        master: MasterState,
-        local: LocalState,
-        shared: SharedState,
-        ex: ExData,
-    }
-
-    pub struct MasterState;
-
-    pub struct LocalState {
-        cargo_home: FreeDir,
-        rustup_home: FreeDir,
-        crates_io_index_mirror: FreeDir,
-        gh_clones: FreeDir,
-        target_dirs: FreeDir,
-        test_source_dir: FreeDir,
-    }
-
-    pub struct SharedState {
-        crates: FreeDir,
-        gh_mirrors: FreeDir,
-        lists: Lists,
-    }
-
-    pub struct Lists {
-        recent: Blobject,
-        second: Blobject,
-        hot: Blobject,
-        gh_repos: Blobject,
-        gh_apps: Blobject,
-    }
-
-    pub struct ExData {
-        config: Blobject,
-    }
-
-    impl GlobalState {
-        pub fn init() -> GlobalState {
-            GlobalState {
-                master: MasterState,
-                local: LocalState {
-                    cargo_home: FreeDir,
-                    rustup_home: FreeDir,
-                    crates_io_index_mirror: FreeDir,
-                    gh_clones: FreeDir,
-                    target_dirs: FreeDir,
-                    test_source_dir: FreeDir,
-                },
-                shared: SharedState {
-                    crates: FreeDir,
-                    gh_mirrors: FreeDir,
-                    lists: Lists {
-                        recent: Blobject,
-                        second: Blobject,
-                        hot: Blobject,
-                        gh_repos: Blobject,
-                        gh_apps: Blobject,
-                    },
-                },
-                ex: ExData { config: Blobject },
-            }
-        }
-    }
-}
-
-pub mod slowio {
-    #[derive(Default)]
-    pub struct FreeDir;
-    #[derive(Default)]
-    pub struct Blobject;
 }

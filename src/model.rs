@@ -165,6 +165,21 @@ impl NewCmd for CreateLists {
 
 struct CreateListsFull;
 
+impl NewCmd for CreateListsFull {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        Ok(vec![
+            Box::new(CreateRecentList),
+            Box::new(CreateSecondList),
+            Box::new(CreateHotList),
+            Box::new(CreatePopList),
+            Box::new(CreateGhCandidateList),
+            Box::new(CreateGhAppList),
+        ])
+    }
+}
+
 struct CreateRecentList;
 
 impl NewCmd for CreateRecentList {

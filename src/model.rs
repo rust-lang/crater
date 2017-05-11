@@ -24,26 +24,24 @@ use toolchain::Toolchain;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ex(String);
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum Cmd {
-    /* Basic synchronous commands */
-    PrepareLocal,
-    DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect),
-    PrepareEx(Ex),
-    Run(Ex),
-    RunTc(Ex, Toolchain),
-    GenReport(Ex),
-    DeleteAllTargetDirs(Ex),
-
-    // List creation
-    CreateListsFull,
-
-    // Master experiment prep
-    CopyEx(Ex, Ex),
-    DeleteEx(Ex),
-
-    DeleteAllResults(Ex),
+pub trait Cmd {
+    fn run(&self) -> Result<()>;
 }
+
+struct PrepareLocal;
+struct DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect);
+struct PrepareEx(Ex);
+struct Run(Ex);
+struct RunTc(Ex, Toolchain);
+struct GenReport(Ex);
+struct DeleteAllTargetDirs(Ex);
+
+struct CreateListsFull;
+
+struct CopyEx(Ex, Ex);
+struct DeleteEx(Ex);
+
+struct DeleteAllResults(Ex);
 
 #[derive(Serialize, Deserialize)]
 #[derive(Debug, Clone)]
@@ -62,66 +60,105 @@ pub enum ExCrateSelect {
     Top100,
 }
 
-impl Cmd {
-    pub fn process(self) -> Result<()> {
-        use lists;
-        use docker;
-        use ex;
-        use ex_run;
-        use report;
+use docker;
+use ex;
+use ex_run;
+use lists;
+use report;
 
-        match self {
-            // Local prep
-            Cmd::PrepareLocal => {
-                let stable_tc = Toolchain::Dist("stable".into());
-                stable_tc.prepare()?;
-                docker::build_container()?;
-                lists::create_all_lists(false)?;
-            }
+// Local prep
+impl Cmd for PrepareLocal {
+    fn run(&self) -> Result<()> {
+        let stable_tc = Toolchain::Dist("stable".into());
+        stable_tc.prepare()?;
+        docker::build_container()?;
+        lists::create_all_lists(false)
+    }
+}
 
-            // List creation
-            Cmd::CreateListsFull => {
-                lists::create_all_lists(true)?;
-            }
+// List creation
+impl Cmd for CreateListsFull {
+    fn run(&self) -> Result<()> {
+        lists::create_all_lists(true)
+    }
+}
 
-            // Experiment prep
-            Cmd::DefineEx(ex, tc1, tc2, mode, crates) => {
-                ex::define(ex::ExOpts {
-                               name: ex.0,
-                               toolchains: vec![tc1, tc2],
-                               mode: mode,
-                               crates: crates,
-                           })?;
-            }
-            Cmd::PrepareEx(ex) => {
-                // Shared emperiment prep
-                ex::fetch_gh_mirrors(&ex.0)?;
-                ex::capture_shas(&ex.0)?;
-                ex::download_crates(&ex.0)?;
-                ex::frob_tomls(&ex.0)?;
-                ex::capture_lockfiles(&ex.0, &Toolchain::Dist("stable".into()), false)?;
+// Experiment prep
+impl Cmd for DefineEx {
+    fn run(&self) -> Result<()> {
+        let &DefineEx(ref ex, ref tc1, ref tc2, ref mode, ref crates) = self;
+        ex::define(ex::ExOpts {
+                       name: ex.0.clone(),
+                       toolchains: vec![tc1.clone(), tc2.clone()],
+                       mode: mode.clone(),
+                       crates: crates.clone(),
+                   })
+    }
+}
+impl Cmd for PrepareEx {
+    fn run(&self) -> Result<()> {
+        let &PrepareEx(ref ex) = self;
+        // Shared emperiment prep
+        ex::fetch_gh_mirrors(&ex.0)?;
+        ex::capture_shas(&ex.0)?;
+        ex::download_crates(&ex.0)?;
+        ex::frob_tomls(&ex.0)?;
+        ex::capture_lockfiles(&ex.0, &Toolchain::Dist("stable".into()), false)?;
 
-                // Local experiment prep
-                ex::delete_all_target_dirs(&ex.0);
-                ex::delete_all_target_dirs(&ex.0);
-                ex::fetch_deps(&ex.0, &Toolchain::Dist("stable".into()))?;
-                ex::prepare_all_toolchains(&ex.0)?;
-            }
-            Cmd::CopyEx(ex1, ex2) => ex::copy(&ex1.0, &ex2.0)?,
-            Cmd::DeleteEx(ex) => ex::delete(&ex.0)?,
-
-            Cmd::DeleteAllTargetDirs(ex) => ex::delete_all_target_dirs(&ex.0)?,
-            Cmd::DeleteAllResults(ex) => ex_run::delete_all_results(&ex.0)?,
-
-            // Experimenting
-            Cmd::Run(ex) => ex_run::run_ex_all_tcs(&ex.0)?,
-            Cmd::RunTc(ex, tc) => ex_run::run_ex(&ex.0, tc)?,
-
-            // Reporting
-            Cmd::GenReport(ex) => report::gen(&ex.0)?,
-        }
+        // Local experiment prep
+        ex::delete_all_target_dirs(&ex.0);
+        ex::delete_all_target_dirs(&ex.0);
+        ex::fetch_deps(&ex.0, &Toolchain::Dist("stable".into()))?;
+        ex::prepare_all_toolchains(&ex.0)?;
 
         Ok(())
+    }
+}
+impl Cmd for CopyEx {
+    fn run(&self) -> Result<()> {
+        let &CopyEx(ref ex1, ref ex2) = self;
+        ex::copy(&ex1.0, &ex2.0)
+    }
+}
+impl Cmd for DeleteEx {
+    fn run(&self) -> Result<()> {
+        let &DeleteEx(ref ex) = self;
+        ex::delete(&ex.0)
+    }
+}
+
+impl Cmd for DeleteAllTargetDirs {
+    fn run(&self) -> Result<()> {
+        let &DeleteAllTargetDirs(ref ex) = self;
+        ex::delete_all_target_dirs(&ex.0)
+    }
+}
+impl Cmd for DeleteAllResults {
+    fn run(&self) -> Result<()> {
+        let &DeleteAllResults(ref ex) = self;
+        ex_run::delete_all_results(&ex.0)
+    }
+}
+
+// Experimenting
+impl Cmd for Run {
+    fn run(&self) -> Result<()> {
+        let &Run(ref ex) = self;
+        ex_run::run_ex_all_tcs(&ex.0)
+    }
+}
+impl Cmd for RunTc {
+    fn run(&self) -> Result<()> {
+        let &RunTc(ref ex, ref tc) = self;
+        ex_run::run_ex(&ex.0, tc.clone())
+    }
+}
+
+// Reporting
+impl Cmd for GenReport {
+    fn run(&self) -> Result<()> {
+        let &GenReport(ref ex) = self;
+        report::gen(&ex.0)
     }
 }
 
@@ -214,7 +251,7 @@ pub mod conv {
         ]
     }
 
-    pub fn clap_args_to_cmd(m: &ArgMatches) -> Result<Cmd> {
+    pub fn clap_args_to_cmd(m: &ArgMatches) -> Result<Box<Cmd>> {
 
         fn ex(m: &ArgMatches) -> Result<Ex> {
             m.value_of("ex").expect("").parse::<Ex>()
@@ -252,26 +289,27 @@ pub mod conv {
 
         Ok(match m.subcommand() {
                // Local prep
-               ("prepare-local", _) => Cmd::PrepareLocal,
+               ("prepare-local", _) => Box::new(PrepareLocal),
+               ("create-list-full", _) => Box::new(CreateListsFull),
 
                // Master experiment prep
                ("define-ex", Some(m)) => {
-                   Cmd::DefineEx(ex(m)?, tc1(m)?, tc2(m)?, mode(m)?, crate_select(m)?)
+                   Box::new(DefineEx(ex(m)?, tc1(m)?, tc2(m)?, mode(m)?, crate_select(m)?))
                }
-               ("prepare-ex", Some(m)) => Cmd::PrepareEx(ex(m)?),
-               ("copy-ex", Some(m)) => Cmd::CopyEx(ex1(m)?, ex2(m)?),
-               ("delete-ex", Some(m)) => Cmd::DeleteEx(ex(m)?),
+               ("prepare-ex", Some(m)) => Box::new(PrepareEx(ex(m)?)),
+               ("copy-ex", Some(m)) => Box::new(CopyEx(ex1(m)?, ex2(m)?)),
+               ("delete-ex", Some(m)) => Box::new(DeleteEx(ex(m)?)),
 
                // Local experiment prep
-               ("delete-all-target-dirs", Some(m)) => Cmd::DeleteAllTargetDirs(ex(m)?),
-               ("delete-all-results", Some(m)) => Cmd::DeleteAllResults(ex(m)?),
+               ("delete-all-target-dirs", Some(m)) => Box::new(DeleteAllTargetDirs(ex(m)?)),
+               ("delete-all-results", Some(m)) => Box::new(DeleteAllResults(ex(m)?)),
 
                // Experimenting
-               ("run", Some(m)) => Cmd::Run(ex(m)?),
-               ("run-tc", Some(m)) => Cmd::RunTc(ex(m)?, tc(m)?),
+               ("run", Some(m)) => Box::new(Run(ex(m)?)),
+               ("run-tc", Some(m)) => Box::new(RunTc(ex(m)?, tc(m)?)),
 
                // Reporting
-               ("gen-report", Some(m)) => Cmd::GenReport(ex(m)?),
+               ("gen-report", Some(m)) => Box::new(GenReport(ex(m)?)),
 
                (s, _) => panic!("unimplemented args_to_cmd {}", s),
            })

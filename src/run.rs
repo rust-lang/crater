@@ -63,7 +63,7 @@ pub fn run_capture(cd: Option<&Path>,
     }
 }
 
-pub fn make_cmdstr(name: &str, args: &[&str]) -> String {
+fn make_cmdstr(name: &str, args: &[&str]) -> String {
     assert!(!args.is_empty(), "case not handled");
     format!("{} {}", name, args.join(" "))
 }

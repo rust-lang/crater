@@ -72,7 +72,6 @@ impl Process for Cmd {
         use ex_run;
         use report;
 
-        let cmds = Vec::new();
         match self {
             // Local prep
             Cmd::PrepareLocal => {
@@ -124,7 +123,7 @@ impl Process for Cmd {
             Cmd::GenReport(ex) => report::gen(&ex.0)?,
         }
 
-        Ok(cmds)
+        Ok(())
     }
 }
 

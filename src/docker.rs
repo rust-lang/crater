@@ -31,10 +31,10 @@ pub struct RustEnv<'a> {
 pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
     log!("creating container for: {}", env.args.join(" "));
 
-    fs::create_dir_all(&env.work_dir.0);
-    fs::create_dir_all(&env.cargo_home.0);
-    fs::create_dir_all(&env.rustup_home.0);
-    fs::create_dir_all(&env.target_dir.0);
+    fs::create_dir_all(&env.work_dir.0)?;
+    fs::create_dir_all(&env.cargo_home.0)?;
+    fs::create_dir_all(&env.rustup_home.0)?;
+    fs::create_dir_all(&env.target_dir.0)?;
 
     let mount_arg = |host_path, container_path, perm| {
         let perm = match perm {

@@ -18,7 +18,6 @@ fn recent_path() -> PathBuf {
 
 pub fn create_all_lists(full: bool) -> Result<()> {
     create_recent_list()?;
-    create_second_list()?;
     create_hot_list()?;
     if full {
         create_gh_candidate_list()?;
@@ -49,34 +48,6 @@ pub fn read_recent_list() -> Result<Vec<(String, String)>> {
     let lines =
         file::read_lines(&recent_path())
             .chain_err(|| "unable to read recent list. run `cargobomb create-recent-list`?")?;
-    split_crate_lines(&lines)
-}
-
-fn second_path() -> PathBuf {
-    Path::new(LIST_DIR).join("second-crates.txt")
-}
-
-pub fn create_second_list() -> Result<()> {
-    log!("creating second list");
-    fs::create_dir_all(LIST_DIR)?;
-
-    let crates = registry::find_registry_crates()?;
-    let crates: Vec<_> = crates
-        .into_iter()
-        .filter_map(|mut crate_| {
-                        crate_.versions.pop();
-                        crate_.versions.pop().map(move |v| (crate_.name, v.0))
-                    })
-        .collect();
-    write_crate_list(&second_path(), &crates)?;
-    log!("second crates written to {}", second_path().display());
-    Ok(())
-}
-
-pub fn read_second_list() -> Result<Vec<(String, String)>> {
-    let lines =
-        file::read_lines(&second_path())
-            .chain_err(|| "unable to read second list. run `cargobomb create-second-list`?")?;
     split_crate_lines(&lines)
 }
 
@@ -345,7 +316,6 @@ impl Display for Crate {
 pub fn read_all_lists() -> Result<Vec<Crate>> {
     let mut all = HashSet::new();
     let recent = read_recent_list();
-    let second = read_second_list();
     let hot = read_hot_list();
     let gh_apps = read_gh_app_list();
 
@@ -360,11 +330,6 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
                             }));
     } else {
         log!("failed to load recent list. ignoring");
-    }
-    if let Ok(second) = second {
-        //all.extend(second.into_iter().map(|(c, v)| Crate::Version(c, v)));
-    } else {
-        log!("failed to load second list. ignoring");
     }
     if let Ok(hot) = hot {
         all.extend(hot.into_iter()

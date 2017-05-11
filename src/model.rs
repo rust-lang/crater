@@ -106,16 +106,23 @@ pub enum Cmd {
 }
 
 trait NewCmd {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>> where Self: Sized;
-    // TODO: add a `sub_cmds` function
+    fn process(self, st: &mut GlobalState) -> Result<()>
+        where Self: Sized
+    {
+        Ok(())
+    }
+
+    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        Ok(vec![])
+    }
 }
 
 struct PrepareLocal;
 
 impl NewCmd for PrepareLocal {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(PrepareToolchain("stable".parse::<Tc>()?)),
             Box::new(BuildContainer),
@@ -127,31 +134,23 @@ impl NewCmd for PrepareLocal {
 struct PrepareToolchain(Tc);
 
 impl NewCmd for PrepareToolchain {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        (self.0).0.parse::<toolchain::Toolchain>()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        (self.0).0.parse::<toolchain::Toolchain>().map(|_| ())
     }
 }
 
 struct BuildContainer;
 
 impl NewCmd for BuildContainer {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        docker::build_container()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        docker::build_container()
     }
 }
 
 struct CreateLists;
 
 impl NewCmd for CreateLists {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(CreateRecentList),
             Box::new(CreateSecondList),
@@ -166,9 +165,7 @@ impl NewCmd for CreateLists {
 struct CreateListsFull;
 
 impl NewCmd for CreateListsFull {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(CreateRecentList),
             Box::new(CreateSecondList),
@@ -183,97 +180,71 @@ impl NewCmd for CreateListsFull {
 struct CreateRecentList;
 
 impl NewCmd for CreateRecentList {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        lists::create_recent_list()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        lists::create_recent_list()
     }
 }
 
 struct CreateSecondList;
 
 impl NewCmd for CreateSecondList {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        lists::create_second_list()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        lists::create_second_list()
     }
 }
 
 struct CreateHotList;
 
 impl NewCmd for CreateHotList {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        lists::create_hot_list()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        lists::create_hot_list()
     }
 }
 
 struct CreatePopList;
 
 impl NewCmd for CreatePopList {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        lists::create_pop_list()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        lists::create_pop_list()
     }
 }
 
 struct CreateGhCandidateList;
 
 impl NewCmd for CreateGhCandidateList {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        lists::create_gh_candidate_list()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        lists::create_gh_candidate_list()
     }
 }
 
 struct CreateGhAppList;
 
 impl NewCmd for CreateGhAppList {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        lists::create_gh_app_list()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        lists::create_gh_app_list()
     }
 }
 
 struct CreateGhCandidateListFromCache;
 
 impl NewCmd for CreateGhCandidateListFromCache {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        lists::create_gh_candidate_list_from_cache()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        lists::create_gh_candidate_list_from_cache()
     }
 }
 
 struct CreateGhAppListFromCache;
 
 impl NewCmd for CreateGhAppListFromCache {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        lists::create_gh_candidate_list_from_cache()?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        lists::create_gh_candidate_list_from_cache()
     }
 }
 
 struct DefineEx(Ex, Tc, Tc, ExMode, ExCrateSelect);
 
 impl NewCmd for DefineEx {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::define(ex::ExOpts {
                        name: (self.0).0,
                        toolchains: vec![
@@ -282,17 +253,14 @@ impl NewCmd for DefineEx {
         ],
                        mode: self.3,
                        crates: self.4,
-                   })?;
-        Ok(vec![])
+                   })
     }
 }
 
 struct PrepareEx(Ex);
 
 impl NewCmd for PrepareEx {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(PrepareExShared(self.0.clone())),
             Box::new(PrepareExLocal(self.0)),
@@ -303,31 +271,23 @@ impl NewCmd for PrepareEx {
 struct CopyEx(Ex, Ex);
 
 impl NewCmd for CopyEx {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex::copy(&(self.0).0, &(self.1).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex::copy(&(self.0).0, &(self.1).0)
     }
 }
 
 struct DeleteEx(Ex);
 
 impl NewCmd for DeleteEx {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex::delete(&(self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex::delete(&(self.0).0)
     }
 }
 
 struct PrepareExShared(Ex);
 
 impl NewCmd for PrepareExShared {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(FetchGhMirrors(self.0.clone())),
             Box::new(CaptureShas(self.0.clone())),
@@ -341,64 +301,47 @@ impl NewCmd for PrepareExShared {
 struct FetchGhMirrors(Ex);
 
 impl NewCmd for FetchGhMirrors {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex::fetch_gh_mirrors(&(self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex::fetch_gh_mirrors(&(self.0).0)
     }
 }
 
 struct CaptureShas(Ex);
 
 impl NewCmd for CaptureShas {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex::capture_shas(&(self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex::capture_shas(&(self.0).0)
     }
 }
 
 struct DownloadCrates(Ex);
 
 impl NewCmd for DownloadCrates {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex::download_crates(&(self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex::download_crates(&(self.0).0)
     }
 }
 
 struct FrobCargoTomls(Ex);
 
 impl NewCmd for FrobCargoTomls {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex::frob_tomls(&(self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex::frob_tomls(&(self.0).0)
     }
 }
 
 struct CaptureLockfiles(Ex, Tc);
 
 impl NewCmd for CaptureLockfiles {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex::capture_lockfiles(&(self.0).0, &(self.1).0, false)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex::capture_lockfiles(&(self.0).0, &(self.1).0, false)
     }
 }
 
 struct PrepareExLocal(Ex);
 
 impl NewCmd for PrepareExLocal {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(DeleteAllTargetDirs(self.0.clone())),
             Box::new(DeleteAllResults(self.0.clone())),
@@ -411,42 +354,31 @@ impl NewCmd for PrepareExLocal {
 struct DeleteAllTargetDirs(Ex);
 
 impl NewCmd for DeleteAllTargetDirs {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex::delete_all_target_dirs(&(self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex::delete_all_target_dirs(&(self.0).0)
     }
 }
 
 struct DeleteAllResults(Ex);
 
 impl NewCmd for DeleteAllResults {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex_run::delete_all_results(&(self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex_run::delete_all_results(&(self.0).0)
     }
 }
 
 struct FetchDeps(Ex, Tc);
 
 impl NewCmd for FetchDeps {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex::fetch_deps(&(self.0).0, &(self.1).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex::fetch_deps(&(self.0).0, &(self.1).0)
     }
 }
 
 struct PrepareAllToolchains(Ex);
 
 impl NewCmd for PrepareAllToolchains {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(DeleteAllTargetDirs(self.0.clone())),
             Box::new(DeleteAllResults(self.0.clone())),
@@ -459,121 +391,89 @@ impl NewCmd for PrepareAllToolchains {
 struct Run(Ex);
 
 impl NewCmd for Run {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex_run::run_ex_all_tcs(&(self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex_run::run_ex_all_tcs(&(self.0).0)
     }
 }
 
 struct RunTc(Ex, Tc);
 
 impl NewCmd for RunTc {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        ex_run::run_ex(&(self.0).0, &(self.1).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        ex_run::run_ex(&(self.0).0, &(self.1).0)
     }
 }
 
 struct GenReport(Ex);
 
 impl NewCmd for GenReport {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        report::gen(&(self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        report::gen(&(self.0).0)
     }
 }
 
 struct CreateDockerJob(Box<Cmd>);
 
 impl NewCmd for CreateDockerJob {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        job::create_local(*(self.0))?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        job::create_local(*(self.0))
     }
 }
 
 struct StartJob(Job);
 
 impl NewCmd for StartJob {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        job::start((self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        job::start((self.0).0)
     }
 }
 
 struct WaitForJob(Job);
 
 impl NewCmd for WaitForJob {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        job::wait((self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        job::wait((self.0).0)
     }
 }
 
 struct RunJob(Job);
 
 impl NewCmd for RunJob {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        job::run((self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        job::run((self.0).0)
     }
 }
 
 struct RunJobAgain(Job);
 
 impl NewCmd for RunJobAgain {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        job::run_again((self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        job::run_again((self.0).0)
     }
 }
 
 struct RunCmdForJob(Job);
 
 impl NewCmd for RunCmdForJob {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        job::run_cmd_for_job((self.0).0)?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        job::run_cmd_for_job((self.0).0)
     }
 }
 
 struct Sleep;
 
 impl NewCmd for Sleep {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
-        run::run("sleep", &["5"], &[])?;
-        Ok(vec![])
+    fn process(self, st: &mut GlobalState) -> Result<()> {
+        run::run("sleep", &["5"], &[])
     }
 }
 
 struct Say(SayMsg);
 
 impl NewCmd for Say {
-    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
-        where Self: Sized
-    {
+    fn process(self, st: &mut GlobalState) -> Result<()> {
         log!("{}", (self.0).0);
-        Ok(vec![])
+        Ok(())
     }
 }
 
@@ -679,7 +579,7 @@ impl Process<GlobalState> for Cmd {
                     Cmd::CaptureLockfiles(ex, "stable".parse::<Tc>()?),
                 ]);
             }
-            Cmd::FetchGhMirrors(ex) =>ex::fetch_gh_mirrors(&ex.0)?,
+            Cmd::FetchGhMirrors(ex) => ex::fetch_gh_mirrors(&ex.0)?,
             Cmd::CaptureShas(ex) => ex::capture_shas(&ex.0)?,
             Cmd::DownloadCrates(ex) => ex::download_crates(&ex.0)?,
             Cmd::FrobCargoTomls(ex) => ex::frob_tomls(&ex.0)?,

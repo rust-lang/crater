@@ -323,11 +323,17 @@ fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
     Ok(lockfile_dir(ex_name).join(format!("{}-{}.lock", crate_name, crate_vers)))
 }
 
-fn crate_work_dir(ex_name: &str, toolchain: &str) -> PathBuf {
-    Path::new(TEST_SOURCE_DIR).join(ex_name).join(toolchain)
+fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
+    Path::new(TEST_SOURCE_DIR)
+        .join(ex_name)
+        .join(toolchain.to_string())
 }
 
-pub fn with_work_crate<F, R>(ex_name: &str, toolchain: &str, crate_: &ExCrate, f: F) -> Result<R>
+pub fn with_work_crate<F, R>(ex_name: &str,
+                             toolchain: &Toolchain,
+                             crate_: &ExCrate,
+                             f: F)
+                             -> Result<R>
     where F: Fn(&Path) -> Result<R>
 {
     let src_dir = crate_.dir()?;
@@ -342,7 +348,10 @@ pub fn with_work_crate<F, R>(ex_name: &str, toolchain: &str, crate_: &ExCrate, f
     r
 }
 
-pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: bool) -> Result<()> {
+pub fn capture_lockfiles(ex_name: &str,
+                         toolchain: &Toolchain,
+                         recapture_existing: bool)
+                         -> Result<()> {
     fs::create_dir_all(&lockfile_dir(ex_name))?;
 
     let crates = ex_crates_and_dirs(ex_name)?;
@@ -375,10 +384,15 @@ pub fn capture_lockfiles(ex_name: &str, toolchain: &str, recapture_existing: boo
     Ok(())
 }
 
-fn capture_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path, toolchain: &str) -> Result<()> {
+fn capture_lockfile(ex_name: &str,
+                    crate_: &ExCrate,
+                    path: &Path,
+                    toolchain: &Toolchain)
+                    -> Result<()> {
     let manifest_path = path.join("Cargo.toml").to_string_lossy().to_string();
     let args = &["generate-lockfile", "--manifest-path", &*manifest_path];
-    toolchain::run_cargo(toolchain, ex_name, args)
+    toolchain
+        .run_cargo(ex_name, args)
         .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
 
     let src_lockfile = &path.join("Cargo.lock");
@@ -416,7 +430,7 @@ pub fn with_captured_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path) -> R
     Ok(())
 }
 
-pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
+pub fn fetch_deps(ex_name: &str, toolchain: &Toolchain) -> Result<()> {
     let crates = ex_crates_and_dirs(ex_name)?;
     for (ref c, ref dir) in crates {
         let r = with_work_crate(ex_name, toolchain, c, |path| {
@@ -425,7 +439,8 @@ pub fn fetch_deps(ex_name: &str, toolchain: &str) -> Result<()> {
 
             let manifest_path = path.join("Cargo.toml").to_string_lossy().to_string();
             let args = &["fetch", "--locked", "--manifest-path", &*manifest_path];
-            toolchain::run_cargo(toolchain, ex_name, args)
+            toolchain
+                .run_cargo(ex_name, args)
                 .chain_err(|| format!("unable to fetch deps for {}", c))?;
 
             Ok(())

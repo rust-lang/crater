@@ -94,8 +94,8 @@ it to analyze a nightly, upload reports to S3, and triage them.
   coupled with the current date. This experiment name will correspond
   to the directory name containing the final report.
 - In "master" run `cargo run -- prepare-ex --ex nightly-2017-04-24`
-- In "tc1" run `cargo run -- run-tc --ex nightly-2017-04-24`
-- At the same time, in "tc2" run `cargo run -- run-tc --ex nightly-2017-04-24`
+- In "tc1" run `cargo run -- run-tc --ex nightly-2017-04-24 stable`
+- At the same time, in "tc2" run `cargo run -- run-tc --ex nightly-2017-04-24 nightly`
 - That will take about 4 days. The runs can be stopped and restarted
   at any time.
 - In "master" run `cargo run -- gen-report --ex nightly-2017-04-24`

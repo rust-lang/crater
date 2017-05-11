@@ -24,9 +24,6 @@ use toolchain::Toolchain;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ex(String);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SayMsg(String);
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Cmd {
     /* Basic synchronous commands */
@@ -74,10 +71,6 @@ pub enum Cmd {
 
     // Reporting
     GenReport(Ex),
-
-    // Misc
-    Sleep,
-    Say(SayMsg),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -105,7 +98,6 @@ impl Process for Cmd {
         use docker;
         use ex;
         use ex_run;
-        use run;
         use report;
 
         let mut cmds = Vec::new();
@@ -199,10 +191,6 @@ impl Process for Cmd {
 
             // Reporting
             Cmd::GenReport(ex) => report::gen(&ex.0)?,
-
-            // Misc
-            Cmd::Sleep => run::run("sleep", &["5"], &[])?,
-            Cmd::Say(msg) => log!("{}", msg.0),
         }
 
         Ok(cmds)
@@ -249,7 +237,6 @@ pub mod conv {
                     ExCrateSelect::Top100.to_str(),
                 ])
         };
-        let say_msg = || req("say-msg");
 
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
             Arg::with_name(n).required(false).long(n).default_value(def)
@@ -333,10 +320,6 @@ pub mod conv {
 
             // Reporting
             cmd("gen-report", "generate the experiment report").arg(ex()),
-
-            // Misc
-            cmd("sleep", "sleep"),
-            cmd("say", "say something").arg(say_msg()),
         ]
     }
 
@@ -374,10 +357,6 @@ pub mod conv {
             m.value_of("crate-select")
                 .expect("")
                 .parse::<ExCrateSelect>()
-        }
-
-        fn say_msg(m: &ArgMatches) -> Result<SayMsg> {
-            Ok(SayMsg(m.value_of("say-msg").expect("").to_string()))
         }
 
         Ok(match m.subcommand() {
@@ -426,10 +405,6 @@ pub mod conv {
 
                // Reporting
                ("gen-report", Some(m)) => Cmd::GenReport(ex(m)?),
-
-               // Misc
-               ("sleep", _) => Cmd::Sleep,
-               ("say", Some(m)) => Cmd::Say(say_msg(m)?),
 
                (s, _) => panic!("unimplemented args_to_cmd {}", s),
            })

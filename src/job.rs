@@ -211,8 +211,7 @@ pub fn run_cmd_for_job(job: JobId) -> Result<()> {
 
     // FIXME: Instead of reinitializing the run loop here it would be better
     // to just pass the cmd to be run back to the original loop.
-    let state = model::state::GlobalState::init();
-    let _ = bmk::run(state, job.cmd)?;
+    bmk::run(job.cmd)?;
 
     Ok(())
 }

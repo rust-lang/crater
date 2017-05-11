@@ -1,3 +1,6 @@
+// We define some unused constants here, since we don't have compile time string concatination.
+#![allow(dead_code)]
+
 pub const WORK_DIR: &'static str = "./work";
 pub const LOCAL_DIR: &'static str = "./work/local";
 

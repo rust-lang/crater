@@ -26,6 +26,7 @@ fn log(line: &str) {
     log_to_file(&out_file(), line);
 }
 
+#[allow(dead_code)]
 fn log_err(line: &str) {
     let _g = LOCK.lock();
     writeln!(&mut io::stderr(), "{}", line);

@@ -113,11 +113,10 @@ pub enum ExCrateSelect {
     Top100,
 }
 
-use self::state::GlobalState;
 use bmk::Process;
 
-impl Process<GlobalState> for Cmd {
-    fn process(self, st: GlobalState) -> Result<(GlobalState, Vec<Cmd>)> {
+impl Process for Cmd {
+    fn process(self) -> Result<Vec<Cmd>> {
         use lists;
         use toolchain;
         use docker;
@@ -235,7 +234,7 @@ impl Process<GlobalState> for Cmd {
             Cmd::Say(msg) => log!("{}", msg.0),
         }
 
-        Ok((st, cmds))
+        Ok(cmds)
     }
 }
 
@@ -243,58 +242,8 @@ impl Process<GlobalState> for Cmd {
 pub mod conv {
     use super::*;
 
-    use bmk::{CmdArg, CmdDesc};
     use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
     use std::str::FromStr;
-
-    pub fn cmd_descs() -> Vec<CmdDesc> {
-        vec![
-            ("prepare-local", vec![]),
-            ("prepare-toolchain", vec![CmdArg::Opt("ex", "default")]),
-            ("build-container", vec![]),
-            ("create-lists", vec![]),
-            ("create-lists-full", vec![]),
-            ("create-recent-list", vec![]),
-            ("create-second-list", vec![]),
-            ("create-hot-list", vec![]),
-            ("create-gh-candidate-list", vec![]),
-            ("create-gh-app-list", vec![]),
-            ("create-gh-candidate-list-from-cache", vec![]),
-            ("create-gh-app-list-from-cache", vec![]),
-        ]
-                .into_iter()
-                .map(|(a, b)| CmdDesc { name: a, args: b })
-                .collect()
-    }
-
-    pub fn clap_cmd<'a>(desc: &CmdDesc) -> App<'a, 'a> {
-        fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
-            Arg::with_name(n).required(false).long(n).default_value(def)
-        }
-
-        fn req(n: &'static str) -> Arg<'static, 'static> {
-            Arg::with_name(n).required(true)
-        }
-
-        fn cmd(n: &'static str, desc: &'static str) -> App<'static, 'static> {
-            SubCommand::with_name(n).about(desc)
-        }
-
-        let arg_to_str = |cmdarg: &CmdArg| match *cmdarg {
-            CmdArg::Req(s) |
-            CmdArg::Opt(s, _) => s,
-        };
-
-        let args = desc.args
-            .iter()
-            .map(|arg| match *arg {
-                     CmdArg::Req(s) => req(s),
-                     CmdArg::Opt(s, d) => opt(s, d),
-                 })
-            .collect::<Vec<_>>();
-
-        cmd(desc.name, "todo").args(&args)
-    }
 
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
         clap_cmds_(true)
@@ -800,77 +749,4 @@ pub mod conv {
             Ok(Tc(tc.to_string()))
         }
     }
-}
-
-pub mod state {
-    use super::slowio::{Blobject, FreeDir};
-
-    pub struct GlobalState {
-        master: MasterState,
-        local: LocalState,
-        shared: SharedState,
-        ex: ExData,
-    }
-
-    pub struct MasterState;
-
-    pub struct LocalState {
-        cargo_home: FreeDir,
-        rustup_home: FreeDir,
-        crates_io_index_mirror: FreeDir,
-        gh_clones: FreeDir,
-        target_dirs: FreeDir,
-        test_source_dir: FreeDir,
-    }
-
-    pub struct SharedState {
-        crates: FreeDir,
-        gh_mirrors: FreeDir,
-        lists: Lists,
-    }
-
-    pub struct Lists {
-        recent: Blobject,
-        hot: Blobject,
-        gh_repos: Blobject,
-        gh_apps: Blobject,
-    }
-
-    pub struct ExData {
-        config: Blobject,
-    }
-
-    impl GlobalState {
-        pub fn init() -> GlobalState {
-            GlobalState {
-                master: MasterState,
-                local: LocalState {
-                    cargo_home: FreeDir,
-                    rustup_home: FreeDir,
-                    crates_io_index_mirror: FreeDir,
-                    gh_clones: FreeDir,
-                    target_dirs: FreeDir,
-                    test_source_dir: FreeDir,
-                },
-                shared: SharedState {
-                    crates: FreeDir,
-                    gh_mirrors: FreeDir,
-                    lists: Lists {
-                        recent: Blobject,
-                        hot: Blobject,
-                        gh_repos: Blobject,
-                        gh_apps: Blobject,
-                    },
-                },
-                ex: ExData { config: Blobject },
-            }
-        }
-    }
-}
-
-pub mod slowio {
-    #[derive(Default)]
-    pub struct FreeDir;
-    #[derive(Default)]
-    pub struct Blobject;
 }

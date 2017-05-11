@@ -106,6 +106,8 @@ pub enum Cmd {
 }
 
 trait NewCmd {
+    fn name() -> &'static str;
+
     fn process(self, st: &mut GlobalState) -> Result<()>
         where Self: Sized
     {
@@ -122,6 +124,10 @@ trait NewCmd {
 struct PrepareLocal;
 
 impl NewCmd for PrepareLocal {
+    fn name() -> &'static str {
+        "prepare-local"
+    }
+
     fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(PrepareToolchain("stable".parse::<Tc>()?)),
@@ -134,6 +140,10 @@ impl NewCmd for PrepareLocal {
 struct PrepareToolchain(Tc);
 
 impl NewCmd for PrepareToolchain {
+    fn name() -> &'static str {
+        "prepare-toolchain"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         (self.0).0.parse::<toolchain::Toolchain>().map(|_| ())
     }
@@ -142,6 +152,11 @@ impl NewCmd for PrepareToolchain {
 struct BuildContainer;
 
 impl NewCmd for BuildContainer {
+    fn name() -> &'static str {
+        "build-container"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         docker::build_container()
     }
@@ -150,6 +165,11 @@ impl NewCmd for BuildContainer {
 struct CreateLists;
 
 impl NewCmd for CreateLists {
+    fn name() -> &'static str {
+        "create-lists"
+
+    }
+
     fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(CreateRecentList),
@@ -165,6 +185,11 @@ impl NewCmd for CreateLists {
 struct CreateListsFull;
 
 impl NewCmd for CreateListsFull {
+    fn name() -> &'static str {
+        "create-lists-full"
+
+    }
+
     fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(CreateRecentList),
@@ -180,6 +205,11 @@ impl NewCmd for CreateListsFull {
 struct CreateRecentList;
 
 impl NewCmd for CreateRecentList {
+    fn name() -> &'static str {
+        "create-recent-list"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         lists::create_recent_list()
     }
@@ -188,6 +218,11 @@ impl NewCmd for CreateRecentList {
 struct CreateSecondList;
 
 impl NewCmd for CreateSecondList {
+    fn name() -> &'static str {
+        "create-second-list"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         lists::create_second_list()
     }
@@ -196,6 +231,11 @@ impl NewCmd for CreateSecondList {
 struct CreateHotList;
 
 impl NewCmd for CreateHotList {
+    fn name() -> &'static str {
+        "create-hot-list"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         lists::create_hot_list()
     }
@@ -204,6 +244,11 @@ impl NewCmd for CreateHotList {
 struct CreatePopList;
 
 impl NewCmd for CreatePopList {
+    fn name() -> &'static str {
+        "create-pop-list"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         lists::create_pop_list()
     }
@@ -212,6 +257,11 @@ impl NewCmd for CreatePopList {
 struct CreateGhCandidateList;
 
 impl NewCmd for CreateGhCandidateList {
+    fn name() -> &'static str {
+        "create-gh-candidate-list"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         lists::create_gh_candidate_list()
     }
@@ -220,6 +270,11 @@ impl NewCmd for CreateGhCandidateList {
 struct CreateGhAppList;
 
 impl NewCmd for CreateGhAppList {
+    fn name() -> &'static str {
+        "create-gh-app-list"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         lists::create_gh_app_list()
     }
@@ -228,6 +283,11 @@ impl NewCmd for CreateGhAppList {
 struct CreateGhCandidateListFromCache;
 
 impl NewCmd for CreateGhCandidateListFromCache {
+    fn name() -> &'static str {
+        "create-gh-candidate-list-from-cache"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         lists::create_gh_candidate_list_from_cache()
     }
@@ -236,6 +296,11 @@ impl NewCmd for CreateGhCandidateListFromCache {
 struct CreateGhAppListFromCache;
 
 impl NewCmd for CreateGhAppListFromCache {
+    fn name() -> &'static str {
+        "create-gh-app-list-from-cache"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         lists::create_gh_candidate_list_from_cache()
     }
@@ -244,6 +309,11 @@ impl NewCmd for CreateGhAppListFromCache {
 struct DefineEx(Ex, Tc, Tc, ExMode, ExCrateSelect);
 
 impl NewCmd for DefineEx {
+    fn name() -> &'static str {
+        "define-ex"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::define(ex::ExOpts {
                        name: (self.0).0,
@@ -260,6 +330,11 @@ impl NewCmd for DefineEx {
 struct PrepareEx(Ex);
 
 impl NewCmd for PrepareEx {
+    fn name() -> &'static str {
+        "prepare-ex"
+
+    }
+
     fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(PrepareExShared(self.0.clone())),
@@ -271,6 +346,11 @@ impl NewCmd for PrepareEx {
 struct CopyEx(Ex, Ex);
 
 impl NewCmd for CopyEx {
+    fn name() -> &'static str {
+
+        "copy-ex"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::copy(&(self.0).0, &(self.1).0)
     }
@@ -279,6 +359,11 @@ impl NewCmd for CopyEx {
 struct DeleteEx(Ex);
 
 impl NewCmd for DeleteEx {
+    fn name() -> &'static str {
+        "delete-ex"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::delete(&(self.0).0)
     }
@@ -287,6 +372,11 @@ impl NewCmd for DeleteEx {
 struct PrepareExShared(Ex);
 
 impl NewCmd for PrepareExShared {
+    fn name() -> &'static str {
+        "prepare-ex-shared"
+
+    }
+
     fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(FetchGhMirrors(self.0.clone())),
@@ -301,6 +391,11 @@ impl NewCmd for PrepareExShared {
 struct FetchGhMirrors(Ex);
 
 impl NewCmd for FetchGhMirrors {
+    fn name() -> &'static str {
+
+        "fetch-gh-mirrors"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::fetch_gh_mirrors(&(self.0).0)
     }
@@ -309,6 +404,11 @@ impl NewCmd for FetchGhMirrors {
 struct CaptureShas(Ex);
 
 impl NewCmd for CaptureShas {
+    fn name() -> &'static str {
+        "capture-shas"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::capture_shas(&(self.0).0)
     }
@@ -317,6 +417,11 @@ impl NewCmd for CaptureShas {
 struct DownloadCrates(Ex);
 
 impl NewCmd for DownloadCrates {
+    fn name() -> &'static str {
+
+        "download-crates"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::download_crates(&(self.0).0)
     }
@@ -325,6 +430,11 @@ impl NewCmd for DownloadCrates {
 struct FrobCargoTomls(Ex);
 
 impl NewCmd for FrobCargoTomls {
+    fn name() -> &'static str {
+
+        "frob-cargo-tomls"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::frob_tomls(&(self.0).0)
     }
@@ -333,6 +443,11 @@ impl NewCmd for FrobCargoTomls {
 struct CaptureLockfiles(Ex, Tc);
 
 impl NewCmd for CaptureLockfiles {
+    fn name() -> &'static str {
+        "capture-lockfiles"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::capture_lockfiles(&(self.0).0, &(self.1).0, false)
     }
@@ -341,6 +456,11 @@ impl NewCmd for CaptureLockfiles {
 struct PrepareExLocal(Ex);
 
 impl NewCmd for PrepareExLocal {
+    fn name() -> &'static str {
+        "prepare-ex-local"
+
+    }
+
     fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(DeleteAllTargetDirs(self.0.clone())),
@@ -354,6 +474,11 @@ impl NewCmd for PrepareExLocal {
 struct DeleteAllTargetDirs(Ex);
 
 impl NewCmd for DeleteAllTargetDirs {
+    fn name() -> &'static str {
+        "delete-all-target-dirs"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::delete_all_target_dirs(&(self.0).0)
     }
@@ -362,6 +487,11 @@ impl NewCmd for DeleteAllTargetDirs {
 struct DeleteAllResults(Ex);
 
 impl NewCmd for DeleteAllResults {
+    fn name() -> &'static str {
+        "delete-all-results"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex_run::delete_all_results(&(self.0).0)
     }
@@ -370,6 +500,11 @@ impl NewCmd for DeleteAllResults {
 struct FetchDeps(Ex, Tc);
 
 impl NewCmd for FetchDeps {
+    fn name() -> &'static str {
+        "fetch-deps"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex::fetch_deps(&(self.0).0, &(self.1).0)
     }
@@ -378,6 +513,11 @@ impl NewCmd for FetchDeps {
 struct PrepareAllToolchains(Ex);
 
 impl NewCmd for PrepareAllToolchains {
+    fn name() -> &'static str {
+
+        "prepare-all-toolchains"
+    }
+
     fn sub_cmds(self) -> Result<Vec<Box<NewCmd>>> {
         Ok(vec![
             Box::new(DeleteAllTargetDirs(self.0.clone())),
@@ -391,6 +531,11 @@ impl NewCmd for PrepareAllToolchains {
 struct Run(Ex);
 
 impl NewCmd for Run {
+    fn name() -> &'static str {
+        "run"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex_run::run_ex_all_tcs(&(self.0).0)
     }
@@ -399,6 +544,11 @@ impl NewCmd for Run {
 struct RunTc(Ex, Tc);
 
 impl NewCmd for RunTc {
+    fn name() -> &'static str {
+
+        "run-tc"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         ex_run::run_ex(&(self.0).0, &(self.1).0)
     }
@@ -407,6 +557,11 @@ impl NewCmd for RunTc {
 struct GenReport(Ex);
 
 impl NewCmd for GenReport {
+    fn name() -> &'static str {
+
+        "gen-report"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         report::gen(&(self.0).0)
     }
@@ -415,6 +570,11 @@ impl NewCmd for GenReport {
 struct CreateDockerJob(Box<Cmd>);
 
 impl NewCmd for CreateDockerJob {
+    fn name() -> &'static str {
+
+        "create-docker-job"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         job::create_local(*(self.0))
     }
@@ -423,6 +583,11 @@ impl NewCmd for CreateDockerJob {
 struct StartJob(Job);
 
 impl NewCmd for StartJob {
+    fn name() -> &'static str {
+
+        "start-job"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         job::start((self.0).0)
     }
@@ -431,6 +596,11 @@ impl NewCmd for StartJob {
 struct WaitForJob(Job);
 
 impl NewCmd for WaitForJob {
+    fn name() -> &'static str {
+        "wait-for-job"
+
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         job::wait((self.0).0)
     }
@@ -439,6 +609,11 @@ impl NewCmd for WaitForJob {
 struct RunJob(Job);
 
 impl NewCmd for RunJob {
+    fn name() -> &'static str {
+
+        "run-job"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         job::run((self.0).0)
     }
@@ -447,6 +622,11 @@ impl NewCmd for RunJob {
 struct RunJobAgain(Job);
 
 impl NewCmd for RunJobAgain {
+    fn name() -> &'static str {
+
+        "run-job-again"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         job::run_again((self.0).0)
     }
@@ -455,6 +635,11 @@ impl NewCmd for RunJobAgain {
 struct RunCmdForJob(Job);
 
 impl NewCmd for RunCmdForJob {
+    fn name() -> &'static str {
+
+        "run-cmd-for-job"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         job::run_cmd_for_job((self.0).0)
     }
@@ -463,6 +648,11 @@ impl NewCmd for RunCmdForJob {
 struct Sleep;
 
 impl NewCmd for Sleep {
+    fn name() -> &'static str {
+
+        "sleep"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         run::run("sleep", &["5"], &[])
     }
@@ -471,6 +661,11 @@ impl NewCmd for Sleep {
 struct Say(SayMsg);
 
 impl NewCmd for Say {
+    fn name() -> &'static str {
+
+        "say"
+    }
+
     fn process(self, st: &mut GlobalState) -> Result<()> {
         log!("{}", (self.0).0);
         Ok(())

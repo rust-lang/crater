@@ -20,9 +20,11 @@ rewrite.
 use docker;
 use errors::*;
 use ex;
-use job::JobId;
-
+use ex_run;
+use job::{self, JobId};
 use lists;
+use report;
+use run;
 use serde::{Deserialize, Serialize};
 use toolchain;
 
@@ -285,7 +287,25 @@ impl NewCmd for PrepareEx {
 
 struct CopyEx(Ex, Ex);
 
+impl NewCmd for CopyEx {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::copy(&(self.0).0, &(self.1).0)?;
+        Ok(vec![])
+    }
+}
+
 struct DeleteEx(Ex);
+
+impl NewCmd for DeleteEx {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::delete(&(self.0).0)?;
+        Ok(vec![])
+    }
+}
 
 struct PrepareExShared(Ex);
 
@@ -294,11 +314,11 @@ impl NewCmd for PrepareExShared {
         where Self: Sized
     {
         Ok(vec![
-            Box::new(FetchGhMirrors(ex.clone())),
-            Box::new(CaptureShas(ex.clone())),
-            Box::new(DownloadCrates(ex.clone())),
-            Box::new(FrobCargoTomls(ex.clone())),
-            Box::new(CaptureLockfiles(ex, "stable".parse::<Tc>()?)),
+            Box::new(FetchGhMirrors(self.0.clone())),
+            Box::new(CaptureShas(self.0.clone())),
+            Box::new(DownloadCrates(self.0.clone())),
+            Box::new(FrobCargoTomls(self.0.clone())),
+            Box::new(CaptureLockfiles(self.0, "stable".parse::<Tc>()?)),
         ])
     }
 }
@@ -309,7 +329,7 @@ impl NewCmd for FetchGhMirrors {
     fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
         where Self: Sized
     {
-        ex::fetch_gh_mirrors(&ex.0)?;
+        ex::fetch_gh_mirrors(&(self.0).0)?;
         Ok(vec![])
     }
 }
@@ -320,7 +340,7 @@ impl NewCmd for CaptureShas {
     fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
         where Self: Sized
     {
-        ex::capture_shas(&ex.0)?;
+        ex::capture_shas(&(self.0).0)?;
         Ok(vec![])
     }
 }
@@ -331,7 +351,7 @@ impl NewCmd for DownloadCrates {
     fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
         where Self: Sized
     {
-        ex::download_crates(&ex.0)?;
+        ex::download_crates(&(self.0).0)?;
         Ok(vec![])
     }
 }
@@ -342,7 +362,7 @@ impl NewCmd for FrobCargoTomls {
     fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
         where Self: Sized
     {
-        ex::frob_tomls(&ex.0)?;
+        ex::frob_tomls(&(self.0).0)?;
         Ok(vec![])
     }
 }
@@ -353,42 +373,194 @@ impl NewCmd for CaptureLockfiles {
     fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
         where Self: Sized
     {
-        ex::capture_lockfiles(&ex.0, &tc.0, false)?;
+        ex::capture_lockfiles(&(self.0).0, &(self.1).0, false)?;
         Ok(vec![])
     }
 }
 
 struct PrepareExLocal(Ex);
 
+impl NewCmd for PrepareExLocal {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        Ok(vec![
+            Box::new(DeleteAllTargetDirs(self.0.clone())),
+            Box::new(DeleteAllResults(self.0.clone())),
+            Box::new(FetchDeps(self.0.clone(), "stable".parse::<Tc>()?)),
+            Box::new(PrepareAllToolchains(self.0)),
+        ])
+    }
+}
+
 struct DeleteAllTargetDirs(Ex);
+
+impl NewCmd for DeleteAllTargetDirs {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::delete_all_target_dirs(&(self.0).0)?;
+        Ok(vec![])
+    }
+}
 
 struct DeleteAllResults(Ex);
 
+impl NewCmd for DeleteAllResults {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex_run::delete_all_results(&(self.0).0)?;
+        Ok(vec![])
+    }
+}
+
 struct FetchDeps(Ex, Tc);
+
+impl NewCmd for FetchDeps {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex::fetch_deps(&(self.0).0, &(self.1).0)?;
+        Ok(vec![])
+    }
+}
 
 struct PrepareAllToolchains(Ex);
 
+impl NewCmd for PrepareAllToolchains {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        Ok(vec![
+            Box::new(DeleteAllTargetDirs(self.0.clone())),
+            Box::new(DeleteAllResults(self.0.clone())),
+            Box::new(FetchDeps(self.0.clone(), "stable".parse::<Tc>()?)),
+            Box::new(PrepareAllToolchains(self.0)),
+        ])
+    }
+}
+
 struct Run(Ex);
+
+impl NewCmd for Run {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex_run::run_ex_all_tcs(&(self.0).0)?;
+        Ok(vec![])
+    }
+}
 
 struct RunTc(Ex, Tc);
 
+impl NewCmd for RunTc {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        ex_run::run_ex(&(self.0).0, &(self.1).0)?;
+        Ok(vec![])
+    }
+}
+
 struct GenReport(Ex);
+
+impl NewCmd for GenReport {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        report::gen(&(self.0).0)?;
+        Ok(vec![])
+    }
+}
 
 struct CreateDockerJob(Box<Cmd>);
 
+impl NewCmd for CreateDockerJob {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        job::create_local(*(self.0))?;
+        Ok(vec![])
+    }
+}
+
 struct StartJob(Job);
+
+impl NewCmd for StartJob {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        job::start((self.0).0)?;
+        Ok(vec![])
+    }
+}
 
 struct WaitForJob(Job);
 
+impl NewCmd for WaitForJob {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        job::wait((self.0).0)?;
+        Ok(vec![])
+    }
+}
+
 struct RunJob(Job);
+
+impl NewCmd for RunJob {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        job::run((self.0).0)?;
+        Ok(vec![])
+    }
+}
 
 struct RunJobAgain(Job);
 
+impl NewCmd for RunJobAgain {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        job::run_again((self.0).0)?;
+        Ok(vec![])
+    }
+}
+
 struct RunCmdForJob(Job);
+
+impl NewCmd for RunCmdForJob {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        job::run_cmd_for_job((self.0).0)?;
+        Ok(vec![])
+    }
+}
 
 struct Sleep;
 
+impl NewCmd for Sleep {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        run::run("sleep", &["5"], &[])?;
+        Ok(vec![])
+    }
+}
+
 struct Say(SayMsg);
+
+impl NewCmd for Say {
+    fn process(self, st: &mut GlobalState) -> Result<Vec<Box<NewCmd>>>
+        where Self: Sized
+    {
+        log!("{}", (self.0).0);
+        Ok(vec![])
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 #[derive(Debug, Clone)]
@@ -492,7 +664,7 @@ impl Process<GlobalState> for Cmd {
                     Cmd::CaptureLockfiles(ex, "stable".parse::<Tc>()?),
                 ]);
             }
-            Cmd::FetchGhMirrors(ex) => ex::fetch_gh_mirrors(&ex.0)?,
+            Cmd::FetchGhMirrors(ex) =>ex::fetch_gh_mirrors(&ex.0)?,
             Cmd::CaptureShas(ex) => ex::capture_shas(&ex.0)?,
             Cmd::DownloadCrates(ex) => ex::download_crates(&ex.0)?,
             Cmd::FrobCargoTomls(ex) => ex::frob_tomls(&ex.0)?,

@@ -620,6 +620,7 @@ pub mod conv {
     }
 
     fn cmd_to_args_(cmd: Cmd) -> Vec<String> {
+        #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
         use super::Cmd::*;
 
         fn opt_ex(ex: Ex) -> String {
@@ -627,7 +628,7 @@ pub mod conv {
         }
 
         fn req_ex(ex: Ex) -> String {
-            format!("{}", ex.0)
+            ex.0
         }
 
         fn opt_tc(tc: Tc) -> String {
@@ -654,6 +655,7 @@ pub mod conv {
             say_msg.0
         }
 
+        #[cfg_attr(feature = "cargo-clippy", allow(match_same_arms))]
         match cmd {
             PrepareLocal |
             BuildContainer |
@@ -712,11 +714,11 @@ pub mod conv {
         }
     }
 
-    pub fn args_to_cmd(args: Vec<String>) -> Result<Cmd> {
+    pub fn args_to_cmd(args: &[String]) -> Result<Cmd> {
         let m = App::new("")
             .setting(AppSettings::NoBinaryName)
             .subcommands(clap_cmds())
-            .get_matches_from(&args);
+            .get_matches_from(args);
         clap_args_to_cmd(&m)
     }
 
@@ -724,7 +726,7 @@ pub mod conv {
 
     impl Arguable for Cmd {
         fn from_args(args: Vec<String>) -> Result<Self> {
-            args_to_cmd(args)
+            args_to_cmd(&args)
         }
 
         fn to_args(self) -> Vec<String> {

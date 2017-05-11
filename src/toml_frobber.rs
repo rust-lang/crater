@@ -20,7 +20,7 @@ pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
             // Iterate through the "name = { ... }", removing any "path"
             // keys in the dependency definition
             for (dep_name, v) in deps.iter_mut() {
-                if let &mut Value::Table(ref mut dep_props) = v {
+                if let Value::Table(ref mut dep_props) = *v {
                     if dep_props.contains_key("path") {
                         log!("removing path from {} in {}-{}", dep_name, name, vers);
                     }

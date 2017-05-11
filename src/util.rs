@@ -111,7 +111,7 @@ pub fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
         let path = dest_dir.join(&partial_dest_dir).join(entry.file_name());
         if entry.file_type().is_dir() && entry.depth() > 0 {
             fs::create_dir_all(&path)?;
-            assert!(entry.depth() == depth + 1);
+            assert_eq!(entry.depth(), depth + 1);
             partial_dest_dir.push(entry.file_name());
             depth += 1;
         }

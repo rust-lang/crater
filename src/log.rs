@@ -1,3 +1,4 @@
+#![allow(unused_must_use)]
 use LOG_DIR;
 use chrono::UTC;
 use errors::*;

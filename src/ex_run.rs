@@ -11,19 +11,19 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Instant;
-use toolchain::{self, Toolchain};
+use toolchain::Toolchain;
 use util;
 
-pub fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
-    let tc = toolchain::rustup_toolchain_name(toolchain)?;
+pub fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &Toolchain) -> Result<PathBuf> {
+    let tc = toolchain.rustup_name();
     Ok(ex_dir(ex_name).join("res").join(tc).join(crate_to_dir(c)?))
 }
 
-pub fn result_file(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
+pub fn result_file(ex_name: &str, c: &ExCrate, toolchain: &Toolchain) -> Result<PathBuf> {
     Ok(result_dir(ex_name, c, toolchain)?.join("results.txt"))
 }
 
-pub fn result_log(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<PathBuf> {
+pub fn result_log(ex_name: &str, c: &ExCrate, toolchain: &Toolchain) -> Result<PathBuf> {
     Ok(result_dir(ex_name, c, toolchain)?.join("log.txt"))
 }
 
@@ -54,8 +54,7 @@ pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
     run_exts(config, &config.toolchains)
 }
 
-pub fn run_ex(ex_name: &str, tc: &str) -> Result<()> {
-    let tc: toolchain::Toolchain = tc.parse()?;
+pub fn run_ex(ex_name: &str, tc: Toolchain) -> Result<()> {
     let config = load_config(ex_name)?;
     run_exts(&config, &[tc])
 }
@@ -89,7 +88,6 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     log!("running {} tests", total_crates);
     for (ref c, ref dir) in crates {
         for tc in tcs {
-            let tc = &tc.to_string();
             let r = {
                 let existing_result = get_test_result(ex_name, c, tc)?;
                 if let Some(r) = existing_result {
@@ -218,7 +216,7 @@ impl TestResult {
 fn run_single_test<F>(ex_name: &str,
                       c: &ExCrate,
                       source_path: &Path,
-                      toolchain: &str,
+                      toolchain: &Toolchain,
                       f: &F)
                       -> Result<TestResult>
     where F: Fn(&Path, &Path, &str) -> Result<TestResult>
@@ -231,9 +229,12 @@ fn run_single_test<F>(ex_name: &str,
     let log_file = result_log(ex_name, c, toolchain)?;
 
     log::redirect(&log_file, || {
-        log!("testing {} against {} for {}", c, toolchain, ex_name);
-        let tc = toolchain::rustup_toolchain_name(toolchain)?;
-        let target_path = toolchain::target_dir(ex_name, toolchain);
+        log!("testing {} against {} for {}",
+             c,
+             toolchain.to_string(),
+             ex_name);
+        let tc = toolchain.rustup_name();
+        let target_path = toolchain.target_dir(ex_name);
         f(source_path, &target_path, &tc)
     })
 }
@@ -297,21 +298,28 @@ fn test_check_only(source_path: &Path, target_path: &Path, rustup_tc: &str) -> R
     }
 }
 
-fn record_test_result(ex_name: &str, c: &ExCrate, toolchain: &str, r: TestResult) -> Result<()> {
+fn record_test_result(ex_name: &str,
+                      c: &ExCrate,
+                      toolchain: &Toolchain,
+                      r: TestResult)
+                      -> Result<()> {
     let result_dir = result_dir(ex_name, c, toolchain)?;
     fs::create_dir_all(&result_dir)?;
     let result_file = result_file(ex_name, c, toolchain)?;
     log!("test result! ex: {}, c: {}, tc: {}, r: {}",
          ex_name,
          c,
-         toolchain,
+         toolchain.to_string(),
          r);
     log!("file: {}", result_file.display());
     file::write_string(&result_file, &r.to_string())?;
     Ok(())
 }
 
-pub fn get_test_result(ex_name: &str, c: &ExCrate, toolchain: &str) -> Result<Option<TestResult>> {
+pub fn get_test_result(ex_name: &str,
+                       c: &ExCrate,
+                       toolchain: &Toolchain)
+                       -> Result<Option<TestResult>> {
     let result_file = result_file(ex_name, c, toolchain)?;
     if result_file.exists() {
         let s = file::read_string(&result_file)?;

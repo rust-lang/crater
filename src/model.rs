@@ -19,15 +19,11 @@ rewrite.
 
 use errors::*;
 use job::JobId;
+use toolchain::Toolchain;
 
 // An experiment name
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ex(String);
-
-// A toolchain name, either a rustup channel identifier,
-// or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Tc(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SayMsg(String);
@@ -41,7 +37,7 @@ pub enum Cmd {
 
     // Local prep
     PrepareLocal,
-    PrepareToolchain(Tc),
+    PrepareToolchain(Toolchain),
     BuildContainer,
 
     // List creation
@@ -56,7 +52,7 @@ pub enum Cmd {
     CreateGhAppListFromCache,
 
     // Master experiment prep
-    DefineEx(Ex, Tc, Tc, ExMode, ExCrateSelect),
+    DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect),
     PrepareEx(Ex),
     CopyEx(Ex, Ex),
     DeleteEx(Ex),
@@ -67,18 +63,18 @@ pub enum Cmd {
     CaptureShas(Ex),
     DownloadCrates(Ex),
     FrobCargoTomls(Ex),
-    CaptureLockfiles(Ex, Tc),
+    CaptureLockfiles(Ex, Toolchain),
 
     // Local experiment prep
     PrepareExLocal(Ex),
     DeleteAllTargetDirs(Ex),
     DeleteAllResults(Ex),
-    FetchDeps(Ex, Tc),
+    FetchDeps(Ex, Toolchain),
     PrepareAllToolchains(Ex),
 
     // Experimenting
     Run(Ex),
-    RunTc(Ex, Tc),
+    RunTc(Ex, Toolchain),
 
     // Reporting
     GenReport(Ex),
@@ -118,7 +114,6 @@ use bmk::Process;
 impl Process for Cmd {
     fn process(self) -> Result<Vec<Cmd>> {
         use lists;
-        use toolchain;
         use docker;
         use ex;
         use ex_run;
@@ -131,15 +126,12 @@ impl Process for Cmd {
             // Local prep
             Cmd::PrepareLocal => {
                 cmds.extend(vec![
-                    Cmd::PrepareToolchain("stable".parse::<Tc>()?),
+                    Cmd::PrepareToolchain("stable".parse()?),
                     Cmd::BuildContainer,
                     Cmd::CreateLists,
                 ]);
             }
-            Cmd::PrepareToolchain(tc) => {
-                let tc: toolchain::Toolchain = tc.0.parse()?;
-                tc.prepare()?
-            }
+            Cmd::PrepareToolchain(tc) => tc.prepare()?,
             Cmd::BuildContainer => docker::build_container()?,
 
             // List creation
@@ -173,7 +165,7 @@ impl Process for Cmd {
             Cmd::DefineEx(ex, tc1, tc2, mode, crates) => {
                 ex::define(ex::ExOpts {
                                name: ex.0,
-                               toolchains: vec![tc1.0.parse()?, tc2.0.parse()?],
+                               toolchains: vec![tc1, tc2],
                                mode: mode,
                                crates: crates,
                            })?;
@@ -191,32 +183,32 @@ impl Process for Cmd {
                     Cmd::CaptureShas(ex.clone()),
                     Cmd::DownloadCrates(ex.clone()),
                     Cmd::FrobCargoTomls(ex.clone()),
-                    Cmd::CaptureLockfiles(ex, "stable".parse::<Tc>()?),
+                    Cmd::CaptureLockfiles(ex, "stable".parse()?),
                 ]);
             }
             Cmd::FetchGhMirrors(ex) => ex::fetch_gh_mirrors(&ex.0)?,
             Cmd::CaptureShas(ex) => ex::capture_shas(&ex.0)?,
             Cmd::DownloadCrates(ex) => ex::download_crates(&ex.0)?,
             Cmd::FrobCargoTomls(ex) => ex::frob_tomls(&ex.0)?,
-            Cmd::CaptureLockfiles(ex, tc) => ex::capture_lockfiles(&ex.0, &tc.0, false)?,
+            Cmd::CaptureLockfiles(ex, tc) => ex::capture_lockfiles(&ex.0, &tc, false)?,
 
             // Local experiment prep
             Cmd::PrepareExLocal(ex) => {
                 cmds.extend(vec![
                     Cmd::DeleteAllTargetDirs(ex.clone()),
                     Cmd::DeleteAllResults(ex.clone()),
-                    Cmd::FetchDeps(ex.clone(), "stable".parse::<Tc>()?),
+                    Cmd::FetchDeps(ex.clone(), "stable".parse()?),
                     Cmd::PrepareAllToolchains(ex),
                 ]);
             }
             Cmd::DeleteAllTargetDirs(ex) => ex::delete_all_target_dirs(&ex.0)?,
             Cmd::DeleteAllResults(ex) => ex_run::delete_all_results(&ex.0)?,
-            Cmd::FetchDeps(ex, tc) => ex::fetch_deps(&ex.0, &tc.0)?,
+            Cmd::FetchDeps(ex, tc) => ex::fetch_deps(&ex.0, &tc)?,
             Cmd::PrepareAllToolchains(ex) => ex::prepare_all_toolchains(&ex.0)?,
 
             // Experimenting
             Cmd::Run(ex) => ex_run::run_ex_all_tcs(&ex.0)?,
-            Cmd::RunTc(ex, tc) => ex_run::run_ex(&ex.0, &tc.0)?,
+            Cmd::RunTc(ex, tc) => ex_run::run_ex(&ex.0, tc)?,
 
             // Reporting
             Cmd::GenReport(ex) => report::gen(&ex.0)?,
@@ -403,16 +395,16 @@ pub mod conv {
             m.value_of("ex-2").expect("").parse::<Ex>()
         }
 
-        fn tc(m: &ArgMatches) -> Result<Tc> {
-            m.value_of("tc").expect("").parse::<Tc>()
+        fn tc(m: &ArgMatches) -> Result<Toolchain> {
+            m.value_of("tc").expect("").parse()
         }
 
-        fn tc1(m: &ArgMatches) -> Result<Tc> {
-            m.value_of("tc-1").expect("").parse::<Tc>()
+        fn tc1(m: &ArgMatches) -> Result<Toolchain> {
+            m.value_of("tc-1").expect("").parse()
         }
 
-        fn tc2(m: &ArgMatches) -> Result<Tc> {
-            m.value_of("tc-2").expect("").parse::<Tc>()
+        fn tc2(m: &ArgMatches) -> Result<Toolchain> {
+            m.value_of("tc-2").expect("").parse()
         }
 
         fn mode(m: &ArgMatches) -> Result<ExMode> {
@@ -572,12 +564,12 @@ pub mod conv {
             ex.0
         }
 
-        fn opt_tc(tc: Tc) -> String {
-            format!("--tc={}", tc.0)
+        fn opt_tc(tc: Toolchain) -> String {
+            format!("--tc={}", tc.to_string())
         }
 
-        fn req_tc(tc: Tc) -> String {
-            tc.0
+        fn req_tc(tc: Toolchain) -> String {
+            tc.to_string()
         }
 
         fn opt_mode(mode: ExMode) -> String {
@@ -737,16 +729,6 @@ pub mod conv {
 
         fn from_str(ex: &str) -> Result<Ex> {
             Ok(Ex(ex.to_string()))
-        }
-    }
-
-    impl FromStr for Tc {
-        type Err = Error;
-
-        fn from_str(tc: &str) -> Result<Tc> {
-            use toolchain;
-            let tc: toolchain::Toolchain = tc.parse()?;
-            Ok(Tc(tc.to_string()))
         }
     }
 }

@@ -16,7 +16,9 @@ use util;
 
 const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+/// A toolchain name, either a rustup channel identifier,
+/// or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
 pub enum Toolchain {
     Dist(String), // rustup toolchain spec
     Repo { url: String, sha: String },
@@ -168,33 +170,37 @@ fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
     panic!()
 }
 
-pub fn rustup_toolchain_name(toolchain: &str) -> Result<String> {
-    Ok(match toolchain.parse::<Toolchain>()? {
-           Toolchain::Dist(ref n) => n.to_string(),
-           Toolchain::Repo { .. } => panic!(),
-       })
+impl Toolchain {
+    pub fn rustup_name(&self) -> String {
+        match *self {
+            Toolchain::Dist(ref n) => n.to_string(),
+            Toolchain::Repo { .. } => panic!(),
+        }
+    }
 }
 
 pub fn ex_target_dir(ex_name: &str) -> PathBuf {
     Path::new(TARGET_DIR).join(ex_name)
 }
 
-pub fn target_dir(ex_name: &str, toolchain: &str) -> PathBuf {
-    ex_target_dir(ex_name).join(toolchain)
-}
+impl Toolchain {
+    pub fn target_dir(&self, ex_name: &str) -> PathBuf {
+        ex_target_dir(ex_name).join(self.to_string())
+    }
 
-pub fn run_cargo(toolchain: &str, ex_name: &str, args: &[&str]) -> Result<()> {
-    let toolchain_name = rustup_toolchain_name(toolchain)?;
-    let ex_target_dir = target_dir(ex_name, toolchain);
+    pub fn run_cargo(&self, ex_name: &str, args: &[&str]) -> Result<()> {
+        let toolchain_name = self.rustup_name();
+        let ex_target_dir = self.target_dir(ex_name);
 
-    fs::create_dir_all(&ex_target_dir)?;
+        fs::create_dir_all(&ex_target_dir)?;
 
-    let toolchain_arg = "+".to_string() + &toolchain_name;
-    let mut full_args = vec![&*toolchain_arg];
-    full_args.extend_from_slice(args);
+        let toolchain_arg = "+".to_string() + &toolchain_name;
+        let mut full_args = vec![&*toolchain_arg];
+        full_args.extend_from_slice(args);
 
-    let cargo = Path::new(CARGO_HOME).join("bin/cargo");
-    rustup_run(&cargo.to_string_lossy(),
-               &full_args,
-               &[("CARGO_TARGET_DIR", &ex_target_dir.to_string_lossy())])
+        let cargo = Path::new(CARGO_HOME).join("bin/cargo");
+        rustup_run(&cargo.to_string_lossy(),
+                   &full_args,
+                   &[("CARGO_TARGET_DIR", &ex_target_dir.to_string_lossy())])
+    }
 }

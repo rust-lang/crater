@@ -1,10 +1,6 @@
 #![recursion_limit = "1024"]
 
-#![allow(unused)]
-#![deny(unused_imports)]
-#![deny(dead_code)]
-#![deny(unused_assignments)]
-#![deny(unused_variables)]
+#![allow(unused_must_use)]
 
 extern crate rand;
 extern crate clap;

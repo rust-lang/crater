@@ -17,8 +17,16 @@ rewrite.
 
 */
 
+#![allow(dead_code)]
+
+use docker;
 use errors::*;
-use job::JobId;
+use ex;
+use ex_run;
+use job::{self, JobId};
+use lists;
+use report;
+use run;
 use toolchain::Toolchain;
 
 // An experiment name
@@ -90,6 +98,542 @@ pub enum Cmd {
     // Misc
     Sleep,
     Say(SayMsg),
+}
+
+trait NewCmd {
+    fn name(&self) -> &'static str;
+
+    fn process(&self) -> Result<()> {
+        Ok(())
+    }
+
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
+        Ok(vec![])
+    }
+}
+
+struct PrepareLocal;
+
+impl NewCmd for PrepareLocal {
+    fn name(&self) -> &'static str {
+        "prepare-local"
+    }
+
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
+        Ok(vec![
+            Box::new(PrepareToolchain("stable".parse()?)),
+            Box::new(BuildContainer),
+            Box::new(CreateLists),
+        ])
+    }
+}
+
+struct PrepareToolchain(Toolchain);
+
+impl NewCmd for PrepareToolchain {
+    fn name(&self) -> &'static str {
+        "prepare-toolchain"
+    }
+
+    fn process(&self) -> Result<()> {
+        self.0.prepare()
+    }
+}
+
+struct BuildContainer;
+
+impl NewCmd for BuildContainer {
+    fn name(&self) -> &'static str {
+        "build-container"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        docker::build_container()
+    }
+}
+
+struct CreateLists;
+
+impl NewCmd for CreateLists {
+    fn name(&self) -> &'static str {
+        "create-lists"
+
+    }
+
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
+        Ok(vec![
+            Box::new(CreateRecentList),
+            Box::new(CreateHotList),
+            Box::new(CreatePopList),
+            Box::new(CreateGhCandidateListFromCache),
+            Box::new(CreateGhAppListFromCache),
+        ])
+    }
+}
+
+struct CreateListsFull;
+
+impl NewCmd for CreateListsFull {
+    fn name(&self) -> &'static str {
+        "create-lists-full"
+
+    }
+
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
+        Ok(vec![
+            Box::new(CreateRecentList),
+            Box::new(CreateHotList),
+            Box::new(CreatePopList),
+            Box::new(CreateGhCandidateList),
+            Box::new(CreateGhAppList),
+        ])
+    }
+}
+
+struct CreateRecentList;
+
+impl NewCmd for CreateRecentList {
+    fn name(&self) -> &'static str {
+        "create-recent-list"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        lists::create_recent_list()
+    }
+}
+
+struct CreateHotList;
+
+impl NewCmd for CreateHotList {
+    fn name(&self) -> &'static str {
+        "create-hot-list"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        lists::create_hot_list()
+    }
+}
+
+struct CreatePopList;
+
+impl NewCmd for CreatePopList {
+    fn name(&self) -> &'static str {
+        "create-pop-list"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        lists::create_pop_list()
+    }
+}
+
+struct CreateGhCandidateList;
+
+impl NewCmd for CreateGhCandidateList {
+    fn name(&self) -> &'static str {
+        "create-gh-candidate-list"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        lists::create_gh_candidate_list()
+    }
+}
+
+struct CreateGhAppList;
+
+impl NewCmd for CreateGhAppList {
+    fn name(&self) -> &'static str {
+        "create-gh-app-list"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        lists::create_gh_app_list()
+    }
+}
+
+struct CreateGhCandidateListFromCache;
+
+impl NewCmd for CreateGhCandidateListFromCache {
+    fn name(&self) -> &'static str {
+        "create-gh-candidate-list-from-cache"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        lists::create_gh_candidate_list_from_cache()
+    }
+}
+
+struct CreateGhAppListFromCache;
+
+impl NewCmd for CreateGhAppListFromCache {
+    fn name(&self) -> &'static str {
+        "create-gh-app-list-from-cache"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        lists::create_gh_candidate_list_from_cache()
+    }
+}
+
+struct DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect);
+
+impl NewCmd for DefineEx {
+    fn name(&self) -> &'static str {
+        "define-ex"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::define(ex::ExOpts {
+                       name: (self.0).0.clone(),
+                       toolchains: vec![self.1.clone(), self.2.clone()],
+                       mode: self.3.clone(),
+                       crates: self.4.clone(),
+                   })
+    }
+}
+
+struct PrepareEx(Ex);
+
+impl NewCmd for PrepareEx {
+    fn name(&self) -> &'static str {
+        "prepare-ex"
+
+    }
+
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
+        Ok(vec![
+            Box::new(PrepareExShared(self.0.clone())),
+            Box::new(PrepareExLocal(self.0.clone())),
+        ])
+    }
+}
+
+struct CopyEx(Ex, Ex);
+
+impl NewCmd for CopyEx {
+    fn name(&self) -> &'static str {
+
+        "copy-ex"
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::copy(&(self.0).0, &(self.1).0)
+    }
+}
+
+struct DeleteEx(Ex);
+
+impl NewCmd for DeleteEx {
+    fn name(&self) -> &'static str {
+        "delete-ex"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::delete(&(self.0).0)
+    }
+}
+
+struct PrepareExShared(Ex);
+
+impl NewCmd for PrepareExShared {
+    fn name(&self) -> &'static str {
+        "prepare-ex-shared"
+
+    }
+
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
+        Ok(vec![
+            Box::new(FetchGhMirrors(self.0.clone())),
+            Box::new(CaptureShas(self.0.clone())),
+            Box::new(DownloadCrates(self.0.clone())),
+            Box::new(FrobCargoTomls(self.0.clone())),
+            Box::new(CaptureLockfiles(self.0.clone(), "stable".parse()?)),
+        ])
+    }
+}
+
+struct FetchGhMirrors(Ex);
+
+impl NewCmd for FetchGhMirrors {
+    fn name(&self) -> &'static str {
+
+        "fetch-gh-mirrors"
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::fetch_gh_mirrors(&(self.0).0)
+    }
+}
+
+struct CaptureShas(Ex);
+
+impl NewCmd for CaptureShas {
+    fn name(&self) -> &'static str {
+        "capture-shas"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::capture_shas(&(self.0).0)
+    }
+}
+
+struct DownloadCrates(Ex);
+
+impl NewCmd for DownloadCrates {
+    fn name(&self) -> &'static str {
+
+        "download-crates"
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::download_crates(&(self.0).0)
+    }
+}
+
+struct FrobCargoTomls(Ex);
+
+impl NewCmd for FrobCargoTomls {
+    fn name(&self) -> &'static str {
+
+        "frob-cargo-tomls"
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::frob_tomls(&(self.0).0)
+    }
+}
+
+struct CaptureLockfiles(Ex, Toolchain);
+
+impl NewCmd for CaptureLockfiles {
+    fn name(&self) -> &'static str {
+        "capture-lockfiles"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::capture_lockfiles(&(self.0).0, &self.1, false)
+    }
+}
+
+struct PrepareExLocal(Ex);
+
+impl NewCmd for PrepareExLocal {
+    fn name(&self) -> &'static str {
+        "prepare-ex-local"
+
+    }
+
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
+        Ok(vec![
+            Box::new(DeleteAllTargetDirs(self.0.clone())),
+            Box::new(DeleteAllResults(self.0.clone())),
+            Box::new(FetchDeps(self.0.clone(), "stable".parse()?)),
+            Box::new(PrepareAllToolchains(self.0.clone())),
+        ])
+    }
+}
+
+struct DeleteAllTargetDirs(Ex);
+
+impl NewCmd for DeleteAllTargetDirs {
+    fn name(&self) -> &'static str {
+        "delete-all-target-dirs"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::delete_all_target_dirs(&(self.0).0)
+    }
+}
+
+struct DeleteAllResults(Ex);
+
+impl NewCmd for DeleteAllResults {
+    fn name(&self) -> &'static str {
+        "delete-all-results"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        ex_run::delete_all_results(&(self.0).0)
+    }
+}
+
+struct FetchDeps(Ex, Toolchain);
+
+impl NewCmd for FetchDeps {
+    fn name(&self) -> &'static str {
+        "fetch-deps"
+
+    }
+
+    fn process(&self) -> Result<()> {
+        ex::fetch_deps(&(self.0).0, &self.1)
+    }
+}
+
+struct PrepareAllToolchains(Ex);
+
+impl NewCmd for PrepareAllToolchains {
+    fn name(&self) -> &'static str {
+        "prepare-all-toolchains"
+    }
+
+    fn sub_cmds(&self) -> Result<Vec<Box<NewCmd>>> {
+        Ok(vec![
+            Box::new(DeleteAllTargetDirs(self.0.clone())),
+            Box::new(DeleteAllResults(self.0.clone())),
+            Box::new(FetchDeps(self.0.clone(), "stable".parse()?)),
+            Box::new(PrepareAllToolchains(self.0.clone())),
+        ])
+    }
+}
+
+struct Run(Ex);
+
+impl NewCmd for Run {
+    fn name(&self) -> &'static str {
+        "run"
+    }
+
+    fn process(&self) -> Result<()> {
+        ex_run::run_ex_all_tcs(&(self.0).0)
+    }
+}
+
+struct RunTc(Ex, Toolchain);
+
+impl NewCmd for RunTc {
+    fn name(&self) -> &'static str {
+        "run-tc"
+    }
+
+    fn process(&self) -> Result<()> {
+        ex_run::run_ex(&(self.0).0, self.1.clone())
+    }
+}
+
+struct GenReport(Ex);
+
+impl NewCmd for GenReport {
+    fn name(&self) -> &'static str {
+        "gen-report"
+    }
+
+    fn process(&self) -> Result<()> {
+        report::gen(&(self.0).0)
+    }
+}
+
+struct CreateDockerJob(Box<Cmd>);
+
+impl NewCmd for CreateDockerJob {
+    fn name(&self) -> &'static str {
+        "create-docker-job"
+    }
+
+    fn process(&self) -> Result<()> {
+        job::create_local(*(self.0.clone()))
+    }
+}
+
+struct StartJob(Job);
+
+impl NewCmd for StartJob {
+    fn name(&self) -> &'static str {
+        "start-job"
+    }
+
+    fn process(&self) -> Result<()> {
+        job::start((self.0).0)
+    }
+}
+
+struct WaitForJob(Job);
+
+impl NewCmd for WaitForJob {
+    fn name(&self) -> &'static str {
+        "wait-for-job"
+    }
+
+    fn process(&self) -> Result<()> {
+        job::wait((self.0).0)
+    }
+}
+
+struct RunJob(Job);
+
+impl NewCmd for RunJob {
+    fn name(&self) -> &'static str {
+        "run-job"
+    }
+
+    fn process(&self) -> Result<()> {
+        job::run((self.0).0)
+    }
+}
+
+struct RunJobAgain(Job);
+
+impl NewCmd for RunJobAgain {
+    fn name(&self) -> &'static str {
+        "run-job-again"
+    }
+
+    fn process(&self) -> Result<()> {
+        job::run_again((self.0).0)
+    }
+}
+
+struct RunCmdForJob(Job);
+
+impl NewCmd for RunCmdForJob {
+    fn name(&self) -> &'static str {
+
+        "run-cmd-for-job"
+    }
+
+    fn process(&self) -> Result<()> {
+        job::run_cmd_for_job((self.0).0)
+    }
+}
+
+struct Sleep;
+
+impl NewCmd for Sleep {
+    fn name(&self) -> &'static str {
+
+        "sleep"
+    }
+
+    fn process(&self) -> Result<()> {
+        run::run("sleep", &["5"], &[])
+    }
+}
+
+struct Say(SayMsg);
+
+impl NewCmd for Say {
+    fn name(&self) -> &'static str {
+
+        "say"
+    }
+
+    fn process(&self) -> Result<()> {
+        log!("{}", (self.0).0);
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -278,7 +822,10 @@ pub mod conv {
         let say_msg = || req("say-msg");
 
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
-            Arg::with_name(n).required(false).long(n).default_value(def)
+            Arg::with_name(n)
+                .required(false)
+                .long(n)
+                .default_value(def)
         }
 
         fn req(n: &'static str) -> Arg<'static, 'static> {

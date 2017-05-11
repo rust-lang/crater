@@ -133,7 +133,9 @@ const MAX_TIMEOUT_SECS: u64 = 60 * 10 * 2;
 const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 2;
 
 pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
-    let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+    let mut child = cmd.stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
     let stdout = child.stdout.take().expect("");
     let stderr = child.stderr.take().expect("");

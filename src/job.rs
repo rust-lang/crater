@@ -65,11 +65,11 @@ pub fn create_local(cmd: Cmd) -> Result<()> {
     log!("create local job: {}", cmd.clone().to_args().join(" "));
 
     let job = &Job {
-        id: JobId(rand::random()),
-        cmd: cmd,
-        kind: JobKind::Docker(None),
-        state: JobState::Created,
-    };
+                   id: JobId(rand::random()),
+                   cmd: cmd,
+                   kind: JobKind::Docker(None),
+                   state: JobState::Created,
+               };
 
     write_job(job)?;
 

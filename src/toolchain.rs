@@ -8,7 +8,7 @@ use git;
 use run;
 use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use tempdir::TempDir;
@@ -99,14 +99,14 @@ fn install_rustup() -> Result<()> {
             RUSTUP_BASE_URL,
             &util::this_target(),
             EXE_SUFFIX);
-    let buf = dl::download(rustup_url)
+    let mut response = dl::download(rustup_url)
         .chain_err(|| "unable to download rustup")?;
 
     let tempdir = TempDir::new("cargobomb")?;
     let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
     {
         let mut file = File::create(installer)?;
-        file.write_all(&buf)?;
+        io::copy(&mut response, &mut file)?;
         make_executable(installer);
     }
 

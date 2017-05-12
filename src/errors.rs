@@ -3,6 +3,7 @@ error_chain! {
         IoError(::std::io::Error);
         UrlParseError(::url::ParseError);
         SerdeJson(::serde_json::Error);
+        ReqwestError(::reqwest::Error);
     }
 
     errors {

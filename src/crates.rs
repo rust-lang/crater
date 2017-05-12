@@ -66,7 +66,7 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
 
     fs::create_dir_all(&dir)?;
 
-    let mut tar = Archive::new(GzDecoder::new(&*bin)?);
+    let mut tar = Archive::new(GzDecoder::new(bin)?);
     let r = unpack_without_first_dir(&mut tar, dir).chain_err(|| "unable to unpack crate tarball");
 
     if r.is_err() {

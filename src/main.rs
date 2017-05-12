@@ -26,6 +26,7 @@ extern crate scopeguard;
 extern crate libc;
 extern crate winapi;
 extern crate kernel32;
+extern crate reqwest;
 
 #[macro_use]
 mod log;

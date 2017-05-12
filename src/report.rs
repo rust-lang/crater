@@ -80,7 +80,7 @@ pub fn gen(ex_name: &str) -> Result<()> {
     let res = TestResults { crates: res };
 
     let json = serde_json::to_string(&res)?;
-    log!("writing results to {}", results_file(ex_name).display());
+    info!("writing results to {}", results_file(ex_name).display());
     file::write_string(&results_file(ex_name), &json)?;
 
     write_html_files(&ex_dir)?;
@@ -137,7 +137,7 @@ fn write_html_files(dir: &Path) -> Result<()> {
     let js_out = dir.join("report.js");
     let css_out = dir.join("report.css");
 
-    log!("writing report to {}", html_out.display());
+    info!("writing report to {}", html_out.display());
 
     file::write_string(&html_out, html_in)?;
     file::write_string(&js_out, js_in)?;

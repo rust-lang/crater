@@ -81,7 +81,7 @@ fn redirected_file() -> Option<PathBuf> {
     redirect.clone()
 }
 
-macro_rules! log {
+macro_rules! info {
     ($fmt:expr) => {
         $crate::log::log_local_stdout(
             #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
@@ -94,7 +94,7 @@ macro_rules! log {
     };
 }
 
-macro_rules! log_err {
+macro_rules! error {
     ($fmt:expr) => {
         $crate::log::log_local_stderr(
             #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
@@ -223,11 +223,11 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     let stderr = rx_err.recv().expect("");
 
     if heartbeat_timed_out {
-        log!("process killed after not generating output for {} s",
-             HEARTBEAT_TIMEOUT_SECS);
+        info!("process killed after not generating output for {} s",
+              HEARTBEAT_TIMEOUT_SECS);
         bail!(ErrorKind::Timeout);
     } else if timed_out {
-        log!("process killed after max time of {} s", MAX_TIMEOUT_SECS);
+        info!("process killed after max time of {} s", MAX_TIMEOUT_SECS);
         bail!(ErrorKind::Timeout);
     }
 
@@ -238,11 +238,11 @@ pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
        })
 }
 
-pub fn log_child_stdout(line: &str) {
+fn log_child_stdout(line: &str) {
     log(&format!("blam! {}", line));
 }
 
-pub fn log_child_stderr(line: &str) {
+fn log_child_stderr(line: &str) {
     log(&format!("kablam! {}", line));
 }
 
@@ -280,8 +280,8 @@ lazy_static! {
 
 pub fn init() {
     START_TIME.deref();
-    log!("program args: {}",
-         env::args().skip(1).collect::<Vec<_>>().join(" "));
+    info!("program args: {}",
+          env::args().skip(1).collect::<Vec<_>>().join(" "));
 }
 
 pub fn finish() {
@@ -293,6 +293,6 @@ pub fn finish() {
         let seconds = duration % 60;
         format!("{}m {}s", minutes, seconds)
     };
-    log!("logs: {}", out_file().display());
-    log!("duration: {}", duration);
+    info!("logs: {}", global_log_name());
+    info!("duration: {}", duration);
 }

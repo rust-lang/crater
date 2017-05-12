@@ -20,9 +20,9 @@ pub fn try_hard_limit<F, R>(ms: usize, f: F) -> Result<R>
         if r.is_ok() {
             return r;
         } else if let Err(ref e) = r {
-            log_err!("{}", e);
+            error!("{}", e);
         };
-        log!("retrying in {}ms", i * ms);
+        info!("retrying in {}ms", i * ms);
         thread::sleep(Duration::from_millis((i * ms) as u64));
     }
 
@@ -41,20 +41,20 @@ pub fn remove_dir_all(dir: &Path) -> Result<()> {
 }
 
 pub fn report_error(e: &Error) {
-    log_err!("{}", e);
+    error!("{}", e);
 
     for e in e.iter().skip(1) {
-        log_err!("caused by: {}", e);
+        error!("caused by: {}", e);
     }
 }
 
 pub fn report_panic(e: &Any) {
     if let Some(e) = e.downcast_ref::<String>() {
-        log_err!("panicked: {}", e);
+        error!("panicked: {}", e);
     } else if let Some(e) = e.downcast_ref::<&'static str>() {
-        log_err!("panicked: {}", e);
+        error!("panicked: {}", e);
     } else {
-        log_err!("panicked");
+        error!("panicked");
     }
 }
 
@@ -81,7 +81,7 @@ pub fn this_target() -> String {
 pub fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
     use walkdir::*;
 
-    log!("copying {} to {}", src_dir.display(), dest_dir.display());
+    info!("copying {} to {}", src_dir.display(), dest_dir.display());
 
     if dest_dir.exists() {
         remove_dir_all(dest_dir)

@@ -32,7 +32,7 @@ pub fn create_all_lists(full: bool) -> Result<()> {
 }
 
 pub fn create_recent_list() -> Result<()> {
-    log!("creating recent list");
+    info!("creating recent list");
     fs::create_dir_all(LIST_DIR)?;
 
     let crates = registry::find_registry_crates()?;
@@ -41,7 +41,7 @@ pub fn create_recent_list() -> Result<()> {
         .map(|mut crate_| (crate_.name, crate_.versions.pop().expect("").0))
         .collect();
     write_crate_list(&recent_path(), &crates)?;
-    log!("recent crates written to {}", recent_path().display());
+    info!("recent crates written to {}", recent_path().display());
     Ok(())
 }
 
@@ -79,11 +79,11 @@ fn hot_path() -> PathBuf {
 }
 
 pub fn create_pop_list() -> Result<()> {
-    log!("creating hot list");
+    info!("creating hot list");
     fs::create_dir_all(LIST_DIR)?;
 
     let crates = registry::find_registry_crates()?;
-    log!("mapping reverse deps");
+    info!("mapping reverse deps");
 
     // Count the reverse deps of each crate
     let mut counts = HashMap::new();
@@ -114,7 +114,7 @@ pub fn create_pop_list() -> Result<()> {
         .map(|c| (c.name.clone(), c.versions.last().expect("").0.clone()))
         .collect();
     write_crate_list(&pop_path(), &crates)?;
-    log!("pop crates written to {}", pop_path().display());
+    info!("pop crates written to {}", pop_path().display());
     Ok(())
 }
 
@@ -125,7 +125,7 @@ pub fn read_pop_list() -> Result<Vec<(String, String)>> {
 }
 
 pub fn create_hot_list() -> Result<()> {
-    log!("creating hot list");
+    info!("creating hot list");
     fs::create_dir_all(LIST_DIR)?;
 
     let crates = registry::find_registry_crates()?;
@@ -146,7 +146,7 @@ pub fn create_hot_list() -> Result<()> {
         crate_map.insert(name.to_string(), versions);
     }
 
-    log!("mapping reverse deps");
+    info!("mapping reverse deps");
     // For each crate's dependency mark which revisions of the dep satisfy
     // semver
     for crate_ in &crates {
@@ -167,7 +167,7 @@ pub fn create_hot_list() -> Result<()> {
         }
     }
 
-    log!("calculating most popular crate versions");
+    info!("calculating most popular crate versions");
     // Take the version of each crate that satisfies the most rev deps
     let mut hot_crates = Vec::new();
     for crate_ in &crates {
@@ -189,7 +189,7 @@ pub fn create_hot_list() -> Result<()> {
     }
 
     write_crate_list(&hot_path(), &hot_crates)?;
-    log!("hot crates written to {}", hot_path().display());
+    info!("hot crates written to {}", hot_path().display());
     Ok(())
 }
 
@@ -208,22 +208,22 @@ fn gh_candidate_cache_path() -> PathBuf {
 }
 
 pub fn create_gh_candidate_list() -> Result<()> {
-    log!("creating gh candidate list");
+    info!("creating gh candidate list");
     fs::create_dir_all(LIST_DIR)?;
 
     let candidates = gh::get_candidate_repos()?;
     file::write_lines(&gh_candidate_path(), &candidates)?;
-    log!("candidate repos written to {}",
-         gh_candidate_path().display());
+    info!("candidate repos written to {}",
+          gh_candidate_path().display());
     Ok(())
 }
 
 pub fn create_gh_candidate_list_from_cache() -> Result<()> {
-    log!("creating gh candidate list from cache");
+    info!("creating gh candidate list from cache");
     fs::create_dir_all(LIST_DIR)?;
-    log!("copying {} to {}",
-         gh_candidate_cache_path().display(),
-         gh_candidate_path().display());
+    info!("copying {} to {}",
+          gh_candidate_cache_path().display(),
+          gh_candidate_path().display());
     fs::copy(&gh_candidate_cache_path(), &gh_candidate_path())?;
     Ok(())
 }
@@ -245,7 +245,7 @@ pub fn create_gh_app_list() -> Result<()> {
     let repos = read_gh_candidates_list()?;
     let delay = 100;
 
-    log!("testing {} repos. {}ms+", repos.len(), repos.len() * delay);
+    info!("testing {} repos. {}ms+", repos.len(), repos.len() * delay);
 
     // Look for Cargo.lock files in the Rust repos we're aware of
     let mut apps = Vec::new();
@@ -257,16 +257,16 @@ pub fn create_gh_app_list() -> Result<()> {
     }
 
     file::write_lines(&gh_app_path(), &apps)?;
-    log!("rust apps written to {}", gh_app_path().display());
+    info!("rust apps written to {}", gh_app_path().display());
     Ok(())
 }
 
 pub fn create_gh_app_list_from_cache() -> Result<()> {
-    log!("creating gh app list from cache");
+    info!("creating gh app list from cache");
     fs::create_dir_all(LIST_DIR)?;
-    log!("copying {} to {}",
-         gh_app_cache_path().display(),
-         gh_app_path().display());
+    info!("copying {} to {}",
+          gh_app_cache_path().display(),
+          gh_app_path().display());
     fs::copy(&gh_app_cache_path(), &gh_app_path())?;
     Ok(())
 }
@@ -329,7 +329,7 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
                                 }
                             }));
     } else {
-        log!("failed to load recent list. ignoring");
+        info!("failed to load recent list. ignoring");
     }
     if let Ok(hot) = hot {
         all.extend(hot.into_iter()
@@ -340,12 +340,12 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
                                 }
                             }));
     } else {
-        log!("failed to load hot list. ignoring");
+        info!("failed to load hot list. ignoring");
     }
     if let Ok(gh_apps) = gh_apps {
         all.extend(gh_apps.into_iter().map(|c| Crate::Repo { url: c }));
     } else {
-        log!("failed to load gh-app list. ignoring");
+        info!("failed to load gh-app list. ignoring");
     }
 
     if all.is_empty() {

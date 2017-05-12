@@ -14,7 +14,7 @@ use util;
 const CRATES_ROOT: &'static str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
 pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
-    log!("preparing {} crates", list.len());
+    info!("preparing {} crates", list.len());
     let mut successes = 0;
     for &(ref crate_, ref dir) in list {
         match *crate_ {
@@ -53,13 +53,13 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
 
 fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     if dir.exists() {
-        log!("crate {}-{} exists at {}. skipping",
-             name,
-             vers,
-             dir.display());
+        info!("crate {}-{} exists at {}. skipping",
+              name,
+              vers,
+              dir.display());
         return Ok(());
     }
-    log!("downloading crate {}-{} to {}", name, vers, dir.display());
+    info!("downloading crate {}-{} to {}", name, vers, dir.display());
     let url = format!("{0}/{1}/{1}-{2}.crate", CRATES_ROOT, name, vers);
     let bin = dl::download(&url)
         .chain_err(|| format!("unable to download {}", url))?;
@@ -77,7 +77,7 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
 }
 
 fn dl_repo(url: &str, dir: &Path, sha: &str) -> Result<()> {
-    log!("downloading repo {} to {}", url, dir.display());
+    info!("downloading repo {} to {}", url, dir.display());
     gh_mirrors::reset_to_sha(url, sha)?;
     let src_dir = gh_mirrors::repo_dir(url)?;
     util::copy_dir(&src_dir, dir)

@@ -29,7 +29,7 @@ pub struct RustEnv<'a> {
 }
 
 pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
-    log!("creating container for: {}", env.args.join(" "));
+    info!("creating container for: {}", env.args.join(" "));
 
     fs::create_dir_all(&env.work_dir.0);
     fs::create_dir_all(&env.cargo_home.0);
@@ -90,7 +90,7 @@ pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
 
 pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> {
 
-    log!("running: {}", args.join(" "));
+    info!("running: {}", args.join(" "));
 
     let env = RustEnv {
         args: args,

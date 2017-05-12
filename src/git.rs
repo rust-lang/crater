@@ -8,7 +8,7 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
     let url = frob_url(url);
 
     if !dir.exists() {
-        log!("cloning {} into {}", url, dir.display());
+        info!("cloning {} into {}", url, dir.display());
         let r = run::run("git",
                          &["clone", "--depth", "1", &url, &dir.to_string_lossy()],
                          &[])
@@ -20,7 +20,7 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
 
         r
     } else {
-        log!("pulling existing url {} into {}", url, dir.display());
+        info!("pulling existing url {} into {}", url, dir.display());
         run::cd_run(dir, "git", &["pull"], &[]).chain_err(|| format!("unable to pull {}", url))
     }
 }
@@ -31,7 +31,7 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
 pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
     let url = frob_url(url);
 
-    log!("ensuring sha {} in {}", sha, url);
+    info!("ensuring sha {} in {}", sha, url);
     let depths = &[1, 10, 100, 1000];
 
     let exists = || if dir.exists() {

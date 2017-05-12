@@ -177,27 +177,7 @@ docker build -t cargobomb docker
 # Local workflow
 
 - prepare-local
-  - prepare-toolchain stable
-  - build-container
-  - create-lists
-    - create-recent-list
-    - create-second-list
-    - create-hot-list
-    - create-gh-candidate-list-from-cache
-    - create-gh-app-list-from-cache
 - define-ex
 - prepare-ex
-  - prepare-ex-shared
-    - fetch-gh-mirrors
-    - capture-shas
-    - download-crates
-    - frob-tomls
-    - capture-lockfiles
-  - prepare-ex-custom-toolchains (todo)
-  - prepare-ex-local
-    - delete-all-target-dirs
-    - delete-all-results
-    - fetch-deps
-    - prepare-all-toolchains-for-ex
 - run
 - gen-report

@@ -1,287 +1,76 @@
 use LOG_DIR;
 use chrono::UTC;
 use errors::*;
-use file;
+
+use slog::{self, Drain};
+use slog_async;
+use slog_scope;
+use slog_term;
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, BufReader, Read, Write};
-use std::mem;
+use std::fs::{File, OpenOptions};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Stdio};
-use std::sync::Mutex;
-use std::sync::mpsc::{self, RecvTimeoutError};
-use std::sync::mpsc::{Receiver, Sender, channel};
-use std::thread;
-use std::time::Duration;
+use std::sync::Arc;
 use std::time::Instant;
 
-lazy_static! {
-    static ref LOCK: Mutex<()> = Mutex::new(());
-}
-
-fn log(line: &str) {
-    let _g = LOCK.lock();
-    println!("{}", line);
-    log_to_file(&out_file(), line);
-}
-
-#[allow(dead_code)]
-fn log_err(line: &str) {
-    let _g = LOCK.lock();
-    writeln!(&mut io::stderr(), "{}", line);
-    log_to_file(&out_file(), line);
-}
-
-fn log_to_file(file: &Path, line: &str) {
-    fs::create_dir_all(LOG_DIR);
-    file::append_line(file, line).expect(&format!("unable to write log to {}", file.display()));
-}
-
-fn out_file() -> PathBuf {
-    if let Some(r) = redirected_file() {
-        r
-    } else {
-        PathBuf::from(format!("{}/{}.txt", LOG_DIR, global_log_name()))
-    }
-}
-
-fn global_log_name() -> &'static str {
+fn global_log_name() -> &'static Path {
     lazy_static! {
-        static ref NAME: String = format!("{}", UTC::now().format("%Y-%m-%dT%H-%M-%S.%f"));
-    }
-    &*NAME
+        static ref PATH: PathBuf = PathBuf::from(LOG_DIR).join(
+                format!("{}", UTC::now().format("%Y-%m-%dT%H-%M-%S.%f")));
+    };
+    &*PATH
 }
 
 pub fn redirect<F, R>(path: &Path, f: F) -> Result<R>
     where F: FnOnce() -> Result<R>
 {
-    log_local_stdout(&format!("logging to {}", path.display()));
-    let mut old = swap_redirect(path.to_owned());
-    defer!{{
-        let old = old.take();
-        old.and_then(swap_redirect);
-    }}
-    f()
+    let file = file_drain(path);
+    let term = TERM_DRAIN.clone();
+
+    let drain = slog::Duplicate(term, file).fuse();
+    slog_scope::scope(&slog::Logger::root(drain, slog_o!()), f)
 }
 
-lazy_static! {
-    static ref REDIRECT_FILE: Mutex<Option<PathBuf>> = Mutex::new(None);
-}
-
-fn swap_redirect(path: PathBuf) -> Option<PathBuf> {
-    let mut redirect = REDIRECT_FILE.lock().expect("");
-    let redirect: &mut Option<PathBuf> = &mut *redirect;
-    mem::replace(redirect, Some(path))
-}
-
-fn redirected_file() -> Option<PathBuf> {
-    let mut redirect = REDIRECT_FILE.lock().expect("");
-    let redirect: &mut Option<PathBuf> = &mut *redirect;
-    redirect.clone()
-}
-
-macro_rules! info {
-    ($fmt:expr) => {
-        $crate::log::log_local_stdout(
-            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
-            &format!($fmt))
-    };
-    ($fmt:expr, $($arg:tt)*) => {
-        $crate::log::log_local_stdout(
-            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
-            &format!($fmt, $($arg)*))
-    };
-}
-
-macro_rules! error {
-    ($fmt:expr) => {
-        $crate::log::log_local_stderr(
-            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
-            &format!($fmt))
-    };
-    ($fmt:expr, $($arg:tt)*) => {
-        $crate::log::log_local_stderr(
-            #[cfg_attr(feature = "cargo-clippy", allow(useless_format))]
-            &format!($fmt, $($arg)*))
-    };
-}
-
-pub fn log_local_stdout(line: &str) {
-    log(&format!("boom! {}", line));
-}
-
-pub fn log_local_stderr(line: &str) {
-    log(&format!("kaboom! {}", line));
-}
-
-pub struct ProcessOutput {
-    pub status: ExitStatus,
-    pub stdout: Vec<String>,
-    pub stderr: Vec<String>,
-}
-
-pub fn log_command(cmd: Command) -> Result<ProcessOutput> {
-    log_command_(cmd, false)
-}
-
-pub fn log_command_capture(cmd: Command) -> Result<ProcessOutput> {
-    log_command_(cmd, true)
-}
-
-const MAX_TIMEOUT_SECS: u64 = 60 * 10 * 2;
-const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 2;
-
-pub fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
-    let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
-
-    let stdout = child.stdout.take().expect("");
-    let stderr = child.stderr.take().expect("");
-
-    // Needed for killing after timeout
-    let child_id = child.id();
-
-    // Child's stdio needs to produce output to avoid being killed
-    let (heartbeat_tx, heartbeat_rx) = mpsc::channel();
-
-    let rx_out = sink(Box::new(stdout),
-                      log_child_stdout,
-                      capture,
-                      heartbeat_tx.clone());
-    let rx_err = sink(Box::new(stderr), log_child_stderr, capture, heartbeat_tx);
-
-    #[cfg(unix)]
-    fn kill_process(id: u32) {
-        use libc::{SIGKILL, kill, pid_t};
-        let r = unsafe { kill(id as pid_t, SIGKILL) };
-        if r != 0 {
-            // Something went wrong...
-        }
-    }
-    #[cfg(windows)]
-    fn kill_process(id: u32) {
-        unsafe {
-            let handle = kernel32::OpenProcess(winapi::winnt::PROCESS_TERMINATE, 0, id);
-            kernel32::TerminateProcess(handle, 101);
-            if kernel32::CloseHandle(handle) == 0 {
-                panic!("CloseHandle for process {} failed", id);
-            }
-        };
-    }
-
-    // Have another thread kill the subprocess after the maximum timeout
-    let (timeout_tx, timeout_rx) = mpsc::channel();
-    let (timeout_cancel_tx, timeout_cancel_rx) = mpsc::channel();
-    thread::spawn(move || {
-        let timeout = Duration::from_secs(MAX_TIMEOUT_SECS);
-        match timeout_cancel_rx.recv_timeout(timeout) {
-            Ok(_) => {
-                // Child process exited
-                return;
-            }
-            Err(RecvTimeoutError::Timeout) => {
-                kill_process(child_id);
-                timeout_tx.send(());
-            }
-            _ => panic!(),
-        }
-    });
-
-    // Have another thread listening for heartbeats on stdout/stderr
-    let (heartbeat_timeout_tx, heartbeat_timeout_rx) = mpsc::channel();
-    let (heartbeat_cancel_tx, heartbeat_cancel_rx) = mpsc::channel();
-    thread::spawn(move || {
-        loop {
-            let timeout = Duration::from_secs(HEARTBEAT_TIMEOUT_SECS);
-            match heartbeat_cancel_rx.recv_timeout(timeout) {
-                Ok(_) => {
-                    // Child process exited
-                    return;
-                }
-                Err(RecvTimeoutError::Timeout) => {
-                    let heartbeats = heartbeat_rx.try_iter().count();
-                    if heartbeats > 0 {
-                        continue;
-                    } else {
-                        // No heartbeats before timeout
-                        kill_process(child_id);
-                        heartbeat_timeout_tx.send(());
-                    }
-                }
-                _ => panic!(),
-            }
-        }
-    });
-
-    let status = child.wait();
-    timeout_cancel_tx.send(());
-    heartbeat_cancel_tx.send(());
-    let timed_out = timeout_rx.try_recv().is_ok();
-    let heartbeat_timed_out = heartbeat_timeout_rx.try_recv().is_ok();
-    let status = status?;
-    let stdout = rx_out.recv().expect("");
-    let stderr = rx_err.recv().expect("");
-
-    if heartbeat_timed_out {
-        info!("process killed after not generating output for {} s",
-              HEARTBEAT_TIMEOUT_SECS);
-        bail!(ErrorKind::Timeout);
-    } else if timed_out {
-        info!("process killed after max time of {} s", MAX_TIMEOUT_SECS);
-        bail!(ErrorKind::Timeout);
-    }
-
-    Ok(ProcessOutput {
-           status: status,
-           stdout: stdout,
-           stderr: stderr,
-       })
-}
-
-fn log_child_stdout(line: &str) {
-    log(&format!("blam! {}", line));
-}
-
-fn log_child_stderr(line: &str) {
-    log(&format!("kablam! {}", line));
-}
-
-fn sink(reader: Box<Read + Send>,
-        log: fn(&str),
-        capture: bool,
-        heartbeat_tx: Sender<()>)
-        -> Receiver<Vec<String>> {
-    let (tx, rx) = channel();
-    thread::spawn(move || {
-        let mut buf = Vec::new();
-        let reader = BufReader::new(reader);
-        for line_bytes in reader.split(b'\n') {
-            if let Ok(line_bytes) = line_bytes {
-                let line = String::from_utf8_lossy(&line_bytes);
-                log(line.deref());
-                heartbeat_tx.send(());
-                if capture {
-                    buf.push(line.to_string());
-                }
-            } else {
-                log("READING FROM CHILD PROCESS FAILED!");
-            }
-        }
-
-        tx.send(buf).expect("");
-    });
-
-    rx
-}
 
 lazy_static! {
     static ref START_TIME: Instant = Instant::now();
 }
 
-pub fn init() {
+lazy_static! {
+    static ref TERM_DRAIN: Arc<slog::Fuse<slog_async::Async>> = {
+        let plain = slog_term::TermDecorator::new().stdout().build();
+        let term = slog_term::CompactFormat::new(plain).build().fuse();
+        Arc::new(slog_async::Async::new(term).build().fuse())
+    };
+}
+
+fn file_drain(path: &Path)
+              -> slog::Fuse<slog_term::FullFormat<slog_term::PlainSyncDecorator<File>>> {
+    let f = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .expect("Could not open log file.");
+    let decorator = slog_term::PlainSyncDecorator::new(f);
+    slog_term::FullFormat::new(decorator).build().fuse()
+}
+
+pub fn init() -> slog_scope::GlobalLoggerGuard {
     START_TIME.deref();
+
+    fs::create_dir_all(LOG_DIR).expect("Could create log directory.");
+    let file = file_drain(global_log_name());
+    let term = TERM_DRAIN.clone();
+
+    let drain = slog::Duplicate(term, file).fuse();
+    let _guard = slog_scope::set_global_logger(slog::Logger::root(drain, slog_o!{}));
+
+
     info!("program args: {}",
           env::args().skip(1).collect::<Vec<_>>().join(" "));
+
+    _guard
 }
 
 pub fn finish() {
@@ -293,6 +82,6 @@ pub fn finish() {
         let seconds = duration % 60;
         format!("{}m {}s", minutes, seconds)
     };
-    info!("logs: {}", global_log_name());
+    info!("logs: {}", global_log_name().display());
     info!("duration: {}", duration);
 }

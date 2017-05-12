@@ -85,7 +85,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
         ExMode::UnstableFeatures => test_find_unstable_features,
     };
 
-    log!("running {} tests", total_crates);
+    info!("running {} tests", total_crates);
     for (ref c, _) in crates {
         for tc in tcs {
             let r = {
@@ -93,9 +93,9 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                 if let Some(r) = existing_result {
                     skipped_crates += 1;
 
-                    log!("skipping crate {}. existing result: {}", c, r);
-                    log!("delete result file to rerun test: {}",
-                         result_file(ex_name, c, tc)?.display());
+                    info!("skipping crate {}. existing result: {}", c, r);
+                    let file = result_file(ex_name, c, tc)?;
+                    info!("delete result file to rerun test: {}", file.display());
                     Ok(r)
                 } else {
                     completed_crates += 1;
@@ -111,7 +111,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
 
             match r {
                 Err(ref e) => {
-                    log_err!("error testing crate {}:  {}", c, e);
+                    error!("error testing crate {}:  {}", c, e);
                     util::report_error(e);
                 }
                 Ok(ref r) => {
@@ -146,20 +146,20 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                 format!("{:0} hours", remaining_time / 60 / 60)
             };
 
-            log!("progress: {} / {}",
-                 completed_crates + skipped_crates,
-                 total_crates);
-            log!("{} crates tested in {} s. {:.2} s/crate. {} crates remaining. ~{}",
-                 completed_crates,
-                 elapsed,
-                 seconds_per_test,
-                 remaining_tests,
-                 remaining_time_str);
-            log!("results: {} build-fail / {} test-fail / {} test-pass / {} errors",
-                 sum_build_fail,
-                 sum_test_fail,
-                 sum_test_pass,
-                 sum_errors);
+            info!("progress: {} / {}",
+                  completed_crates + skipped_crates,
+                  total_crates);
+            info!("{} crates tested in {} s. {:.2} s/crate. {} crates remaining. ~{}",
+                  completed_crates,
+                  elapsed,
+                  seconds_per_test,
+                  remaining_tests,
+                  remaining_time_str);
+            info!("results: {} build-fail / {} test-fail / {} test-pass / {} errors",
+                  sum_build_fail,
+                  sum_test_fail,
+                  sum_test_pass,
+                  sum_errors);
         }
     }
 
@@ -229,10 +229,10 @@ fn run_single_test<F>(ex_name: &str,
     let log_file = result_log(ex_name, c, toolchain)?;
 
     log::redirect(&log_file, || {
-        log!("testing {} against {} for {}",
-             c,
-             toolchain.to_string(),
-             ex_name);
+        info!("testing {} against {} for {}",
+              c,
+              toolchain.to_string(),
+              ex_name);
         let tc = toolchain.rustup_name();
         let target_path = toolchain.target_dir(ex_name);
         f(source_path, &target_path, &tc)
@@ -306,12 +306,12 @@ fn record_test_result(ex_name: &str,
     let result_dir = result_dir(ex_name, c, toolchain)?;
     fs::create_dir_all(&result_dir)?;
     let result_file = result_file(ex_name, c, toolchain)?;
-    log!("test result! ex: {}, c: {}, tc: {}, r: {}",
-         ex_name,
-         c,
-         toolchain.to_string(),
-         r);
-    log!("file: {}", result_file.display());
+    info!("test result! ex: {}, c: {}, tc: {}, r: {}",
+          ex_name,
+          c,
+          toolchain.to_string(),
+          r);
+    info!("file: {}", result_file.display());
     file::write_string(&result_file, &r.to_string())?;
     Ok(())
 }
@@ -372,7 +372,7 @@ fn test_find_unstable_features(source_path: &Path,
     let mut features: Vec<_> = features.into_iter().collect();
     features.sort();
     for feature in features {
-        log!("unstable-feature: {}", feature);
+        info!("unstable-feature: {}", feature);
     }
 
     Ok(TestResult::TestPass)

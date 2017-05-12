@@ -94,7 +94,7 @@ fn rustup_run(name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
 }
 
 fn install_rustup() -> Result<()> {
-    log!("installing rustup");
+    info!("installing rustup");
     let rustup_url = &format!("{}/{}/rustup-init{}",
             RUSTUP_BASE_URL,
             &util::this_target(),
@@ -143,7 +143,7 @@ pub fn make_executable(path: &Path) -> Result<()> {
 }
 
 fn update_rustup() -> Result<()> {
-    log!("updating rustup");
+    info!("updating rustup");
     util::try_hard(|| {
                        rustup_run(&rustup_exe(), &["self", "update"], &[])
                            .chain_err(|| "unable to run rustup self-update")
@@ -151,7 +151,7 @@ fn update_rustup() -> Result<()> {
 }
 
 fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
-    log!("installing toolchain {}", toolchain);
+    info!("installing toolchain {}", toolchain);
     util::try_hard(|| {
                        rustup_run(&rustup_exe(), &["toolchain", "install", toolchain], &[])
                            .chain_err(|| "unable to install toolchain via rustup")
@@ -159,7 +159,7 @@ fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
 }
 
 fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
-    log!("installing toolchain {}#{}", repo, sha);
+    info!("installing toolchain {}#{}", repo, sha);
 
     fs::create_dir_all(TOOLCHAIN_DIR)?;
     let dir = &Path::new(TOOLCHAIN_DIR).join(sha);

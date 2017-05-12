@@ -4,7 +4,7 @@ use std::path::Path;
 use toml::{Parser, Value};
 
 pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
-    log!("frobbing {}-{}", name, vers);
+    info!("frobbing {}-{}", name, vers);
     let toml_str = file::read_string(&dir.join("Cargo.toml"))
         .chain_err(|| "no cargo.toml?")?;
     let mut parser = Parser::new(&toml_str);
@@ -22,7 +22,7 @@ pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
             for (dep_name, v) in deps.iter_mut() {
                 if let Value::Table(ref mut dep_props) = *v {
                     if dep_props.contains_key("path") {
-                        log!("removing path from {} in {}-{}", dep_name, name, vers);
+                        info!("removing path from {} in {}-{}", dep_name, name, vers);
                     }
                     if dep_props.remove("path").is_some() {
                         changed = true;
@@ -34,7 +34,7 @@ pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
 
     // Eliminate workspaces
     if toml.remove("workspace").is_some() {
-        log!("removing workspace from {}-{}", name, vers);
+        info!("removing workspace from {}-{}", name, vers);
         changed = true;
     }
 
@@ -42,7 +42,7 @@ pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
         let toml = Value::Table(toml);
         file::write_string(out, &format!("{}", toml))?;
 
-        log!("frobbed toml written to {}", out.display());
+        info!("frobbed toml written to {}", out.display());
     }
 
     Ok(())

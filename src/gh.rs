@@ -42,15 +42,15 @@ const QUERIES_PER: usize = 40;
 const TIME_PER: usize = 6;
 
 pub fn get_candidate_repos() -> Result<Vec<String>> {
-    log!("making up to {} queries. time: {} s. take a break",
-         QUERIES.len() * QUERIES_PER,
-         QUERIES.len() * QUERIES_PER * TIME_PER);
+    info!("making up to {} queries. time: {} s. take a break",
+          QUERIES.len() * QUERIES_PER,
+          QUERIES.len() * QUERIES_PER * TIME_PER);
 
     let mut urls = HashSet::new();
     'next_query: for q in QUERIES {
         for page in 1..(QUERIES_PER + 1) {
             let url = format!("{}&page={}", q, page);
-            log!("downloading {}", url);
+            info!("downloading {}", url);
 
             let response = if page < 20 {
                     dl::download_limit(&url, 10000)
@@ -61,7 +61,7 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
 
             // After some point, errors indicate the end of available results
             let mut response = if page > 20 && response.is_err() {
-                log!("error result. continuing");
+                info!("error result. continuing");
                 thread::sleep(Duration::from_secs(TIME_PER as u64));
                 continue 'next_query;
             } else {
@@ -71,13 +71,13 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
             let json: GitHubSearchPage = response.json()?;
 
             if json.items.is_empty() {
-                log!("no results. continuing");
+                info!("no results. continuing");
                 thread::sleep(Duration::from_secs(TIME_PER as u64));
                 continue 'next_query;
             }
 
             for item in json.items {
-                log!("found rust repo {}", item.full_name);
+                info!("found rust repo {}", item.full_name);
                 urls.insert(item.full_name);
             }
 
@@ -94,7 +94,7 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
 pub fn is_rust_app(name: &str) -> Result<bool> {
     let url = format!("https://raw.githubusercontent.com/{}/master/Cargo.lock",
                       name);
-    log!("testing {}", url);
+    info!("testing {}", url);
 
     let is_app = dl::download_no_retry(&url)
         .and_then(|mut response| {
@@ -106,10 +106,10 @@ pub fn is_rust_app(name: &str) -> Result<bool> {
         .unwrap_or(false);
 
     if is_app {
-        log!("{} contains a root lockfile at {}", name, url);
+        info!("{} contains a root lockfile at {}", name, url);
         Ok(true)
     } else {
-        log!("{} does not contain a root lockfile", name);
+        info!("{} does not contain a root lockfile", name);
         Ok(false)
     }
 }

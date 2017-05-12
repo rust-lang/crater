@@ -26,7 +26,7 @@ pub fn run_full(cd: Option<&Path>, name: &str, args: &[&str], env: &[(&str, &str
         cmd.current_dir(cd);
     }
 
-    log!("running `{}`", cmdstr);
+    info!("running `{}`", cmdstr);
     let out = log::log_command(cmd)?;
 
     if out.status.success() {
@@ -53,7 +53,7 @@ pub fn run_capture(cd: Option<&Path>,
         cmd.current_dir(cd);
     }
 
-    log!("running `{}`", cmdstr);
+    info!("running `{}`", cmdstr);
     let out = log::log_command_capture(cmd)?;
 
     if out.status.success() {

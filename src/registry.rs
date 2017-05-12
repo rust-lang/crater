@@ -17,9 +17,9 @@ pub type Dep = (String, String);
 pub fn find_registry_crates() -> Result<Vec<Crate>> {
     fs::create_dir_all(LOCAL_DIR)?;
     update_registry()?;
-    log!("loading registry");
+    info!("loading registry");
     let r = read_registry()?;
-    log!("registry loaded");
+    info!("registry loaded");
     Ok(r)
 }
 

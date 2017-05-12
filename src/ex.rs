@@ -127,9 +127,9 @@ fn top_100() -> Result<Vec<Crate>> {
 }
 
 pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExMode) -> Result<()> {
-    log!("defining experiment {} for {} crates",
-         ex_name,
-         crates.len());
+    info!("defining experiment {} for {} crates",
+          ex_name,
+          crates.len());
     let ex = Experiment {
         name: ex_name.to_string(),
         crates: crates,
@@ -138,7 +138,7 @@ pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExM
     };
     fs::create_dir_all(&ex_dir(ex_name))?;
     let json = serde_json::to_string(&ex)?;
-    log!("writing ex config to {}", config_file(ex_name).display());
+    info!("writing ex config to {}", config_file(ex_name).display());
     file::write_string(&config_file(ex_name), &json)?;
     Ok(())
 }
@@ -173,17 +173,17 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
                 Ok((stdout, _)) => {
                     if let Some(shaline) = stdout.get(0) {
                         if !shaline.is_empty() {
-                            log!("sha for {}: {}", url, shaline);
+                            info!("sha for {}: {}", url, shaline);
                             shas.insert(url, shaline.to_string());
                         } else {
-                            log_err!("bogus output from git log for {}", dir.display());
+                            error!("bogus output from git log for {}", dir.display());
                         }
                     } else {
-                        log_err!("bogus output from git log for {}", dir.display());
+                        error!("bogus output from git log for {}", dir.display());
                     }
                 }
                 Err(e) => {
-                    log_err!("unable to capture sha for {}: {}", dir.display(), e);
+                    error!("unable to capture sha for {}: {}", dir.display(), e);
                 }
             }
         }
@@ -191,7 +191,7 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
 
     fs::create_dir_all(&ex_dir(ex_name))?;
     let shajson = serde_json::to_string(&shas)?;
-    log!("writing shas to {}", shafile(ex_name).display());
+    info!("writing shas to {}", shafile(ex_name).display());
     file::write_string(&shafile(ex_name), &shajson)?;
 
     Ok(())
@@ -276,7 +276,7 @@ pub fn frob_tomls(ex_name: &str) -> Result<()> {
             let out = froml_path(ex_name, name, version);
             let r = toml_frobber::frob_toml(&dir, name, version, &out);
             if let Err(e) = r {
-                log!("couldn't frob: {}", e);
+                info!("couldn't frob: {}", e);
                 util::report_error(&e);
             }
         }
@@ -296,7 +296,7 @@ pub fn with_frobbed_toml(ex_name: &str, crate_: &ExCrate, path: &Path) -> Result
     let src_froml = &froml_path(ex_name, &crate_name, &crate_vers);
     let dst_froml = &path.join("Cargo.toml");
     if src_froml.exists() {
-        log!("using frobbed toml {}", src_froml.display());
+        info!("using frobbed toml {}", src_froml.display());
         fs::copy(src_froml, dst_froml)
             .chain_err(|| {
                            format!("unable to copy frobbed toml from {} to {}",
@@ -338,9 +338,9 @@ pub fn with_work_crate<F, R>(ex_name: &str,
 {
     let src_dir = crate_.dir()?;
     let dest_dir = crate_work_dir(ex_name, toolchain);
-    log!("creating temporary build dir for {} in {}",
-         crate_,
-         dest_dir.display());
+    info!("creating temporary build dir for {} in {}",
+          crate_,
+          dest_dir.display());
 
     util::copy_dir(&src_dir, &dest_dir)?;
     let r = f(&dest_dir);
@@ -358,7 +358,7 @@ pub fn capture_lockfiles(ex_name: &str,
 
     for (ref c, ref dir) in crates {
         if dir.join("Cargo.lock").exists() {
-            log!("crate {} has a lockfile. skipping", c);
+            info!("crate {} has a lockfile. skipping", c);
             continue;
         }
         let captured_lockfile = lockfile(ex_name, c);
@@ -368,7 +368,7 @@ pub fn capture_lockfiles(ex_name: &str,
         }
         let captured_lockfile = captured_lockfile.expect("");
         if captured_lockfile.exists() && !recapture_existing {
-            log!("skipping existing lockfile for {}", c);
+            info!("skipping existing lockfile for {}", c);
             continue;
         }
         let r = with_work_crate(ex_name, toolchain, c, |path| {
@@ -404,9 +404,9 @@ fn capture_lockfile(ex_name: &str,
                                dst_lockfile.display())
                    })?;
 
-    log!("generated lockfile for {} at {}",
-         crate_,
-         dst_lockfile.display());
+    info!("generated lockfile for {} at {}",
+          crate_,
+          dst_lockfile.display());
 
     Ok(())
 }
@@ -418,7 +418,7 @@ pub fn with_captured_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path) -> R
     }
     let src_lockfile = &lockfile(ex_name, crate_)?;
     if src_lockfile.exists() {
-        log!("using lockfile {}", src_lockfile.display());
+        info!("using lockfile {}", src_lockfile.display());
         fs::copy(src_lockfile, dst_lockfile)
             .chain_err(|| {
                            format!("unable to copy lockfile from {} to {}",

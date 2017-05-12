@@ -27,50 +27,22 @@ pub struct Ex(String);
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Cmd {
     /* Basic synchronous commands */
-
-    // Local prep
     PrepareLocal,
-    PrepareToolchain(Toolchain),
-    BuildContainer,
-
-    // List creation
-    CreateLists,
-    CreateListsFull,
-    CreateRecentList,
-    CreateHotList,
-    CreatePopList,
-    CreateGhCandidateList,
-    CreateGhAppList,
-    CreateGhCandidateListFromCache,
-    CreateGhAppListFromCache,
-
-    // Master experiment prep
     DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect),
     PrepareEx(Ex),
+    Run(Ex),
+    RunTc(Ex, Toolchain),
+    GenReport(Ex),
+    DeleteAllTargetDirs(Ex),
+
+    // List creation
+    CreateListsFull,
+
+    // Master experiment prep
     CopyEx(Ex, Ex),
     DeleteEx(Ex),
 
-    // Shared experiment prep
-    PrepareExShared(Ex),
-    FetchGhMirrors(Ex),
-    CaptureShas(Ex),
-    DownloadCrates(Ex),
-    FrobCargoTomls(Ex),
-    CaptureLockfiles(Ex, Toolchain),
-
-    // Local experiment prep
-    PrepareExLocal(Ex),
-    DeleteAllTargetDirs(Ex),
     DeleteAllResults(Ex),
-    FetchDeps(Ex, Toolchain),
-    PrepareAllToolchains(Ex),
-
-    // Experimenting
-    Run(Ex),
-    RunTc(Ex, Toolchain),
-
-    // Reporting
-    GenReport(Ex),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -90,55 +62,27 @@ pub enum ExCrateSelect {
     Top100,
 }
 
-use bmk::Process;
-
-impl Process for Cmd {
-    fn process(self) -> Result<Vec<Cmd>> {
+impl Cmd {
+    pub fn process(self) -> Result<()> {
         use lists;
         use docker;
         use ex;
         use ex_run;
         use report;
 
-        let mut cmds = Vec::new();
         match self {
             // Local prep
             Cmd::PrepareLocal => {
-                cmds.extend(vec![
-                    Cmd::PrepareToolchain("stable".parse()?),
-                    Cmd::BuildContainer,
-                    Cmd::CreateLists,
-                ]);
+                let stable_tc = Toolchain::Dist("stable".into());
+                stable_tc.prepare()?;
+                docker::build_container()?;
+                lists::create_all_lists(false)?;
             }
-            Cmd::PrepareToolchain(tc) => tc.prepare()?,
-            Cmd::BuildContainer => docker::build_container()?,
 
             // List creation
-            Cmd::CreateLists => {
-                cmds.extend(vec![
-                    Cmd::CreateRecentList,
-                    Cmd::CreateHotList,
-                    Cmd::CreatePopList,
-                    Cmd::CreateGhCandidateListFromCache,
-                    Cmd::CreateGhAppListFromCache,
-                ]);
-            }
             Cmd::CreateListsFull => {
-                cmds.extend(vec![
-                    Cmd::CreateRecentList,
-                    Cmd::CreateHotList,
-                    Cmd::CreatePopList,
-                    Cmd::CreateGhCandidateList,
-                    Cmd::CreateGhAppList,
-                ]);
+                lists::create_all_lists(true)?;
             }
-            Cmd::CreateRecentList => lists::create_recent_list()?,
-            Cmd::CreateHotList => lists::create_hot_list()?,
-            Cmd::CreatePopList => lists::create_pop_list()?,
-            Cmd::CreateGhCandidateList => lists::create_gh_candidate_list()?,
-            Cmd::CreateGhAppList => lists::create_gh_app_list()?,
-            Cmd::CreateGhCandidateListFromCache => lists::create_gh_candidate_list_from_cache()?,
-            Cmd::CreateGhAppListFromCache => lists::create_gh_app_list_from_cache()?,
 
             // Experiment prep
             Cmd::DefineEx(ex, tc1, tc2, mode, crates) => {
@@ -150,40 +94,24 @@ impl Process for Cmd {
                            })?;
             }
             Cmd::PrepareEx(ex) => {
-                cmds.extend(vec![Cmd::PrepareExShared(ex.clone()), Cmd::PrepareExLocal(ex)]);
+                // Shared emperiment prep
+                ex::fetch_gh_mirrors(&ex.0)?;
+                ex::capture_shas(&ex.0)?;
+                ex::download_crates(&ex.0)?;
+                ex::frob_tomls(&ex.0)?;
+                ex::capture_lockfiles(&ex.0, &Toolchain::Dist("stable".into()), false)?;
+
+                // Local experiment prep
+                ex::delete_all_target_dirs(&ex.0);
+                ex::delete_all_target_dirs(&ex.0);
+                ex::fetch_deps(&ex.0, &Toolchain::Dist("stable".into()))?;
+                ex::prepare_all_toolchains(&ex.0)?;
             }
             Cmd::CopyEx(ex1, ex2) => ex::copy(&ex1.0, &ex2.0)?,
             Cmd::DeleteEx(ex) => ex::delete(&ex.0)?,
 
-            // Shared emperiment prep
-            Cmd::PrepareExShared(ex) => {
-                cmds.extend(vec![
-                    Cmd::FetchGhMirrors(ex.clone()),
-                    Cmd::CaptureShas(ex.clone()),
-                    Cmd::DownloadCrates(ex.clone()),
-                    Cmd::FrobCargoTomls(ex.clone()),
-                    Cmd::CaptureLockfiles(ex, "stable".parse()?),
-                ]);
-            }
-            Cmd::FetchGhMirrors(ex) => ex::fetch_gh_mirrors(&ex.0)?,
-            Cmd::CaptureShas(ex) => ex::capture_shas(&ex.0)?,
-            Cmd::DownloadCrates(ex) => ex::download_crates(&ex.0)?,
-            Cmd::FrobCargoTomls(ex) => ex::frob_tomls(&ex.0)?,
-            Cmd::CaptureLockfiles(ex, tc) => ex::capture_lockfiles(&ex.0, &tc, false)?,
-
-            // Local experiment prep
-            Cmd::PrepareExLocal(ex) => {
-                cmds.extend(vec![
-                    Cmd::DeleteAllTargetDirs(ex.clone()),
-                    Cmd::DeleteAllResults(ex.clone()),
-                    Cmd::FetchDeps(ex.clone(), "stable".parse()?),
-                    Cmd::PrepareAllToolchains(ex),
-                ]);
-            }
             Cmd::DeleteAllTargetDirs(ex) => ex::delete_all_target_dirs(&ex.0)?,
             Cmd::DeleteAllResults(ex) => ex_run::delete_all_results(&ex.0)?,
-            Cmd::FetchDeps(ex, tc) => ex::fetch_deps(&ex.0, &tc)?,
-            Cmd::PrepareAllToolchains(ex) => ex::prepare_all_toolchains(&ex.0)?,
 
             // Experimenting
             Cmd::Run(ex) => ex_run::run_ex_all_tcs(&ex.0)?,
@@ -193,7 +121,7 @@ impl Process for Cmd {
             Cmd::GenReport(ex) => report::gen(&ex.0)?,
         }
 
-        Ok(cmds)
+        Ok(())
     }
 }
 
@@ -210,7 +138,6 @@ pub mod conv {
         let ex1 = || req("ex-1");
         let ex2 = || req("ex-2");
         let req_tc = || req("tc");
-        let opt_tc = || opt("tc", "stable");
         let tc1 = || req("tc-1");
         let tc2 = || req("tc-2");
         let mode = || {
@@ -254,26 +181,9 @@ pub mod conv {
             // Local prep
             cmd("prepare-local",
                 "acquire toolchains, build containers, build crate lists"),
-            cmd("prepare-toolchain", "install or update a toolchain").arg(req_tc()),
-            cmd("build-container",
-                "build docker container needed by experiments"),
 
             // List creation
-            cmd("create-lists", "create all the lists of crates"),
             cmd("create-lists-full", "create all the lists of crates"),
-            cmd("create-recent-list",
-                "create the list of most recent crate versions"),
-            cmd("create-hot-list",
-                "create the list of popular crates versions"),
-            cmd("create-pop-list", "create the list of popular crates"),
-            cmd("create-gh-candidate-list",
-                "crate the list of all GitHub Rust repos"),
-            cmd("create-gh-app-list",
-                "create the list of GitHub Rust applications"),
-            cmd("create-gh-candidate-list-from-cache",
-                "crate the list of all GitHub Rust repos from cache"),
-            cmd("create-gh-app-list-from-cache",
-                "create the list of GitHub Rust applications from cache"),
 
             // Master experiment prep
             cmd("define-ex", "define an experiment")
@@ -288,29 +198,10 @@ pub mod conv {
                 .arg(ex2()),
             cmd("delete-ex", "delete shared data for experiment").arg(ex()),
 
-            // Shared experiment prep
-            cmd("prepare-ex-shared", "prepare shared data for experiment").arg(ex()),
-            cmd("fetch-gh-mirrors", "fetch github repos for experiment").arg(ex()),
-            cmd("capture-shas", "record the head commits of GitHub repos").arg(ex()),
-            cmd("download-crates", "download crates to local disk").arg(ex()),
-            cmd("frob-cargo-tomls", "frobsm tomls for experiment crates").arg(ex()),
-            cmd("capture-lockfiles",
-                "records lockfiles for all crates in experiment")
-                    .arg(ex())
-                    .arg(opt_tc()),
-
-            // Local experiment prep
-            cmd("prepare-ex-local", "prepare local data for experiment").arg(ex()),
             cmd("delete-all-target-dirs",
                 "delete the cargo target dirs for an experiment")
                     .arg(ex()),
             cmd("delete-all-results", "delete all results for an experiment").arg(ex()),
-            cmd("fetch-deps", "fetch all dependencies for an experiment")
-                .arg(ex())
-                .arg(opt_tc()),
-            cmd("prepare-all-toolchains",
-                "prepare all toolchains for local experiment")
-                    .arg(ex()),
 
             // Experimenting
             cmd("run", "run an experiment, with all toolchains").arg(ex()),
@@ -362,19 +253,6 @@ pub mod conv {
         Ok(match m.subcommand() {
                // Local prep
                ("prepare-local", _) => Cmd::PrepareLocal,
-               ("prepare-toolchain", Some(m)) => Cmd::PrepareToolchain(tc(m)?),
-               ("build-container", _) => Cmd::BuildContainer,
-
-               // List creation
-               ("create-lists", _) => Cmd::CreateLists,
-               ("create-lists-full", _) => Cmd::CreateListsFull,
-               ("create-recent-list", _) => Cmd::CreateRecentList,
-               ("create-hot-list", _) => Cmd::CreateHotList,
-               ("create-pop-list", _) => Cmd::CreatePopList,
-               ("create-gh-candidate-list", _) => Cmd::CreateGhCandidateList,
-               ("create-gh-app-list", _) => Cmd::CreateGhAppList,
-               ("create-gh-candidate-list-from-cache", _) => Cmd::CreateGhCandidateListFromCache,
-               ("create-gh-app-list-from-cache", _) => Cmd::CreateGhAppListFromCache,
 
                // Master experiment prep
                ("define-ex", Some(m)) => {
@@ -384,20 +262,9 @@ pub mod conv {
                ("copy-ex", Some(m)) => Cmd::CopyEx(ex1(m)?, ex2(m)?),
                ("delete-ex", Some(m)) => Cmd::DeleteEx(ex(m)?),
 
-               // Shared experiment prep
-               ("prepare-ex-shared", Some(m)) => Cmd::PrepareExShared(ex(m)?),
-               ("fetch-gh-mirrors", Some(m)) => Cmd::FetchGhMirrors(ex(m)?),
-               ("capture-shas", Some(m)) => Cmd::CaptureShas(ex(m)?),
-               ("download-crates", Some(m)) => Cmd::DownloadCrates(ex(m)?),
-               ("frob-cargo-tomls", Some(m)) => Cmd::FrobCargoTomls(ex(m)?),
-               ("capture-lockfiles", Some(m)) => Cmd::CaptureLockfiles(ex(m)?, tc(m)?),
-
                // Local experiment prep
-               ("prepare-ex-local", Some(m)) => Cmd::PrepareExLocal(ex(m)?),
                ("delete-all-target-dirs", Some(m)) => Cmd::DeleteAllTargetDirs(ex(m)?),
                ("delete-all-results", Some(m)) => Cmd::DeleteAllResults(ex(m)?),
-               ("fetch-deps", Some(m)) => Cmd::FetchDeps(ex(m)?, tc(m)?),
-               ("prepare-all-toolchains", Some(m)) => Cmd::PrepareAllToolchains(ex(m)?),
 
                // Experimenting
                ("run", Some(m)) => Cmd::Run(ex(m)?),

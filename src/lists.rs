@@ -16,6 +16,21 @@ fn recent_path() -> PathBuf {
     Path::new(LIST_DIR).join("recent-crates.txt")
 }
 
+pub fn create_all_lists(full: bool) -> Result<()> {
+    create_recent_list()?;
+    create_hot_list()?;
+    create_pop_list()?;
+    if full {
+        create_gh_candidate_list()?;
+        create_gh_app_list()?;
+    } else {
+        create_gh_candidate_list_from_cache()?;
+        create_gh_app_list_from_cache()?;
+    }
+
+    Ok(())
+}
+
 pub fn create_recent_list() -> Result<()> {
     log!("creating recent list");
     fs::create_dir_all(LIST_DIR)?;
@@ -33,7 +48,7 @@ pub fn create_recent_list() -> Result<()> {
 pub fn read_recent_list() -> Result<Vec<(String, String)>> {
     let lines =
         file::read_lines(&recent_path())
-            .chain_err(|| "unable to read recent list. run `cargobomb create-recent-list`?")?;
+            .chain_err(|| "unable to read recent list. run `cargobomb create-full-lists`?")?;
     split_crate_lines(&lines)
 }
 
@@ -105,7 +120,7 @@ pub fn create_pop_list() -> Result<()> {
 
 pub fn read_pop_list() -> Result<Vec<(String, String)>> {
     let lines = file::read_lines(&pop_path())
-        .chain_err(|| "unable to read pop list. run `cargobomb create-pop-list`?")?;
+        .chain_err(|| "unable to read pop list. run `cargobomb create-full-lists`?")?;
     split_crate_lines(&lines)
 }
 
@@ -180,7 +195,7 @@ pub fn create_hot_list() -> Result<()> {
 
 pub fn read_hot_list() -> Result<Vec<(String, String)>> {
     let lines = file::read_lines(&hot_path())
-        .chain_err(|| "unable to read hot list. run `cargobomb create-hot-list`?")?;
+        .chain_err(|| "unable to read hot list. run `cargobomb create-full-lists`?")?;
     split_crate_lines(&lines)
 }
 
@@ -215,8 +230,7 @@ pub fn create_gh_candidate_list_from_cache() -> Result<()> {
 
 pub fn read_gh_candidates_list() -> Result<Vec<String>> {
     file::read_lines(&gh_candidate_path())
-        .chain_err(
-            || "unable to read gh-candidates list. run `cargobomb create-gh-candidates-list`?")
+        .chain_err(|| "unable to read gh-candidates list. run `cargobomb create-full-lists`?")
 }
 
 fn gh_app_path() -> PathBuf {
@@ -259,7 +273,7 @@ pub fn create_gh_app_list_from_cache() -> Result<()> {
 
 pub fn read_gh_app_list() -> Result<Vec<String>> {
     file::read_lines(&gh_app_path())
-        .chain_err(|| "unable to read gh-app list. run `cargobomb create-gh-app-list`?")
+        .chain_err(|| "unable to read gh-app list. run `cargobomb create-full-lists`?")
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]

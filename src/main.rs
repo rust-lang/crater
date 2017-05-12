@@ -49,7 +49,6 @@ mod gh_mirrors;
 mod report;
 mod docker;
 mod dirs;
-mod bmk;
 
 use clap::{App, AppSettings, ArgMatches};
 use dirs::*;
@@ -102,7 +101,7 @@ fn cli() -> App<'static, 'static> {
 
 fn run_cmd(m: &ArgMatches) -> Result<()> {
     let cmd = model::conv::clap_args_to_cmd(m)?;
-    bmk::run(cmd)?;
+    cmd.process()?;
 
     Ok(())
 }

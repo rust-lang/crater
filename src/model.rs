@@ -220,7 +220,7 @@ pub mod conv {
                 "acquire toolchains, build containers, build crate lists"),
 
             // List creation
-            cmd("create-lists-full", "create all the lists of crates"),
+            cmd("create-list-full", "create all the lists of crates"),
 
             // Master experiment prep
             cmd("define-ex", "define an experiment")

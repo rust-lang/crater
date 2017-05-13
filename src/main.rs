@@ -50,7 +50,7 @@ mod report;
 mod docker;
 mod dirs;
 
-use clap::{App, AppSettings, ArgMatches};
+use clap::{App, AppSettings};
 use dirs::*;
 use errors::*;
 use std::panic;
@@ -83,10 +83,8 @@ fn main() {
 
 fn main_() -> Result<()> {
     let matches = cli().get_matches();
-
-    run_cmd(&matches)?;
-
-    Ok(())
+    let cmd = model::conv::clap_args_to_cmd(&matches)?;
+    cmd.run()
 }
 
 fn cli() -> App<'static, 'static> {
@@ -97,11 +95,4 @@ fn cli() -> App<'static, 'static> {
         .setting(AppSettings::DeriveDisplayOrder)
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommands(model::conv::clap_cmds())
-}
-
-fn run_cmd(m: &ArgMatches) -> Result<()> {
-    let cmd = model::conv::clap_args_to_cmd(m)?;
-    cmd.process()?;
-
-    Ok(())
 }

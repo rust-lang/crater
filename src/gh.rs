@@ -1,5 +1,6 @@
 use dl;
 use errors::*;
+use reqwest;
 use std::collections::HashSet;
 use std::io::Read;
 use std::thread;
@@ -52,21 +53,19 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
             let url = format!("{}&page={}", q, page);
             info!("downloading {}", url);
 
-            let response = if page < 20 {
+            let mut response = if page < 20 {
                     dl::download_limit(&url, 10000)
                 } else {
                     dl::download_no_retry(&url)
                 }
-                .chain_err(|| "unable to query github for rust repos");
+                .chain_err(|| "unable to query github for rust repos")?;
 
             // After some point, errors indicate the end of available results
-            let mut response = if page > 20 && response.is_err() {
+            if page > 20 && *response.status() == reqwest::StatusCode::UnprocessableEntity {
                 info!("error result. continuing");
                 thread::sleep(Duration::from_secs(TIME_PER as u64));
                 continue 'next_query;
-            } else {
-                response?
-            };
+            }
 
             let json: GitHubSearchPage = response.json()?;
 

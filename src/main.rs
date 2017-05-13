@@ -27,6 +27,13 @@ extern crate libc;
 extern crate winapi;
 extern crate kernel32;
 extern crate reqwest;
+#[macro_use(slog_o, slog_info, slog_log, slog_error,
+            slog_record, slog_record_static, slog_b, slog_kv)]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
+extern crate slog_term;
+extern crate slog_async;
 
 #[macro_use]
 mod log;
@@ -57,7 +64,7 @@ use std::panic;
 use std::process;
 
 fn main() {
-    log::init();
+    let _guard = log::init();
     let success = match panic::catch_unwind(main_) {
         Ok(Ok(())) => {
             true

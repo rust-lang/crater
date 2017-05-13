@@ -1,5 +1,5 @@
 use errors::*;
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::{BufReader, Read, Write};
 use std::path::Path;
 
@@ -27,11 +27,4 @@ pub fn read_lines(path: &Path) -> Result<Vec<String>> {
            .map(|l| l.to_string())
            .filter(|l| !l.chars().all(|c| c.is_whitespace()))
            .collect())
-}
-
-pub fn append_line(path: &Path, s: &str) -> Result<()> {
-    let mut f = OpenOptions::new().create(true).append(true).open(path)?;
-    f.write_all(s.as_bytes())?;
-    f.write_all(b"\n")?;
-    Ok(())
 }

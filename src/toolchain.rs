@@ -107,7 +107,7 @@ fn install_rustup() -> Result<()> {
     {
         let mut file = File::create(installer)?;
         io::copy(&mut response, &mut file)?;
-        make_executable(installer);
+        make_executable(installer)?;
     }
 
     // FIXME: Wish I could install rustup without installing a toolchain

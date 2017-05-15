@@ -1,4 +1,6 @@
 use errors::*;
+use slog::Logger;
+use slog_scope;
 use std::io::{BufRead, BufReader, Read};
 use std::ops::Deref;
 use std::path::Path;
@@ -196,33 +198,34 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
        })
 }
 
-fn log_child_stdout(line: &str) {
-    info!("blam! {}", line);
+fn log_child_stdout(logger: &Logger, line: &str) {
+    slog_info!(logger, "blam! {}", line);
 }
 
-fn log_child_stderr(line: &str) {
-    info!("kablam! {}", line);
+fn log_child_stderr(logger: &Logger, line: &str) {
+    slog_info!(logger, "kablam! {}", line);
 }
 
 fn sink(reader: Box<Read + Send>,
-        log: fn(&str),
+        log: fn(&Logger, &str),
         capture: bool,
         heartbeat_tx: Sender<()>)
         -> Receiver<Vec<String>> {
     let (tx, rx) = channel();
+    let logger = slog_scope::logger();
     thread::spawn(move || {
         let mut buf = Vec::new();
         let reader = BufReader::new(reader);
         for line_bytes in reader.split(b'\n') {
             if let Ok(line_bytes) = line_bytes {
                 let line = String::from_utf8_lossy(&line_bytes);
-                log(line.deref());
+                log(&logger, line.deref());
                 heartbeat_tx.send(());
                 if capture {
                     buf.push(line.to_string());
                 }
             } else {
-                log("READING FROM CHILD PROCESS FAILED!");
+                log(&logger, "READING FROM CHILD PROCESS FAILED!");
             }
         }
 

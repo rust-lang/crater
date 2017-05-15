@@ -9,7 +9,6 @@ extern crate error_chain;
 extern crate tempdir;
 extern crate url;
 extern crate walkdir;
-extern crate json;
 extern crate semver;
 #[macro_use]
 extern crate lazy_static;

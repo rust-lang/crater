@@ -1,6 +1,7 @@
 use LOCAL_DIR;
 use errors::*;
 use git;
+use serde_json;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -61,29 +62,35 @@ fn read_registry() -> Result<Vec<Crate>> {
     Ok(crates)
 }
 
-fn read_crate(path: &Path) -> Result<Crate> {
-    use json;
+/// Structure of a crate in https://github.com/rust-lang/crates.io-index
+#[derive(Deserialize)]
+pub struct IndexCrate {
+    name: String,
+    vers: String,
+    deps: Vec<IndexCrateDependency>,
+}
 
+/// Structure of a crate dependency in https://github.com/rust-lang/crates.io-index
+#[derive(Deserialize)]
+pub struct IndexCrateDependency {
+    name: String,
+    req: String,
+}
+
+fn read_crate(path: &Path) -> Result<Crate> {
     let mut crate_name = String::new();
     let mut crate_versions = Vec::new();
     let file = BufReader::new(File::open(path)?);
     for line in file.lines() {
         let line = &line?;
-        let json = json::parse(line).chain_err(|| "parsing json")?;
-        let mut deps = Vec::new();
-        let name = json["name"].as_str();
-        let vers = json["vers"].as_str();
-        for json in json["deps"].members() {
-            let dep_name = json["name"].as_str();
-            let dep_req = json["req"].as_str();
-            if let (Some(n), Some(r)) = (dep_name, dep_req) {
-                deps.push((n.to_string(), r.to_string()));
-            }
-        }
-        if let (Some(n), Some(v)) = (name, vers) {
-            crate_name = n.to_string();
-            crate_versions.push((v.to_string(), deps));
-        }
+        let crate_: IndexCrate = serde_json::from_str(line).chain_err(|| "parsing json")?;
+        let deps = crate_
+            .deps
+            .into_iter()
+            .map(|d| (d.name, d.req))
+            .collect::<Vec<_>>();
+        crate_name = crate_.name;
+        crate_versions.push((crate_.vers, deps));
     }
 
     Ok(Crate {

@@ -106,8 +106,8 @@ impl Cmd for PrepareEx {
         ex::capture_lockfiles(&ex.0, &Toolchain::Dist("stable".into()), false)?;
 
         // Local experiment prep
-        ex::delete_all_target_dirs(&ex.0);
-        ex::delete_all_target_dirs(&ex.0);
+        ex::delete_all_target_dirs(&ex.0)?;
+        ex_run::delete_all_results(&ex.0)?;
         ex::fetch_deps(&ex.0, &Toolchain::Dist("stable".into()))?;
         ex::prepare_all_toolchains(&ex.0)?;
 

@@ -5,7 +5,7 @@ use crates;
 use errors::*;
 use file;
 use gh_mirrors;
-use lists::{self, Crate};
+use lists::{self, Crate, List};
 use model::{ExCrateSelect, ExMode};
 use run;
 use serde_json;
@@ -110,19 +110,8 @@ fn small_random() -> Result<Vec<Crate>> {
 }
 
 fn top_100() -> Result<Vec<Crate>> {
-    let mut crates = lists::read_pop_list()?;
+    let mut crates = lists::PopList::read()?;
     crates.truncate(100);
-
-    let crates = crates
-        .into_iter()
-        .map(|(c, v)| {
-                 Crate::Version {
-                     name: c,
-                     version: v,
-                 }
-             })
-        .collect();
-
     Ok(crates)
 }
 

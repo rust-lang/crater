@@ -117,14 +117,19 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     let heartbeat_timed_out = Rc::new(Cell::new(false));
 
     let logger = slog_scope::logger();
-    let stdout = lines(BufReader::new(stdout)).map(move |line| {
-                                                       slog_info!(logger, "blam! {}", line);
-                                                       line
+    let stdout = lines(BufReader::new(stdout)).map({
+                                                       let logger = logger.clone();
+                                                       move |line| {
+                                                           slog_info!(logger, "blam! {}", line);
+                                                           line
+                                                       }
                                                    });
-    let logger = slog_scope::logger();
-    let stderr = lines(BufReader::new(stderr)).map(move |line| {
-                                                       slog_info!(logger, "kablam! {}", line);
-                                                       line
+    let stderr = lines(BufReader::new(stderr)).map({
+                                                       let logger = logger.clone();
+                                                       move |line| {
+                                                           slog_info!(logger, "kablam! {}", line);
+                                                           line
+                                                       }
                                                    });
     let output = Stream::merge(stdout, stderr);
     let output = timer
@@ -139,6 +144,13 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
                          e
                      }
                  });
+    let output = if capture {
+        unmerge(output)
+    } else {
+        Box::new(output
+                     .for_each(|_| Ok(()))
+                     .and_then(|_| Ok((Vec::new(), Vec::new()))))
+    };
 
     #[cfg(unix)]
     fn kill_process(id: u32) {
@@ -172,13 +184,7 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
 
 
     // TODO: Handle errors from tokio_timer better, in particular TimerError::TooLong
-    let (status, (stdout, stderr)) = if capture {
-        core.run(Future::join(child, unmerge(output)))?
-    } else {
-        (core.run(Future::join(child, output.for_each(|_| Ok(()))))?
-             .0,
-         (Vec::new(), Vec::new()))
-    };
+    let (status, (stdout, stderr)) = core.run(Future::join(child, output))?;
 
     if heartbeat_timed_out.get() {
         info!("process killed after not generating output for {} s",

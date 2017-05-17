@@ -202,6 +202,7 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
        })
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(type_complexity))]
 fn unmerge<T1, T2, S>(reader: S) -> Box<Future<Item = (Vec<T1>, Vec<T2>), Error = S::Error>>
     where S: Stream<Item = MergedItem<T1, T2>> + 'static,
           T1: 'static,

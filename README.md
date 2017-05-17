@@ -1,5 +1,7 @@
 # cargobomb
 
+[![Build Status](https://travis-ci.org/brson/cargobomb.svg?branch=master)](https://travis-ci.org/brson/cargobomb)
+
 Cargobomb is a laboratory for running experiments across a large body
 of Rust source code. Its primary purpose is to detect regressions in
 the Rust compiler, and it does this by building large numbers of

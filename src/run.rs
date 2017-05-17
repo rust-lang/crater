@@ -3,7 +3,6 @@
 use errors::*;
 use futures::{Future, Stream};
 use futures::stream::MergedItem;
-use slog::Logger;
 use slog_scope;
 use std::cell::Cell;
 use std::io::{self, BufReader};
@@ -117,8 +116,18 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
 
     let heartbeat_timed_out = Rc::new(Cell::new(false));
 
-    let output = Stream::merge(lines(BufReader::new(stdout)), lines(BufReader::new(stderr)));
-    let out = timer
+    let logger = slog_scope::logger();
+    let stdout = lines(BufReader::new(stdout)).map(move |line| {
+                                                       slog_info!(logger, "blam! {}", line);
+                                                       line
+                                                   });
+    let logger = slog_scope::logger();
+    let stderr = lines(BufReader::new(stderr)).map(move |line| {
+                                                       slog_info!(logger, "kablam! {}", line);
+                                                       line
+                                                   });
+    let output = Stream::merge(stdout, stderr);
+    let output = timer
         .timeout_stream(output, heartbeat_timeout)
         .map_err({
                      let cond = heartbeat_timed_out.clone();
@@ -130,7 +139,6 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
                          e
                      }
                  });
-    let out = sink(out, capture);
 
     #[cfg(unix)]
     fn kill_process(id: u32) {
@@ -164,7 +172,13 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
 
 
     // TODO: Handle errors from tokio_timer better, in particular TimerError::TooLong
-    let (status, (stdout, stderr)) = core.run(Future::join(child, out))?;
+    let (status, (stdout, stderr)) = if capture {
+        core.run(Future::join(child, unmerge(output)))?
+    } else {
+        (core.run(Future::join(child, output.for_each(|_| Ok(()))))?
+             .0,
+         (Vec::new(), Vec::new()))
+    };
 
     if heartbeat_timed_out.get() {
         info!("process killed after not generating output for {} s",
@@ -182,41 +196,20 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
        })
 }
 
-fn sink<S>(reader: S,
-           capture: bool)
-           -> Box<Future<Item = (Vec<String>, Vec<String>), Error = io::Error>>
-    where S: Stream<Item = MergedItem<String, String>, Error = io::Error> + 'static
+fn unmerge<T1, T2, S>(reader: S) -> Box<Future<Item = (Vec<T1>, Vec<T2>), Error = S::Error>>
+    where S: Stream<Item = MergedItem<T1, T2>> + 'static,
+          T1: 'static,
+          T2: 'static
 {
-    fn log(logger: &Logger, line: &MergedItem<String, String>) {
-        match *line {
-            MergedItem::First(ref l) => slog_info!(logger, "blam! {}", l),
-            MergedItem::Second(ref r) => slog_info!(logger, "kablam! {}", r),
-            MergedItem::Both(ref l, ref r) => {
-                slog_info!(logger, "blam! {}", l);
-                slog_info!(logger, "kablam! {}", r);
-            }
-        }
-    }
-    let logger = slog_scope::logger();
-    let reader = reader.map(move |line| {
-                                log(&logger, &line);
-                                line
-                            });
-    if capture {
-        Box::new(reader
-                     .map(|i| match i {
-                              MergedItem::First(l) => (Some(l), None),
-                              MergedItem::Second(r) => (None, Some(r)),
-                              MergedItem::Both(l, r) => (Some(l), Some(r)),
-                          })
-                     .fold((Vec::new(), Vec::new()), |mut v, i| -> io::Result<_> {
-            i.0.map(|i| v.0.push(i));
-            i.1.map(|i| v.1.push(i));
-            Ok(v)
-        }))
-    } else {
-        Box::new(reader
-                     .for_each(|_| Ok(()))
-                     .map(|_| (Vec::new(), Vec::new())))
-    }
+    Box::new(reader
+                 .map(|i| match i {
+                          MergedItem::First(l) => (Some(l), None),
+                          MergedItem::Second(r) => (None, Some(r)),
+                          MergedItem::Both(l, r) => (Some(l), Some(r)),
+                      })
+                 .fold((Vec::new(), Vec::new()), |mut v, i| {
+        i.0.map(|i| v.0.push(i));
+        i.1.map(|i| v.1.push(i));
+        Ok(v)
+    }))
 }

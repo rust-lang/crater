@@ -65,7 +65,7 @@ Here's what each of these steps does:
 * `define-ex` - defines a new experiment, by default named 'default',
   performing a build-test experiment on the 'demo' set of crates.
 
-* `prepare-ex` - fetches repos from github and captures thier commit
+* `prepare-ex` - fetches repos from github and captures their commit
   shas, downloads all crates, hacks up Cargo.toml files, captures
   lockfiles, fetches all dependencies, and prepares toolchains.
 

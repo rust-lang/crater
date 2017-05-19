@@ -51,9 +51,8 @@ impl List for RecentList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines =
-            file::read_lines(&Self::path())
-                .chain_err(|| "unable to read recent list. run `cargobomb create-full-lists`?")?;
+        let lines = file::read_lines(&Self::path())
+            .chain_err(|| "unable to read recent list. run `cargobomb create-lists`?")?;
         split_crate_lines(&lines)
     }
 
@@ -125,9 +124,8 @@ impl List for PopList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines =
-            file::read_lines(&Self::path())
-                .chain_err(|| "unable to read pop list. run `cargobomb create-full-lists`?")?;
+        let lines = file::read_lines(&Self::path())
+            .chain_err(|| "unable to read pop list. run `cargobomb create-lists`?")?;
         split_crate_lines(&lines)
     }
 
@@ -209,9 +207,8 @@ impl List for HotList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines =
-            file::read_lines(&Self::path())
-                .chain_err(|| "unable to read hot list. run `cargobomb create-full-lists`?")?;
+        let lines = file::read_lines(&Self::path())
+            .chain_err(|| "unable to read hot list. run `cargobomb create-lists`?")?;
         split_crate_lines(&lines)
     }
 
@@ -235,10 +232,10 @@ impl List for GitHubCandidateList {
 
     fn read() -> Result<Vec<Crate>> {
         Ok(file::read_lines(&Self::path())
-            .chain_err(|| "unable to read gh-candidates list. run `cargobomb create-full-lists`?")?
-            .into_iter()
-            .map(|line| Crate::Repo { url: line })
-            .collect())
+               .chain_err(|| "unable to read gh-candidates list. run `cargobomb create-lists`?",)?
+               .into_iter()
+               .map(|line| Crate::Repo { url: line })
+               .collect())
     }
 
     fn path() -> PathBuf {
@@ -291,7 +288,7 @@ impl List for GitHubAppList {
 
     fn read() -> Result<Vec<Crate>> {
         Ok(file::read_lines(&GitHubAppList::path())
-               .chain_err(|| "unable to read gh-app list. run `cargobomb create-full-lists`?")?
+               .chain_err(|| "unable to read gh-app list. run `cargobomb create-lists`?")?
                .into_iter()
                .map(|line| Crate::Repo { url: line })
                .collect())

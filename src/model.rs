@@ -36,7 +36,7 @@ struct RunTc(Ex, Toolchain);
 struct GenReport(Ex);
 struct DeleteAllTargetDirs(Ex);
 
-struct CreateListsFull;
+struct CreateLists;
 
 struct CopyEx(Ex, Ex);
 struct DeleteEx(Ex);
@@ -77,7 +77,7 @@ impl Cmd for PrepareLocal {
 }
 
 // List creation
-impl Cmd for CreateListsFull {
+impl Cmd for CreateLists {
     fn run(&self) -> Result<()> {
         lists::create_all_lists(true)
     }
@@ -220,7 +220,7 @@ pub mod conv {
                 "acquire toolchains, build containers, build crate lists"),
 
             // List creation
-            cmd("create-list-full", "create all the lists of crates"),
+            cmd("create-lists", "create all the lists of crates"),
 
             // Master experiment prep
             cmd("define-ex", "define an experiment")
@@ -290,7 +290,7 @@ pub mod conv {
         Ok(match m.subcommand() {
                // Local prep
                ("prepare-local", _) => Box::new(PrepareLocal),
-               ("create-list-full", _) => Box::new(CreateListsFull),
+               ("create-lists", _) => Box::new(CreateLists),
 
                // Master experiment prep
                ("define-ex", Some(m)) => {

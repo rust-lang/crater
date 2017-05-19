@@ -34,14 +34,14 @@ const QUERIES: &'static [&'static str] = &[
 
 
 use std::marker::PhantomData;
-struct PageIter<'a, T> {
+struct PageIter<T> {
     next_page: Option<String>,
-    request_fn: &'a Fn(&str) -> Result<reqwest::Response>,
+    request_fn: fn(&str) -> Result<reqwest::Response>,
     _type: PhantomData<T>,
 }
 
-impl<'a, T> PageIter<'a, T> {
-    fn new(url: &str, request_fn: &'a Fn(&str) -> Result<reqwest::Response>) -> Self {
+impl<T> PageIter<T> {
+    fn new(url: &str, request_fn: fn(&str) -> Result<reqwest::Response>) -> Self {
         PageIter {
             next_page: Some(url.into()),
             _type: PhantomData,
@@ -50,7 +50,7 @@ impl<'a, T> PageIter<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for PageIter<'a, T>
+impl<T> Iterator for PageIter<T>
     where T: DeserializeOwned
 {
     type Item = GitHubSearchPage<T>;
@@ -73,6 +73,12 @@ impl<'a, T> Iterator for PageIter<'a, T>
             None
         }
     }
+}
+
+fn gh_search<T>(url: &str) -> Box<Iterator<Item = T>>
+    where T: DeserializeOwned + 'static
+{
+    Box::new(PageIter::new(url, gh_request).flat_map(|json| json.items))
 }
 
 header! { ( XRateLimitRemaining, "X-RateLimit-Remaining") => [u32] }
@@ -137,16 +143,14 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
           QUERIES.len() * QUERIES_PER,
           QUERIES.len() * QUERIES_PER * TIME_PER);
 
-    let gh_request = &gh_request;
     let mut urls: HashSet<_> = QUERIES
         .iter()
         .flat_map(|q| {
-                      PageIter::<GitHubRepositoryItem>::new(q, gh_request)
-                          .flat_map(|json| json.items)
-                          .map(|item| {
-                                   info!("found rust repo {}", item.full_name);
-                                   item.full_name
-                               })
+                      gh_search::<GitHubRepositoryItem>(q).map(|item| {
+                                                                   info!("found rust repo {}",
+                                                                         item.full_name);
+                                                                   item.full_name
+                                                               })
                   })
         .collect();
 

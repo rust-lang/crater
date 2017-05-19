@@ -2,6 +2,7 @@ use dl;
 use errors::*;
 use hyper::header::{Link, RelationType};
 use reqwest;
+use serde::de::DeserializeOwned;
 use std::collections::HashSet;
 use std::io::Read;
 use std::thread;
@@ -32,6 +33,47 @@ const QUERIES: &'static [&'static str] = &[
 ];
 
 
+use std::marker::PhantomData;
+struct PageIter<'a, T> {
+    next_page: Option<String>,
+    request_fn: &'a Fn(&str) -> Result<reqwest::Response>,
+    _type: PhantomData<T>,
+}
+
+impl<'a, T> PageIter<'a, T> {
+    fn new(url: &str, request_fn: &'a Fn(&str) -> Result<reqwest::Response>) -> Self {
+        PageIter {
+            next_page: Some(url.into()),
+            _type: PhantomData,
+            request_fn,
+        }
+    }
+}
+
+impl<'a, T> Iterator for PageIter<'a, T>
+    where T: DeserializeOwned
+{
+    type Item = GitHubSearchPage<T>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(url) = self.next_page.take() {
+            info!("downloading {}", url);
+            let mut response = (self.request_fn)(&url).unwrap();
+            let json: GitHubSearchPage<T> = response.json().unwrap();
+
+            if let Some(links) = response.headers().get::<Link>() {
+                for link in links.values() {
+                    if link.rel() == Some(&[RelationType::Next]) {
+                        self.next_page = Some(link.link().to_string());
+                        break;
+                    }
+                }
+            }
+            Some(json)
+        } else {
+            None
+        }
+    }
+}
 
 header! { ( XRateLimitRemaining, "X-RateLimit-Remaining") => [u32] }
 header! { ( XRateLimitReset, "X-RateLimit-Reset") => [u64] }
@@ -52,11 +94,14 @@ fn is_ratelimited(response: &reqwest::Response) -> Option<SystemTime> {
                   })
 }
 
-fn gh_request(url: &str) -> Result<reqwest::Response> {
+/// Retry rate-limited requests, obeying `X-RateLimit-Remaining` and `X-RateLimit-Reset`.
+fn retry_ratelimit(url: &str,
+                   request_fn: &Fn(&str) -> Result<reqwest::Response>)
+                   -> Result<reqwest::Response> {
     // See https://github.com/Manishearth/rust-clippy/issues/1586
     #[cfg_attr(feature = "cargo-clippy", allow(never_loop))]
     loop {
-        let response = dl::download_no_retry(url)?;
+        let response = request_fn(url)?;
         if let Some(expiry) = is_ratelimited(&response) {
             if let Ok(duration) = expiry.duration_since(SystemTime::now()) {
                 warn!("GitHub ratelimit, retrying in {}s", duration.as_secs());
@@ -68,13 +113,19 @@ fn gh_request(url: &str) -> Result<reqwest::Response> {
     }
 }
 
-#[derive(Deserialize)]
-struct GitHubSearchPage {
-    items: Vec<GitHubSearchItem>,
+fn gh_request(url: &str) -> Result<reqwest::Response> {
+    util::try_hard_limit(10000, || retry_ratelimit(url, &dl::download_no_retry))
+        .and_then(|response| Ok(response.error_for_status()?))
+        .chain_err(|| "unable to query github for rust repos")
 }
 
 #[derive(Deserialize)]
-struct GitHubSearchItem {
+struct GitHubSearchPage<Item> {
+    items: Vec<Item>,
+}
+
+#[derive(Deserialize)]
+struct GitHubRepositoryItem {
     full_name: String,
 }
 
@@ -86,44 +137,18 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
           QUERIES.len() * QUERIES_PER,
           QUERIES.len() * QUERIES_PER * TIME_PER);
 
-    let mut urls = HashSet::new();
-    'next_query: for q in QUERIES {
-        let mut url = q.to_string();
-        'next_page: loop {
-            info!("downloading {}", url);
-
-            let mut response = util::try_hard_limit(10000, || gh_request(&url))
-                .chain_err(|| "unable to query github for rust repos")?;
-
-            if !response.status().is_success() {
-                info!("error result: {}. continuing", response.status());
-                continue 'next_query;
-            }
-
-
-            let json: GitHubSearchPage = response.json()?;
-
-            if json.items.is_empty() {
-                info!("no results. continuing");
-                continue 'next_query;
-            }
-
-            for item in json.items {
-                info!("found rust repo {}", item.full_name);
-                urls.insert(item.full_name);
-            }
-
-            if let Some(links) = response.headers().get::<Link>() {
-                for link in links.values() {
-                    if link.rel() == Some(&[RelationType::Next]) {
-                        url = link.link().to_string();
-                        continue 'next_page;
-                    }
-                }
-            }
-            continue 'next_query;
-        }
-    }
+    let gh_request = &gh_request;
+    let mut urls: HashSet<_> = QUERIES
+        .iter()
+        .flat_map(|q| {
+                      PageIter::<GitHubRepositoryItem>::new(q, gh_request)
+                          .flat_map(|json| json.items)
+                          .map(|item| {
+                                   info!("found rust repo {}", item.full_name);
+                                   item.full_name
+                               })
+                  })
+        .collect();
 
     let mut urls = urls.drain().collect::<Vec<_>>();
     urls.sort();

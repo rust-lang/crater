@@ -12,7 +12,7 @@ dependencies = [
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "scopeguard 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "semver 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -534,8 +534,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "reqwest"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.6.2"
+source = "git+https://github.com/tomprince/reqwest?branch=error-for-status#7aa8777fb16e19a484f67fd40d51b8138ecd157c"
 dependencies = [
  "hyper 0.10.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper-native-tls 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -546,6 +546,12 @@ dependencies = [
  "serde_urlencoded 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "reqwest"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+replace = "reqwest 0.6.2 (git+https://github.com/tomprince/reqwest?branch=error-for-status)"
 
 [[package]]
 name = "rustc-demangle"
@@ -1056,7 +1062,8 @@ dependencies = [
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "022e0636ec2519ddae48154b028864bdce4eaf7d35226ab8e65c611be97b189d"
 "checksum redox_syscall 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)" = "29dbdfd4b9df8ab31dec47c6087b7b13cbf4a776f335e4de8efba8288dda075b"
-"checksum reqwest 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8a546e7fae4f94bd23bd818fd70d5aba0ccd5ed26221803eaf2898c358844895"
+"checksum reqwest 0.6.2 (git+https://github.com/tomprince/reqwest?branch=error-for-status)" = "<none>"
+"checksum reqwest 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1d56dbe269dbe19d716b76ec8c3efce8ef84e974f5b7e5527463e8c0507d4e17"
 "checksum rustc-demangle 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "3058a43ada2c2d0b92b3ae38007a2d0fa5e9db971be260e0171408a4ff471c95"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
 "checksum rustc_version 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "c5f5376ea5e30ce23c03eb77cbe4962b988deead10910c372b226388b594c084"

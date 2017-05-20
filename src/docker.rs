@@ -3,14 +3,17 @@ use RUSTUP_HOME;
 use errors::*;
 use run;
 use std::env;
+use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+static IMAGE_NAME: &'static str = "cargobomb";
 
 /// Builds the docker container image, 'cargobomb', what will be used
 /// to isolate builds from each other. This expects the Dockerfile
 /// to exist in the `docker` directory, at runtime.
 pub fn build_container() -> Result<()> {
-    run::run("docker", &["build", "-t", "cargobomb", "docker"], &[])
+    run::run("docker", &["build", "-t", IMAGE_NAME, "docker"], &[])
 }
 
 #[derive(Copy, Clone)]
@@ -28,65 +31,6 @@ pub struct RustEnv<'a> {
     pub target_dir: (PathBuf, Perm),
 }
 
-pub fn create_rust_container(env: &RustEnv) -> Result<Container> {
-    info!("creating container for: {}", env.args.join(" "));
-
-    fs::create_dir_all(&env.work_dir.0)?;
-    fs::create_dir_all(&env.cargo_home.0)?;
-    fs::create_dir_all(&env.rustup_home.0)?;
-    fs::create_dir_all(&env.target_dir.0)?;
-
-    let mount_arg = |host_path, container_path, perm| {
-        let perm = match perm {
-            Perm::ReadWrite => "rw",
-            Perm::ReadOnly => "ro",
-        };
-        format!("{}:{}:{}",
-                absolute(host_path).display(),
-                container_path,
-                perm)
-    };
-
-    let work_mount = mount_arg(&env.work_dir.0, "/source", env.work_dir.1);
-    let cargo_home_mount = mount_arg(&env.cargo_home.0, "/cargo-home", env.cargo_home.1);
-    let rustup_home_mount = mount_arg(&env.rustup_home.0, "/rustup-home", env.rustup_home.1);
-    let target_mount = mount_arg(&env.target_dir.0, "/target", env.target_dir.1);
-
-    let image_name = "cargobomb";
-
-    let user_env = &format!("USER_ID={}", user_id());
-    let cmd_env = &format!("CMD={}", env.args.join(" "));
-
-    let docker_gid_;
-    let mut args_ = vec![
-        "-v",
-        &work_mount,
-        "-v",
-        &cargo_home_mount,
-        "-v",
-        &rustup_home_mount,
-        "-v",
-        &target_mount,
-        "-e",
-        user_env,
-        "-e",
-        cmd_env,
-    ];
-
-    // Let the container talk to the docker daemon
-    if env.privileged {
-        let docker_socket_mount = "/var/run/docker.sock:/var/run/docker.sock";
-        args_.push("-v");
-        args_.push(docker_socket_mount);
-        args_.push("-e");
-        docker_gid_ = Some(format!("DOCKER_GROUP_ID={}", docker_gid()));
-        args_.push(docker_gid_.as_ref().expect(""));
-    }
-
-    args_.push(image_name);
-
-    create_container(&args_)
-}
 
 pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> {
 
@@ -102,11 +46,11 @@ pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> 
         target_dir: (target_path.into(), Perm::ReadWrite),
     };
 
-    let c = create_rust_container(&env)?;
+    let c = Container::create_rust_container(&env)?;
     defer!{{
-        delete_container(&c);
+        c.delete();
     }}
-    run_container(&c)
+    c.run()
 }
 
 fn absolute(path: &Path) -> PathBuf {
@@ -169,28 +113,91 @@ fn docker_gid() -> u32 {
     panic!("unimplemented docker_gid");
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Container(String);
-
-use std::fmt::{self, Display, Formatter};
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Container {
+    // Docker container ID
+    id: String,
+}
 
 impl Display for Container {
-    fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
-        self.0.fmt(f)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        self.id.fmt(f)
     }
 }
 
-fn create_container(args: &[&str]) -> Result<Container> {
-    let mut args_ = vec!["create"];
-    args_.extend(args.iter());
-    let (out, _) = run::run_capture(None, "docker", &args_, &[])?;
-    Ok(Container(out[0].clone()))
-}
+impl Container {
+    pub fn create_rust_container(env: &RustEnv) -> Result<Self> {
+        info!("creating container for: {}", env.args.join(" "));
 
-pub fn run_container(c: &Container) -> Result<()> {
-    run::run("docker", &["start", "-a", &c.0], &[])
-}
+        fs::create_dir_all(&env.work_dir.0)?;
+        fs::create_dir_all(&env.cargo_home.0)?;
+        fs::create_dir_all(&env.rustup_home.0)?;
+        fs::create_dir_all(&env.target_dir.0)?;
 
-pub fn delete_container(c: &Container) -> Result<()> {
-    run::run("docker", &["rm", "-f", &c.0], &[])
+        let mount_arg = |host_path, container_path, perm| {
+            let perm = match perm {
+                Perm::ReadWrite => "rw",
+                Perm::ReadOnly => "ro",
+            };
+            format!("{}:{}:{}",
+                    absolute(host_path).display(),
+                    container_path,
+                    perm)
+        };
+
+        let work_mount = mount_arg(&env.work_dir.0, "/source", env.work_dir.1);
+        let cargo_home_mount = mount_arg(&env.cargo_home.0, "/cargo-home", env.cargo_home.1);
+        let rustup_home_mount = mount_arg(&env.rustup_home.0, "/rustup-home", env.rustup_home.1);
+        let target_mount = mount_arg(&env.target_dir.0, "/target", env.target_dir.1);
+
+        let image_name = "cargobomb";
+
+        let user_env = &format!("USER_ID={}", user_id());
+        let cmd_env = &format!("CMD={}", env.args.join(" "));
+
+        let docker_gid_;
+        let mut args_ = vec![
+            "-v",
+            &work_mount,
+            "-v",
+            &cargo_home_mount,
+            "-v",
+            &rustup_home_mount,
+            "-v",
+            &target_mount,
+            "-e",
+            user_env,
+            "-e",
+            cmd_env,
+        ];
+
+        // Let the container talk to the docker daemon
+        if env.privileged {
+            let docker_socket_mount = "/var/run/docker.sock:/var/run/docker.sock";
+            args_.push("-v");
+            args_.push(docker_socket_mount);
+            args_.push("-e");
+            docker_gid_ = Some(format!("DOCKER_GROUP_ID={}", docker_gid()));
+            args_.push(docker_gid_.as_ref().expect(""));
+        }
+
+        args_.push(image_name);
+
+        Self::from_args(&args_)
+    }
+
+    fn from_args(args: &[&str]) -> Result<Self> {
+        let mut args_ = vec!["create"];
+        args_.extend(args.iter());
+        let (out, _) = run::run_capture(None, "docker", &args_, &[])?;
+        Ok(Self { id: out[0].clone() })
+    }
+
+    pub fn run(&self) -> Result<()> {
+        run::run("docker", &["start", "-a", &self.id], &[])
+    }
+
+    pub fn delete(&self) -> Result<()> {
+        run::run("docker", &["rm", "-f", &self.id], &[])
+    }
 }

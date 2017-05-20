@@ -94,7 +94,9 @@ fn is_ratelimited(response: &reqwest::Response) -> Option<SystemTime> {
         .and_then(|&XRateLimitRemaining(limit)| if limit == 0 {
                       headers
                           .get::<XRateLimitReset>()
-                          .map(|reset| UNIX_EPOCH + Duration::from_secs(reset.0))
+                          // Add 1s to account for time divergence.
+                          // If it isn't enough, we'll just retry anyway.
+                          .map(|reset| UNIX_EPOCH + Duration::from_secs(reset.0+1))
                   } else {
                       None
                   })

@@ -26,7 +26,9 @@ extern crate libc;
 extern crate winapi;
 extern crate kernel32;
 extern crate reqwest;
-#[macro_use(slog_o, slog_info, slog_log, slog_error,
+#[macro_use]
+extern crate hyper;
+#[macro_use(slog_o, slog_info, slog_log, slog_error, slog_warn,
             slog_record, slog_record_static, slog_b, slog_kv)]
 extern crate slog;
 #[macro_use]

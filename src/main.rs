@@ -32,6 +32,11 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 extern crate slog_term;
+extern crate futures;
+extern crate tokio_core;
+extern crate tokio_process;
+extern crate tokio_io;
+extern crate tokio_timer;
 
 #[macro_use]
 mod log;

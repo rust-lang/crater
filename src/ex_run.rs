@@ -2,30 +2,14 @@ use docker;
 use errors::*;
 use ex::*;
 use file;
-use gh_mirrors;
-use log;
 use model::ExMode;
+use results::{ResultWriter, TestResult};
 use std::collections::HashSet;
-use std::fmt::{self, Display, Formatter};
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::Path;
 use std::time::Instant;
 use toolchain::Toolchain;
 use util;
 
-pub fn result_dir(ex_name: &str, c: &ExCrate, toolchain: &Toolchain) -> Result<PathBuf> {
-    let tc = toolchain.rustup_name();
-    Ok(ex_dir(ex_name).join("res").join(tc).join(crate_to_dir(c)?))
-}
-
-pub fn result_file(ex_name: &str, c: &ExCrate, toolchain: &Toolchain) -> Result<PathBuf> {
-    Ok(result_dir(ex_name, c, toolchain)?.join("results.txt"))
-}
-
-pub fn result_log(ex_name: &str, c: &ExCrate, toolchain: &Toolchain) -> Result<PathBuf> {
-    Ok(result_dir(ex_name, c, toolchain)?.join("log.txt"))
-}
 
 pub fn delete_all_results(ex_name: &str) -> Result<()> {
     let dir = ex_dir(ex_name).join("res");
@@ -34,19 +18,6 @@ pub fn delete_all_results(ex_name: &str) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn crate_to_dir(c: &ExCrate) -> Result<String> {
-    match *c {
-        ExCrate::Version {
-            ref name,
-            ref version,
-        } => Ok(format!("reg/{}-{}", name, version)),
-        ExCrate::Repo { ref url, ref sha } => {
-            let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-            Ok(format!("gh/{}.{}.{}", org, name, sha))
-        }
-    }
 }
 
 pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
@@ -88,23 +59,28 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     info!("running {} tests", total_crates);
     for (ref c, _) in crates {
         for tc in tcs {
+            let writer = ResultWriter::new(ex_name, c, tc);
             let r = {
-                let existing_result = get_test_result(ex_name, c, tc)?;
+                let existing_result = writer.get_test_results()?;
                 if let Some(r) = existing_result {
                     skipped_crates += 1;
 
                     info!("skipping crate {}. existing result: {}", c, r);
-                    let file = result_file(ex_name, c, tc)?;
+                    let file = writer.result_file();
                     info!("delete result file to rerun test: {}", file.display());
                     Ok(r)
                 } else {
                     completed_crates += 1;
 
-                    with_work_crate(ex_name, tc, c, |path| {
-                        with_frobbed_toml(ex_name, c, path)?;
-                        with_captured_lockfile(ex_name, c, path)?;
+                    with_work_crate(ex_name, tc, c, |source_path| {
+                        with_frobbed_toml(ex_name, c, source_path)?;
+                        with_captured_lockfile(ex_name, c, source_path)?;
 
-                        run_single_test(ex_name, c, path, tc, &test_fn)
+                        writer.record_results(|| {
+                            info!("testing {} against {} for {}", c, tc.to_string(), ex_name);
+                            let target_path = tc.target_dir(ex_name);
+                            test_fn(source_path, &target_path, &tc.rustup_name())
+                        })
                     })
                 }
             };
@@ -116,7 +92,12 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                 }
                 Ok(ref r) => {
                     // FIXME: Should errors be recorded?
-                    record_test_result(ex_name, c, tc, *r);
+                    info!("test result! ex: {}, c: {}, tc: {}, r: {}",
+                          ex_name,
+                          c,
+                          tc.to_string(),
+                          r);
+                    info!("file: {}", writer.result_file().display());
                 }
             }
 
@@ -176,69 +157,6 @@ fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     Ok(())
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub enum TestResult {
-    BuildFail,
-    TestFail,
-    TestPass,
-}
-
-impl Display for TestResult {
-    fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
-        self.to_string().fmt(f)
-    }
-}
-
-impl FromStr for TestResult {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<TestResult> {
-        match s {
-            "build-fail" => Ok(TestResult::BuildFail),
-            "test-fail" => Ok(TestResult::TestFail),
-            "test-pass" => Ok(TestResult::TestPass),
-            _ => Err(format!("bogus test result: {}", s).into()),
-        }
-    }
-}
-
-impl TestResult {
-    fn to_string(&self) -> String {
-        match *self {
-                TestResult::BuildFail => "build-fail",
-                TestResult::TestFail => "test-fail",
-                TestResult::TestPass => "test-pass",
-            }
-            .to_string()
-    }
-}
-
-fn run_single_test<F>(ex_name: &str,
-                      c: &ExCrate,
-                      source_path: &Path,
-                      toolchain: &Toolchain,
-                      f: &F)
-                      -> Result<TestResult>
-    where F: Fn(&Path, &Path, &str) -> Result<TestResult>
-{
-    let result_dir = result_dir(ex_name, c, toolchain)?;
-    if result_dir.exists() {
-        util::remove_dir_all(&result_dir)?;
-    }
-    fs::create_dir_all(&result_dir)?;
-    let log_file = result_log(ex_name, c, toolchain)?;
-
-    log::redirect(&log_file, || {
-        info!("testing {} against {} for {}",
-              c,
-              toolchain.to_string(),
-              ex_name);
-        let tc = toolchain.rustup_name();
-        let target_path = toolchain.target_dir(ex_name);
-        f(source_path, &target_path, &tc)
-    })
-}
-
 fn test_build_and_test(source_path: &Path,
                        target_path: &Path,
                        rustup_tc: &str)
@@ -295,39 +213,6 @@ fn test_check_only(source_path: &Path, target_path: &Path, rustup_tc: &str) -> R
         Ok(TestResult::TestPass)
     } else {
         Ok(TestResult::BuildFail)
-    }
-}
-
-fn record_test_result(ex_name: &str,
-                      c: &ExCrate,
-                      toolchain: &Toolchain,
-                      r: TestResult)
-                      -> Result<()> {
-    let result_dir = result_dir(ex_name, c, toolchain)?;
-    fs::create_dir_all(&result_dir)?;
-    let result_file = result_file(ex_name, c, toolchain)?;
-    info!("test result! ex: {}, c: {}, tc: {}, r: {}",
-          ex_name,
-          c,
-          toolchain.to_string(),
-          r);
-    info!("file: {}", result_file.display());
-    file::write_string(&result_file, &r.to_string())?;
-    Ok(())
-}
-
-pub fn get_test_result(ex_name: &str,
-                       c: &ExCrate,
-                       toolchain: &Toolchain)
-                       -> Result<Option<TestResult>> {
-    let result_file = result_file(ex_name, c, toolchain)?;
-    if result_file.exists() {
-        let s = file::read_string(&result_file)?;
-        let r = s.parse::<TestResult>()
-            .chain_err(|| format!("invalid test result value: '{}'", s))?;
-        Ok(Some(r))
-    } else {
-        Ok(None)
     }
 }
 

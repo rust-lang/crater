@@ -1,8 +1,8 @@
 use errors::*;
 use ex;
-use ex_run;
 use file;
 use gh_mirrors;
+use results::{ResultWriter, TestResult};
 use serde_json;
 use std::path::{Path, PathBuf};
 
@@ -34,7 +34,7 @@ enum Comparison {
 
 #[derive(Serialize, Deserialize)]
 struct BuildTestResult {
-    res: ex_run::TestResult,
+    res: TestResult,
     log: String,
 }
 
@@ -52,10 +52,11 @@ pub fn gen(ex_name: &str) -> Result<()> {
                 .toolchains
                 .iter()
                 .map(|tc| -> Result<BuildTestResult> {
-                    let res = ex_run::get_test_result(ex_name, &krate, tc)?;
+                    let writer = ResultWriter::new(ex_name, &krate, tc);
+                    let res = writer.get_test_results()?;
                     // If there was no test result return an error
                     let res = res.ok_or_else(|| Error::from("no result"))?;
-                    let result_log = ex_run::result_log(ex_name, &krate, tc)?;
+                    let result_log = writer.result_log();
                     let rel_log = relative(&ex_dir, &result_log)?;
 
                     Ok(BuildTestResult {
@@ -109,7 +110,7 @@ fn relative(parent: &Path, child: &Path) -> Result<PathBuf> {
 }
 
 fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Comparison {
-    use ex_run::TestResult::*;
+    use results::TestResult::*;
     match (r1, r2) {
         (&Some(BuildTestResult { res: ref res1, .. }),
          &Some(BuildTestResult { res: ref res2, .. })) => {

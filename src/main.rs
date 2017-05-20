@@ -55,6 +55,7 @@ mod gh_mirrors;
 mod report;
 mod docker;
 mod dirs;
+mod results;
 
 use clap::{App, AppSettings};
 use dirs::*;

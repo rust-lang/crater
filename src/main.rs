@@ -32,7 +32,6 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 extern crate slog_term;
-extern crate slog_async;
 
 #[macro_use]
 mod log;

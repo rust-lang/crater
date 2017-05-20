@@ -3,7 +3,6 @@ use chrono::UTC;
 use errors::*;
 
 use slog::{self, Drain};
-use slog_async;
 use slog_scope;
 use slog_term;
 use std::env;
@@ -11,7 +10,7 @@ use std::fs;
 use std::fs::{File, OpenOptions};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 fn global_log_name() -> &'static Path {
@@ -38,10 +37,11 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref TERM_DRAIN: Arc<slog::Fuse<slog_async::Async>> = {
+    static ref TERM_DRAIN: Arc<slog::Fuse<Mutex<
+        slog_term::CompactFormat<slog_term::TermDecorator>>>> = {
         let plain = slog_term::TermDecorator::new().stdout().build();
-        let term = slog_term::CompactFormat::new(plain).build().fuse();
-        Arc::new(slog_async::Async::new(term).build().fuse())
+        let term = Mutex::new(slog_term::CompactFormat::new(plain).build()).fuse();
+        Arc::new(term)
     };
 }
 

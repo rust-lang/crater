@@ -19,6 +19,7 @@ rewrite.
 
 use errors::*;
 use ex::ExCrate;
+use std::path::PathBuf;
 use toolchain::Toolchain;
 
 // An experiment name
@@ -34,7 +35,7 @@ struct DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect);
 struct PrepareEx(Ex);
 struct Run(Ex);
 struct RunTc(Ex, Toolchain);
-struct GenReport(Ex);
+struct GenReport(Ex, PathBuf);
 struct DeleteAllTargetDirs(Ex);
 
 struct CreateLists;
@@ -166,8 +167,8 @@ impl Cmd for RunTc {
 // Reporting
 impl Cmd for GenReport {
     fn run(&self) -> Result<()> {
-        let &GenReport(ref ex) = self;
-        report::gen(&ex.0)
+        let &GenReport(ref ex, ref path) = self;
+        report::gen(&ex.0, path)
     }
 }
 
@@ -265,7 +266,9 @@ pub mod conv {
                 .arg(req_tc()),
 
             // Reporting
-            cmd("gen-report", "generate the experiment report").arg(ex()),
+            cmd("gen-report", "generate the experiment report")
+                .arg(ex())
+                .arg(Arg::with_name("destination").required(true)),
         ]
     }
 
@@ -333,7 +336,10 @@ pub mod conv {
                ("run-tc", Some(m)) => Box::new(RunTc(ex(m)?, tc(m)?)),
 
                // Reporting
-               ("gen-report", Some(m)) => Box::new(GenReport(ex(m)?)),
+               ("gen-report", Some(m)) => {
+                   Box::new(GenReport(ex(m)?,
+                                      m.value_of("destination").map(PathBuf::from).expect("")))
+               }
 
                (s, _) => panic!("unimplemented args_to_cmd {}", s),
            })

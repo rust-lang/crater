@@ -129,7 +129,7 @@ function insertResults(results) {
 
         function runToHtml(run) {
             if (run.log) {
-	        return `<span><a href="${run.log}">${run.res}</a></span>`;
+	        return `<span><a href="${run.log}/log.txt">${run.res}</a></span>`;
             } else {
 	        return `<span>${run.res}</span>`;
             }

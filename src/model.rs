@@ -19,7 +19,6 @@ rewrite.
 
 use errors::*;
 use ex::ExCrate;
-use result::OptionResultExt;
 use toolchain::Toolchain;
 
 // An experiment name
@@ -323,6 +322,7 @@ pub mod conv {
                ("delete-all-target-dirs", Some(m)) => Box::new(DeleteAllTargetDirs(ex(m)?)),
                ("delete-all-results", Some(m)) => Box::new(DeleteAllResults(ex(m)?)),
                ("delete-result", Some(m)) => {
+                   use result::OptionResultExt;
                    Box::new(DeleteResult(ex(m)?,
                                          m.value_of("tc").map(str::parse).invert()?,
                                          m.value_of("crate").map(str::parse).expect("")?))

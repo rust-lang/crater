@@ -86,8 +86,11 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                     skipped_crates += 1;
 
                     info!("skipping crate {}. existing result: {}", c, r);
-                    let file = writer.result_file();
-                    info!("delete result file to rerun test: {}", file.display());
+                    info!("delete result file to rerun test: \
+                           \"cargobomb delete-result {} --toolchain {} {}\"",
+                          ex_name,
+                          tc.to_string(),
+                          c);
                     Ok(r)
                 } else {
                     completed_crates += 1;
@@ -117,7 +120,6 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                           c,
                           tc.to_string(),
                           r);
-                    info!("file: {}", writer.result_file().display());
                 }
             }
 

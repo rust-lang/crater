@@ -63,7 +63,7 @@ impl<'a> ResultWriter<'a> {
             .join(crate_to_dir(self.crate_))
     }
 
-    pub fn result_file(&self) -> PathBuf {
+    fn result_file(&self) -> PathBuf {
         self.result_dir().join("results.txt")
     }
 

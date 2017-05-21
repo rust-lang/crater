@@ -145,7 +145,7 @@ impl Cmd for DeleteAllResults {
 impl Cmd for DeleteResult {
     fn run(&self) -> Result<()> {
         let &DeleteResult(ref ex, ref tc, ref crate_) = self;
-        ex_run::delete_result(&ex.0, tc.clone(), crate_)
+        ex_run::delete_result(&ex.0, tc.as_ref(), crate_)
     }
 }
 

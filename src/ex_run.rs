@@ -4,7 +4,7 @@ use ex::*;
 use file;
 use model::ExMode;
 use ref_slice::ref_slice;
-use results::{ResultWriter, TestResult};
+use results::{CrateResultWriter, ResultWriter, TestResult};
 use std::collections::HashSet;
 use std::path::Path;
 use std::time::Instant;

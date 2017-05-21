@@ -32,6 +32,63 @@ pub struct ResultWriter<'a> {
     toolchain: &'a Toolchain,
 }
 
+pub trait CrateResultWriter {
+    /// Return a path fragement that can be used to identify this crate and
+    /// toolchain.
+    fn result_path_fragement(&self) -> PathBuf;
+
+    fn record_results<F>(&self, f: F) -> Result<TestResult> where F: FnOnce() -> Result<TestResult>;
+    fn get_test_results(&self) -> Result<Option<TestResult>>;
+    fn read_log(&self) -> Result<fs::File>;
+    fn delete_result(&self) -> Result<()>;
+}
+
+impl<'a> CrateResultWriter for ResultWriter<'a> {
+    fn delete_result(&self) -> Result<()> {
+        let result_dir = self.result_dir();
+        if result_dir.exists() {
+            util::remove_dir_all(&result_dir)?;
+        }
+        Ok(())
+    }
+
+    /// Return a path fragement that can be used to identify this crate and
+    /// toolchain.
+    fn result_path_fragement(&self) -> PathBuf {
+        let tc = self.toolchain.rustup_name();
+        PathBuf::from(tc).join(crate_to_dir(self.crate_))
+    }
+
+    fn read_log(&self) -> Result<fs::File> {
+        fs::File::open(self.result_log()).chain_err(|| "Couldn't open result file.")
+    }
+
+    fn record_results<F>(&self, f: F) -> Result<TestResult>
+        where F: FnOnce() -> Result<TestResult>
+    {
+        self.init()?;
+        let log_file = self.result_log();
+        let result_file = self.result_file();
+
+        let result = log::redirect(&log_file, f)?;
+        file::write_string(&result_file, &result.to_string())?;
+
+        Ok(result)
+    }
+
+    fn get_test_results(&self) -> Result<Option<TestResult>> {
+        let result_file = self.result_file();
+        if result_file.exists() {
+            let s = file::read_string(&result_file)?;
+            let r = s.parse::<TestResult>()
+                .chain_err(|| format!("invalid test result value: '{}'", s))?;
+            Ok(Some(r))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
 impl<'a> ResultWriter<'a> {
     pub fn new(ex_name: &'a str, crate_: &'a ExCrate, toolchain: &'a Toolchain) -> Self {
         Self {
@@ -47,20 +104,6 @@ impl<'a> ResultWriter<'a> {
         Ok(())
     }
 
-    pub fn delete_result(&self) -> Result<()> {
-        let result_dir = self.result_dir();
-        if result_dir.exists() {
-            util::remove_dir_all(&result_dir)?;
-        }
-        Ok(())
-    }
-
-    /// Return a path fragement that can be used to identify this crate and
-    /// toolchain.
-    pub fn result_path_fragement(&self) -> PathBuf {
-        let tc = self.toolchain.rustup_name();
-        PathBuf::from(tc).join(crate_to_dir(self.crate_))
-    }
 
     fn result_dir(&self) -> PathBuf {
         ex_dir(self.ex_name)
@@ -74,35 +117,6 @@ impl<'a> ResultWriter<'a> {
 
     fn result_log(&self) -> PathBuf {
         self.result_dir().join("log.txt")
-    }
-
-    pub fn read_log(&self) -> Result<fs::File> {
-        fs::File::open(self.result_log()).chain_err(|| "Couldn't open result file.")
-    }
-
-    pub fn record_results<F>(&self, f: F) -> Result<TestResult>
-        where F: FnOnce() -> Result<TestResult>
-    {
-        self.init()?;
-        let log_file = self.result_log();
-        let result_file = self.result_file();
-
-        let result = log::redirect(&log_file, f)?;
-        file::write_string(&result_file, &result.to_string())?;
-
-        Ok(result)
-    }
-
-    pub fn get_test_results(&self) -> Result<Option<TestResult>> {
-        let result_file = self.result_file();
-        if result_file.exists() {
-            let s = file::read_string(&result_file)?;
-            let r = s.parse::<TestResult>()
-                .chain_err(|| format!("invalid test result value: '{}'", s))?;
-            Ok(Some(r))
-        } else {
-            Ok(None)
-        }
     }
 }
 

@@ -2,7 +2,7 @@ use errors::*;
 use ex;
 use file;
 use gh_mirrors;
-use results::{ResultWriter, TestResult};
+use results::{CrateResultWriter, ResultWriter, TestResult};
 use serde_json;
 use std::{fs, io};
 use std::fs::File;

@@ -18,6 +18,7 @@ rewrite.
 */
 
 use errors::*;
+use ex::ExCrate;
 use toolchain::Toolchain;
 
 // An experiment name
@@ -42,6 +43,7 @@ struct CopyEx(Ex, Ex);
 struct DeleteEx(Ex);
 
 struct DeleteAllResults(Ex);
+struct DeleteResult(Ex, Option<Toolchain>, ExCrate);
 
 #[derive(Serialize, Deserialize)]
 #[derive(Debug, Clone)]
@@ -137,6 +139,13 @@ impl Cmd for DeleteAllResults {
     fn run(&self) -> Result<()> {
         let &DeleteAllResults(ref ex) = self;
         ex_run::delete_all_results(&ex.0)
+    }
+}
+
+impl Cmd for DeleteResult {
+    fn run(&self) -> Result<()> {
+        let &DeleteResult(ref ex, ref tc, ref crate_) = self;
+        ex_run::delete_result(&ex.0, tc.clone(), crate_)
     }
 }
 
@@ -239,6 +248,15 @@ pub mod conv {
                 "delete the cargo target dirs for an experiment")
                     .arg(ex()),
             cmd("delete-all-results", "delete all results for an experiment").arg(ex()),
+            cmd("delete-result",
+                "delete results for a crate from an experiment")
+                    .arg(ex())
+                    .arg(Arg::with_name("toolchain")
+                             .long("toolchain")
+                             .short("t")
+                             .takes_value(true)
+                             .required(false))
+                    .arg(Arg::with_name("crate").required(true)),
 
             // Experimenting
             cmd("run", "run an experiment, with all toolchains").arg(ex()),
@@ -303,6 +321,12 @@ pub mod conv {
                // Local experiment prep
                ("delete-all-target-dirs", Some(m)) => Box::new(DeleteAllTargetDirs(ex(m)?)),
                ("delete-all-results", Some(m)) => Box::new(DeleteAllResults(ex(m)?)),
+               ("delete-result", Some(m)) => {
+                   use result::OptionResultExt;
+                   Box::new(DeleteResult(ex(m)?,
+                                         m.value_of("tc").map(str::parse).invert()?,
+                                         m.value_of("crate").map(str::parse).expect("")?))
+               }
 
                // Experimenting
                ("run", Some(m)) => Box::new(Run(ex(m)?)),

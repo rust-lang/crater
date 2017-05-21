@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use toml_frobber;
 use toolchain::{self, Toolchain};
 use util;
@@ -223,6 +224,34 @@ impl Display for ExCrate {
             ExCrate::Repo { ref url, ref sha } => format!("{}#{}", url, sha),
         };
         s.fmt(f)
+    }
+}
+
+impl FromStr for ExCrate {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        if s.starts_with("https://") {
+            if let Some(hash_idx) = s.find('#') {
+                let repo = &s[..hash_idx];
+                let sha = &s[hash_idx + 1..];
+                Ok(ExCrate::Repo {
+                       url: repo.to_string(),
+                       sha: sha.to_string(),
+                   })
+            } else {
+                Err("no sha for git crate".into())
+            }
+        } else if let Some(dash_idx) = s.rfind('-') {
+            let name = &s[..dash_idx];
+            let version = &s[dash_idx + 1..];
+            Ok(ExCrate::Version {
+                   name: name.to_string(),
+                   version: version.to_string(),
+               })
+        } else {
+            Err("no version for crate".into())
+        }
     }
 }
 

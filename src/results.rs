@@ -42,11 +42,16 @@ impl<'a> ResultWriter<'a> {
     }
 
     fn init(&self) -> Result<()> {
+        self.delete_result()?;
+        fs::create_dir_all(&self.result_dir())?;
+        Ok(())
+    }
+
+    pub fn delete_result(&self) -> Result<()> {
         let result_dir = self.result_dir();
         if result_dir.exists() {
             util::remove_dir_all(&result_dir)?;
         }
-        fs::create_dir_all(&result_dir)?;
         Ok(())
     }
 

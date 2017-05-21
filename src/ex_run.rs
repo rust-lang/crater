@@ -20,6 +20,26 @@ pub fn delete_all_results(ex_name: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn delete_result(ex_name: &str, tc: Option<Toolchain>, crate_: &ExCrate) -> Result<()> {
+    let config = &load_config(ex_name)?;
+
+    let tcs: [Toolchain; 1];
+
+    let tcs: &[Toolchain] = match tc {
+        Some(tc) => {
+            tcs = [tc];
+            &tcs
+        }
+        None => &config.toolchains,
+    };
+    for tc in tcs {
+        let writer = ResultWriter::new(ex_name, crate_, tc);
+        writer.delete_result()?;
+    }
+
+    Ok(())
+}
+
 pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
     let config = &load_config(ex_name)?;
     run_exts(config, &config.toolchains)

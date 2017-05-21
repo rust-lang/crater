@@ -100,11 +100,10 @@ it to analyze a nightly, upload reports to S3, and triage them.
 - At the same time, in "tc2" run `cargo run -- run-tc --ex nightly-2017-04-24 nightly`
 - That will take about 4 days. The runs can be stopped and restarted
   at any time.
-- In "master" run `cargo run -- gen-report --ex nightly-2017-04-24`
 - In "upload" run `rm * -r` to delete existing reports (they are
   already uploaded to S3 and will just slow down the next sync
   operation)
-- In "upload" run `cp ../cargobomb/work/ex/nightly-2017-04-24/ . -r`
+- In "master" run `cargo run -- gen-report --ex nightly-2017-04-24 cargobomb-reports/nightly-2017-04-24`
 - In "upload" run `s3cmd -P sync ./ s3://cargobomb-reports/`
 - In "master" run `cargo run -- delete-all-target-dirs --ex nightly-2017-04-24`
   to free up disk space

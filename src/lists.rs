@@ -40,12 +40,13 @@ impl List for RecentList {
         info!("creating recent list");
         fs::create_dir_all(LIST_DIR)?;
 
-        let crates = registry::find_registry_crates()?;
-        let crates: Vec<_> = crates
-            .into_iter()
-            .map(|mut crate_| (crate_.name, crate_.versions.pop().expect("").0))
-            .collect();
-        write_crate_list(&Self::path(), &crates)?;
+        let crates =
+            registry::crates_index_registry()?
+                .crates()
+                .map(|crate_| {
+                         (crate_.name().to_owned(), crate_.latest_version().version().to_owned())
+                     });
+        write_crate_list(&Self::path(), crates)?;
         info!("recent crates written to {}", Self::path().display());
         Ok(())
     }
@@ -61,10 +62,12 @@ impl List for RecentList {
     }
 }
 
-fn write_crate_list(path: &Path, crates: &[(String, String)]) -> Result<()> {
+// (String, String) corresponds to (crate name, crate version)
+fn write_crate_list<I>(path: &Path, crates: I) -> Result<()>
+    where I: Iterator<Item = (String, String)>
+{
     let strings = crates
-        .iter()
-        .map(|&(ref name, ref version)| format!("{}:{}", name, version))
+        .map(|(name, version)| format!("{}:{}", name, version))
         .collect::<Vec<_>>();
     file::write_lines(path, &strings)
 }
@@ -87,18 +90,16 @@ impl List for PopList {
         info!("creating hot list");
         fs::create_dir_all(LIST_DIR)?;
 
-        let crates = registry::find_registry_crates()?;
+        let index = registry::crates_index_registry()?;
         info!("mapping reverse deps");
 
         // Count the reverse deps of each crate
         let mut counts = HashMap::new();
-        for crate_ in &crates {
+        for crate_ in index.crates() {
             // Find all the crates this crate depends on
             let mut seen = HashSet::new();
-            for &(_, ref deps) in &crate_.versions {
-                for &(ref name, _) in deps {
-                    seen.insert(name.to_string());
-                }
+            for version in crate_.versions() {
+                seen.extend(version.dependencies().iter().map(|d| d.name().to_string()))
             }
             // Each of those crates gets +1
             for c in seen.drain() {
@@ -107,18 +108,20 @@ impl List for PopList {
             }
         }
 
-        let mut crates = crates;
+        let mut crates = index.crates().collect::<Vec<_>>();
 
         crates.sort_by(|a, b| {
-                           let count_a = counts.get(&a.name).cloned().unwrap_or(0);
-                           let count_b = counts.get(&b.name).cloned().unwrap_or(0);
+                           let count_a = counts.get(a.name()).cloned().unwrap_or(0);
+                           let count_b = counts.get(b.name()).cloned().unwrap_or(0);
                            count_b.cmp(&count_a)
                        });
-        let crates: Vec<_> = crates
-            .into_iter()
-            .map(|c| (c.name.clone(), c.versions.last().expect("").0.clone()))
-            .collect();
-        write_crate_list(&Self::path(), &crates)?;
+        let crates =
+            crates
+                .into_iter()
+                .map(|crate_| {
+                         (crate_.name().to_owned(), crate_.latest_version().version().to_owned())
+                     });
+        write_crate_list(&Self::path(), crates)?;
         info!("pop crates written to {}", Self::path().display());
         Ok(())
     }
@@ -141,32 +144,31 @@ impl List for HotList {
         info!("creating hot list");
         fs::create_dir_all(LIST_DIR)?;
 
-        let crates = registry::find_registry_crates()?;
+        let index = registry::crates_index_registry()?;
 
         // We're going to map reverse dependency counts of all crate versions.
 
         // Create a map from name to versions, recent to oldest
         let mut crate_map = HashMap::new();
-        for crate_ in &crates {
-            let name = &crate_.name;
-            let versions = &crate_.versions;
-            let versions: Vec<_> = versions
+        for crate_ in index.crates() {
+            let versions: Vec<_> = crate_
+                .versions()
                 .iter()
                 .rev()
                 .take(10)
-                .map(|v| (v.0.to_string(), 0))
+                .map(|v| (v.version().to_string(), 0))
                 .collect();
-            crate_map.insert(name.to_string(), versions);
+            crate_map.insert(crate_.name().to_string(), versions);
         }
 
         info!("mapping reverse deps");
         // For each crate's dependency mark which revisions of the dep satisfy
         // semver
-        for crate_ in &crates {
-            for &(_, ref deps) in &crate_.versions {
-                for &(ref name, ref req) in deps {
-                    if let Some(ref mut dep_versions) = crate_map.get_mut(&*name) {
-                        let semver_req = VersionReq::parse(req);
+        for crate_ in index.crates() {
+            for version in crate_.versions() {
+                for dependency in version.dependencies().iter() {
+                    if let Some(ref mut dep_versions) = crate_map.get_mut(dependency.name()) {
+                        let semver_req = VersionReq::parse(dependency.requirement());
                         for &mut (ref rev, ref mut count) in dep_versions.iter_mut() {
                             let semver_rev = Version::parse(rev);
                             if let (&Ok(ref req), Ok(ref rev)) = (&semver_req, semver_rev) {
@@ -183,8 +185,8 @@ impl List for HotList {
         info!("calculating most popular crate versions");
         // Take the version of each crate that satisfies the most rev deps
         let mut hot_crates = Vec::new();
-        for crate_ in &crates {
-            if let Some(dep_versions) = crate_map.get(&crate_.name) {
+        for crate_ in index.crates() {
+            if let Some(dep_versions) = crate_map.get(crate_.latest_version().name()) {
                 let mut best_version = String::new();
                 let mut max_rev_deps = 0;
                 for version in dep_versions {
@@ -196,12 +198,12 @@ impl List for HotList {
                     }
                 }
                 if !best_version.is_empty() {
-                    hot_crates.push((crate_.name.to_string(), best_version));
+                    hot_crates.push((crate_.latest_version().name().to_string(), best_version));
                 }
             }
         }
 
-        write_crate_list(&Self::path(), &hot_crates)?;
+        write_crate_list(&Self::path(), hot_crates.into_iter())?;
         info!("hot crates written to {}", Self::path().display());
         Ok(())
     }

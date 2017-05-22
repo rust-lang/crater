@@ -4,10 +4,12 @@ use file;
 use gh_mirrors;
 use results::{ResultWriter, TestResult};
 use serde_json;
+use std::{fs, io};
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
-fn results_file(ex_name: &str) -> PathBuf {
-    ex::ex_dir(ex_name).join("results.json")
+fn results_file(dest: &Path) -> PathBuf {
+    dest.join("results.json")
 }
 
 #[derive(Serialize, Deserialize)]
@@ -38,11 +40,13 @@ struct BuildTestResult {
     log: String,
 }
 
-pub fn gen(ex_name: &str) -> Result<()> {
+pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
     let config = ex::load_config(ex_name)?;
     assert_eq!(config.toolchains.len(), 2);
 
-    let ex_dir = ex::ex_dir(ex_name);
+    fs::create_dir_all(dest)?;
+    let json = serde_json::to_string(&config)?;
+    file::write_string(&dest.join("config.json"), &json)?;
 
     let res = ex::ex_crates_and_dirs(ex_name)?
         .into_iter()
@@ -56,8 +60,11 @@ pub fn gen(ex_name: &str) -> Result<()> {
                     let res = writer.get_test_results()?;
                     // If there was no test result return an error
                     let res = res.ok_or_else(|| Error::from("no result"))?;
-                    let result_log = writer.result_log();
-                    let rel_log = relative(&ex_dir, &result_log)?;
+                    let mut result_log = writer.read_log()?;
+
+                    let rel_log = writer.result_path_fragement();
+
+                    write_log_file(dest, &rel_log, &mut result_log)?;
 
                     Ok(BuildTestResult {
                            res: res,
@@ -81,10 +88,10 @@ pub fn gen(ex_name: &str) -> Result<()> {
     let res = TestResults { crates: res };
 
     let json = serde_json::to_string(&res)?;
-    info!("writing results to {}", results_file(ex_name).display());
-    file::write_string(&results_file(ex_name), &json)?;
+    info!("writing results to {}", results_file(dest).display());
+    file::write_string(&results_file(dest), &json)?;
 
-    write_html_files(&ex_dir)?;
+    write_html_files(dest)?;
 
     Ok(())
 }
@@ -100,13 +107,6 @@ fn crate_to_name(c: &ex::ExCrate) -> Result<String> {
             Ok(format!("{}.{}.{}", org, name, sha))
         }
     }
-}
-
-fn relative(parent: &Path, child: &Path) -> Result<PathBuf> {
-    Ok(child
-           .strip_prefix(parent)
-           .chain_err(|| "calculating relative log file")?
-           .into())
 }
 
 fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Comparison {
@@ -144,5 +144,13 @@ fn write_html_files(dir: &Path) -> Result<()> {
     file::write_string(&js_out, js_in)?;
     file::write_string(&css_out, css_in)?;
 
+    Ok(())
+}
+
+fn write_log_file<R: io::Read>(dest: &Path, fragment: &Path, log: &mut R) -> Result<()> {
+    let log_dir = dest.join(fragment);
+    let log_file = log_dir.join("log.txt");
+    fs::create_dir_all(log_dir)?;
+    io::copy(log, &mut File::create(log_file)?)?;
     Ok(())
 }

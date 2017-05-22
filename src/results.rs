@@ -55,20 +55,29 @@ impl<'a> ResultWriter<'a> {
         Ok(())
     }
 
-    fn result_dir(&self) -> PathBuf {
+    /// Return a path fragement that can be used to identify this crate and
+    /// toolchain.
+    pub fn result_path_fragement(&self) -> PathBuf {
         let tc = self.toolchain.rustup_name();
+        PathBuf::from(tc).join(crate_to_dir(self.crate_))
+    }
+
+    fn result_dir(&self) -> PathBuf {
         ex_dir(self.ex_name)
             .join("res")
-            .join(tc)
-            .join(crate_to_dir(self.crate_))
+            .join(self.result_path_fragement())
     }
 
     fn result_file(&self) -> PathBuf {
         self.result_dir().join("results.txt")
     }
 
-    pub fn result_log(&self) -> PathBuf {
+    fn result_log(&self) -> PathBuf {
         self.result_dir().join("log.txt")
+    }
+
+    pub fn read_log(&self) -> Result<fs::File> {
+        fs::File::open(self.result_log()).chain_err(|| "Couldn't open result file.")
     }
 
     pub fn record_results<F>(&self, f: F) -> Result<TestResult>

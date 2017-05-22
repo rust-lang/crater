@@ -3,6 +3,7 @@ use errors::*;
 use ex::*;
 use file;
 use model::ExMode;
+use ref_slice::ref_slice;
 use results::{ResultWriter, TestResult};
 use std::collections::HashSet;
 use std::path::Path;
@@ -20,18 +21,10 @@ pub fn delete_all_results(ex_name: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn delete_result(ex_name: &str, tc: Option<Toolchain>, crate_: &ExCrate) -> Result<()> {
+pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, crate_: &ExCrate) -> Result<()> {
     let config = &load_config(ex_name)?;
 
-    let tcs: [Toolchain; 1];
-
-    let tcs: &[Toolchain] = match tc {
-        Some(tc) => {
-            tcs = [tc];
-            &tcs
-        }
-        None => &config.toolchains,
-    };
+    let tcs = tc.map(ref_slice).unwrap_or(&config.toolchains);
     for tc in tcs {
         let writer = ResultWriter::new(ex_name, crate_, tc);
         writer.delete_result()?;

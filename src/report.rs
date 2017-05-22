@@ -41,7 +41,7 @@ struct BuildTestResult {
 }
 
 pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
-    let ex = ex::load_config(ex_name)?;
+    let ex = ex::Experiment::load(ex_name)?;
     let db = FileDB::for_experiment(&ex);
     assert_eq!(ex.toolchains.len(), 2);
 

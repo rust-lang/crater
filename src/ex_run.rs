@@ -13,13 +13,13 @@ use util;
 
 
 pub fn delete_all_results(ex_name: &str) -> Result<()> {
-    let ex = &load_config(ex_name)?;
+    let ex = &Experiment::load(ex_name)?;
     let db = FileDB::for_experiment(ex);
     db.delete_all_results()
 }
 
 pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, crate_: &ExCrate) -> Result<()> {
-    let ex = &load_config(ex_name)?;
+    let ex = &Experiment::load(ex_name)?;
     let db = FileDB::for_experiment(ex);
 
     let tcs = tc.map(ref_slice).unwrap_or(&ex.toolchains);
@@ -32,12 +32,12 @@ pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, crate_: &ExCrate) ->
 }
 
 pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
-    let config = &load_config(ex_name)?;
+    let config = &Experiment::load(ex_name)?;
     run_exts(config, &config.toolchains)
 }
 
 pub fn run_ex(ex_name: &str, tc: Toolchain) -> Result<()> {
-    let config = load_config(ex_name)?;
+    let config = Experiment::load(ex_name)?;
     run_exts(&config, &[tc])
 }
 

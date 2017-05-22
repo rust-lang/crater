@@ -133,9 +133,11 @@ pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExM
     Ok(())
 }
 
-pub fn load_config(ex_name: &str) -> Result<Experiment> {
-    let config = file::read_string(&config_file(ex_name))?;
-    Ok(serde_json::from_str(&config)?)
+impl Experiment {
+    pub fn load(ex_name: &str) -> Result<Self> {
+        let config = file::read_string(&config_file(ex_name))?;
+        Ok(serde_json::from_str(&config)?)
+    }
 }
 
 pub fn fetch_gh_mirrors(ex: &Experiment) -> Result<()> {

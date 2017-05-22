@@ -101,7 +101,7 @@ impl Cmd for DefineEx {
 impl Cmd for PrepareEx {
     fn run(&self) -> Result<()> {
         let &PrepareEx(ref ex) = self;
-        let ex = ex::load_config(&ex.0)?;
+        let ex = ex::Experiment::load(&ex.0)?;
         // Shared experiment prep
         ex::fetch_gh_mirrors(&ex)?;
         ex::capture_shas(&ex)?;

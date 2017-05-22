@@ -4,7 +4,7 @@ use ex::*;
 use file;
 use model::ExMode;
 use ref_slice::ref_slice;
-use results::{CrateResultWriter, ResultWriter, TestResult};
+use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use std::collections::HashSet;
 use std::path::Path;
 use std::time::Instant;
@@ -22,11 +22,12 @@ pub fn delete_all_results(ex_name: &str) -> Result<()> {
 }
 
 pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, crate_: &ExCrate) -> Result<()> {
-    let config = &load_config(ex_name)?;
+    let ex = &load_config(ex_name)?;
+    let db = FileDB::for_experiment(ex);
 
-    let tcs = tc.map(ref_slice).unwrap_or(&config.toolchains);
+    let tcs = tc.map(ref_slice).unwrap_or(&ex.toolchains);
     for tc in tcs {
-        let writer = ResultWriter::new(ex_name, crate_, tc);
+        let writer = db.for_crate(crate_, tc);
         writer.delete_result()?;
     }
 
@@ -43,7 +44,8 @@ pub fn run_ex(ex_name: &str, tc: Toolchain) -> Result<()> {
     run_exts(&config, &[tc])
 }
 
-fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
+fn run_exts<'a>(config: &'a Experiment, tcs: &[Toolchain]) -> Result<()> {
+    let db = FileDB::for_experiment(config);
     verify_toolchains(config, tcs)?;
 
     let ex_name = &config.name;
@@ -72,7 +74,7 @@ fn run_exts(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     info!("running {} tests", total_crates);
     for (ref c, _) in crates {
         for tc in tcs {
-            let writer = ResultWriter::new(ex_name, c, tc);
+            let writer = db.for_crate(c, tc);
             let r = {
                 let existing_result = writer.get_test_results()?;
                 if let Some(r) = existing_result {

@@ -2,7 +2,7 @@ use errors::*;
 use ex;
 use file;
 use gh_mirrors;
-use results::{CrateResultWriter, ResultWriter, TestResult};
+use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use serde_json;
 use std::{fs, io};
 use std::fs::File;
@@ -42,6 +42,7 @@ struct BuildTestResult {
 
 pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
     let config = ex::load_config(ex_name)?;
+    let db = FileDB::for_experiment(&config);
     assert_eq!(config.toolchains.len(), 2);
 
     fs::create_dir_all(dest)?;
@@ -56,7 +57,7 @@ pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
                 .toolchains
                 .iter()
                 .map(|tc| -> Result<BuildTestResult> {
-                    let writer = ResultWriter::new(ex_name, &krate, tc);
+                    let writer = db.for_crate(&krate, tc);
                     let res = writer.get_test_results()?;
                     // If there was no test result return an error
                     let res = res.ok_or_else(|| Error::from("no result"))?;

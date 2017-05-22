@@ -1,5 +1,6 @@
 use errors::*;
 use ex::ExCrate;
+use ex::Experiment;
 use ex::ex_dir;
 use file;
 use gh_mirrors;
@@ -11,6 +12,21 @@ use std::str::FromStr;
 use toolchain::Toolchain;
 use util;
 
+pub trait ExperimentResultDB {
+    type CrateWriter: CrateResultWriter;
+    fn for_crate(&self, crate_: &ExCrate, toolchain: &Toolchain) -> Self::CrateWriter;
+}
+
+pub trait CrateResultWriter {
+    /// Return a path fragement that can be used to identify this crate and
+    /// toolchain.
+    fn result_path_fragement(&self) -> PathBuf;
+
+    fn record_results<F>(&self, f: F) -> Result<TestResult> where F: FnOnce() -> Result<TestResult>;
+    fn get_test_results(&self) -> Result<Option<TestResult>>;
+    fn read_log(&self) -> Result<fs::File>;
+    fn delete_result(&self) -> Result<()>;
+}
 
 fn crate_to_dir(c: &ExCrate) -> String {
     match *c {
@@ -26,22 +42,34 @@ fn crate_to_dir(c: &ExCrate) -> String {
     }
 }
 
+#[derive(Clone)]
+pub struct FileDB<'a> {
+    ex: &'a Experiment,
+}
+
+impl<'a> FileDB<'a> {
+    pub fn for_experiment(ex: &'a Experiment) -> Self {
+        FileDB { ex }
+    }
+}
+
+impl<'a> ExperimentResultDB for FileDB<'a> {
+    type CrateWriter = ResultWriter<'a>;
+    fn for_crate(&self, crate_: &ExCrate, toolchain: &Toolchain) -> Self::CrateWriter {
+        ResultWriter {
+            db: self.clone(),
+            crate_: crate_.clone(),
+            toolchain: toolchain.clone(),
+        }
+    }
+}
+
 pub struct ResultWriter<'a> {
-    ex_name: &'a str,
-    crate_: &'a ExCrate,
-    toolchain: &'a Toolchain,
+    db: FileDB<'a>,
+    crate_: ExCrate,
+    toolchain: Toolchain,
 }
 
-pub trait CrateResultWriter {
-    /// Return a path fragement that can be used to identify this crate and
-    /// toolchain.
-    fn result_path_fragement(&self) -> PathBuf;
-
-    fn record_results<F>(&self, f: F) -> Result<TestResult> where F: FnOnce() -> Result<TestResult>;
-    fn get_test_results(&self) -> Result<Option<TestResult>>;
-    fn read_log(&self) -> Result<fs::File>;
-    fn delete_result(&self) -> Result<()>;
-}
 
 impl<'a> CrateResultWriter for ResultWriter<'a> {
     fn delete_result(&self) -> Result<()> {
@@ -56,7 +84,7 @@ impl<'a> CrateResultWriter for ResultWriter<'a> {
     /// toolchain.
     fn result_path_fragement(&self) -> PathBuf {
         let tc = self.toolchain.rustup_name();
-        PathBuf::from(tc).join(crate_to_dir(self.crate_))
+        PathBuf::from(tc).join(crate_to_dir(&self.crate_))
     }
 
     fn read_log(&self) -> Result<fs::File> {
@@ -90,14 +118,6 @@ impl<'a> CrateResultWriter for ResultWriter<'a> {
 }
 
 impl<'a> ResultWriter<'a> {
-    pub fn new(ex_name: &'a str, crate_: &'a ExCrate, toolchain: &'a Toolchain) -> Self {
-        Self {
-            ex_name,
-            crate_,
-            toolchain,
-        }
-    }
-
     fn init(&self) -> Result<()> {
         self.delete_result()?;
         fs::create_dir_all(&self.result_dir())?;
@@ -106,7 +126,7 @@ impl<'a> ResultWriter<'a> {
 
 
     fn result_dir(&self) -> PathBuf {
-        ex_dir(self.ex_name)
+        ex_dir(&self.db.ex.name)
             .join("res")
             .join(self.result_path_fragement())
     }

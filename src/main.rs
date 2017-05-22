@@ -39,6 +39,7 @@ extern crate tokio_io;
 extern crate tokio_timer;
 extern crate result;
 extern crate ref_slice;
+extern crate crates_index;
 
 #[macro_use]
 mod log;

@@ -13,12 +13,9 @@ use util;
 
 
 pub fn delete_all_results(ex_name: &str) -> Result<()> {
-    let dir = ex_dir(ex_name).join("res");
-    if dir.exists() {
-        util::remove_dir_all(&dir)?;
-    }
-
-    Ok(())
+    let ex = &load_config(ex_name)?;
+    let db = FileDB::for_experiment(ex);
+    db.delete_all_results()
 }
 
 pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, crate_: &ExCrate) -> Result<()> {

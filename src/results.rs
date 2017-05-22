@@ -15,6 +15,8 @@ use util;
 pub trait ExperimentResultDB {
     type CrateWriter: CrateResultWriter;
     fn for_crate(&self, crate_: &ExCrate, toolchain: &Toolchain) -> Self::CrateWriter;
+
+    fn delete_all_results(&self) -> Result<()>;
 }
 
 pub trait CrateResultWriter {
@@ -61,6 +63,15 @@ impl<'a> ExperimentResultDB for FileDB<'a> {
             crate_: crate_.clone(),
             toolchain: toolchain.clone(),
         }
+    }
+
+    fn delete_all_results(&self) -> Result<()> {
+        let dir = ex_dir(&self.ex.name).join("res");
+        if dir.exists() {
+            util::remove_dir_all(&dir)?;
+        }
+
+        Ok(())
     }
 }
 

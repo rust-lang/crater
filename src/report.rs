@@ -41,20 +41,19 @@ struct BuildTestResult {
 }
 
 pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
-    let config = ex::load_config(ex_name)?;
-    let db = FileDB::for_experiment(&config);
-    assert_eq!(config.toolchains.len(), 2);
+    let ex = ex::load_config(ex_name)?;
+    let db = FileDB::for_experiment(&ex);
+    assert_eq!(ex.toolchains.len(), 2);
 
     fs::create_dir_all(dest)?;
-    let json = serde_json::to_string(&config)?;
+    let json = serde_json::to_string(&ex)?;
     file::write_string(&dest.join("config.json"), &json)?;
 
-    let res = ex::ex_crates_and_dirs(ex_name)?
+    let res = ex::ex_crates_and_dirs(&ex)?
         .into_iter()
         .map(|(krate, _)| {
             // Any errors here will turn into unknown results
-            let crate_results = config
-                .toolchains
+            let crate_results = ex.toolchains
                 .iter()
                 .map(|tc| -> Result<BuildTestResult> {
                     let writer = db.for_crate(&krate, tc);

@@ -126,7 +126,7 @@ pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExM
         toolchains: tcs,
         mode: mode,
     };
-    fs::create_dir_all(&ex_dir(ex_name))?;
+    fs::create_dir_all(&ex_dir(&ex.name))?;
     let json = serde_json::to_string(&ex)?;
     info!("writing ex config to {}", config_file(ex_name).display());
     file::write_string(&config_file(ex_name), &json)?;
@@ -138,9 +138,8 @@ pub fn load_config(ex_name: &str) -> Result<Experiment> {
     Ok(serde_json::from_str(&config)?)
 }
 
-pub fn fetch_gh_mirrors(ex_name: &str) -> Result<()> {
-    let config = load_config(ex_name)?;
-    for c in &config.crates {
+pub fn fetch_gh_mirrors(ex: &Experiment) -> Result<()> {
+    for c in &ex.crates {
         if let Crate::Repo { ref url } = *c {
             if let Err(e) = gh_mirrors::fetch(url) {
                 util::report_error(&e);
@@ -151,12 +150,11 @@ pub fn fetch_gh_mirrors(ex_name: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn capture_shas(ex_name: &str) -> Result<()> {
+pub fn capture_shas(ex: &Experiment) -> Result<()> {
     let mut shas: HashMap<String, String> = HashMap::new();
-    let config = load_config(ex_name)?;
-    for krate in config.crates {
-        if let Crate::Repo { url } = krate {
-            let dir = gh_mirrors::repo_dir(&url)?;
+    for krate in &ex.crates {
+        if let Crate::Repo { ref url } = *krate {
+            let dir = gh_mirrors::repo_dir(url)?;
             let r = run::run_capture(Some(&dir), "git", &["log", "-n1", "--pretty=%H"], &[]);
 
             match r {
@@ -164,7 +162,7 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
                     if let Some(shaline) = stdout.get(0) {
                         if !shaline.is_empty() {
                             info!("sha for {}: {}", url, shaline);
-                            shas.insert(url, shaline.to_string());
+                            shas.insert(url.to_string(), shaline.to_string());
                         } else {
                             error!("bogus output from git log for {}", dir.display());
                         }
@@ -179,16 +177,16 @@ pub fn capture_shas(ex_name: &str) -> Result<()> {
         }
     }
 
-    fs::create_dir_all(&ex_dir(ex_name))?;
+    fs::create_dir_all(&ex_dir(&ex.name))?;
     let shajson = serde_json::to_string(&shas)?;
-    info!("writing shas to {}", shafile(ex_name).display());
-    file::write_string(&shafile(ex_name), &shajson)?;
+    info!("writing shas to {}", shafile(&ex.name).display());
+    file::write_string(&shafile(&ex.name), &shajson)?;
 
     Ok(())
 }
 
-fn load_shas(ex_name: &str) -> Result<HashMap<String, String>> {
-    let shas = file::read_string(&shafile(ex_name))?;
+fn load_shas(ex: &Experiment) -> Result<HashMap<String, String>> {
+    let shas = file::read_string(&shafile(&ex.name))?;
     let shas = serde_json::from_str(&shas)?;
     Ok(shas)
 }
@@ -255,11 +253,9 @@ impl FromStr for ExCrate {
     }
 }
 
-pub fn ex_crates_and_dirs(ex_name: &str) -> Result<Vec<(ExCrate, PathBuf)>> {
-    let config = load_config(ex_name)?;
-    let shas = load_shas(ex_name)?;
-    let crates = config
-        .crates
+pub fn ex_crates_and_dirs(ex: &Experiment) -> Result<Vec<(ExCrate, PathBuf)>> {
+    let shas = load_shas(ex)?;
+    let crates = ex.crates
         .clone()
         .into_iter()
         .filter_map(|c| {
@@ -280,18 +276,18 @@ pub fn ex_crates_and_dirs(ex_name: &str) -> Result<Vec<(ExCrate, PathBuf)>> {
     Ok(crates.collect())
 }
 
-pub fn download_crates(ex_name: &str) -> Result<()> {
-    crates::prepare(&ex_crates_and_dirs(ex_name)?)
+pub fn download_crates(ex: &Experiment) -> Result<()> {
+    crates::prepare(&ex_crates_and_dirs(ex)?)
 }
 
-pub fn frob_tomls(ex_name: &str) -> Result<()> {
-    for (krate, dir) in ex_crates_and_dirs(ex_name)? {
+pub fn frob_tomls(ex: &Experiment) -> Result<()> {
+    for (krate, dir) in ex_crates_and_dirs(ex)? {
         if let ExCrate::Version {
                    ref name,
                    ref version,
                } = krate {
-            fs::create_dir_all(&froml_dir(ex_name))?;
-            let out = froml_path(ex_name, name, version);
+            fs::create_dir_all(&froml_dir(&ex.name))?;
+            let out = froml_path(&ex.name, name, version);
             let r = toml_frobber::frob_toml(&dir, name, version, &out);
             if let Err(e) = r {
                 info!("couldn't frob: {}", e);
@@ -303,7 +299,7 @@ pub fn frob_tomls(ex_name: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn with_frobbed_toml(ex_name: &str, crate_: &ExCrate, path: &Path) -> Result<()> {
+pub fn with_frobbed_toml(ex: &Experiment, crate_: &ExCrate, path: &Path) -> Result<()> {
     let (crate_name, crate_vers) = match *crate_ {
         ExCrate::Version {
             ref name,
@@ -311,7 +307,7 @@ pub fn with_frobbed_toml(ex_name: &str, crate_: &ExCrate, path: &Path) -> Result
         } => (name.to_string(), version.to_string()),
         _ => return Ok(()),
     };
-    let src_froml = &froml_path(ex_name, &crate_name, &crate_vers);
+    let src_froml = &froml_path(&ex.name, &crate_name, &crate_vers);
     let dst_froml = &path.join("Cargo.toml");
     if src_froml.exists() {
         info!("using frobbed toml {}", src_froml.display());
@@ -347,7 +343,7 @@ fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
         .join(toolchain.to_string())
 }
 
-pub fn with_work_crate<F, R>(ex_name: &str,
+pub fn with_work_crate<F, R>(ex: &Experiment,
                              toolchain: &Toolchain,
                              crate_: &ExCrate,
                              f: F)
@@ -355,7 +351,7 @@ pub fn with_work_crate<F, R>(ex_name: &str,
     where F: Fn(&Path) -> Result<R>
 {
     let src_dir = crate_.dir()?;
-    let dest_dir = crate_work_dir(ex_name, toolchain);
+    let dest_dir = crate_work_dir(&ex.name, toolchain);
     info!("creating temporary build dir for {} in {}",
           crate_,
           dest_dir.display());
@@ -366,20 +362,20 @@ pub fn with_work_crate<F, R>(ex_name: &str,
     r
 }
 
-pub fn capture_lockfiles(ex_name: &str,
+pub fn capture_lockfiles(ex: &Experiment,
                          toolchain: &Toolchain,
                          recapture_existing: bool)
                          -> Result<()> {
-    fs::create_dir_all(&lockfile_dir(ex_name))?;
+    fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    let crates = ex_crates_and_dirs(ex_name)?;
+    let crates = ex_crates_and_dirs(ex)?;
 
     for (ref c, ref dir) in crates {
         if dir.join("Cargo.lock").exists() {
             info!("crate {} has a lockfile. skipping", c);
             continue;
         }
-        let captured_lockfile = lockfile(ex_name, c);
+        let captured_lockfile = lockfile(&ex.name, c);
         if let Err(e) = captured_lockfile {
             util::report_error(&e);
             continue;
@@ -389,9 +385,9 @@ pub fn capture_lockfiles(ex_name: &str,
             info!("skipping existing lockfile for {}", c);
             continue;
         }
-        let r = with_work_crate(ex_name, toolchain, c, |path| {
-            with_frobbed_toml(ex_name, c, path)?;
-            capture_lockfile(ex_name, c, path, toolchain)
+        let r = with_work_crate(ex, toolchain, c, |path| {
+            with_frobbed_toml(ex, c, path)?;
+            capture_lockfile(ex, c, path, toolchain)
         })
                 .chain_err(|| format!("failed to generate lockfile for {}", c));
         if let Err(e) = r {
@@ -402,7 +398,7 @@ pub fn capture_lockfiles(ex_name: &str,
     Ok(())
 }
 
-fn capture_lockfile(ex_name: &str,
+fn capture_lockfile(ex: &Experiment,
                     crate_: &ExCrate,
                     path: &Path,
                     toolchain: &Toolchain)
@@ -410,11 +406,11 @@ fn capture_lockfile(ex_name: &str,
     let manifest_path = path.join("Cargo.toml").to_string_lossy().to_string();
     let args = &["generate-lockfile", "--manifest-path", &*manifest_path];
     toolchain
-        .run_cargo(ex_name, args)
+        .run_cargo(&ex.name, args)
         .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
 
     let src_lockfile = &path.join("Cargo.lock");
-    let dst_lockfile = &lockfile(ex_name, crate_)?;
+    let dst_lockfile = &lockfile(&ex.name, crate_)?;
     fs::copy(src_lockfile, dst_lockfile)
         .chain_err(|| {
                        format!("unable to copy lockfile from {} to {}",
@@ -429,12 +425,12 @@ fn capture_lockfile(ex_name: &str,
     Ok(())
 }
 
-pub fn with_captured_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path) -> Result<()> {
+pub fn with_captured_lockfile(ex: &Experiment, crate_: &ExCrate, path: &Path) -> Result<()> {
     let dst_lockfile = &path.join("Cargo.lock");
     if dst_lockfile.exists() {
         return Ok(());
     }
-    let src_lockfile = &lockfile(ex_name, crate_)?;
+    let src_lockfile = &lockfile(&ex.name, crate_)?;
     if src_lockfile.exists() {
         info!("using lockfile {}", src_lockfile.display());
         fs::copy(src_lockfile, dst_lockfile)
@@ -448,17 +444,17 @@ pub fn with_captured_lockfile(ex_name: &str, crate_: &ExCrate, path: &Path) -> R
     Ok(())
 }
 
-pub fn fetch_deps(ex_name: &str, toolchain: &Toolchain) -> Result<()> {
-    let crates = ex_crates_and_dirs(ex_name)?;
+pub fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
+    let crates = ex_crates_and_dirs(ex)?;
     for (ref c, _) in crates {
-        let r = with_work_crate(ex_name, toolchain, c, |path| {
-            with_frobbed_toml(ex_name, c, path)?;
-            with_captured_lockfile(ex_name, c, path)?;
+        let r = with_work_crate(ex, toolchain, c, |path| {
+            with_frobbed_toml(ex, c, path)?;
+            with_captured_lockfile(ex, c, path)?;
 
             let manifest_path = path.join("Cargo.toml").to_string_lossy().to_string();
             let args = &["fetch", "--locked", "--manifest-path", &*manifest_path];
             toolchain
-                .run_cargo(ex_name, args)
+                .run_cargo(&ex.name, args)
                 .chain_err(|| format!("unable to fetch deps for {}", c))?;
 
             Ok(())
@@ -472,9 +468,8 @@ pub fn fetch_deps(ex_name: &str, toolchain: &Toolchain) -> Result<()> {
 
 }
 
-pub fn prepare_all_toolchains(ex_name: &str) -> Result<()> {
-    let config = load_config(ex_name)?;
-    for tc in &config.toolchains {
+pub fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {
+    for tc in &ex.toolchains {
         tc.prepare()?;
     }
 

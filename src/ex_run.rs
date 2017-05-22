@@ -41,12 +41,11 @@ pub fn run_ex(ex_name: &str, tc: Toolchain) -> Result<()> {
     run_exts(&config, &[tc])
 }
 
-fn run_exts<'a>(config: &'a Experiment, tcs: &[Toolchain]) -> Result<()> {
-    let db = FileDB::for_experiment(config);
-    verify_toolchains(config, tcs)?;
+fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
+    let db = FileDB::for_experiment(ex);
+    verify_toolchains(ex, tcs)?;
 
-    let ex_name = &config.name;
-    let crates = ex_crates_and_dirs(ex_name)?;
+    let crates = ex_crates_and_dirs(ex)?;
 
     // Just for reporting progress
     let total_crates = crates.len() * tcs.len();
@@ -61,7 +60,7 @@ fn run_exts<'a>(config: &'a Experiment, tcs: &[Toolchain]) -> Result<()> {
 
     let start_time = Instant::now();
 
-    let test_fn = match config.mode {
+    let test_fn = match ex.mode {
         ExMode::BuildAndTest => test_build_and_test,
         ExMode::BuildOnly => test_build_only,
         ExMode::CheckOnly => test_check_only,
@@ -80,20 +79,20 @@ fn run_exts<'a>(config: &'a Experiment, tcs: &[Toolchain]) -> Result<()> {
                     info!("skipping crate {}. existing result: {}", c, r);
                     info!("delete result file to rerun test: \
                            \"cargobomb delete-result {} --toolchain {} {}\"",
-                          ex_name,
+                          ex.name,
                           tc.to_string(),
                           c);
                     Ok(r)
                 } else {
                     completed_crates += 1;
 
-                    with_work_crate(ex_name, tc, c, |source_path| {
-                        with_frobbed_toml(ex_name, c, source_path)?;
-                        with_captured_lockfile(ex_name, c, source_path)?;
+                    with_work_crate(ex, tc, c, |source_path| {
+                        with_frobbed_toml(ex, c, source_path)?;
+                        with_captured_lockfile(ex, c, source_path)?;
 
                         writer.record_results(|| {
-                            info!("testing {} against {} for {}", c, tc.to_string(), ex_name);
-                            let target_path = tc.target_dir(ex_name);
+                            info!("testing {} against {} for {}", c, tc.to_string(), ex.name);
+                            let target_path = tc.target_dir(&ex.name);
                             test_fn(source_path, &target_path, &tc.rustup_name())
                         })
                     })
@@ -108,7 +107,7 @@ fn run_exts<'a>(config: &'a Experiment, tcs: &[Toolchain]) -> Result<()> {
                 Ok(ref r) => {
                     // FIXME: Should errors be recorded?
                     info!("test result! ex: {}, c: {}, tc: {}, r: {}",
-                          ex_name,
+                          ex.name,
                           c,
                           tc.to_string(),
                           r);

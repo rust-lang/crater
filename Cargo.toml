@@ -38,3 +38,9 @@ tokio-io = "0.1.1"
 result = "0.0.1"
 ref_slice = "1.1.1"
 crates-index = "0.9"
+
+[replace]
+# Use mio from master until there is a new release.
+# https://github.com/carllerche/mio/pull/605
+# Otherwise, creating a bnuch of `tokio_core::reactor::Core`s leaks FDs.
+"mio:0.6.7" = { git = "https://github.com/carllerche/mio/", branch = "master" }

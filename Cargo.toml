@@ -38,5 +38,5 @@ tokio-process = "0.1.2"
 tokio-io = "0.1.1"
 
 [replace]
-"hyper:0.10.10" = { git = "https://github.com/tomprince/hyper-rs", branch = "link-0.10.x" }
+"hyper:0.10.10" = { git = "https://github.com/hyperium/hyper/", branch = "0.10.x" }
 "reqwest:0.6.2" = { git = "https://github.com/tomprince/reqwest", branch = "error-for-status" }

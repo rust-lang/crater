@@ -2,7 +2,7 @@ use errors::*;
 use ex;
 use file;
 use gh_mirrors;
-use results::{ResultWriter, TestResult};
+use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use serde_json;
 use std::{fs, io};
 use std::fs::File;
@@ -41,23 +41,23 @@ struct BuildTestResult {
 }
 
 pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
-    let config = ex::load_config(ex_name)?;
-    assert_eq!(config.toolchains.len(), 2);
+    let ex = ex::Experiment::load(ex_name)?;
+    let db = FileDB::for_experiment(&ex);
+    assert_eq!(ex.toolchains.len(), 2);
 
     fs::create_dir_all(dest)?;
-    let json = serde_json::to_string(&config)?;
+    let json = serde_json::to_string(&ex)?;
     file::write_string(&dest.join("config.json"), &json)?;
 
-    let res = ex::ex_crates_and_dirs(ex_name)?
+    let res = ex::ex_crates_and_dirs(&ex)?
         .into_iter()
         .map(|(krate, _)| {
             // Any errors here will turn into unknown results
-            let crate_results = config
-                .toolchains
+            let crate_results = ex.toolchains
                 .iter()
                 .map(|tc| -> Result<BuildTestResult> {
-                    let writer = ResultWriter::new(ex_name, &krate, tc);
-                    let res = writer.get_test_results()?;
+                    let writer = db.for_crate(&krate, tc);
+                    let res = writer.load_test_result()?;
                     // If there was no test result return an error
                     let res = res.ok_or_else(|| Error::from("no result"))?;
                     let mut result_log = writer.read_log()?;

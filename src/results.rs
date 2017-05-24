@@ -1,5 +1,6 @@
 use errors::*;
 use ex::ExCrate;
+use ex::Experiment;
 use ex::ex_dir;
 use file;
 use gh_mirrors;
@@ -11,6 +12,23 @@ use std::str::FromStr;
 use toolchain::Toolchain;
 use util;
 
+pub trait ExperimentResultDB {
+    type CrateWriter: CrateResultWriter;
+    fn for_crate(&self, crate_: &ExCrate, toolchain: &Toolchain) -> Self::CrateWriter;
+
+    fn delete_all_results(&self) -> Result<()>;
+}
+
+pub trait CrateResultWriter {
+    /// Return a path fragement that can be used to identify this crate and
+    /// toolchain.
+    fn result_path_fragement(&self) -> PathBuf;
+
+    fn record_results<F>(&self, f: F) -> Result<TestResult> where F: FnOnce() -> Result<TestResult>;
+    fn load_test_result(&self) -> Result<Option<TestResult>>;
+    fn read_log(&self) -> Result<fs::File>;
+    fn delete_result(&self) -> Result<()>;
+}
 
 fn crate_to_dir(c: &ExCrate) -> String {
     match *c {
@@ -26,28 +44,46 @@ fn crate_to_dir(c: &ExCrate) -> String {
     }
 }
 
-pub struct ResultWriter<'a> {
-    ex_name: &'a str,
-    crate_: &'a ExCrate,
-    toolchain: &'a Toolchain,
+#[derive(Clone)]
+pub struct FileDB<'a> {
+    ex: &'a Experiment,
 }
 
-impl<'a> ResultWriter<'a> {
-    pub fn new(ex_name: &'a str, crate_: &'a ExCrate, toolchain: &'a Toolchain) -> Self {
-        Self {
-            ex_name,
-            crate_,
-            toolchain,
+impl<'a> FileDB<'a> {
+    pub fn for_experiment(ex: &'a Experiment) -> Self {
+        FileDB { ex }
+    }
+}
+
+impl<'a> ExperimentResultDB for FileDB<'a> {
+    type CrateWriter = ResultWriter<'a>;
+    fn for_crate(&self, crate_: &ExCrate, toolchain: &Toolchain) -> Self::CrateWriter {
+        ResultWriter {
+            db: self.clone(),
+            crate_: crate_.clone(),
+            toolchain: toolchain.clone(),
         }
     }
 
-    fn init(&self) -> Result<()> {
-        self.delete_result()?;
-        fs::create_dir_all(&self.result_dir())?;
+    fn delete_all_results(&self) -> Result<()> {
+        let dir = ex_dir(&self.ex.name).join("res");
+        if dir.exists() {
+            util::remove_dir_all(&dir)?;
+        }
+
         Ok(())
     }
+}
 
-    pub fn delete_result(&self) -> Result<()> {
+pub struct ResultWriter<'a> {
+    db: FileDB<'a>,
+    crate_: ExCrate,
+    toolchain: Toolchain,
+}
+
+
+impl<'a> CrateResultWriter for ResultWriter<'a> {
+    fn delete_result(&self) -> Result<()> {
         let result_dir = self.result_dir();
         if result_dir.exists() {
             util::remove_dir_all(&result_dir)?;
@@ -57,30 +93,16 @@ impl<'a> ResultWriter<'a> {
 
     /// Return a path fragement that can be used to identify this crate and
     /// toolchain.
-    pub fn result_path_fragement(&self) -> PathBuf {
+    fn result_path_fragement(&self) -> PathBuf {
         let tc = self.toolchain.rustup_name();
-        PathBuf::from(tc).join(crate_to_dir(self.crate_))
+        PathBuf::from(tc).join(crate_to_dir(&self.crate_))
     }
 
-    fn result_dir(&self) -> PathBuf {
-        ex_dir(self.ex_name)
-            .join("res")
-            .join(self.result_path_fragement())
-    }
-
-    fn result_file(&self) -> PathBuf {
-        self.result_dir().join("results.txt")
-    }
-
-    fn result_log(&self) -> PathBuf {
-        self.result_dir().join("log.txt")
-    }
-
-    pub fn read_log(&self) -> Result<fs::File> {
+    fn read_log(&self) -> Result<fs::File> {
         fs::File::open(self.result_log()).chain_err(|| "Couldn't open result file.")
     }
 
-    pub fn record_results<F>(&self, f: F) -> Result<TestResult>
+    fn record_results<F>(&self, f: F) -> Result<TestResult>
         where F: FnOnce() -> Result<TestResult>
     {
         self.init()?;
@@ -93,7 +115,7 @@ impl<'a> ResultWriter<'a> {
         Ok(result)
     }
 
-    pub fn get_test_results(&self) -> Result<Option<TestResult>> {
+    fn load_test_result(&self) -> Result<Option<TestResult>> {
         let result_file = self.result_file();
         if result_file.exists() {
             let s = file::read_string(&result_file)?;
@@ -103,6 +125,29 @@ impl<'a> ResultWriter<'a> {
         } else {
             Ok(None)
         }
+    }
+}
+
+impl<'a> ResultWriter<'a> {
+    fn init(&self) -> Result<()> {
+        self.delete_result()?;
+        fs::create_dir_all(&self.result_dir())?;
+        Ok(())
+    }
+
+
+    fn result_dir(&self) -> PathBuf {
+        ex_dir(&self.db.ex.name)
+            .join("res")
+            .join(self.result_path_fragement())
+    }
+
+    fn result_file(&self) -> PathBuf {
+        self.result_dir().join("results.txt")
+    }
+
+    fn result_log(&self) -> PathBuf {
+        self.result_dir().join("log.txt")
     }
 }
 

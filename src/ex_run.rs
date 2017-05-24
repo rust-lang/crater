@@ -72,7 +72,7 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
         for tc in tcs {
             let writer = db.for_crate(c, tc);
             let r = {
-                let existing_result = writer.get_test_results()?;
+                let existing_result = writer.load_test_result()?;
                 if let Some(r) = existing_result {
                     skipped_crates += 1;
 

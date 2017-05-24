@@ -57,7 +57,7 @@ pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
                 .iter()
                 .map(|tc| -> Result<BuildTestResult> {
                     let writer = db.for_crate(&krate, tc);
-                    let res = writer.get_test_results()?;
+                    let res = writer.load_test_result()?;
                     // If there was no test result return an error
                     let res = res.ok_or_else(|| Error::from("no result"))?;
                     let mut result_log = writer.read_log()?;

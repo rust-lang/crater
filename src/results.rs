@@ -25,7 +25,7 @@ pub trait CrateResultWriter {
     fn result_path_fragement(&self) -> PathBuf;
 
     fn record_results<F>(&self, f: F) -> Result<TestResult> where F: FnOnce() -> Result<TestResult>;
-    fn get_test_results(&self) -> Result<Option<TestResult>>;
+    fn load_test_result(&self) -> Result<Option<TestResult>>;
     fn read_log(&self) -> Result<fs::File>;
     fn delete_result(&self) -> Result<()>;
 }
@@ -115,7 +115,7 @@ impl<'a> CrateResultWriter for ResultWriter<'a> {
         Ok(result)
     }
 
-    fn get_test_results(&self) -> Result<Option<TestResult>> {
+    fn load_test_result(&self) -> Result<Option<TestResult>> {
         let result_file = self.result_file();
         if result_file.exists() {
             let s = file::read_string(&result_file)?;

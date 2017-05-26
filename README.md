@@ -50,6 +50,7 @@ own rustup installation, crate mirrors, etc.
 
 ```
 cargo run -- prepare-local
+cargo run -- create-list-full
 cargo run -- define-ex stable beta
 cargo run -- prepare-ex
 cargo run -- run

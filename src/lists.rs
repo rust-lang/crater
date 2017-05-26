@@ -1,4 +1,4 @@
-use LIST_DIR;
+use dirs::LIST_DIR;
 use errors::*;
 use ex::ExCrate;
 use file;

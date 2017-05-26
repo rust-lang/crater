@@ -17,10 +17,15 @@ rewrite.
 
 */
 
-use errors::*;
-use ex::ExCrate;
+use cargobomb::docker;
+use cargobomb::errors::*;
+use cargobomb::ex;
+use cargobomb::ex::{ExCrate, ExCrateSelect, ExMode};
+use cargobomb::ex_run;
+use cargobomb::lists;
+use cargobomb::report;
+use cargobomb::toolchain::Toolchain;
 use std::path::PathBuf;
-use toolchain::Toolchain;
 
 // An experiment name
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,28 +51,6 @@ struct DeleteEx(Ex);
 struct DeleteAllResults(Ex);
 struct DeleteResult(Ex, Option<Toolchain>, ExCrate);
 
-#[derive(Serialize, Deserialize)]
-#[derive(Debug, Clone)]
-pub enum ExMode {
-    BuildAndTest,
-    BuildOnly,
-    CheckOnly,
-    UnstableFeatures,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum ExCrateSelect {
-    Full,
-    Demo,
-    SmallRandom,
-    Top100,
-}
-
-use docker;
-use ex;
-use ex_run;
-use lists;
-use report;
 
 // Local prep
 impl Cmd for PrepareLocal {
@@ -344,56 +327,6 @@ pub mod conv {
 
                (s, _) => panic!("unimplemented args_to_cmd {}", s),
            })
-    }
-
-    impl FromStr for ExMode {
-        type Err = Error;
-
-        fn from_str(s: &str) -> Result<ExMode> {
-            Ok(match s {
-                   "build-and-test" => ExMode::BuildAndTest,
-                   "build-only" => ExMode::BuildOnly,
-                   "check-only" => ExMode::CheckOnly,
-                   "unstable-features" => ExMode::UnstableFeatures,
-                   s => bail!("invalid ex-mode: {}", s),
-               })
-        }
-    }
-
-    impl ExMode {
-        pub fn to_str(&self) -> &'static str {
-            match *self {
-                ExMode::BuildAndTest => "build-and-test",
-                ExMode::BuildOnly => "build-only",
-                ExMode::CheckOnly => "check-only",
-                ExMode::UnstableFeatures => "unstable-features",
-            }
-        }
-    }
-
-    impl FromStr for ExCrateSelect {
-        type Err = Error;
-
-        fn from_str(s: &str) -> Result<ExCrateSelect> {
-            Ok(match s {
-                   "full" => ExCrateSelect::Full,
-                   "demo" => ExCrateSelect::Demo,
-                   "small-random" => ExCrateSelect::SmallRandom,
-                   "top-100" => ExCrateSelect::Top100,
-                   s => bail!("invalid crate-select: {}", s),
-               })
-        }
-    }
-
-    impl ExCrateSelect {
-        pub fn to_str(&self) -> &'static str {
-            match *self {
-                ExCrateSelect::Full => "full",
-                ExCrateSelect::Demo => "demo",
-                ExCrateSelect::SmallRandom => "small-random",
-                ExCrateSelect::Top100 => "top-100",
-            }
-        }
     }
 
     impl FromStr for Ex {

@@ -1,12 +1,9 @@
-use CRATES_DIR;
-use EXPERIMENT_DIR;
-use TEST_SOURCE_DIR;
 use crates;
+use dirs::{CRATES_DIR, EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
 use file;
 use gh_mirrors;
 use lists::{self, Crate, List};
-use model::{ExCrateSelect, ExMode};
 use run;
 use serde_json;
 use std::collections::HashMap;
@@ -17,6 +14,24 @@ use std::str::FromStr;
 use toml_frobber;
 use toolchain::{self, Toolchain};
 use util;
+
+#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+pub enum ExMode {
+    BuildAndTest,
+    BuildOnly,
+    CheckOnly,
+    UnstableFeatures,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum ExCrateSelect {
+    Full,
+    Demo,
+    SmallRandom,
+    Top100,
+}
+
 
 pub fn ex_dir(ex_name: &str) -> PathBuf {
     Path::new(EXPERIMENT_DIR).join(ex_name)
@@ -509,4 +524,54 @@ pub fn delete(ex_name: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+impl FromStr for ExMode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<ExMode> {
+        Ok(match s {
+               "build-and-test" => ExMode::BuildAndTest,
+               "build-only" => ExMode::BuildOnly,
+               "check-only" => ExMode::CheckOnly,
+               "unstable-features" => ExMode::UnstableFeatures,
+               s => bail!("invalid ex-mode: {}", s),
+           })
+    }
+}
+
+impl ExMode {
+    pub fn to_str(&self) -> &'static str {
+        match *self {
+            ExMode::BuildAndTest => "build-and-test",
+            ExMode::BuildOnly => "build-only",
+            ExMode::CheckOnly => "check-only",
+            ExMode::UnstableFeatures => "unstable-features",
+        }
+    }
+}
+
+impl FromStr for ExCrateSelect {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<ExCrateSelect> {
+        Ok(match s {
+               "full" => ExCrateSelect::Full,
+               "demo" => ExCrateSelect::Demo,
+               "small-random" => ExCrateSelect::SmallRandom,
+               "top-100" => ExCrateSelect::Top100,
+               s => bail!("invalid crate-select: {}", s),
+           })
+    }
+}
+
+impl ExCrateSelect {
+    pub fn to_str(&self) -> &'static str {
+        match *self {
+            ExCrateSelect::Full => "full",
+            ExCrateSelect::Demo => "demo",
+            ExCrateSelect::SmallRandom => "small-random",
+            ExCrateSelect::Top100 => "top-100",
+        }
+    }
 }

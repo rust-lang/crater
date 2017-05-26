@@ -2,7 +2,6 @@ use docker;
 use errors::*;
 use ex::*;
 use file;
-use model::ExMode;
 use ref_slice::ref_slice;
 use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use std::collections::HashSet;
@@ -10,7 +9,6 @@ use std::path::Path;
 use std::time::Instant;
 use toolchain::Toolchain;
 use util;
-
 
 pub fn delete_all_results(ex_name: &str) -> Result<()> {
     let ex = &Experiment::load(ex_name)?;

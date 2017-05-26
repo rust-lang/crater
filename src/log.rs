@@ -1,5 +1,5 @@
-use LOG_DIR;
 use chrono::UTC;
+use dirs::LOG_DIR;
 use errors::*;
 
 use slog::{self, Drain};

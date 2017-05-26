@@ -1,5 +1,7 @@
 FROM ubuntu:16.04
 
+ENV LAST_UPDATE=2017-05-25
+
 RUN apt-get update
 
 # Tools
@@ -10,7 +12,7 @@ RUN apt-get install -y cmake
 # Native deps
 RUN apt-get install -y libssl-dev
 # Hopefully this pulls in lots of stuff
-RUN apt-get build-dep -y libgtk-3-0
+RUN apt-get install -y --install-suggests libgtk-3-dev
 
 WORKDIR /source
 

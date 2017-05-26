@@ -11,10 +11,12 @@ pub fn crates_index_registry() -> Result<crates_index::Index> {
     let index = crates_index::Index::new(repo_path());
     if index.exists() {
         info!("Fetching latest 'crates.io-index' repository commits");
-        index.update();
+        index.update().chain_err(|| "Couldn't update crate index.")?;
     } else {
         info!("Cloning 'crates.io-index' repository");
-        index.retrieve();
+        index
+            .retrieve()
+            .chain_err(|| "Couldn't fetch crate index.")?;
     }
     Ok(index)
 }

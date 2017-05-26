@@ -47,7 +47,9 @@ pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> 
 
     let c = Container::create_rust_container(&env)?;
     defer!{{
-        c.delete();
+        if let Err(e) = c.delete() {
+            error!{"Cannot delete container: {}", e; "container" => &c.id}
+        }
     }}
     c.run()
 }

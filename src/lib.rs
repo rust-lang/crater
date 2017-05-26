@@ -1,5 +1,3 @@
-#![recursion_limit = "1024"]
-
 extern crate rand;
 extern crate clap;
 #[macro_use]

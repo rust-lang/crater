@@ -7,8 +7,9 @@ error_chain! {
     }
 
     errors {
-        Timeout {
+        Timeout(what: &'static str, when: u64) {
             description("the operation timed out")
+            display("process killed after {} {}s", what, when)
         }
     }
 }

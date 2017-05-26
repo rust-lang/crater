@@ -4,11 +4,9 @@ use errors::*;
 use futures::{Future, Stream};
 use futures::stream::MergedItem;
 use slog_scope;
-use std::cell::Cell;
 use std::io::{self, BufReader};
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
-use std::rc::Rc;
 use std::time::Duration;
 use tokio_core::reactor::Core;
 use tokio_io::io::lines;
@@ -112,9 +110,7 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     // Needed for killing after timeout
     let child_id = child.id();
 
-    let heartbeat_timeout = Duration::from_secs(MAX_TIMEOUT_SECS);
-
-    let heartbeat_timed_out = Rc::new(Cell::new(false));
+    let heartbeat_timeout = Duration::from_secs(HEARTBEAT_TIMEOUT_SECS);
 
     let logger = slog_scope::logger();
     let stdout = lines(BufReader::new(stdout)).map({
@@ -134,17 +130,14 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     let output = Stream::merge(stdout, stderr);
     let output = timer
         .timeout_stream(output, heartbeat_timeout)
-        .map_err({
-                     let cond = heartbeat_timed_out.clone();
-                     move |e| {
-                         if e.kind() == io::ErrorKind::TimedOut {
-                             kill_process(child_id);
-                             cond.set(true);
-                         }
-                         e
-                     }
+        .map_err(move |e| if e.kind() == io::ErrorKind::TimedOut {
+                     kill_process(child_id);
+                     Error::from(ErrorKind::Timeout("not generating output for ",
+                                                    HEARTBEAT_TIMEOUT_SECS))
+                 } else {
+                     e.into()
                  });
-    let output = if capture {
+    let output: Box<Future<Item = _, Error = Error>> = if capture {
         unmerge(output)
     } else {
         Box::new(output
@@ -171,29 +164,18 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
         };
     }
 
-    let timed_out = Cell::new(false);
     let child = timer
         .timeout(child, Duration::from_secs(MAX_TIMEOUT_SECS))
-        .map_err(|e| {
-                     if e.kind() == io::ErrorKind::TimedOut {
-                         kill_process(child_id);
-                         timed_out.set(true);
-                     }
-                     e
+        .map_err(|e| if e.kind() == io::ErrorKind::TimedOut {
+                     kill_process(child_id);
+                     ErrorKind::Timeout("max time of", MAX_TIMEOUT_SECS).into()
+                 } else {
+                     e.into()
                  });
 
 
     // TODO: Handle errors from tokio_timer better, in particular TimerError::TooLong
     let (status, (stdout, stderr)) = core.run(Future::join(child, output))?;
-
-    if heartbeat_timed_out.get() {
-        info!("process killed after not generating output for {} s",
-              HEARTBEAT_TIMEOUT_SECS);
-        bail!(ErrorKind::Timeout);
-    } else if timed_out.get() {
-        info!("process killed after max time of {} s", MAX_TIMEOUT_SECS);
-        bail!(ErrorKind::Timeout);
-    }
 
     Ok(ProcessOutput {
            status: status,

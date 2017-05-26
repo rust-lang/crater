@@ -1,6 +1,5 @@
-use LOCAL_DIR;
-
 use crates_index;
+use dirs::LOCAL_DIR;
 use errors::*;
 use std::path::{Path, PathBuf};
 

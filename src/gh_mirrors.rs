@@ -1,4 +1,4 @@
-use GH_MIRRORS_DIR;
+use dirs::GH_MIRRORS_DIR;
 use errors::*;
 use git;
 use std::path::{Path, PathBuf};

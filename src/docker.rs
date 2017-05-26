@@ -1,5 +1,4 @@
-use CARGO_HOME;
-use RUSTUP_HOME;
+use dirs::{CARGO_HOME, RUSTUP_HOME};
 use errors::*;
 use run;
 use std::env;

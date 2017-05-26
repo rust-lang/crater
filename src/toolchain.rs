@@ -1,7 +1,4 @@
-use CARGO_HOME;
-use RUSTUP_HOME;
-use TARGET_DIR;
-use TOOLCHAIN_DIR;
+use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR, TOOLCHAIN_DIR};
 use dl;
 use errors::*;
 use git;

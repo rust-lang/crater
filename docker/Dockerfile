@@ -12,7 +12,7 @@ RUN apt-get install -y cmake
 # Native deps
 RUN apt-get install -y libssl-dev
 # Hopefully this pulls in lots of stuff
-RUN apt-get install -y --install-suggests libgtk-3-dev
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --install-suggests libgtk-3-dev
 
 WORKDIR /source
 

@@ -40,16 +40,15 @@ struct BuildTestResult {
     log: String,
 }
 
-pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
-    let ex = ex::Experiment::load(ex_name)?;
-    let db = FileDB::for_experiment(&ex);
+fn generate_report(ex: &ex::Experiment, dest: &Path) -> Result<TestResults> {
+    let db = FileDB::for_experiment(ex);
     assert_eq!(ex.toolchains.len(), 2);
 
     fs::create_dir_all(dest)?;
     let json = serde_json::to_string(&ex)?;
     file::write_string(&dest.join("config.json"), &json)?;
 
-    let res = ex::ex_crates_and_dirs(&ex)?
+    let res = ex::ex_crates_and_dirs(ex)?
         .into_iter()
         .map(|(krate, _)| {
             // Any errors here will turn into unknown results
@@ -64,6 +63,8 @@ pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
 
                     let rel_log = writer.result_path_fragement();
 
+                    // TODO: Seperate out writting log files so that they can
+                    // be served via HTTP directly instead.
                     write_log_file(dest, &rel_log, &mut result_log)?;
 
                     Ok(BuildTestResult {
@@ -85,9 +86,16 @@ pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    let res = TestResults { crates: res };
+    Ok(TestResults { crates: res })
+}
 
+
+pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
+    let ex = ex::Experiment::load(ex_name)?;
+
+    let res = generate_report(&ex, dest)?;
     let json = serde_json::to_string(&res)?;
+
     info!("writing results to {}", results_file(dest).display());
     file::write_string(&results_file(dest), &json)?;
 

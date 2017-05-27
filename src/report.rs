@@ -139,9 +139,9 @@ fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Compar
 }
 
 fn write_html_files(dir: &Path) -> Result<()> {
-    let html_in = include_str!("report.html");
-    let js_in = include_str!("report.js");
-    let css_in = include_str!("report.css");
+    let html_in = include_str!("../static/report.html");
+    let js_in = include_str!("../static/report.js");
+    let css_in = include_str!("../static/report.css");
     let html_out = dir.join("index.html");
     let js_out = dir.join("report.js");
     let css_out = dir.join("report.css");

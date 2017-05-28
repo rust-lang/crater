@@ -337,6 +337,14 @@ impl Crate {
             }
         }
     }
+
+    pub fn repo_url(&self) -> Option<&str> {
+        if let Crate::Repo { ref url } = *self {
+            Some(url)
+        } else {
+            None
+        }
+    }
 }
 
 impl Display for Crate {

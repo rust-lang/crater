@@ -2,6 +2,7 @@ use crates;
 use dirs::{CRATES_DIR, EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
 use file;
+use futures::future::Future;
 use gh_mirrors;
 use lists::{self, Crate, List};
 use run;
@@ -153,18 +154,22 @@ impl Experiment {
         let config = file::read_string(&config_file(ex_name))?;
         Ok(serde_json::from_str(&config)?)
     }
-}
 
-pub fn fetch_gh_mirrors(ex: &Experiment) -> Result<()> {
-    for c in &ex.crates {
-        if let Crate::Repo { ref url } = *c {
-            if let Err(e) = gh_mirrors::fetch(url) {
+    fn repo_crate_urls(&self) -> Vec<String> {
+        self.crates
+            .iter()
+            .filter_map(|crate_| crate_.repo_url().map(|u| u.to_owned()))
+            .collect()
+    }
+
+    pub fn fetch_repo_crates(&self) -> Result<()> {
+        for url in self.repo_crate_urls() {
+            if let Err(e) = gh_mirrors::fetch(url).wait() {
                 util::report_error(&e);
             }
         }
+        Ok(())
     }
-
-    Ok(())
 }
 
 pub fn capture_shas(ex: &Experiment) -> Result<()> {

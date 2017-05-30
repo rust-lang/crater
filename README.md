@@ -85,7 +85,7 @@ it to analyze a nightly, upload reports to S3, and triage them.
 
 - Full operation requires something like 600 GB disk space. I
   allocate a 1 TB partition and check out cargobomb there.
-- I run in a screen session with 5 windows: "master", "tc1",
+- I run in a screen session with 4 windows: "master", "tc1",
   "tc2", "upload"
 - Create a directory to hold reports called `cargobomb-reports`. The
   "upload" screen is in this directory, all others are in `cargobomb`.

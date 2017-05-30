@@ -25,6 +25,7 @@ use cargobomb::ex_run;
 use cargobomb::lists;
 use cargobomb::report;
 use cargobomb::toolchain::Toolchain;
+use server;
 use std::path::PathBuf;
 
 // An experiment name
@@ -50,6 +51,7 @@ struct DeleteEx(Ex);
 
 struct DeleteAllResults(Ex);
 struct DeleteResult(Ex, Option<Toolchain>, ExCrate);
+struct Serve;
 
 
 // Local prep
@@ -156,6 +158,13 @@ impl Cmd for GenReport {
     }
 }
 
+impl Cmd for Serve {
+    fn run(&self) -> Result<()> {
+        server::start(server::Data);
+        Ok(())
+    }
+}
+
 // Boilerplate conversions on the model. Ideally all this would be generated.
 pub mod conv {
     use super::*;
@@ -253,6 +262,8 @@ pub mod conv {
             cmd("gen-report", "generate the experiment report")
                 .arg(ex())
                 .arg(Arg::with_name("destination").required(true)),
+
+            cmd("serve-report", "serve report"),
         ]
     }
 
@@ -324,6 +335,8 @@ pub mod conv {
                    Box::new(GenReport(ex(m)?,
                                       m.value_of("destination").map(PathBuf::from).expect("")))
                }
+
+               ("serve-report", _) => Box::new(Serve),
 
                (s, _) => panic!("unimplemented args_to_cmd {}", s),
            })

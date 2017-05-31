@@ -6,6 +6,10 @@ error_chain! {
         ReqwestError(::reqwest::Error);
     }
 
+    links {
+        CratesIndexError(::crates_index::Error, ::crates_index::ErrorKind);
+    }
+
     errors {
         Timeout(what: &'static str, when: u64) {
             description("the operation timed out")

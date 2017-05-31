@@ -1,6 +1,5 @@
 use dirs::GH_MIRRORS_DIR;
 use errors::*;
-use futures::future;
 use git;
 use std::path::{Path, PathBuf};
 
@@ -22,11 +21,9 @@ pub fn gh_url_to_org_and_name(url: &str) -> Result<(String, String)> {
     Ok((org.to_string(), name.to_string()))
 }
 
-pub fn fetch(url: String) -> future::BoxFuture<(), Error> {
-    Box::new(future::lazy(move || {
-                              let dir = repo_dir(&url)?;
-                              git::shallow_clone_or_pull(&url, &dir)
-                          }))
+pub fn fetch(url: &str) -> Result<()> {
+    let dir = repo_dir(url)?;
+    git::shallow_clone_or_pull(url, &dir)
 }
 
 pub fn reset_to_sha(url: &str, sha: &str) -> Result<()> {

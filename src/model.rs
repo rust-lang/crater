@@ -88,7 +88,7 @@ impl Cmd for PrepareEx {
         let &PrepareEx(ref ex) = self;
         let ex = ex::Experiment::load(&ex.0)?;
         // Shared experiment prep
-        ex::fetch_gh_mirrors(&ex)?;
+        ex.fetch_repo_crates()?;
         ex::capture_shas(&ex)?;
         ex::download_crates(&ex)?;
         ex::frob_tomls(&ex)?;

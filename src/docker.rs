@@ -23,7 +23,6 @@ pub enum Perm {
 
 pub struct RustEnv<'a> {
     pub args: &'a [&'a str],
-    pub privileged: bool,
     pub work_dir: (PathBuf, Perm),
     pub cargo_home: (PathBuf, Perm),
     pub rustup_home: (PathBuf, Perm),
@@ -62,7 +61,6 @@ pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> 
 
     let env = RustEnv {
         args: args,
-        privileged: false,
         work_dir: (source_path.into(), Perm::ReadOnly),
         cargo_home: (Path::new(CARGO_HOME).into(), Perm::ReadOnly),
         rustup_home: (Path::new(RUSTUP_HOME).into(), Perm::ReadOnly),
@@ -98,47 +96,6 @@ fn user_id() -> u32 {
     panic!("unimplemented user_id");
 }
 
-#[cfg(unix)]
-fn docker_gid() -> ::libc::gid_t {
-    unsafe {
-        use std::ffi::CString;
-        use libc::{c_char, c_int, group, size_t};
-        use std::mem;
-        use std::ptr;
-        use std::iter;
-
-        extern "C" {
-            fn getgrnam_r(name: *const c_char,
-                          grp: *mut group,
-                          buf: *mut c_char,
-                          buflen: size_t,
-                          result: *mut *mut group)
-                          -> c_int;
-        }
-
-        let name = CString::new("docker").expect("");
-        // FIXME don't guess bufer size
-        let mut buf = iter::repeat(0 as c_char).take(1024).collect::<Vec<_>>();
-        let mut group = mem::uninitialized();
-        let mut ptr = ptr::null_mut();
-        let r = getgrnam_r(name.as_ptr(),
-                           &mut group,
-                           buf.as_mut_ptr(),
-                           buf.len(),
-                           &mut ptr);
-        if r != 0 {
-            panic!("getgrnam_r failed retrieving docker gid");
-        }
-
-        group.gr_gid
-    }
-}
-
-#[cfg(windows)]
-fn docker_gid() -> u32 {
-    panic!("unimplemented docker_gid");
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Container {
     // Docker container ID
@@ -160,9 +117,7 @@ impl Container {
         fs::create_dir_all(&config.rustup_home.0)?;
         fs::create_dir_all(&config.target_dir.0)?;
 
-        let docker_gid_;
-
-        let mut mounts = vec![
+        let mounts = vec![
             MountConfig {
                 host_path: &config.work_dir.0,
                 container_path: "/source",
@@ -185,22 +140,10 @@ impl Container {
             },
         ];
 
-        let mut env = vec![
+        let env = vec![
             ("USER_ID", format!("{}", user_id())),
             ("CMD", config.args.join(" ")),
         ];
-
-
-        // Let the container talk to the docker daemon
-        if config.privileged {
-            mounts.push(MountConfig {
-                            host_path: Path::new("/var/run/docker.sock"),
-                            container_path: "/var/run/docker.sock",
-                            perm: Perm::ReadWrite,
-                        });
-            docker_gid_ = format!("DOCKER_GROUP_ID={}", docker_gid());
-            env.push(("DOCKER_GROUP_ID", docker_gid_));
-        }
 
         Self::create_container(&ContainerConfig {
                                    image_name: IMAGE_NAME,

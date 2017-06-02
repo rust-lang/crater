@@ -6,7 +6,7 @@ use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use std::collections::HashSet;
 use std::path::Path;
 use std::time::Instant;
-use toolchain::Toolchain;
+use toolchain::{CargoState, Toolchain};
 use util;
 
 pub fn delete_all_results(ex_name: &str) -> Result<()> {
@@ -173,19 +173,24 @@ fn test_build_and_test(ex: &Experiment,
                        source_path: &Path,
                        toolchain: &Toolchain)
                        -> Result<TestResult> {
-    let build_r = toolchain.run_cargo_in_docker(&ex.name, source_path, &["build", "--frozen"]);
+    let build_r = toolchain.run_cargo(&ex.name,
+                                      source_path,
+                                      &["build", "--frozen"],
+                                      CargoState::Locked);
     let mut test_r;
 
     if build_r.is_ok() {
         // First build, with --no-run
-        test_r = Some(toolchain.run_cargo_in_docker(&ex.name,
-                                                    source_path.into(),
-                                                    &["test", "--frozen", "--no-run"]));
+        test_r = Some(toolchain.run_cargo(&ex.name,
+                                          source_path.into(),
+                                          &["test", "--frozen", "--no-run"],
+                                          CargoState::Locked));
         // Then run
         test_r = test_r.map(|_| {
-                                toolchain.run_cargo_in_docker(&ex.name,
-                                                              source_path.into(),
-                                                              &["test", "--frozen"])
+                                toolchain.run_cargo(&ex.name,
+                                                    source_path.into(),
+                                                    &["test", "--frozen"],
+                                                    CargoState::Locked)
                             });
     } else {
         test_r = None;
@@ -203,7 +208,10 @@ fn test_build_only(ex: &Experiment,
                    source_path: &Path,
                    toolchain: &Toolchain)
                    -> Result<TestResult> {
-    let r = toolchain.run_cargo_in_docker(&ex.name, source_path.into(), &["build", "--frozen"]);
+    let r = toolchain.run_cargo(&ex.name,
+                                source_path.into(),
+                                &["build", "--frozen"],
+                                CargoState::Locked);
 
     if r.is_ok() {
         Ok(TestResult::TestPass)
@@ -216,7 +224,10 @@ fn test_check_only(ex: &Experiment,
                    source_path: &Path,
                    toolchain: &Toolchain)
                    -> Result<TestResult> {
-    let r = toolchain.run_cargo_in_docker(&ex.name, source_path.into(), &["check", "--frozen"]);
+    let r = toolchain.run_cargo(&ex.name,
+                                source_path.into(),
+                                &["check", "--frozen"],
+                                CargoState::Locked);
 
     if r.is_ok() {
         Ok(TestResult::TestPass)

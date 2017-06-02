@@ -181,32 +181,22 @@ pub fn ex_target_dir(ex_name: &str) -> PathBuf {
     Path::new(TARGET_DIR).join(ex_name)
 }
 
+pub enum CargoState {
+    Locked,
+    Unlocked,
+}
+
 impl Toolchain {
     pub fn target_dir(&self, ex_name: &str) -> PathBuf {
         ex_target_dir(ex_name).join(self.to_string())
     }
 
-    pub fn run_cargo(&self, ex_name: &str, args: &[&str]) -> Result<()> {
-        let toolchain_name = self.rustup_name();
-        let ex_target_dir = self.target_dir(ex_name);
-
-        fs::create_dir_all(&ex_target_dir)?;
-
-        let toolchain_arg = "+".to_string() + &toolchain_name;
-        let mut full_args = vec![&*toolchain_arg];
-        full_args.extend_from_slice(args);
-
-        let cargo = Path::new(CARGO_HOME).join("bin/cargo");
-        rustup_run(&cargo.to_string_lossy(),
-                   &full_args,
-                   &[("CARGO_TARGET_DIR", &ex_target_dir.to_string_lossy())])
-    }
-
-    pub fn run_cargo_in_docker(&self,
-                               ex_name: &str,
-                               source_dir: &Path,
-                               args: &[&str])
-                               -> Result<()> {
+    pub fn run_cargo(&self,
+                     ex_name: &str,
+                     source_dir: &Path,
+                     args: &[&str],
+                     cargo_state: CargoState)
+                     -> Result<()> {
         let toolchain_name = self.rustup_name();
         let ex_target_dir = self.target_dir(ex_name);
 
@@ -220,7 +210,11 @@ impl Toolchain {
         let rust_env = docker::RustEnv {
             args: &full_args,
             work_dir: (source_dir.into(), docker::Perm::ReadOnly),
-            cargo_home: (Path::new(CARGO_HOME).into(), docker::Perm::ReadOnly),
+            cargo_home: (Path::new(CARGO_HOME).into(),
+                         match cargo_state {
+                             CargoState::Locked => docker::Perm::ReadOnly,
+                             CargoState::Unlocked => docker::Perm::ReadWrite,
+                         }),
             rustup_home: (Path::new(RUSTUP_HOME).into(), docker::Perm::ReadOnly),
             // This is configured as CARGO_TARGET_DIR by the docker container itself
             target_dir: (ex_target_dir, docker::Perm::ReadWrite),

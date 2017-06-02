@@ -12,7 +12,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use toml_frobber;
-use toolchain::{self, Toolchain};
+use toolchain::{self, CargoState, Toolchain};
 use util;
 
 #[derive(Serialize, Deserialize)]
@@ -424,10 +424,9 @@ fn capture_lockfile(ex: &Experiment,
                     path: &Path,
                     toolchain: &Toolchain)
                     -> Result<()> {
-    let manifest_path = path.join("Cargo.toml").to_string_lossy().to_string();
-    let args = &["generate-lockfile", "--manifest-path", &*manifest_path];
+    let args = &["generate-lockfile", "--manifest-path", "Cargo.toml"];
     toolchain
-        .run_cargo(&ex.name, args)
+        .run_cargo(&ex.name, path, args, CargoState::Unlocked)
         .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
 
     let src_lockfile = &path.join("Cargo.lock");
@@ -472,10 +471,9 @@ pub fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
             with_frobbed_toml(ex, c, path)?;
             with_captured_lockfile(ex, c, path)?;
 
-            let manifest_path = path.join("Cargo.toml").to_string_lossy().to_string();
-            let args = &["fetch", "--locked", "--manifest-path", &*manifest_path];
+            let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
             toolchain
-                .run_cargo(&ex.name, args)
+                .run_cargo(&ex.name, path, args, CargoState::Unlocked)
                 .chain_err(|| format!("unable to fetch deps for {}", c))?;
 
             Ok(())

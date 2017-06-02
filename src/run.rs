@@ -4,6 +4,7 @@ use errors::*;
 use futures::{Future, Stream};
 use futures::stream::MergedItem;
 use slog_scope;
+use std::borrow::Borrow;
 use std::io::{self, BufReader};
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
@@ -46,15 +47,17 @@ pub fn run_full(cd: Option<&Path>, name: &str, args: &[&str], env: &[(&str, &str
     }
 }
 
-pub fn run_capture(cd: Option<&Path>,
-                   name: &str,
-                   args: &[&str],
-                   env: &[(&str, &str)])
-                   -> Result<(Vec<String>, Vec<String>)> {
+pub fn run_capture<S>(cd: Option<&Path>,
+                      name: &str,
+                      args: &[S],
+                      env: &[(&str, &str)])
+                      -> Result<(Vec<String>, Vec<String>)>
+    where S: Borrow<str>
+{
     let cmdstr = make_cmdstr(name, args);
     let mut cmd = Command::new(name);
 
-    cmd.args(args);
+    cmd.args(args.iter().map(Borrow::borrow));
     for &(k, v) in env {
         cmd.env(k, v);
     }
@@ -73,7 +76,9 @@ pub fn run_capture(cd: Option<&Path>,
     }
 }
 
-fn make_cmdstr(name: &str, args: &[&str]) -> String {
+fn make_cmdstr<S>(name: &str, args: &[S]) -> String
+    where S: Borrow<str>
+{
     assert!(!args.is_empty(), "case not handled");
     format!("{} {}", name, args.join(" "))
 }

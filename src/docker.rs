@@ -30,7 +30,7 @@ pub struct RustEnv<'a> {
 }
 
 pub struct MountConfig<'a> {
-    pub host_path: &'a Path,
+    pub host_path: PathBuf,
     pub container_path: &'a str,
     pub perm: Perm,
 }
@@ -41,8 +41,8 @@ impl<'a> MountConfig<'a> {
             Perm::ReadWrite => "rw",
             Perm::ReadOnly => "ro",
         };
-        format!("{}:{}:{}",
-                absolute(self.host_path).display(),
+        format!("{}:{}:{},Z",
+                absolute(&self.host_path).display(),
                 self.container_path,
                 perm)
     }
@@ -50,8 +50,8 @@ impl<'a> MountConfig<'a> {
 
 pub struct ContainerConfig<'a> {
     pub image_name: &'a str,
-    pub mounts: &'a [MountConfig<'a>],
-    pub env: &'a [(&'static str, String)],
+    pub mounts: Vec<MountConfig<'a>>,
+    pub env: Vec<(&'static str, String)>,
 }
 
 
@@ -68,13 +68,55 @@ pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> 
         target_dir: (target_path.into(), Perm::ReadWrite),
     };
 
-    let c = Container::create_rust_container(&env)?;
+    run_container(rust_container(env))
+}
+
+pub fn run_container(config: ContainerConfig) -> Result<()> {
+    let c = Container::create_container(config)?;
     defer!{{
         if let Err(e) = c.delete() {
             error!{"Cannot delete container: {}", e; "container" => &c.id}
         }
     }}
     c.run()
+}
+
+pub fn rust_container(config: RustEnv) -> ContainerConfig {
+    info!("creating container for: {}", config.args.join(" "));
+
+    let mounts = vec![
+        MountConfig {
+            host_path: config.work_dir.0,
+            container_path: "/source",
+            perm: config.work_dir.1,
+        },
+        MountConfig {
+            host_path: config.target_dir.0,
+            container_path: "/target",
+            perm: config.target_dir.1,
+        },
+        MountConfig {
+            host_path: config.cargo_home.0,
+            container_path: "/cargo-home",
+            perm: config.cargo_home.1,
+        },
+        MountConfig {
+            host_path: config.rustup_home.0,
+            container_path: "/rustup-home",
+            perm: config.rustup_home.1,
+        },
+    ];
+
+    let env = vec![
+        ("USER_ID", format!("{}", user_id())),
+        ("CMD", config.args.join(" ")),
+    ];
+
+    ContainerConfig {
+        image_name: IMAGE_NAME,
+        mounts: mounts,
+        env: env,
+    }
 }
 
 fn absolute(path: &Path) -> PathBuf {
@@ -109,58 +151,16 @@ impl Display for Container {
 }
 
 impl Container {
-    pub fn create_rust_container(config: &RustEnv) -> Result<Self> {
-        info!("creating container for: {}", config.args.join(" "));
-
-        fs::create_dir_all(&config.work_dir.0)?;
-        fs::create_dir_all(&config.cargo_home.0)?;
-        fs::create_dir_all(&config.rustup_home.0)?;
-        fs::create_dir_all(&config.target_dir.0)?;
-
-        let mounts = vec![
-            MountConfig {
-                host_path: &config.work_dir.0,
-                container_path: "/source",
-                perm: config.work_dir.1,
-            },
-            MountConfig {
-                host_path: &config.target_dir.0,
-                container_path: "/target",
-                perm: config.target_dir.1,
-            },
-            MountConfig {
-                host_path: &config.cargo_home.0,
-                container_path: "/cargo-home",
-                perm: config.cargo_home.1,
-            },
-            MountConfig {
-                host_path: &config.rustup_home.0,
-                container_path: "/rustup-home",
-                perm: config.rustup_home.1,
-            },
-        ];
-
-        let env = vec![
-            ("USER_ID", format!("{}", user_id())),
-            ("CMD", config.args.join(" ")),
-        ];
-
-        Self::create_container(&ContainerConfig {
-                                   image_name: IMAGE_NAME,
-                                   mounts: &*mounts,
-                                   env: &env,
-                               })
-    }
-
-    fn create_container(config: &ContainerConfig) -> Result<Self> {
+    fn create_container(config: ContainerConfig) -> Result<Self> {
         let mut args: Vec<String> = vec!["create".into()];
 
-        for mount in config.mounts {
+        for mount in &config.mounts {
+            fs::create_dir_all(&mount.host_path)?;
             args.push("-v".into());
             args.push(mount.as_arg())
         }
 
-        for &(var, ref value) in config.env {
+        for &(var, ref value) in &config.env {
             args.push("-e".into());
             args.push(format!{"{}={}", var, value})
         }

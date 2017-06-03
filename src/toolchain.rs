@@ -216,6 +216,15 @@ impl Toolchain {
         let mut full_args = vec!["cargo", &*toolchain_arg];
         full_args.extend_from_slice(args);
 
-        docker::run(source_dir, &ex_target_dir, &full_args)
+        info!("running: {}", full_args.join(" "));
+        let rust_env = docker::RustEnv {
+            args: &full_args,
+            work_dir: (source_dir.into(), docker::Perm::ReadOnly),
+            cargo_home: (Path::new(CARGO_HOME).into(), docker::Perm::ReadOnly),
+            rustup_home: (Path::new(RUSTUP_HOME).into(), docker::Perm::ReadOnly),
+            // This is configured as CARGO_TARGET_DIR by the docker container itself
+            target_dir: (ex_target_dir, docker::Perm::ReadWrite),
+        };
+        docker::run(docker::rust_container(rust_env))
     }
 }

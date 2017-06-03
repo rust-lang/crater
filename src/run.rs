@@ -4,7 +4,8 @@ use errors::*;
 use futures::{Future, Stream};
 use futures::stream::MergedItem;
 use slog_scope;
-use std::borrow::Borrow;
+use std::convert::AsRef;
+use std::ffi::OsStr;
 use std::io::{self, BufReader};
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
@@ -25,13 +26,13 @@ pub fn cd_run(cd: &Path, name: &str, args: &[&str], env: &[(&str, &str)]) -> Res
 }
 
 pub fn run_full(cd: Option<&Path>, name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
-    let cmdstr = make_cmdstr(name, args);
     let mut cmd = Command::new(name);
 
     cmd.args(args);
     for &(k, v) in env {
         cmd.env(k, v);
     }
+    let cmdstr = format!{"{:?}", cmd};
 
     if let Some(cd) = cd {
         cmd.current_dir(cd);
@@ -52,15 +53,16 @@ pub fn run_capture<S>(cd: Option<&Path>,
                       args: &[S],
                       env: &[(&str, &str)])
                       -> Result<(Vec<String>, Vec<String>)>
-    where S: Borrow<str>
+    where S: AsRef<OsStr>
 {
-    let cmdstr = make_cmdstr(name, args);
     let mut cmd = Command::new(name);
 
-    cmd.args(args.iter().map(Borrow::borrow));
+    cmd.args(args);
     for &(k, v) in env {
         cmd.env(k, v);
     }
+
+    let cmdstr = format!{"{:?}", cmd};
 
     if let Some(cd) = cd {
         cmd.current_dir(cd);
@@ -74,13 +76,6 @@ pub fn run_capture<S>(cd: Option<&Path>,
     } else {
         Err(format!("command `{}` failed", cmdstr).into())
     }
-}
-
-fn make_cmdstr<S>(name: &str, args: &[S]) -> String
-    where S: Borrow<str>
-{
-    assert!(!args.is_empty(), "case not handled");
-    format!("{} {}", name, args.join(" "))
 }
 
 struct ProcessOutput {

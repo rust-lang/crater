@@ -36,7 +36,7 @@ pub struct MountConfig<'a> {
 }
 
 impl<'a> MountConfig<'a> {
-    fn as_arg(&self) -> String {
+    fn to_arg(&self) -> String {
         let perm = match self.perm {
             Perm::ReadWrite => "rw",
             Perm::ReadOnly => "ro",
@@ -157,7 +157,7 @@ impl Container {
         for mount in &config.mounts {
             fs::create_dir_all(&mount.host_path)?;
             args.push("-v".into());
-            args.push(mount.as_arg())
+            args.push(mount.to_arg())
         }
 
         for &(var, ref value) in &config.env {

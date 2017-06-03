@@ -44,9 +44,3 @@ winapi = "0.2.8"
 [dependencies.hyper]
 git = "https://github.com/hyperium/hyper.git"
 optional = false
-
-[replace]
-# Use mio from master until there is a new release.
-# https://github.com/carllerche/mio/pull/605
-# Otherwise, creating a bnuch of `tokio_core::reactor::Core`s leaks FDs.
-"mio:0.6.7" = { git = "https://github.com/carllerche/mio/", branch = "master" }

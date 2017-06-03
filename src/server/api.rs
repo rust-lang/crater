@@ -36,3 +36,27 @@ pub mod post {
         Response { out: format!("Got {}!", post.input) }
     }
 }
+
+pub mod ex_report {
+    use ex;
+    use report::{TestResults, generate_report};
+    use server::{Data, Params};
+
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    pub fn handler(_data: &Data, params: Params) -> TestResults {
+        let ex_name = params.find("experiment").unwrap();
+        let ex = ex::Experiment::load(ex_name).unwrap();
+        generate_report(&ex, None).unwrap()
+    }
+}
+
+pub mod ex_config {
+    use ex;
+    use server::{Data, Params};
+
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    pub fn handler(_data: &Data, params: Params) -> ex::Experiment {
+        let ex_name = params.find("experiment").unwrap();
+        ex::Experiment::load(ex_name).unwrap()
+    }
+}

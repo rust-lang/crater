@@ -60,10 +60,10 @@ impl Server {
 
     fn handle_post<F, D, S>(&self,
                             req: Request,
-                            _params: Params,
+                            params: Params,
                             handler: F)
                             -> <Server as Service>::Future
-        where F: FnOnce(D, &Data) -> S + Send + 'static,
+        where F: FnOnce(D, &Data, Params) -> S + Send + 'static,
               D: DeserializeOwned,
               S: Serialize
     {
@@ -145,6 +145,14 @@ pub fn start(data: Data) {
     let mut router = Router::<Handler>::new();
     route!(router, "/api/get", handle_get, api::get::handler);
     route!(router, "/api/post", handle_post, api::post::handler);
+    route!(router,
+           "/api/ex/:experiment/results",
+           handle_get,
+           api::ex_report::handler);
+    route!(router,
+           "/api/ex/:experiment/config",
+           handle_get,
+           api::ex_config::handler);
     route!(router,
            "/static/report.html",
            handle_static,

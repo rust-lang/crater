@@ -13,7 +13,7 @@ fn results_file(dest: &Path) -> PathBuf {
 }
 
 #[derive(Serialize, Deserialize)]
-struct TestResults {
+pub struct TestResults {
     crates: Vec<CrateResult>,
 }
 
@@ -40,13 +40,16 @@ struct BuildTestResult {
     log: String,
 }
 
-fn generate_report(ex: &ex::Experiment, dest: &Path) -> Result<TestResults> {
+
+pub fn generate_report(ex: &ex::Experiment, dest: Option<&Path>) -> Result<TestResults> {
     let db = FileDB::for_experiment(ex);
     assert_eq!(ex.toolchains.len(), 2);
 
-    fs::create_dir_all(dest)?;
-    let json = serde_json::to_string(&ex)?;
-    file::write_string(&dest.join("config.json"), &json)?;
+    if let Some(dest) = dest {
+        fs::create_dir_all(dest)?;
+        let json = serde_json::to_string(&ex)?;
+        file::write_string(&dest.join("config.json"), &json)?;
+    }
 
     let res = ex::ex_crates_and_dirs(ex)?
         .into_iter()
@@ -59,13 +62,15 @@ fn generate_report(ex: &ex::Experiment, dest: &Path) -> Result<TestResults> {
                     let res = writer.load_test_result()?;
                     // If there was no test result return an error
                     let res = res.ok_or_else(|| Error::from("no result"))?;
-                    let mut result_log = writer.read_log()?;
 
                     let rel_log = writer.result_path_fragement();
 
-                    // TODO: Seperate out writting log files so that they can
-                    // be served via HTTP directly instead.
-                    write_log_file(dest, &rel_log, &mut result_log)?;
+                    if let Some(dest) = dest {
+                        let mut result_log = writer.read_log()?;
+                        // TODO: Seperate out writting log files so that they can
+                        // be served via HTTP directly instead.
+                        write_log_file(dest, &rel_log, &mut result_log)?;
+                    }
 
                     Ok(BuildTestResult {
                            res: res,
@@ -93,7 +98,7 @@ fn generate_report(ex: &ex::Experiment, dest: &Path) -> Result<TestResults> {
 pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
-    let res = generate_report(&ex, dest)?;
+    let res = generate_report(&ex, Some(dest))?;
     let json = serde_json::to_string(&res)?;
 
     info!("writing results to {}", results_file(dest).display());

@@ -1,26 +1,14 @@
-#![recursion_limit = "1024"]
-
 extern crate clap;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate serde;
-#[macro_use(slog_info, slog_log, slog_error,
+#[macro_use(slog_info, slog_log,
             slog_record, slog_record_static, slog_b, slog_kv)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-extern crate slog_term;
 extern crate result;
-extern crate futures;
-extern crate futures_cpupool;
-extern crate hyper;
-extern crate arc_cell;
 
 extern crate cargobomb;
 
 mod model;
-mod server;
 
 use cargobomb::{log, util};
 use cargobomb::errors::*;

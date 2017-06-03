@@ -31,6 +31,7 @@ extern crate slog;
 extern crate slog_scope;
 extern crate slog_term;
 extern crate futures;
+extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate tokio_process;
 extern crate tokio_io;
@@ -38,6 +39,8 @@ extern crate tokio_timer;
 extern crate result;
 extern crate ref_slice;
 extern crate crates_index;
+extern crate hyper;
+extern crate arc_cell;
 
 #[macro_use]
 pub mod log;
@@ -60,3 +63,4 @@ pub mod report;
 pub mod docker;
 pub mod dirs;
 mod results;
+pub mod server;

@@ -24,12 +24,12 @@ use cargobomb::ex::{ExCrate, ExCrateSelect, ExMode};
 use cargobomb::ex_run;
 use cargobomb::lists;
 use cargobomb::report;
+use cargobomb::server;
 use cargobomb::toolchain::Toolchain;
-use server;
 use std::path::PathBuf;
 
 // An experiment name
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Ex(String);
 
 pub trait Cmd {

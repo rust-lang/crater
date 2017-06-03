@@ -1,5 +1,3 @@
-
-
 use arc_cell::ArcCell;
 use futures::{self, Future, Stream};
 use futures_cpupool::CpuPool;

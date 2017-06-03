@@ -1,5 +1,6 @@
 use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR, TOOLCHAIN_DIR};
 use dl;
+use docker;
 use errors::*;
 use git;
 use run;
@@ -199,5 +200,22 @@ impl Toolchain {
         rustup_run(&cargo.to_string_lossy(),
                    &full_args,
                    &[("CARGO_TARGET_DIR", &ex_target_dir.to_string_lossy())])
+    }
+
+    pub fn run_cargo_in_docker(&self,
+                               ex_name: &str,
+                               source_dir: &Path,
+                               args: &[&str])
+                               -> Result<()> {
+        let toolchain_name = self.rustup_name();
+        let ex_target_dir = self.target_dir(ex_name);
+
+        fs::create_dir_all(&ex_target_dir)?;
+
+        let toolchain_arg = "+".to_string() + &toolchain_name;
+        let mut full_args = vec!["cargo", &*toolchain_arg];
+        full_args.extend_from_slice(args);
+
+        docker::run(source_dir, &ex_target_dir, &full_args)
     }
 }

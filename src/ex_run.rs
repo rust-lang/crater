@@ -1,4 +1,3 @@
-use docker;
 use errors::*;
 use ex::*;
 use file;
@@ -89,10 +88,12 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                         with_captured_lockfile(ex, c, source_path)?;
 
                         writer.record_results(|| {
-                            info!("testing {} against {} for {}", c, tc.to_string(), ex.name);
-                            let target_path = tc.target_dir(&ex.name);
-                            test_fn(source_path, &target_path, &tc.rustup_name())
-                        })
+                                                  info!("testing {} against {} for {}",
+                                                        c,
+                                                        tc.to_string(),
+                                                        ex.name);
+                                                  test_fn(ex, source_path, tc)
+                                              })
                     })
                 }
             };
@@ -168,26 +169,23 @@ fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     Ok(())
 }
 
-fn test_build_and_test(source_path: &Path,
-                       target_path: &Path,
-                       rustup_tc: &str)
+fn test_build_and_test(ex: &Experiment,
+                       source_path: &Path,
+                       toolchain: &Toolchain)
                        -> Result<TestResult> {
-    let tc_arg = &format!("+{}", rustup_tc);
-    let build_r = docker::run(source_path,
-                              target_path,
-                              &["cargo", tc_arg, "build", "--frozen"]);
+    let build_r = toolchain.run_cargo_in_docker(&ex.name, source_path, &["build", "--frozen"]);
     let mut test_r;
 
     if build_r.is_ok() {
         // First build, with --no-run
-        test_r = Some(docker::run(source_path,
-                                  target_path,
-                                  &["cargo", tc_arg, "test", "--frozen", "--no-run"]));
+        test_r = Some(toolchain.run_cargo_in_docker(&ex.name,
+                                                    source_path.into(),
+                                                    &["test", "--frozen", "--no-run"]));
         // Then run
         test_r = test_r.map(|_| {
-                                docker::run(source_path,
-                                            target_path,
-                                            &["cargo", tc_arg, "test", "--frozen"])
+                                toolchain.run_cargo_in_docker(&ex.name,
+                                                              source_path.into(),
+                                                              &["test", "--frozen"])
                             });
     } else {
         test_r = None;
@@ -201,11 +199,11 @@ fn test_build_and_test(source_path: &Path,
        })
 }
 
-fn test_build_only(source_path: &Path, target_path: &Path, rustup_tc: &str) -> Result<TestResult> {
-    let tc_arg = &format!("+{}", rustup_tc);
-    let r = docker::run(source_path,
-                        target_path,
-                        &["cargo", tc_arg, "build", "--frozen"]);
+fn test_build_only(ex: &Experiment,
+                   source_path: &Path,
+                   toolchain: &Toolchain)
+                   -> Result<TestResult> {
+    let r = toolchain.run_cargo_in_docker(&ex.name, source_path.into(), &["build", "--frozen"]);
 
     if r.is_ok() {
         Ok(TestResult::TestPass)
@@ -214,11 +212,11 @@ fn test_build_only(source_path: &Path, target_path: &Path, rustup_tc: &str) -> R
     }
 }
 
-fn test_check_only(source_path: &Path, target_path: &Path, rustup_tc: &str) -> Result<TestResult> {
-    let tc_arg = &format!("+{}", rustup_tc);
-    let r = docker::run(source_path,
-                        target_path,
-                        &["cargo", tc_arg, "check", "--frozen"]);
+fn test_check_only(ex: &Experiment,
+                   source_path: &Path,
+                   toolchain: &Toolchain)
+                   -> Result<TestResult> {
+    let r = toolchain.run_cargo_in_docker(&ex.name, source_path.into(), &["check", "--frozen"]);
 
     if r.is_ok() {
         Ok(TestResult::TestPass)
@@ -227,9 +225,9 @@ fn test_check_only(source_path: &Path, target_path: &Path, rustup_tc: &str) -> R
     }
 }
 
-fn test_find_unstable_features(source_path: &Path,
-                               _target_path: &Path,
-                               _rustup_tc: &str)
+fn test_find_unstable_features(_ex: &Experiment,
+                               source_path: &Path,
+                               _toolchain: &Toolchain)
                                -> Result<TestResult> {
     use walkdir::*;
 

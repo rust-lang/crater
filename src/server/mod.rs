@@ -28,17 +28,17 @@ struct Server {
 impl Server {
     fn handle_get<F, S>(&self,
                         req: Request,
-                        _params: Params,
+                        params: Params,
                         handler: F)
                         -> <Server as Service>::Future
-        where F: FnOnce(&Data) -> S,
+        where F: FnOnce(&Data, Params) -> S,
               S: Serialize
     {
         if *req.method() != Get {
             return self.error(StatusCode::BadRequest);
         };
         let data = self.data.get();
-        let result = handler(&data);
+        let result = handler(&data, params);
         let response = Response::new()
             .with_header(ContentType::json())
             .with_body(serde_json::to_string(&result).unwrap());
@@ -99,7 +99,7 @@ impl Server {
                                                               err));
                             }
                         };
-                        let result = handler(body, &data);
+                        let result = handler(body, &data, params);
                         Response::new()
                             .with_header(ContentType::json())
                             .with_body(serde_json::to_string(&result).unwrap())

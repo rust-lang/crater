@@ -207,14 +207,14 @@ impl Toolchain {
         full_args.extend_from_slice(args);
 
         info!("running: {}", full_args.join(" "));
+        let perm = match cargo_state {
+            CargoState::Locked => docker::Perm::ReadOnly,
+            CargoState::Unlocked => docker::Perm::ReadWrite,
+        };
         let rust_env = docker::RustEnv {
             args: &full_args,
-            work_dir: (source_dir.into(), docker::Perm::ReadOnly),
-            cargo_home: (Path::new(CARGO_HOME).into(),
-                         match cargo_state {
-                             CargoState::Locked => docker::Perm::ReadOnly,
-                             CargoState::Unlocked => docker::Perm::ReadWrite,
-                         }),
+            work_dir: (source_dir.into(), perm),
+            cargo_home: (Path::new(CARGO_HOME).into(), perm),
             rustup_home: (Path::new(RUSTUP_HOME).into(), docker::Perm::ReadOnly),
             // This is configured as CARGO_TARGET_DIR by the docker container itself
             target_dir: (ex_target_dir, docker::Perm::ReadWrite),

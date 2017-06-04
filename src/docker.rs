@@ -1,4 +1,3 @@
-use dirs::{CARGO_HOME, RUSTUP_HOME};
 use errors::*;
 use run;
 use std::env;
@@ -55,23 +54,7 @@ pub struct ContainerConfig<'a> {
 }
 
 
-pub fn run(source_path: &Path, target_path: &Path, args: &[&str]) -> Result<()> {
-
-    info!("running: {}", args.join(" "));
-
-    let env = RustEnv {
-        args: args,
-        work_dir: (source_path.into(), Perm::ReadOnly),
-        cargo_home: (Path::new(CARGO_HOME).into(), Perm::ReadOnly),
-        rustup_home: (Path::new(RUSTUP_HOME).into(), Perm::ReadOnly),
-        // This is configured as CARGO_TARGET_DIR by the docker container itself
-        target_dir: (target_path.into(), Perm::ReadWrite),
-    };
-
-    run_container(rust_container(env))
-}
-
-pub fn run_container(config: ContainerConfig) -> Result<()> {
+pub fn run(config: ContainerConfig) -> Result<()> {
     let c = Container::create_container(config)?;
     defer!{{
         if let Err(e) = c.delete() {

@@ -18,7 +18,8 @@ mod api;
 
 pub struct Data;
 
-type Handler = fn(&Server, Request, Params) -> BoxFuture<Response, hyper::Error>;
+type Handler =
+    Box<Fn(&Server, Request, Params) -> BoxFuture<Response, hyper::Error> + Sync + Send + 'static>;
 struct Server {
     router: Router<Handler>,
     data: ArcCell<Data>,
@@ -137,7 +138,7 @@ impl Service for Server {
 macro_rules! route {
     ($router:ident, $path:expr, $method:ident, $($handler:tt)* ) => (
         $router.add($path,
-            |server: &Server, req, params| server.$method(req, params, $($handler)*));
+            Box::new(|server: &Server, req, params| server.$method(req, params, $($handler)*)));
     )
 }
 

@@ -17,7 +17,7 @@ before_script:
   - |
     if [[  $TRAVIS_RUST_VERSION =~ nightly-* ]]; then
       if ! type -p cargo-clippy || [[ "$(cargo-clippy -V)" != $CLIPPY_VERSION ]] ; then
-         cargo install --force clippy
+         cargo install --force --vers "$CLIPPY_VERSION" clippy
       fi
     fi
   - cargo install-update -i rustfmt

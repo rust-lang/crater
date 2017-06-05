@@ -43,6 +43,7 @@ extern crate mime;
 extern crate arc_cell;
 extern crate route_recognizer;
 extern crate rustup_dist;
+extern crate handlebars;
 
 #[macro_use]
 pub mod log;

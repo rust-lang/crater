@@ -5,13 +5,13 @@ window.onload = function() {
     let configReq = new XMLHttpRequest();
     configReq.addEventListener("load", function() { loadConfig(configReq) });
     configReq.overrideMimeType("application/json");
-    configReq.open("GET", "config.json");
+    configReq.open("GET", config_url);
     configReq.send();
 
     let resultsReq = new XMLHttpRequest();
     resultsReq.addEventListener("load", function() { loadResults(resultsReq) });
     resultsReq.overrideMimeType("application/json");
-    resultsReq.open("GET", "results.json");
+    resultsReq.open("GET", results_url);
     resultsReq.send();
 
     setUpButtons();

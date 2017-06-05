@@ -1,11 +1,11 @@
 use arc_cell::ArcCell;
 use futures::{self, BoxFuture, Future, Stream};
 use futures_cpupool::CpuPool;
+use handlebars::Handlebars;
 use hyper::{self, Get, Post, StatusCode};
 use hyper::header::{ContentLength, ContentType};
 use hyper::server::{Http, Request, Response, Service};
 use route_recognizer::{Match, Params, Router};
-
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json;
@@ -55,6 +55,31 @@ impl Server {
         if *req.method() != Get {
             return self.error(StatusCode::BadRequest);
         };
+        let response = Response::new().with_header(content_type).with_body(body);
+        futures::future::ok(response).boxed()
+    }
+
+    fn handle_template<F, S>(&self,
+                             req: Request,
+                             params: Params,
+                             content_type: ContentType,
+                             context_fn: F,
+                             template: &'static str)
+                             -> <Server as Service>::Future
+        where F: FnOnce(&Data, Params) -> S + Send + 'static,
+              S: Serialize
+    {
+        if *req.method() != Get {
+            return self.error(StatusCode::BadRequest);
+        };
+        let data = self.data.get();
+        let context = context_fn(&data, params);
+        // TODO: Precompile templates.
+        // TODO: Stream body.
+        // TODO: Errors
+        let body = Handlebars::new()
+            .template_render(template, &context)
+            .unwrap();
         let response = Response::new().with_header(content_type).with_body(body);
         futures::future::ok(response).boxed()
     }
@@ -155,10 +180,11 @@ pub fn start(data: Data) {
            handle_get,
            api::ex_config::handler);
     route!(router,
-           "/static/report.html",
-           handle_static,
+           "/report/:experiment",
+           handle_template,
            ContentType::html(),
-           include_str!("../../static/report.html"));
+           api::template_report::handler,
+           include_str!("../../template/report.html"));
     route!(router,
            "/static/report.js",
            handle_static,

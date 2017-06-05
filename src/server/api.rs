@@ -60,3 +60,19 @@ pub mod ex_config {
         ex::Experiment::load(ex_name).unwrap()
     }
 }
+
+
+pub mod template_report {
+    use report::Context;
+    use server::{Data, Params};
+
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    pub fn handler(_data: &Data, params: Params) -> Context {
+        let ex_name = params.find("experiment").unwrap();
+        Context {
+            config_url: format!{"/api/ex/{}/config", ex_name},
+            results_url: format!{"/api/ex/{}/results", ex_name},
+            static_url: "/static/".into(),
+        }
+    }
+}

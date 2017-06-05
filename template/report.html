@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 
 <meta charset="utf-8">
-<link rel="stylesheet" href="report.css">
-<script src="report.js"></script>
+<link rel="stylesheet" href="{{static_url}}report.css">
+<script>
+config_url = "{{config_url}}"
+results_url = "{{results_url}}"
+</script>
+<script src="{{static_url}}report.js"></script>
 
 <header>
   <div>
@@ -12,7 +16,7 @@
   <div>
     Toolchain 1:
     <span id="ex-tc1"></span>
-  </div>  
+  </div>
   <div>
     Toolchain 2:
     <span id="ex-tc2"></span>

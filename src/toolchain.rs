@@ -15,6 +15,7 @@ use util;
 const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";
 
 const RUST_CI_TRY_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds-try";
+const RUST_CI_MASTER_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds/";
 
 const RUST_CI_COMPONENTS: [(&'static str, &'static str); 3] =
     [
@@ -29,6 +30,7 @@ const RUST_CI_COMPONENTS: [(&'static str, &'static str); 3] =
 pub enum Toolchain {
     Dist(String), // rustup toolchain spec
     TryBuild { sha: String },
+    Master { sha: String },
 }
 
 impl Toolchain {
@@ -37,7 +39,8 @@ impl Toolchain {
 
         match *self {
             Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
-            Toolchain::TryBuild { ref sha } => init_toolchain_from_try(sha)?,
+            Toolchain::Master { ref sha } => init_toolchain_from_ci(RUST_CI_MASTER_BASE_URL, sha)?,
+            Toolchain::TryBuild { ref sha } => init_toolchain_from_ci(RUST_CI_TRY_BASE_URL, sha)?,
         }
 
         Ok(())
@@ -49,6 +52,7 @@ impl ToString for Toolchain {
         match *self {
             Toolchain::Dist(ref s) => s.clone(),
             Toolchain::TryBuild { ref sha } => format!("try#{}", sha),
+            Toolchain::Master { ref sha } => format!("master#{}", sha),
         }
     }
 }
@@ -57,13 +61,18 @@ impl FromStr for Toolchain {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        if s.starts_with("try#") {
+        fn get_sha(s: &str) -> Result<&str> {
             if let Some(hash_idx) = s.find('#') {
                 let (_, sha) = s.split_at(hash_idx + 1);
-                Ok(Toolchain::TryBuild { sha: sha.to_string() })
+                Ok(sha)
             } else {
                 Err("no sha for try toolchain".into())
             }
+        }
+        if s.starts_with("try#") {
+            Ok(Toolchain::TryBuild { sha: get_sha(s)?.into() })
+        } else if s.starts_with("master#") {
+            Ok(Toolchain::Master { sha: get_sha(s)?.into() })
         } else {
             Ok(Toolchain::Dist(s.to_string()))
         }
@@ -161,7 +170,7 @@ fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
                    })
 }
 
-fn init_toolchain_from_try(sha: &str) -> Result<()> {
+fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
     info!("installing toolchain try#{}", sha);
 
     fs::create_dir_all(TOOLCHAIN_DIR)?;
@@ -181,7 +190,7 @@ fn init_toolchain_from_try(sha: &str) -> Result<()> {
             continue;
         };
         info!("installing component {}", component);
-        let url = format!("{}/{}/{}", RUST_CI_TRY_BASE_URL, sha, file);
+        let url = format!("{}/{}/{}", base_url, sha, file);
         let response = dl::download_limit(&url, 10000)?;
         if *response.status() != reqwest::StatusCode::Ok {
             return Err(ErrorKind::Download.into());
@@ -198,7 +207,8 @@ impl Toolchain {
     pub fn rustup_name(&self) -> String {
         match *self {
             Toolchain::Dist(ref n) => n.to_string(),
-            Toolchain::TryBuild { ref sha } => sha.to_string(),
+            Toolchain::TryBuild { ref sha } |
+            Toolchain::Master { ref sha } => sha.to_string(),
         }
     }
 }

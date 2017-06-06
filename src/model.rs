@@ -87,18 +87,8 @@ impl Cmd for PrepareEx {
     fn run(&self) -> Result<()> {
         let &PrepareEx(ref ex) = self;
         let ex = ex::Experiment::load(&ex.0)?;
-        // Shared experiment prep
-        ex.fetch_repo_crates()?;
-        ex::capture_shas(&ex)?;
-        ex::download_crates(&ex)?;
-        ex::frob_tomls(&ex)?;
-        ex::capture_lockfiles(&ex, &Toolchain::Dist("stable".into()), false)?;
-
-        // Local experiment prep
-        ex::delete_all_target_dirs(&ex.name)?;
-        ex_run::delete_all_results(&ex.name)?;
-        ex::fetch_deps(&ex, &Toolchain::Dist("stable".into()))?;
-        ex::prepare_all_toolchains(&ex)?;
+        ex.prepare_shared()?;
+        ex.prepare_local()?;
 
         Ok(())
     }

@@ -1,6 +1,7 @@
 use crates;
 use dirs::{CRATES_DIR, EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
+use ex_run;
 use file;
 use gh_mirrors;
 use lists::{self, Crate, List};
@@ -169,9 +170,28 @@ impl Experiment {
         }
         Ok(())
     }
+
+    pub fn prepare_shared(&self) -> Result<()> {
+        self.fetch_repo_crates()?;
+        capture_shas(self)?;
+        download_crates(self)?;
+        frob_tomls(self)?;
+        capture_lockfiles(self, &Toolchain::Dist("stable".into()), false)?;
+        Ok(())
+    }
+
+    pub fn prepare_local(&self) -> Result<()> {
+        // Local experiment prep
+        delete_all_target_dirs(&self.name)?;
+        ex_run::delete_all_results(&self.name)?;
+        fetch_deps(self, &Toolchain::Dist("stable".into()))?;
+        prepare_all_toolchains(self)?;
+
+        Ok(())
+    }
 }
 
-pub fn capture_shas(ex: &Experiment) -> Result<()> {
+fn capture_shas(ex: &Experiment) -> Result<()> {
     let mut shas: HashMap<String, String> = HashMap::new();
     for krate in &ex.crates {
         if let Crate::Repo { ref url } = *krate {
@@ -297,11 +317,11 @@ pub fn ex_crates_and_dirs(ex: &Experiment) -> Result<Vec<(ExCrate, PathBuf)>> {
     Ok(crates.collect())
 }
 
-pub fn download_crates(ex: &Experiment) -> Result<()> {
+fn download_crates(ex: &Experiment) -> Result<()> {
     crates::prepare(&ex_crates_and_dirs(ex)?)
 }
 
-pub fn frob_tomls(ex: &Experiment) -> Result<()> {
+fn frob_tomls(ex: &Experiment) -> Result<()> {
     for (krate, dir) in ex_crates_and_dirs(ex)? {
         if let ExCrate::Version {
                    ref name,
@@ -383,10 +403,10 @@ pub fn with_work_crate<F, R>(ex: &Experiment,
     r
 }
 
-pub fn capture_lockfiles(ex: &Experiment,
-                         toolchain: &Toolchain,
-                         recapture_existing: bool)
-                         -> Result<()> {
+fn capture_lockfiles(ex: &Experiment,
+                     toolchain: &Toolchain,
+                     recapture_existing: bool)
+                     -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
     let crates = ex_crates_and_dirs(ex)?;
@@ -464,7 +484,7 @@ pub fn with_captured_lockfile(ex: &Experiment, crate_: &ExCrate, path: &Path) ->
     Ok(())
 }
 
-pub fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
+fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
     let crates = ex_crates_and_dirs(ex)?;
     for (ref c, _) in crates {
         let r = with_work_crate(ex, toolchain, c, |path| {
@@ -487,7 +507,7 @@ pub fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
 
 }
 
-pub fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {
+fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {
     for tc in &ex.toolchains {
         tc.prepare()?;
     }

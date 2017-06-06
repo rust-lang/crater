@@ -6,11 +6,7 @@ use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use serde_json;
 use std::{fs, io};
 use std::fs::File;
-use std::path::{Path, PathBuf};
-
-fn results_file(dest: &Path) -> PathBuf {
-    dest.join("results.json")
-}
+use std::path::Path;
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
@@ -99,10 +95,11 @@ pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
     let res = generate_report(&ex, Some(dest))?;
-    let json = serde_json::to_string(&res)?;
+    let shas = ex.load_shas()?;
 
-    info!("writing results to {}", results_file(dest).display());
-    file::write_string(&results_file(dest), &json)?;
+    info!("writing results to {:?}", dest);
+    file::write_string(&dest.join("results.json"), &serde_json::to_string(&res)?)?;
+    file::write_string(&dest.join("shas.json"), &serde_json::to_string(&shas)?)?;
 
     write_html_files(dest)?;
 

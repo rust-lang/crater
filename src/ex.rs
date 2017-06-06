@@ -45,8 +45,8 @@ fn registry_dir() -> PathBuf {
     Path::new(CRATES_DIR).join("reg")
 }
 
-fn shafile(ex_name: &str) -> PathBuf {
-    Path::new(EXPERIMENT_DIR).join(ex_name).join("shas.json")
+fn shafile(ex: &Experiment) -> PathBuf {
+    Path::new(EXPERIMENT_DIR).join(&ex.name).join("shas.json")
 }
 
 fn config_file(ex_name: &str) -> PathBuf {
@@ -200,16 +200,19 @@ pub fn capture_shas(ex: &Experiment) -> Result<()> {
 
     fs::create_dir_all(&ex_dir(&ex.name))?;
     let shajson = serde_json::to_string(&shas)?;
-    info!("writing shas to {}", shafile(&ex.name).display());
-    file::write_string(&shafile(&ex.name), &shajson)?;
+    info!("writing shas to {}", shafile(ex).display());
+    file::write_string(&shafile(ex), &shajson)?;
 
     Ok(())
 }
 
-fn load_shas(ex: &Experiment) -> Result<HashMap<String, String>> {
-    let shas = file::read_string(&shafile(&ex.name))?;
-    let shas = serde_json::from_str(&shas)?;
-    Ok(shas)
+
+impl Experiment {
+    pub fn load_shas(&self) -> Result<HashMap<String, String>> {
+        let shas = file::read_string(&shafile(self))?;
+        let shas = serde_json::from_str(&shas)?;
+        Ok(shas)
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
@@ -275,7 +278,7 @@ impl FromStr for ExCrate {
 }
 
 pub fn ex_crates_and_dirs(ex: &Experiment) -> Result<Vec<(ExCrate, PathBuf)>> {
-    let shas = load_shas(ex)?;
+    let shas = ex.load_shas()?;
     let crates = ex.crates
         .clone()
         .into_iter()

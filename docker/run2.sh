@@ -6,4 +6,4 @@ export RUSTUP_HOME=/rustup-home
 export SOURCE_DIR=/source
 export CARGO_TARGET_DIR=/target
 
-$@
+exec "$@"

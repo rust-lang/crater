@@ -13,12 +13,10 @@ env:
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
-  - type -p cargo-install-update || cargo install --force cargo-update
+  - cargo install --force --git https://github.com/nabijaczleweli/cargo-update cargo-update
   - |
     if [[  $TRAVIS_RUST_VERSION =~ nightly-* ]]; then
-      if ! type -p cargo-clippy || [[ "$(cargo-clippy -V)" != $CLIPPY_VERSION ]] ; then
-         cargo install --force --vers "$CLIPPY_VERSION" clippy
-      fi
+        cargo install-update -i "clippy#$CLIPPY_VERSION"
     fi
   - cargo install-update -i rustfmt
 script:

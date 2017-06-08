@@ -8,8 +8,8 @@ lazy_static! {
     pub static ref WORK_DIR: &'static str = "./work";
     pub static ref LOCAL_DIR: PathBuf = "./work/local".into();
 
-    pub static ref CARGO_HOME: &'static str = "./work/local/cargo-home";
-    pub static ref RUSTUP_HOME: &'static str = "./work/local/rustup-home";
+    pub static ref CARGO_HOME: String = "./work/local/cargo-home".into();
+    pub static ref RUSTUP_HOME: String = "./work/local/rustup-home".into();
 
     // Custom toolchains
     pub static ref TOOLCHAIN_DIR: PathBuf = "./work/local/rustup-home/toolchains".into();

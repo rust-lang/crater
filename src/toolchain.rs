@@ -80,8 +80,8 @@ impl FromStr for Toolchain {
 }
 
 fn init_rustup() -> Result<()> {
-    fs::create_dir_all(*CARGO_HOME)?;
-    fs::create_dir_all(*RUSTUP_HOME)?;
+    fs::create_dir_all(&*CARGO_HOME)?;
+    fs::create_dir_all(&*RUSTUP_HOME)?;
     if rustup_exists() {
         update_rustup()?;
     } else {
@@ -100,8 +100,9 @@ fn rustup_exists() -> bool {
 }
 
 fn rustup_run(name: &str, args: &[&str]) -> Result<()> {
-    let full_env = [("CARGO_HOME", *CARGO_HOME), ("RUSTUP_HOME", *RUSTUP_HOME)];
-    run::run(name, args, &full_env)
+    run::run(name,
+             args,
+             &[("CARGO_HOME", &*CARGO_HOME), ("RUSTUP_HOME", &*RUSTUP_HOME)])
 }
 
 fn install_rustup() -> Result<()> {
@@ -247,8 +248,8 @@ impl Toolchain {
         let rust_env = docker::RustEnv {
             args: &full_args,
             work_dir: (source_dir.into(), perm),
-            cargo_home: (Path::new(*CARGO_HOME).into(), perm),
-            rustup_home: (Path::new(*RUSTUP_HOME).into(), docker::Perm::ReadOnly),
+            cargo_home: (Path::new(&*CARGO_HOME).into(), perm),
+            rustup_home: (Path::new(&*RUSTUP_HOME).into(), docker::Perm::ReadOnly),
             // This is configured as CARGO_TARGET_DIR by the docker container itself
             target_dir: (ex_target_dir, docker::Perm::ReadWrite),
         };

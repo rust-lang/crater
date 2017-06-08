@@ -1,10 +1,10 @@
 use crates_index;
 use dirs::LOCAL_DIR;
 use errors::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn repo_path() -> PathBuf {
-    Path::new(LOCAL_DIR).join("crates.io-index")
+    LOCAL_DIR.join("crates.io-index")
 }
 
 pub fn crates_index_registry() -> Result<crates_index::Index> {

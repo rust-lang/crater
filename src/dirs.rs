@@ -1,37 +1,36 @@
 // We define some unused constants here, since we don't have compile time string concatination.
 #![allow(dead_code)]
 
-pub const WORK_DIR: &'static str = "./work";
-pub const LOCAL_DIR: &'static str = "./work/local";
 
-pub const CARGO_HOME: &'static str = "./work/local/cargo-home";
-pub const RUSTUP_HOME: &'static str = "./work/local/rustup-home";
+use std::path::PathBuf;
 
-// Custom toolchains
-pub const TOOLCHAIN_DIR: &'static str = "./work/local/rustup-home/toolchains";
+lazy_static! {
+    pub static ref WORK_DIR: &'static str = "./work";
+    pub static ref LOCAL_DIR: PathBuf = "./work/local".into();
 
-// Where cargo puts its output, when running outside a docker container,
-// CARGO_TARGET_DIR
-pub const TARGET_DIR: &'static str = "./work/local/target-dirs";
+    pub static ref CARGO_HOME: &'static str = "./work/local/cargo-home";
+    pub static ref RUSTUP_HOME: &'static str = "./work/local/rustup-home";
 
-// The directory crates are unpacked to for running tests, mounted
-// in docker containers
-pub const TEST_SOURCE_DIR: &'static str = "./work/local/test-source";
+    // Custom toolchains
+    pub static ref TOOLCHAIN_DIR: PathBuf = "./work/local/rustup-home/toolchains".into();
 
-// Where GitHub crate mirrors are stored
-pub const GH_MIRRORS_DIR: &'static str = "./work/local/gh-mirrors";
+    // Where cargo puts its output, when running outside a docker container,
+    // CARGO_TARGET_DIR
+    pub static ref TARGET_DIR: PathBuf = "./work/local/target-dirs".into();
 
-// Where crates.io sources are stores
-pub const CRATES_DIR: &'static str = "./work/shared/crates";
+    // The directory crates are unpacked to for running tests, mounted
+    // in docker containers
+    pub static ref TEST_SOURCE_DIR: PathBuf = "./work/local/test-source".into();
 
-// Lists of crates
-pub const LIST_DIR: &'static str = "./work/shared/lists";
+    // Where GitHub crate mirrors are stored
+    pub static ref GH_MIRRORS_DIR: PathBuf = "./work/local/gh-mirrors".into();
 
-// crates.io Cargo.toml files, modified to build correctly
-pub const FROB_DIR: &'static str = "./work/shared/fromls";
+    // Where crates.io sources are stores
+    pub static ref CRATES_DIR: PathBuf = "./work/shared/crates".into();
 
-pub const EXPERIMENT_DIR: &'static str = "./work/ex";
-pub const LOG_DIR: &'static str = "./work/logs";
+    // Lists of crates
+    pub static ref LIST_DIR: PathBuf = "./work/shared/lists".into();
 
-// State for asynchronous job management
-pub const JOB_DIR: &'static str = "./work/jobs";
+    pub static ref EXPERIMENT_DIR: PathBuf = "./work/ex".into();
+    pub static ref LOG_DIR: PathBuf = "./work/logs".into();
+}

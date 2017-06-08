@@ -80,8 +80,8 @@ impl FromStr for Toolchain {
 }
 
 fn init_rustup() -> Result<()> {
-    fs::create_dir_all(CARGO_HOME)?;
-    fs::create_dir_all(RUSTUP_HOME)?;
+    fs::create_dir_all(*CARGO_HOME)?;
+    fs::create_dir_all(*RUSTUP_HOME)?;
     if rustup_exists() {
         update_rustup()?;
     } else {
@@ -92,16 +92,15 @@ fn init_rustup() -> Result<()> {
 }
 
 fn rustup_exe() -> String {
-    format!("{}/bin/rustup{}", CARGO_HOME, EXE_SUFFIX)
+    format!("{}/bin/rustup{}", *CARGO_HOME, EXE_SUFFIX)
 }
 
 fn rustup_exists() -> bool {
     Path::new(&rustup_exe()).exists()
 }
 
-fn rustup_run(name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
-    let mut full_env = [("CARGO_HOME", CARGO_HOME), ("RUSTUP_HOME", RUSTUP_HOME)].to_vec();
-    full_env.extend(env.iter());
+fn rustup_run(name: &str, args: &[&str]) -> Result<()> {
+    let full_env = [("CARGO_HOME", *CARGO_HOME), ("RUSTUP_HOME", *RUSTUP_HOME)];
     run::run(name, args, &full_env)
 }
 
@@ -124,10 +123,8 @@ fn install_rustup() -> Result<()> {
 
     // FIXME: Wish I could install rustup without installing a toolchain
     util::try_hard(|| {
-                       rustup_run(&installer.to_string_lossy(),
-                                  &["-y", "--no-modify-path"],
-                                  &[])
-                               .chain_err(|| "unable to run rustup-init")
+                       rustup_run(&installer.to_string_lossy(), &["-y", "--no-modify-path"])
+                           .chain_err(|| "unable to run rustup-init")
                    })
 }
 
@@ -157,7 +154,7 @@ pub fn make_executable(path: &Path) -> Result<()> {
 fn update_rustup() -> Result<()> {
     info!("updating rustup");
     util::try_hard(|| {
-                       rustup_run(&rustup_exe(), &["self", "update"], &[])
+                       rustup_run(&rustup_exe(), &["self", "update"])
                            .chain_err(|| "unable to run rustup self-update")
                    })
 }
@@ -165,7 +162,7 @@ fn update_rustup() -> Result<()> {
 fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
     info!("installing toolchain {}", toolchain);
     util::try_hard(|| {
-                       rustup_run(&rustup_exe(), &["toolchain", "install", toolchain], &[])
+                       rustup_run(&rustup_exe(), &["toolchain", "install", toolchain])
                            .chain_err(|| "unable to install toolchain via rustup")
                    })
 }
@@ -173,14 +170,14 @@ fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
 fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
     info!("installing toolchain try#{}", sha);
 
-    fs::create_dir_all(TOOLCHAIN_DIR)?;
-    let dir = Path::new(TOOLCHAIN_DIR).join(sha);
+    fs::create_dir_all(&*TOOLCHAIN_DIR)?;
+    let dir = TOOLCHAIN_DIR.join(sha);
     use rustup_dist as dist;
     use rustup_dist::component::Package;
 
     let prefix = dist::prefix::InstallPrefix::from(dir);
     let target = dist::component::Components::open(prefix.clone())?;
-    let cfg = dist::temp::Cfg::new(RUSTUP_HOME.into(), RUSTUP_BASE_URL, Box::new(|_| {}));
+    let cfg = dist::temp::Cfg::new((*RUSTUP_HOME).into(), RUSTUP_BASE_URL, Box::new(|_| {}));
     let notifier = |_: dist::notifications::Notification| {};
     let mut tx = dist::component::Transaction::new(prefix, &cfg, &notifier);
 
@@ -214,7 +211,7 @@ impl Toolchain {
 }
 
 pub fn ex_target_dir(ex_name: &str) -> PathBuf {
-    Path::new(TARGET_DIR).join(ex_name)
+    TARGET_DIR.join(ex_name)
 }
 
 pub enum CargoState {
@@ -250,8 +247,8 @@ impl Toolchain {
         let rust_env = docker::RustEnv {
             args: &full_args,
             work_dir: (source_dir.into(), perm),
-            cargo_home: (Path::new(CARGO_HOME).into(), perm),
-            rustup_home: (Path::new(RUSTUP_HOME).into(), docker::Perm::ReadOnly),
+            cargo_home: (Path::new(*CARGO_HOME).into(), perm),
+            rustup_home: (Path::new(*RUSTUP_HOME).into(), docker::Perm::ReadOnly),
             // This is configured as CARGO_TARGET_DIR by the docker container itself
             target_dir: (ex_target_dir, docker::Perm::ReadWrite),
         };

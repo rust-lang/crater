@@ -38,7 +38,7 @@ struct RecentList;
 impl List for RecentList {
     fn create() -> Result<()> {
         info!("creating recent list");
-        fs::create_dir_all(LIST_DIR)?;
+        fs::create_dir_all(&*LIST_DIR)?;
 
         let crates =
             registry::crates_index_registry()?
@@ -58,7 +58,7 @@ impl List for RecentList {
     }
 
     fn path() -> PathBuf {
-        Path::new(LIST_DIR).join("recent-crates.txt")
+        LIST_DIR.join("recent-crates.txt")
     }
 }
 
@@ -88,7 +88,7 @@ pub struct PopList;
 impl List for PopList {
     fn create() -> Result<()> {
         info!("creating hot list");
-        fs::create_dir_all(LIST_DIR)?;
+        fs::create_dir_all(&*LIST_DIR)?;
 
         let index = registry::crates_index_registry()?;
         info!("mapping reverse deps");
@@ -133,7 +133,7 @@ impl List for PopList {
     }
 
     fn path() -> PathBuf {
-        Path::new(LIST_DIR).join("pop-crates.txt")
+        LIST_DIR.join("pop-crates.txt")
     }
 }
 
@@ -142,7 +142,7 @@ struct HotList;
 impl List for HotList {
     fn create() -> Result<()> {
         info!("creating hot list");
-        fs::create_dir_all(LIST_DIR)?;
+        fs::create_dir_all(&*LIST_DIR)?;
 
         let index = registry::crates_index_registry()?;
 
@@ -215,7 +215,7 @@ impl List for HotList {
     }
 
     fn path() -> PathBuf {
-        Path::new(LIST_DIR).join("hot-crates.txt")
+        LIST_DIR.join("hot-crates.txt")
     }
 }
 
@@ -224,7 +224,7 @@ struct GitHubCandidateList;
 impl List for GitHubCandidateList {
     fn create() -> Result<()> {
         info!("creating gh candidate list");
-        fs::create_dir_all(LIST_DIR)?;
+        fs::create_dir_all(&*LIST_DIR)?;
 
         let candidates = gh::get_candidate_repos()?;
         file::write_lines(&Self::path(), &candidates)?;
@@ -241,7 +241,7 @@ impl List for GitHubCandidateList {
     }
 
     fn path() -> PathBuf {
-        Path::new(LIST_DIR).join("gh-candidates.txt")
+        LIST_DIR.join("gh-candidates.txt")
     }
 }
 
@@ -251,7 +251,7 @@ fn gh_candidate_cache_path() -> PathBuf {
 
 fn create_gh_candidate_list_from_cache() -> Result<()> {
     info!("creating gh candidate list from cache");
-    fs::create_dir_all(LIST_DIR)?;
+    fs::create_dir_all(&*LIST_DIR)?;
     info!("copying {} to {}",
           gh_candidate_cache_path().display(),
           GitHubCandidateList::path().display());
@@ -297,7 +297,7 @@ impl List for GitHubAppList {
     }
 
     fn path() -> PathBuf {
-        Path::new(LIST_DIR).join("gh-apps.txt")
+        LIST_DIR.join("gh-apps.txt")
     }
 }
 
@@ -307,7 +307,7 @@ fn gh_app_cache_path() -> PathBuf {
 
 fn create_gh_app_list_from_cache() -> Result<()> {
     info!("creating gh app list from cache");
-    fs::create_dir_all(LIST_DIR)?;
+    fs::create_dir_all(&*LIST_DIR)?;
     info!("copying {} to {}",
           gh_app_cache_path().display(),
           GitHubAppList::path().display());

@@ -5,6 +5,7 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 extern crate result;
+extern crate dotenv;
 
 extern crate cargobomb;
 
@@ -17,6 +18,9 @@ use std::panic;
 use std::process;
 
 fn main() {
+    // Ignore errors loading `.env` file.
+    let _ = dotenv::dotenv();
+
     let _guard = log::init();
     let success = match panic::catch_unwind(main_) {
         Ok(Ok(())) => {

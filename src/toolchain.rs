@@ -178,7 +178,7 @@ fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
 
     let prefix = dist::prefix::InstallPrefix::from(dir);
     let target = dist::component::Components::open(prefix.clone())?;
-    let cfg = dist::temp::Cfg::new((*RUSTUP_HOME).into(), RUSTUP_BASE_URL, Box::new(|_| {}));
+    let cfg = dist::temp::Cfg::new((&*RUSTUP_HOME).into(), RUSTUP_BASE_URL, Box::new(|_| {}));
     let notifier = |_: dist::notifications::Notification| {};
     let mut tx = dist::component::Transaction::new(prefix, &cfg, &notifier);
 

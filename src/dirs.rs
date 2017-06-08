@@ -1,7 +1,13 @@
+use std::env;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 lazy_static! {
-    pub static ref WORK_DIR: PathBuf = "./work".into();
+    pub static ref WORK_DIR: PathBuf = {
+        env::var_os("CARGOBOMB_WORK")
+            .unwrap_or_else(|| OsStr::new("./work").to_os_string())
+            .into()
+    };
     pub static ref LOCAL_DIR: PathBuf = WORK_DIR.join("local");
 
     pub static ref CARGO_HOME: String = LOCAL_DIR.join("cargo-home").to_string_lossy().into();

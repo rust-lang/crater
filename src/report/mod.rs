@@ -120,8 +120,8 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
                       serde_json::to_string(&shas)?.into(),
                       &mime::APPLICATION_JSON)?;
 
-    write_logs(&ex, dest)?;
     write_html_files(dest)?;
+    write_logs(&ex, dest)?;
 
     Ok(())
 }

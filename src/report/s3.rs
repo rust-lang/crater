@@ -1,4 +1,5 @@
 use errors::*;
+use mime::Mime;
 use report::ReportWriter;
 use rusoto_core::{DefaultCredentialsProvider, Region, default_tls_client};
 use rusoto_s3::{PutObjectRequest, S3, S3Client};
@@ -60,14 +61,14 @@ impl S3Writer {
         }
     }
 
-    fn write_vec<P: AsRef<Path>>(&self, path: P, s: Vec<u8>) -> Result<()> {
+    fn write_vec<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {
         self.client
             .put_object(&PutObjectRequest {
                             acl: Some("public-read".into()),
                             body: Some(s),
                             bucket: self.prefix.bucket.clone(),
                             key: self.prefix.prefix.join(path).to_string_lossy().into(),
-                            // content_type: Some("")
+                            content_type: Some(mime.to_string()),
                             ..Default::default()
                         })
             .chain_err(|| "S3")?;
@@ -76,13 +77,13 @@ impl S3Writer {
 }
 
 impl ReportWriter for S3Writer {
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>) -> Result<()> {
-        self.write_vec(path, s.into_owned().into_bytes())
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()> {
+        self.write_vec(path, s.into_owned().into_bytes(), mime)
     }
-    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P) -> Result<()> {
+    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()> {
         let mut bytes = Vec::new();
         io::copy(r, &mut bytes)?;
-        self.write_vec(path, bytes)
+        self.write_vec(path, bytes, mime)
     }
 }
 

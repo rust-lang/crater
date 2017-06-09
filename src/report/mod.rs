@@ -3,6 +3,7 @@ use ex;
 use file;
 use gh_mirrors;
 use handlebars::Handlebars;
+use mime::{self, Mime};
 use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use serde_json;
 use std::{fs, io};
@@ -91,7 +92,9 @@ pub fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> 
             let rel_log = writer.result_path_fragement();
 
             let mut result_log = writer.read_log()?;
-            dest.copy(&mut result_log, rel_log.join("log.txt"))?;
+            dest.copy(&mut result_log,
+                      rel_log.join("log.txt"),
+                      &mime::TEXT_PLAIN_UTF_8)?;
         }
     }
     Ok(())
@@ -105,9 +108,15 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
     let shas = ex.load_shas()?;
 
     info!("writing results to {}", dest);
-    dest.write_string("results.json", serde_json::to_string(&res)?.into())?;
-    dest.write_string("config.json", serde_json::to_string(&ex)?.into())?;
-    dest.write_string("shas.json", serde_json::to_string(&shas)?.into())?;
+    dest.write_string("results.json",
+                      serde_json::to_string(&res)?.into(),
+                      &mime::APPLICATION_JSON)?;
+    dest.write_string("config.json",
+                      serde_json::to_string(&ex)?.into(),
+                      &mime::APPLICATION_JSON)?;
+    dest.write_string("shas.json",
+                      serde_json::to_string(&shas)?.into(),
+                      &mime::APPLICATION_JSON)?;
 
     write_logs(&ex, dest)?;
     write_html_files(dest)?;
@@ -166,7 +175,6 @@ fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
     let js_out = "report.js";
     let css_out = "report.css";
 
-
     let context = Context {
         config_url: "config.json".into(),
         results_url: "results.json".into(),
@@ -176,16 +184,16 @@ fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
         .template_render(html_in, &context)
         .chain_err(|| "Couldn't render template")?;
 
-    dest.write_string(&html_out, html.into())?;
-    dest.write_string(&js_out, js_in.into())?;
-    dest.write_string(&css_out, css_in.into())?;
+    dest.write_string(&html_out, html.into(), &mime::TEXT_HTML)?;
+    dest.write_string(&js_out, js_in.into(), &mime::TEXT_JAVASCRIPT)?;
+    dest.write_string(&css_out, css_in.into(), &mime::TEXT_CSS)?;
 
     Ok(())
 }
 
 pub trait ReportWriter {
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>) -> Result<()>;
-    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P) -> Result<()>;
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()>;
+    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()>;
 }
 
 pub struct FileWriter(PathBuf);
@@ -204,11 +212,11 @@ impl FileWriter {
 }
 
 impl ReportWriter for FileWriter {
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>) -> Result<()> {
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Result<()> {
         self.create_prefix(path.as_ref())?;
         file::write_string(&self.0.join(path.as_ref()), s.as_ref())
     }
-    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P) -> Result<()> {
+    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, _: &Mime) -> Result<()> {
         self.create_prefix(path.as_ref())?;
         io::copy(r, &mut File::create(self.0.join(path.as_ref()))?)?;
         Ok(())

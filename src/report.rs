@@ -38,15 +38,9 @@ struct BuildTestResult {
 }
 
 
-pub fn generate_report(ex: &ex::Experiment, dest: Option<&Path>) -> Result<TestResults> {
+pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
     let db = FileDB::for_experiment(ex);
     assert_eq!(ex.toolchains.len(), 2);
-
-    if let Some(dest) = dest {
-        fs::create_dir_all(dest)?;
-        let json = serde_json::to_string(&ex)?;
-        file::write_string(&dest.join("config.json"), &json)?;
-    }
 
     let res = ex::ex_crates_and_dirs(ex)?
         .into_iter()
@@ -59,15 +53,7 @@ pub fn generate_report(ex: &ex::Experiment, dest: Option<&Path>) -> Result<TestR
                     let res = writer.load_test_result()?;
                     // If there was no test result return an error
                     let res = res.ok_or_else(|| Error::from("no result"))?;
-
                     let rel_log = writer.result_path_fragement();
-
-                    if let Some(dest) = dest {
-                        let mut result_log = writer.read_log()?;
-                        // TODO: Seperate out writting log files so that they can
-                        // be served via HTTP directly instead.
-                        write_log_file(dest, &rel_log, &mut result_log)?;
-                    }
 
                     Ok(BuildTestResult {
                            res: res,
@@ -91,17 +77,33 @@ pub fn generate_report(ex: &ex::Experiment, dest: Option<&Path>) -> Result<TestR
     Ok(TestResults { crates: res })
 }
 
+pub fn write_logs(ex: &ex::Experiment, dest: &Path) -> Result<()> {
+    let db = FileDB::for_experiment(ex);
+    for (krate, _) in ex::ex_crates_and_dirs(ex)? {
+        for tc in &ex.toolchains {
+            let writer = db.for_crate(&krate, tc);
+            let rel_log = writer.result_path_fragement();
+
+            let mut result_log = writer.read_log()?;
+            write_log_file(dest, &rel_log, &mut result_log)?;
+        }
+    }
+    Ok(())
+}
+
 
 pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
-    let res = generate_report(&ex, Some(dest))?;
+    let res = generate_report(&ex)?;
     let shas = ex.load_shas()?;
 
     info!("writing results to {:?}", dest);
     file::write_string(&dest.join("results.json"), &serde_json::to_string(&res)?)?;
+    file::write_string(&dest.join("config.json"), &serde_json::to_string(&ex)?)?;
     file::write_string(&dest.join("shas.json"), &serde_json::to_string(&shas)?)?;
 
+    write_logs(&ex, dest)?;
     write_html_files(dest)?;
 
     Ok(())

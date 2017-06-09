@@ -91,10 +91,12 @@ pub fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> 
             let writer = db.for_crate(&krate, tc);
             let rel_log = writer.result_path_fragement();
 
-            let mut result_log = writer.read_log()?;
-            dest.copy(&mut result_log,
-                      rel_log.join("log.txt"),
-                      &mime::TEXT_PLAIN_UTF_8)?;
+            match writer.read_log() {
+                Ok(ref mut result_log) => {
+                    dest.copy(result_log, rel_log.join("log.txt"), &mime::TEXT_PLAIN_UTF_8)?
+                }
+                Err(e) => error!{"Could not read log for {} {}: {}", krate, tc.to_string(), e},
+            }
         }
     }
     Ok(())

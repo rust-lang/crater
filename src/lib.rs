@@ -38,7 +38,6 @@ extern crate result;
 extern crate ref_slice;
 extern crate crates_index;
 extern crate hyper;
-#[macro_use]
 extern crate mime;
 extern crate arc_cell;
 extern crate route_recognizer;

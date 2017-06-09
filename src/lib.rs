@@ -22,7 +22,7 @@ extern crate libc;
 extern crate winapi;
 extern crate kernel32;
 extern crate reqwest;
-#[macro_use(slog_o, slog_info, slog_log, slog_error,
+#[macro_use(slog_o, slog_info, slog_log, slog_error, slog_debug,
             slog_record, slog_record_static, slog_b, slog_kv)]
 extern crate slog;
 #[macro_use]
@@ -42,6 +42,7 @@ extern crate hyper;
 extern crate mime;
 extern crate arc_cell;
 extern crate route_recognizer;
+extern crate rustup_dist;
 
 #[macro_use]
 pub mod log;

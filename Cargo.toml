@@ -25,6 +25,7 @@ ref_slice = "1.1.1"
 reqwest = "0.6"
 result = "0.0.1"
 route-recognizer = "0.1.12"
+rustup-dist = { git = "https://github.com/rust-lang-nursery/rustup.rs", tag="1.3.0" }
 scopeguard = "0.3"
 semver = "0.7"
 serde = "1.0"

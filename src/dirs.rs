@@ -8,7 +8,7 @@ pub const CARGO_HOME: &'static str = "./work/local/cargo-home";
 pub const RUSTUP_HOME: &'static str = "./work/local/rustup-home";
 
 // Custom toolchains
-pub const TOOLCHAIN_DIR: &'static str = "./work/local/custom-tc";
+pub const TOOLCHAIN_DIR: &'static str = "./work/local/rustup-home/toolchains";
 
 // Where cargo puts its output, when running outside a docker container,
 // CARGO_TARGET_DIR

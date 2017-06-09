@@ -2,7 +2,7 @@ use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR, TOOLCHAIN_DIR};
 use dl;
 use docker;
 use errors::*;
-use git;
+use reqwest;
 use run;
 use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
@@ -14,12 +14,23 @@ use util;
 
 const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";
 
+const RUST_CI_TRY_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds-try";
+const RUST_CI_MASTER_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds/";
+
+const RUST_CI_COMPONENTS: [(&'static str, &'static str); 3] =
+    [
+        ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.gz"),
+        ("rust-std-x86_64-unknown-linux-gnu", "rust-std-nightly-x86_64-unknown-linux-gnu.tar.gz"),
+        ("cargo", "cargo-nightly-x86_64-unknown-linux-gnu.tar.gz"),
+    ];
+
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 /// A toolchain name, either a rustup channel identifier,
 /// or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
 pub enum Toolchain {
     Dist(String), // rustup toolchain spec
-    Repo { url: String, sha: String },
+    TryBuild { sha: String },
+    Master { sha: String },
 }
 
 impl Toolchain {
@@ -28,7 +39,8 @@ impl Toolchain {
 
         match *self {
             Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
-            Toolchain::Repo { ref url, ref sha } => init_toolchain_from_repo(url, sha)?,
+            Toolchain::Master { ref sha } => init_toolchain_from_ci(RUST_CI_MASTER_BASE_URL, sha)?,
+            Toolchain::TryBuild { ref sha } => init_toolchain_from_ci(RUST_CI_TRY_BASE_URL, sha)?,
         }
 
         Ok(())
@@ -39,7 +51,8 @@ impl ToString for Toolchain {
     fn to_string(&self) -> String {
         match *self {
             Toolchain::Dist(ref s) => s.clone(),
-            Toolchain::Repo { ref url, ref sha } => format!("{}#{}", url, sha),
+            Toolchain::TryBuild { ref sha } => format!("try#{}", sha),
+            Toolchain::Master { ref sha } => format!("master#{}", sha),
         }
     }
 }
@@ -48,17 +61,18 @@ impl FromStr for Toolchain {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        if s.starts_with("https://") {
+        fn get_sha(s: &str) -> Result<&str> {
             if let Some(hash_idx) = s.find('#') {
-                let repo = &s[..hash_idx];
-                let sha = &s[hash_idx + 1..];
-                Ok(Toolchain::Repo {
-                       url: repo.to_string(),
-                       sha: sha.to_string(),
-                   })
+                let (_, sha) = s.split_at(hash_idx + 1);
+                Ok(sha)
             } else {
-                Err("no sha for git toolchain".into())
+                Err("no sha for try toolchain".into())
             }
+        }
+        if s.starts_with("try#") {
+            Ok(Toolchain::TryBuild { sha: get_sha(s)?.into() })
+        } else if s.starts_with("master#") {
+            Ok(Toolchain::Master { sha: get_sha(s)?.into() })
         } else {
             Ok(Toolchain::Dist(s.to_string()))
         }
@@ -156,23 +170,45 @@ fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
                    })
 }
 
-fn init_toolchain_from_repo(repo: &str, sha: &str) -> Result<()> {
-    info!("installing toolchain {}#{}", repo, sha);
+fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
+    info!("installing toolchain try#{}", sha);
 
     fs::create_dir_all(TOOLCHAIN_DIR)?;
-    let dir = &Path::new(TOOLCHAIN_DIR).join(sha);
-    git::shallow_clone_or_pull(repo, dir)?;
-    git::shallow_fetch_sha(repo, dir, sha)?;
-    git::reset_to_sha(dir, sha)?;
+    let dir = Path::new(TOOLCHAIN_DIR).join(sha);
+    use rustup_dist as dist;
+    use rustup_dist::component::Package;
 
-    panic!()
+    let prefix = dist::prefix::InstallPrefix::from(dir);
+    let target = dist::component::Components::open(prefix.clone())?;
+    let cfg = dist::temp::Cfg::new(RUSTUP_HOME.into(), RUSTUP_BASE_URL, Box::new(|_| {}));
+    let notifier = |_: dist::notifications::Notification| {};
+    let mut tx = dist::component::Transaction::new(prefix, &cfg, &notifier);
+
+    for &(component, file) in &RUST_CI_COMPONENTS {
+        if target.find(component)?.is_some() {
+            info!("skipping component {}, already installed", component);
+            continue;
+        };
+        info!("installing component {}", component);
+        let url = format!("{}/{}/{}", base_url, sha, file);
+        let response = dl::download_limit(&url, 10000)?;
+        if *response.status() != reqwest::StatusCode::Ok {
+            return Err(ErrorKind::Download.into());
+        }
+        tx = dist::component::TarGzPackage::new(response, &cfg)?
+            .install(&target, component, None, tx)?;
+    }
+    tx.commit();
+
+    Ok(())
 }
 
 impl Toolchain {
     pub fn rustup_name(&self) -> String {
         match *self {
             Toolchain::Dist(ref n) => n.to_string(),
-            Toolchain::Repo { .. } => panic!(),
+            Toolchain::TryBuild { ref sha } |
+            Toolchain::Master { ref sha } => sha.to_string(),
         }
     }
 }

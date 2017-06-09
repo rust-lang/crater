@@ -4,6 +4,7 @@ error_chain! {
         UrlParseError(::url::ParseError);
         SerdeJson(::serde_json::Error);
         ReqwestError(::reqwest::Error);
+        RustupError(::rustup_dist::Error);
     }
 
     links {
@@ -15,5 +16,6 @@ error_chain! {
             description("the operation timed out")
             display("process killed after {} {}s", what, when)
         }
+        Download{}
     }
 }

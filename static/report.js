@@ -77,6 +77,12 @@ function begin(config, results) {
 function parseToolchain(tc) {
     if (tc["Dist"]) {
 	return tc["Dist"];
+    } else if (tc["TryBuild"]) {
+	let sha = tc["TryBuild"]["sha"];
+	return `<a href="https://github.com/rust-lang/rust/commit/${sha}">${sha}</a>`
+    } else if (tc["Master"]) {
+	let sha = tc["Master"]["sha"];
+	return `<a href="https://github.com/rust-lang/rust/commit/${sha}">${sha}</a>`
     } else {
 	throw "unsupported toolchain type";
     }

@@ -77,6 +77,11 @@ Here's what each of these steps does:
 * `gen-report` - summarize the experiment results to
   work/ex/default/index.html
 
+### Custom toolchains
+
+Toolchains for rust PRs that have been build by by asking bors to try a PR can
+be specified using `try#<SHA1 of try merge>`.
+
 ## Operational workflow
 
 Cargobomb is really primitive right now and leaves a lot of the

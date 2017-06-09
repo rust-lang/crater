@@ -6,8 +6,10 @@ use handlebars::Handlebars;
 use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use serde_json;
 use std::{fs, io};
+use std::convert::AsRef;
+use std::fmt::{self, Display};
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
@@ -77,7 +79,7 @@ pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
     Ok(TestResults { crates: res })
 }
 
-pub fn write_logs(ex: &ex::Experiment, dest: &Path) -> Result<()> {
+pub fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
     let db = FileDB::for_experiment(ex);
     for (krate, _) in ex::ex_crates_and_dirs(ex)? {
         for tc in &ex.toolchains {
@@ -85,23 +87,23 @@ pub fn write_logs(ex: &ex::Experiment, dest: &Path) -> Result<()> {
             let rel_log = writer.result_path_fragement();
 
             let mut result_log = writer.read_log()?;
-            write_log_file(dest, &rel_log, &mut result_log)?;
+            dest.copy(&mut result_log, rel_log.join("log.txt"))?;
         }
     }
     Ok(())
 }
 
 
-pub fn gen(ex_name: &str, dest: &Path) -> Result<()> {
+pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
     let res = generate_report(&ex)?;
     let shas = ex.load_shas()?;
 
-    info!("writing results to {:?}", dest);
-    file::write_string(&dest.join("results.json"), &serde_json::to_string(&res)?)?;
-    file::write_string(&dest.join("config.json"), &serde_json::to_string(&ex)?)?;
-    file::write_string(&dest.join("shas.json"), &serde_json::to_string(&shas)?)?;
+    info!("writing results to {}", dest);
+    dest.write_string("results.json", &serde_json::to_string(&res)?)?;
+    dest.write_string("config.json", &serde_json::to_string(&ex)?)?;
+    dest.write_string("shas.json", &serde_json::to_string(&shas)?)?;
 
     write_logs(&ex, dest)?;
     write_html_files(dest)?;
@@ -151,15 +153,14 @@ pub struct Context {
 }
 
 
-fn write_html_files(dir: &Path) -> Result<()> {
+fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
     let html_in = include_str!("../template/report.html");
     let js_in = include_str!("../static/report.js");
     let css_in = include_str!("../static/report.css");
-    let html_out = dir.join("index.html");
-    let js_out = dir.join("report.js");
-    let css_out = dir.join("report.css");
+    let html_out = "index.html";
+    let js_out = "report.js";
+    let css_out = "report.css";
 
-    info!("writing report to {}", html_out.display());
 
     let context = Context {
         config_url: "config.json".into(),
@@ -170,17 +171,47 @@ fn write_html_files(dir: &Path) -> Result<()> {
         .template_render(html_in, &context)
         .chain_err(|| "Couldn't render template")?;
 
-    file::write_string(&html_out, &html)?;
-    file::write_string(&js_out, js_in)?;
-    file::write_string(&css_out, css_in)?;
+    dest.write_string(&html_out, &html)?;
+    dest.write_string(&js_out, js_in)?;
+    dest.write_string(&css_out, css_in)?;
 
     Ok(())
 }
 
-fn write_log_file<R: io::Read>(dest: &Path, fragment: &Path, log: &mut R) -> Result<()> {
-    let log_dir = dest.join(fragment);
-    let log_file = log_dir.join("log.txt");
-    fs::create_dir_all(log_dir)?;
-    io::copy(log, &mut File::create(log_file)?)?;
-    Ok(())
+pub trait ReportWriter {
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: &str) -> Result<()>;
+    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P) -> Result<()>;
+}
+
+pub struct FileWriter(PathBuf);
+
+impl FileWriter {
+    pub fn create(dest: PathBuf) -> Result<FileWriter> {
+        fs::create_dir_all(&dest)?;
+        Ok(FileWriter(dest))
+    }
+    fn create_prefix(&self, path: &Path) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(self.0.join(parent))?;
+        }
+        Ok(())
+    }
+}
+
+impl ReportWriter for FileWriter {
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: &str) -> Result<()> {
+        self.create_prefix(path.as_ref())?;
+        file::write_string(&self.0.join(path.as_ref()), s)
+    }
+    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P) -> Result<()> {
+        self.create_prefix(path.as_ref())?;
+        io::copy(r, &mut File::create(self.0.join(path.as_ref()))?)?;
+        Ok(())
+    }
+}
+
+impl Display for FileWriter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.display().fmt(f)
+    }
 }

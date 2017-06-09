@@ -156,9 +156,9 @@ pub struct Context {
 
 
 fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
-    let html_in = include_str!("../template/report.html");
-    let js_in = include_str!("../static/report.js");
-    let css_in = include_str!("../static/report.css");
+    let html_in = include_str!("../../template/report.html");
+    let js_in = include_str!("../../static/report.js");
+    let css_in = include_str!("../../static/report.css");
     let html_out = "index.html";
     let js_out = "report.js";
     let css_out = "report.css";

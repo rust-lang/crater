@@ -6,6 +6,7 @@ use handlebars::Handlebars;
 use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use serde_json;
 use std::{fs, io};
+use std::borrow::Cow;
 use std::convert::AsRef;
 use std::fmt::{self, Display};
 use std::fs::File;
@@ -101,15 +102,16 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
     let shas = ex.load_shas()?;
 
     info!("writing results to {}", dest);
-    dest.write_string("results.json", &serde_json::to_string(&res)?)?;
-    dest.write_string("config.json", &serde_json::to_string(&ex)?)?;
-    dest.write_string("shas.json", &serde_json::to_string(&shas)?)?;
+    dest.write_string("results.json", serde_json::to_string(&res)?.into())?;
+    dest.write_string("config.json", serde_json::to_string(&ex)?.into())?;
+    dest.write_string("shas.json", serde_json::to_string(&shas)?.into())?;
 
     write_logs(&ex, dest)?;
     write_html_files(dest)?;
 
     Ok(())
 }
+
 
 fn crate_to_name(c: &ex::ExCrate) -> Result<String> {
     match *c {
@@ -171,15 +173,15 @@ fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
         .template_render(html_in, &context)
         .chain_err(|| "Couldn't render template")?;
 
-    dest.write_string(&html_out, &html)?;
-    dest.write_string(&js_out, js_in)?;
-    dest.write_string(&css_out, css_in)?;
+    dest.write_string(&html_out, html.into())?;
+    dest.write_string(&js_out, js_in.into())?;
+    dest.write_string(&css_out, css_in.into())?;
 
     Ok(())
 }
 
 pub trait ReportWriter {
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: &str) -> Result<()>;
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>) -> Result<()>;
     fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P) -> Result<()>;
 }
 
@@ -199,9 +201,9 @@ impl FileWriter {
 }
 
 impl ReportWriter for FileWriter {
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: &str) -> Result<()> {
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>) -> Result<()> {
         self.create_prefix(path.as_ref())?;
-        file::write_string(&self.0.join(path.as_ref()), s)
+        file::write_string(&self.0.join(path.as_ref()), s.as_ref())
     }
     fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P) -> Result<()> {
         self.create_prefix(path.as_ref())?;

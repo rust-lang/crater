@@ -4,21 +4,24 @@ language: rust
 cache: cargo
 rust:
   - stable
-  - nightly-2017-06-03
+  - nightly-2017-06-08
 
 env:
   global:
     # Version of clippy known to work with pinned nightly.
-    - CLIPPY_VERSION=0.0.137
+    - CLIPPY_VERSION=0.0.138
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
-  - type -p cargo-install-update || cargo install --force cargo-update
+  - |
+    if ! type -p cargo-install-update; then
+        cargo install --force cargo-update
+    else
+        cargo install-update -i cargo-update
+    fi
   - |
     if [[  $TRAVIS_RUST_VERSION =~ nightly-* ]]; then
-      if ! type -p cargo-clippy || [[ "$(cargo-clippy -V)" != $CLIPPY_VERSION ]] ; then
-         cargo install --force --vers "$CLIPPY_VERSION" clippy
-      fi
+        cargo install-update -i "clippy:$CLIPPY_VERSION"
     fi
   - cargo install-update -i rustfmt
 script:

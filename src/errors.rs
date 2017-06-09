@@ -17,5 +17,8 @@ error_chain! {
             display("process killed after {} {}s", what, when)
         }
         Download{}
+        BadS3Uri {
+            description("the S3 URI could not be parsed.")
+        }
     }
 }

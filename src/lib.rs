@@ -44,6 +44,9 @@ extern crate arc_cell;
 extern crate route_recognizer;
 extern crate rustup_dist;
 extern crate handlebars;
+extern crate rusoto_core;
+extern crate rusoto_s3;
+extern crate uri;
 
 #[macro_use]
 pub mod log;

@@ -42,6 +42,7 @@ struct PrepareEx(Ex);
 struct Run(Ex);
 struct RunTc(Ex, Toolchain);
 struct GenReport(Ex, PathBuf);
+struct PublishReport(Ex, report::S3Prefix);
 struct DeleteAllTargetDirs(Ex);
 
 struct CreateLists;
@@ -145,6 +146,12 @@ impl Cmd for GenReport {
     fn run(&self) -> Result<()> {
         let &GenReport(ref ex, ref path) = self;
         report::gen(&ex.0, &report::FileWriter::create(path.into())?)
+    }
+}
+impl Cmd for PublishReport {
+    fn run(&self) -> Result<()> {
+        let &PublishReport(ref ex, ref prefix) = self;
+        report::gen(&ex.0, &report::S3Writer::create(prefix.clone()))
     }
 }
 
@@ -252,6 +259,9 @@ pub mod conv {
             cmd("gen-report", "generate the experiment report")
                 .arg(ex())
                 .arg(Arg::with_name("destination").required(true)),
+            cmd("publish-report", "publish the experiment report to S3")
+                .arg(ex())
+                .arg(Arg::with_name("destination").required(true)),
 
             cmd("serve-report", "serve report"),
         ]
@@ -324,6 +334,10 @@ pub mod conv {
                ("gen-report", Some(m)) => {
                    Box::new(GenReport(ex(m)?,
                                       m.value_of("destination").map(PathBuf::from).expect("")))
+               }
+               ("publish-report", Some(m)) => {
+                   Box::new(PublishReport(ex(m)?,
+                                          m.value_of("destination").map(str::parse).expect("")?))
                }
 
                ("serve-report", _) => Box::new(Serve),

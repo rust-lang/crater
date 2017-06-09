@@ -12,6 +12,9 @@ use std::fmt::{self, Display};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+mod s3;
+pub use self::s3::{S3Prefix, S3Writer};
+
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
     crates: Vec<CrateResult>,

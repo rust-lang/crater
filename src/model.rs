@@ -42,7 +42,14 @@ struct PrepareEx(Ex);
 struct Run(Ex);
 struct RunTc(Ex, Toolchain);
 struct GenReport(Ex, PathBuf);
-struct PublishReport(Ex, report::S3Prefix);
+#[derive(StructOpt)]
+#[structopt(name = "publish-report", about = "publish the experiment report to S3")]
+struct PublishReport {
+    #[structopt(long = "ex", default_value = "default")]
+    ex: Ex,
+    #[structopt(name = "S3 URI", about = "The S3 URI to put the report at.")]
+    s3_prefix: report::S3Prefix,
+}
 struct DeleteAllTargetDirs(Ex);
 
 struct CreateLists;
@@ -150,8 +157,10 @@ impl Cmd for GenReport {
 }
 impl Cmd for PublishReport {
     fn run(&self) -> Result<()> {
-        let &PublishReport(ref ex, ref prefix) = self;
-        report::gen(&ex.0, &report::S3Writer::create(prefix.clone())?)
+        report::gen(
+            &self.ex.0,
+            &report::S3Writer::create(self.s3_prefix.clone())?,
+        )
     }
 }
 
@@ -168,6 +177,7 @@ pub mod conv {
 
     use clap::{App, Arg, ArgMatches, SubCommand};
     use std::str::FromStr;
+    use structopt::StructOpt;
 
     pub fn clap_cmds() -> Vec<App<'static, 'static>> {
         // Types of arguments
@@ -269,9 +279,7 @@ pub mod conv {
             cmd("gen-report", "generate the experiment report")
                 .arg(ex())
                 .arg(Arg::with_name("destination").required(true)),
-            cmd("publish-report", "publish the experiment report to S3")
-                .arg(ex())
-                .arg(Arg::with_name("destination").required(true)),
+            PublishReport::clap(),
 
             cmd("serve-report", "serve report"),
         ]
@@ -355,12 +363,7 @@ pub mod conv {
                     m.value_of("destination").map(PathBuf::from).expect(""),
                 ))
             }
-            ("publish-report", Some(m)) => {
-                Box::new(PublishReport(
-                    ex(m)?,
-                    m.value_of("destination").map(str::parse).expect("")?,
-                ))
-            }
+            ("publish-report", Some(m)) => Box::new(PublishReport::from_clap(m.clone())),
 
             ("serve-report", _) => Box::new(Serve),
 

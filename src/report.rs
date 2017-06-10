@@ -2,6 +2,7 @@ use errors::*;
 use ex;
 use file;
 use gh_mirrors;
+use handlebars::Handlebars;
 use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use serde_json;
 use std::{fs, io};
@@ -140,8 +141,16 @@ fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Compar
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Context {
+    pub config_url: String,
+    pub results_url: String,
+    pub static_url: String,
+}
+
+
 fn write_html_files(dir: &Path) -> Result<()> {
-    let html_in = include_str!("../static/report.html");
+    let html_in = include_str!("../template/report.html");
     let js_in = include_str!("../static/report.js");
     let css_in = include_str!("../static/report.css");
     let html_out = dir.join("index.html");
@@ -150,7 +159,16 @@ fn write_html_files(dir: &Path) -> Result<()> {
 
     info!("writing report to {}", html_out.display());
 
-    file::write_string(&html_out, html_in)?;
+    let context = Context {
+        config_url: "config.json".into(),
+        results_url: "results.json".into(),
+        static_url: "".into(),
+    };
+    let html = Handlebars::new()
+        .template_render(html_in, &context)
+        .chain_err(|| "Couldn't render template")?;
+
+    file::write_string(&html_out, &html)?;
     file::write_string(&js_out, js_in)?;
     file::write_string(&css_out, css_in)?;
 

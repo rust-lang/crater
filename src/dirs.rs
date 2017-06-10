@@ -1,37 +1,38 @@
-// We define some unused constants here, since we don't have compile time string concatination.
-#![allow(dead_code)]
+use std::env;
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 
-pub const WORK_DIR: &'static str = "./work";
-pub const LOCAL_DIR: &'static str = "./work/local";
+lazy_static! {
+    pub static ref WORK_DIR: PathBuf = {
+        env::var_os("CARGOBOMB_WORK")
+            .unwrap_or_else(|| OsStr::new("./work").to_os_string())
+            .into()
+    };
+    pub static ref LOCAL_DIR: PathBuf = WORK_DIR.join("local");
 
-pub const CARGO_HOME: &'static str = "./work/local/cargo-home";
-pub const RUSTUP_HOME: &'static str = "./work/local/rustup-home";
+    pub static ref CARGO_HOME: String = LOCAL_DIR.join("cargo-home").to_string_lossy().into();
+    pub static ref RUSTUP_HOME: String = LOCAL_DIR.join("rustup-home").to_string_lossy().into();
 
-// Custom toolchains
-pub const TOOLCHAIN_DIR: &'static str = "./work/local/rustup-home/toolchains";
+    // Custom toolchains
+    pub static ref TOOLCHAIN_DIR: PathBuf = Path::new(&*RUSTUP_HOME).join("toolchains");
 
-// Where cargo puts its output, when running outside a docker container,
-// CARGO_TARGET_DIR
-pub const TARGET_DIR: &'static str = "./work/local/target-dirs";
+    // Where cargo puts its output, when running outside a docker container,
+    // CARGO_TARGET_DIR
+    pub static ref TARGET_DIR: PathBuf = LOCAL_DIR.join("target-dirs");
 
-// The directory crates are unpacked to for running tests, mounted
-// in docker containers
-pub const TEST_SOURCE_DIR: &'static str = "./work/local/test-source";
+    // The directory crates are unpacked to for running tests, mounted
+    // in docker containers
+    pub static ref TEST_SOURCE_DIR: PathBuf = LOCAL_DIR.join("test-source");
 
-// Where GitHub crate mirrors are stored
-pub const GH_MIRRORS_DIR: &'static str = "./work/local/gh-mirrors";
+    // Where GitHub crate mirrors are stored
+    pub static ref GH_MIRRORS_DIR: PathBuf = LOCAL_DIR.join("gh-mirrors");
 
-// Where crates.io sources are stores
-pub const CRATES_DIR: &'static str = "./work/shared/crates";
+    // Where crates.io sources are stores
+    pub static ref CRATES_DIR: PathBuf = WORK_DIR.join("shared/crates");
 
-// Lists of crates
-pub const LIST_DIR: &'static str = "./work/shared/lists";
+    // Lists of crates
+    pub static ref LIST_DIR: PathBuf = WORK_DIR.join("shared/lists");
 
-// crates.io Cargo.toml files, modified to build correctly
-pub const FROB_DIR: &'static str = "./work/shared/fromls";
-
-pub const EXPERIMENT_DIR: &'static str = "./work/ex";
-pub const LOG_DIR: &'static str = "./work/logs";
-
-// State for asynchronous job management
-pub const JOB_DIR: &'static str = "./work/jobs";
+    pub static ref EXPERIMENT_DIR: PathBuf = WORK_DIR.join("ex");
+    pub static ref LOG_DIR: PathBuf = WORK_DIR.join("logs");
+}

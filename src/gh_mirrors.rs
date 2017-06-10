@@ -1,11 +1,11 @@
 use dirs::GH_MIRRORS_DIR;
 use errors::*;
 use git;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub fn repo_dir(url: &str) -> Result<PathBuf> {
     let (org, name) = gh_url_to_org_and_name(url)?;
-    Ok(Path::new(GH_MIRRORS_DIR).join(format!("{}.{}", org, name)))
+    Ok(GH_MIRRORS_DIR.join(format!("{}.{}", org, name)))
 }
 
 pub fn gh_url_to_org_and_name(url: &str) -> Result<(String, String)> {

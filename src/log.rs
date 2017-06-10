@@ -15,7 +15,7 @@ use std::time::Instant;
 
 fn global_log_name() -> &'static Path {
     lazy_static! {
-        static ref PATH: PathBuf = PathBuf::from(LOG_DIR).join(
+        static ref PATH: PathBuf = LOG_DIR.join(
                 format!("{}", UTC::now().format("%Y-%m-%dT%H-%M-%S.%f")));
     };
     &*PATH
@@ -59,7 +59,7 @@ fn file_drain(path: &Path)
 pub fn init() -> slog_scope::GlobalLoggerGuard {
     START_TIME.deref();
 
-    fs::create_dir_all(LOG_DIR).expect("Could create log directory.");
+    fs::create_dir_all(&*LOG_DIR).expect("Could create log directory.");
     let file = file_drain(global_log_name());
     let term = TERM_DRAIN.clone();
 

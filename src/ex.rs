@@ -35,27 +35,27 @@ pub enum ExCrateSelect {
 
 
 pub fn ex_dir(ex_name: &str) -> PathBuf {
-    Path::new(EXPERIMENT_DIR).join(ex_name)
+    EXPERIMENT_DIR.join(ex_name)
 }
 
 fn gh_dir() -> PathBuf {
-    Path::new(CRATES_DIR).join("gh")
+    CRATES_DIR.join("gh")
 }
 
 fn registry_dir() -> PathBuf {
-    Path::new(CRATES_DIR).join("reg")
+    CRATES_DIR.join("reg")
 }
 
 fn shafile(ex: &Experiment) -> PathBuf {
-    Path::new(EXPERIMENT_DIR).join(&ex.name).join("shas.json")
+    EXPERIMENT_DIR.join(&ex.name).join("shas.json")
 }
 
 fn config_file(ex_name: &str) -> PathBuf {
-    Path::new(EXPERIMENT_DIR).join(ex_name).join("config.json")
+    EXPERIMENT_DIR.join(ex_name).join("config.json")
 }
 
 fn froml_dir(ex_name: &str) -> PathBuf {
-    Path::new(EXPERIMENT_DIR).join(ex_name).join("fromls")
+    EXPERIMENT_DIR.join(ex_name).join("fromls")
 }
 
 fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
@@ -367,7 +367,7 @@ pub fn with_frobbed_toml(ex: &Experiment, crate_: &ExCrate, path: &Path) -> Resu
 }
 
 fn lockfile_dir(ex_name: &str) -> PathBuf {
-    Path::new(EXPERIMENT_DIR).join(ex_name).join("lockfiles")
+    EXPERIMENT_DIR.join(ex_name).join("lockfiles")
 }
 
 fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
@@ -382,9 +382,7 @@ fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
 }
 
 fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
-    Path::new(TEST_SOURCE_DIR)
-        .join(ex_name)
-        .join(toolchain.to_string())
+    TEST_SOURCE_DIR.join(ex_name).join(toolchain.to_string())
 }
 
 pub fn with_work_crate<F, R>(ex: &Experiment,

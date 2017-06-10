@@ -33,7 +33,10 @@ impl FromStr for S3Prefix {
                 if scheme == "s3" {
                     Ok(S3Prefix {
                            bucket,
-                           prefix: prefix.map(|p| p[1..].into()).unwrap_or("".into()),
+                           prefix: match prefix {
+                               Some(prefix) => prefix[1..].into(),
+                               None => PathBuf::new(),
+                           },
                        })
                 } else {
                     Err(ErrorKind::BadS3Uri.into())

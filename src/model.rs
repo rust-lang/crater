@@ -144,7 +144,7 @@ impl Cmd for RunTc {
 impl Cmd for GenReport {
     fn run(&self) -> Result<()> {
         let &GenReport(ref ex, ref path) = self;
-        report::gen(&ex.0, path)
+        report::gen(&ex.0, &report::FileWriter::create(path.into())?)
     }
 }
 

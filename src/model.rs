@@ -26,7 +26,9 @@ use cargobomb::lists;
 use cargobomb::report;
 use cargobomb::server;
 use cargobomb::toolchain::Toolchain;
+use std::env;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 // An experiment name
 #[derive(Debug, Clone)]
@@ -47,8 +49,8 @@ struct GenReport(Ex, PathBuf);
 struct PublishReport {
     #[structopt(long = "ex", default_value = "default")]
     ex: Ex,
-    #[structopt(name = "S3 URI", about = "The S3 URI to put the report at.")]
-    s3_prefix: report::S3Prefix,
+    #[structopt(name = "S3 URI", help = "The S3 URI to put the report at.")]
+    s3_prefix: Option<report::S3Prefix>,
 }
 struct DeleteAllTargetDirs(Ex);
 
@@ -155,12 +157,23 @@ impl Cmd for GenReport {
         report::gen(&ex.0, &report::FileWriter::create(path.into())?)
     }
 }
+
+impl PublishReport {
+    fn s3_prefix(&self) -> Result<report::S3Prefix> {
+        match self.s3_prefix {
+            Some(ref prefix) => Ok(prefix.clone()),
+            None => {
+                let mut prefix: report::S3Prefix = get_env("CARGOBOMB_REPORT_S3_PREFIX")?;
+                prefix.prefix.push(&self.ex.0);
+                Ok(prefix)
+            }
+        }
+    }
+}
+
 impl Cmd for PublishReport {
     fn run(&self) -> Result<()> {
-        report::gen(
-            &self.ex.0,
-            &report::S3Writer::create(self.s3_prefix.clone())?,
-        )
+        report::gen(&self.ex.0, &report::S3Writer::create(self.s3_prefix()?)?)
     }
 }
 
@@ -170,6 +183,20 @@ impl Cmd for Serve {
         Ok(())
     }
 }
+
+fn get_env<T>(name: &str) -> Result<T>
+where
+    T: FromStr,
+    T::Err: ::std::error::Error + Send + 'static,
+{
+    env::var(name)
+        .chain_err(|| {
+            format!{"Need to specify {:?} in environment or `.env`.", name}
+        })?
+        .parse()
+        .chain_err(|| format!{"Couldn't parse {:?}.", name})
+}
+
 
 // Boilerplate conversions on the model. Ideally all this would be generated.
 pub mod conv {

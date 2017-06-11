@@ -47,9 +47,12 @@ struct GenReport(Ex, PathBuf);
 #[derive(StructOpt)]
 #[structopt(name = "publish-report", about = "publish the experiment report to S3")]
 struct PublishReport {
-    #[structopt(long = "ex", default_value = "default")]
+    #[structopt(name = "experiment", long = "ex", default_value = "default",
+                help = "The experiment to publish a report for.")]
     ex: Ex,
-    #[structopt(name = "S3 URI", help = "The S3 URI to put the report at.")]
+    #[structopt(name = "S3 URI",
+                help = "The S3 URI to put the report at. \
+                        [default: $CARGOBOMB_REPORT_S3_PREFIX/<experiment>")]
     s3_prefix: Option<report::S3Prefix>,
 }
 struct DeleteAllTargetDirs(Ex);

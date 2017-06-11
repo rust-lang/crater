@@ -1,51 +1,48 @@
-extern crate rand;
-extern crate clap;
+#![deny(unused_extern_crates)]
+extern crate arc_cell;
+extern crate chrono;
+extern crate crates_index;
 #[macro_use]
 extern crate error_chain;
-extern crate tempdir;
-extern crate url;
-extern crate walkdir;
-extern crate semver;
+extern crate flate2;
+extern crate futures;
+extern crate futures_cpupool;
+extern crate handlebars;
+extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
-extern crate chrono;
+extern crate libc;
+extern crate mime;
+extern crate rand;
+extern crate ref_slice;
+extern crate reqwest;
+extern crate route_recognizer;
+extern crate rusoto_core;
+extern crate rusoto_s3;
+extern crate rustup_dist;
+#[macro_use]
+extern crate scopeguard;
+extern crate semver;
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate serde;
-extern crate tar;
-extern crate flate2;
-extern crate toml;
-#[macro_use]
-extern crate scopeguard;
-extern crate libc;
-extern crate winapi;
-extern crate kernel32;
-extern crate reqwest;
 #[macro_use(slog_o, slog_info, slog_log, slog_error, slog_debug,
             slog_record, slog_record_static, slog_b, slog_kv)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 extern crate slog_term;
-extern crate futures;
-extern crate futures_cpupool;
+extern crate tar;
+extern crate tempdir;
 extern crate tokio_core;
-extern crate tokio_process;
 extern crate tokio_io;
+extern crate tokio_process;
 extern crate tokio_timer;
-extern crate result;
-extern crate ref_slice;
-extern crate crates_index;
-extern crate hyper;
-extern crate mime;
-extern crate arc_cell;
-extern crate route_recognizer;
-extern crate rustup_dist;
-extern crate handlebars;
-extern crate rusoto_core;
-extern crate rusoto_s3;
+extern crate toml;
 extern crate uri;
+extern crate url;
+extern crate walkdir;
 
 #[macro_use]
 pub mod log;

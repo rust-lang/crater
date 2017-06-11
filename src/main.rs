@@ -1,11 +1,12 @@
+#![deny(unused_extern_crates)]
 extern crate clap;
+extern crate dotenv;
+extern crate result;
 #[macro_use(slog_info, slog_log,
             slog_record, slog_record_static, slog_b, slog_kv)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-extern crate result;
-extern crate dotenv;
 
 extern crate cargobomb;
 

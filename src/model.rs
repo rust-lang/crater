@@ -151,7 +151,7 @@ impl Cmd for GenReport {
 impl Cmd for PublishReport {
     fn run(&self) -> Result<()> {
         let &PublishReport(ref ex, ref prefix) = self;
-        report::gen(&ex.0, &report::S3Writer::create(prefix.clone()))
+        report::gen(&ex.0, &report::S3Writer::create(prefix.clone())?)
     }
 }
 

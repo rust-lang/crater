@@ -2,7 +2,7 @@ use errors::*;
 use mime::Mime;
 use report::ReportWriter;
 use rusoto_core::{DefaultCredentialsProvider, Region, default_tls_client};
-use rusoto_s3::{PutObjectRequest, S3, S3Client};
+use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3, S3Client};
 use std::borrow::Cow;
 use std::fmt::{self, Display};
 use std::io;
@@ -53,15 +53,29 @@ pub struct S3Writer {
     client: Box<S3>,
 }
 
-impl S3Writer {
-    pub fn create(prefix: S3Prefix) -> S3Writer {
+fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
+    let make_client = |region| {
         let credentials = DefaultCredentialsProvider::new().unwrap();
-        let client = S3Client::new(default_tls_client().unwrap(), credentials, Region::UsEast1);
+        S3Client::new(default_tls_client().unwrap(), credentials, region)
+    };
+    let client = make_client(Region::UsEast1);
+    let response = client
+        .get_bucket_location(&GetBucketLocationRequest { bucket: bucket.into() })
+        .chain_err(|| "S3")?;
+    let region = match response.location_constraint.as_ref() {
+        Some(region) if region == "" => Region::UsEast1,
+        Some(region) => region.parse().chain_err(|| "Unknown bucket region.")?,
+        None => bail!{"Couldn't determine bucket region"},
+    };
 
-        S3Writer {
-            prefix,
-            client: Box::new(client),
-        }
+    Ok(Box::new(make_client(region)))
+}
+
+impl S3Writer {
+    pub fn create(prefix: S3Prefix) -> Result<S3Writer> {
+        let client = get_client_for_bucket(&prefix.bucket)?;
+
+        Ok(S3Writer { prefix, client })
     }
 
     fn write_vec<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {

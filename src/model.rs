@@ -187,6 +187,7 @@ impl Cmd for Serve {
     }
 }
 
+/// Load and parse and environment variable.
 fn get_env<T>(name: &str) -> Result<T>
 where
     T: FromStr,

@@ -3,13 +3,18 @@ use ex;
 use file;
 use gh_mirrors;
 use handlebars::Handlebars;
+use mime::{self, Mime};
 use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use serde_json;
 use std::{fs, io};
+use std::borrow::Cow;
 use std::convert::AsRef;
 use std::fmt::{self, Display};
 use std::fs::File;
 use std::path::{Path, PathBuf};
+
+mod s3;
+pub use self::s3::{S3Prefix, S3Writer};
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
@@ -86,8 +91,12 @@ pub fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> 
             let writer = db.for_crate(&krate, tc);
             let rel_log = writer.result_path_fragement();
 
-            let mut result_log = writer.read_log()?;
-            dest.copy(&mut result_log, rel_log.join("log.txt"))?;
+            match writer.read_log() {
+                Ok(ref mut result_log) => {
+                    dest.copy(result_log, rel_log.join("log.txt"), &mime::TEXT_PLAIN_UTF_8)?
+                }
+                Err(e) => error!{"Could not read log for {} {}: {}", krate, tc.to_string(), e},
+            }
         }
     }
     Ok(())
@@ -101,15 +110,22 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
     let shas = ex.load_shas()?;
 
     info!("writing results to {}", dest);
-    dest.write_string("results.json", &serde_json::to_string(&res)?)?;
-    dest.write_string("config.json", &serde_json::to_string(&ex)?)?;
-    dest.write_string("shas.json", &serde_json::to_string(&shas)?)?;
+    dest.write_string("results.json",
+                      serde_json::to_string(&res)?.into(),
+                      &mime::APPLICATION_JSON)?;
+    dest.write_string("config.json",
+                      serde_json::to_string(&ex)?.into(),
+                      &mime::APPLICATION_JSON)?;
+    dest.write_string("shas.json",
+                      serde_json::to_string(&shas)?.into(),
+                      &mime::APPLICATION_JSON)?;
 
-    write_logs(&ex, dest)?;
     write_html_files(dest)?;
+    write_logs(&ex, dest)?;
 
     Ok(())
 }
+
 
 fn crate_to_name(c: &ex::ExCrate) -> Result<String> {
     match *c {
@@ -154,13 +170,12 @@ pub struct Context {
 
 
 fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
-    let html_in = include_str!("../template/report.html");
-    let js_in = include_str!("../static/report.js");
-    let css_in = include_str!("../static/report.css");
+    let html_in = include_str!("../../template/report.html");
+    let js_in = include_str!("../../static/report.js");
+    let css_in = include_str!("../../static/report.css");
     let html_out = "index.html";
     let js_out = "report.js";
     let css_out = "report.css";
-
 
     let context = Context {
         config_url: "config.json".into(),
@@ -171,16 +186,16 @@ fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
         .template_render(html_in, &context)
         .chain_err(|| "Couldn't render template")?;
 
-    dest.write_string(&html_out, &html)?;
-    dest.write_string(&js_out, js_in)?;
-    dest.write_string(&css_out, css_in)?;
+    dest.write_string(&html_out, html.into(), &mime::TEXT_HTML)?;
+    dest.write_string(&js_out, js_in.into(), &mime::TEXT_JAVASCRIPT)?;
+    dest.write_string(&css_out, css_in.into(), &mime::TEXT_CSS)?;
 
     Ok(())
 }
 
 pub trait ReportWriter {
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: &str) -> Result<()>;
-    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P) -> Result<()>;
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()>;
+    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()>;
 }
 
 pub struct FileWriter(PathBuf);
@@ -199,11 +214,11 @@ impl FileWriter {
 }
 
 impl ReportWriter for FileWriter {
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: &str) -> Result<()> {
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Result<()> {
         self.create_prefix(path.as_ref())?;
-        file::write_string(&self.0.join(path.as_ref()), s)
+        file::write_string(&self.0.join(path.as_ref()), s.as_ref())
     }
-    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P) -> Result<()> {
+    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, _: &Mime) -> Result<()> {
         self.create_prefix(path.as_ref())?;
         io::copy(r, &mut File::create(self.0.join(path.as_ref()))?)?;
         Ok(())

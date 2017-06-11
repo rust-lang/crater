@@ -5,6 +5,7 @@ use handlebars::Handlebars;
 use hyper::{self, Get, Post, StatusCode};
 use hyper::header::{ContentLength, ContentType};
 use hyper::server::{Http, Request, Response, Service};
+use mime;
 use route_recognizer::{Match, Params, Router};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -188,12 +189,12 @@ pub fn start(data: Data) {
     route!(router,
            "/static/report.js",
            handle_static,
-           ContentType(mime!(Application / Javascript)),
+           ContentType(mime::TEXT_JAVASCRIPT),
            include_str!("../../static/report.js"));
     route!(router,
            "/static/report.css",
            handle_static,
-           ContentType(mime!(Text / Css)),
+           ContentType(mime::TEXT_CSS),
            include_str!("../../static/report.css"));
 
     let server = Arc::new(Server {

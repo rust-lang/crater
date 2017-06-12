@@ -48,12 +48,14 @@ pub fn run_full(cd: Option<&Path>, name: &str, args: &[&str], env: &[(&str, &str
     }
 }
 
-pub fn run_capture<S>(cd: Option<&Path>,
-                      name: &str,
-                      args: &[S],
-                      env: &[(&str, &str)])
-                      -> Result<(Vec<String>, Vec<String>)>
-    where S: AsRef<OsStr>
+pub fn run_capture<S>(
+    cd: Option<&Path>,
+    name: &str,
+    args: &[S],
+    env: &[(&str, &str)],
+) -> Result<(Vec<String>, Vec<String>)>
+where
+    S: AsRef<OsStr>,
 {
     let mut cmd = Command::new(name);
 
@@ -114,35 +116,39 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
 
     let logger = slog_scope::logger();
     let stdout = lines(BufReader::new(stdout)).map({
-                                                       let logger = logger.clone();
-                                                       move |line| {
-                                                           slog_info!(logger, "blam! {}", line);
-                                                           line
-                                                       }
-                                                   });
+        let logger = logger.clone();
+        move |line| {
+            slog_info!(logger, "blam! {}", line);
+            line
+        }
+    });
     let stderr = lines(BufReader::new(stderr)).map({
-                                                       let logger = logger.clone();
-                                                       move |line| {
-                                                           slog_info!(logger, "kablam! {}", line);
-                                                           line
-                                                       }
-                                                   });
+        let logger = logger.clone();
+        move |line| {
+            slog_info!(logger, "kablam! {}", line);
+            line
+        }
+    });
     let output = Stream::merge(stdout, stderr);
-    let output = timer
-        .timeout_stream(output, heartbeat_timeout)
-        .map_err(move |e| if e.kind() == io::ErrorKind::TimedOut {
-                     kill_process(child_id);
-                     Error::from(ErrorKind::Timeout("not generating output for ",
-                                                    HEARTBEAT_TIMEOUT_SECS))
-                 } else {
-                     e.into()
-                 });
+    let output = timer.timeout_stream(output, heartbeat_timeout).map_err(
+        move |e| {
+            if e.kind() == io::ErrorKind::TimedOut {
+                kill_process(child_id);
+                Error::from(ErrorKind::Timeout(
+                    "not generating output for ",
+                    HEARTBEAT_TIMEOUT_SECS,
+                ))
+            } else {
+                e.into()
+            }
+        },
+    );
     let output: Box<Future<Item = _, Error = Error>> = if capture {
         unmerge(output)
     } else {
-        Box::new(output
-                     .for_each(|_| Ok(()))
-                     .and_then(|_| Ok((Vec::new(), Vec::new()))))
+        Box::new(output.for_each(|_| Ok(())).and_then(
+            |_| Ok((Vec::new(), Vec::new())),
+        ))
     };
 
     #[cfg(unix)]
@@ -167,38 +173,41 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     let child = timer
         .timeout(child, Duration::from_secs(MAX_TIMEOUT_SECS))
         .map_err(|e| if e.kind() == io::ErrorKind::TimedOut {
-                     kill_process(child_id);
-                     ErrorKind::Timeout("max time of", MAX_TIMEOUT_SECS).into()
-                 } else {
-                     e.into()
-                 });
+            kill_process(child_id);
+            ErrorKind::Timeout("max time of", MAX_TIMEOUT_SECS).into()
+        } else {
+            e.into()
+        });
 
 
     // TODO: Handle errors from tokio_timer better, in particular TimerError::TooLong
     let (status, (stdout, stderr)) = core.run(Future::join(child, output))?;
 
     Ok(ProcessOutput {
-           status: status,
-           stdout: stdout,
-           stderr: stderr,
-       })
+        status: status,
+        stdout: stdout,
+        stderr: stderr,
+    })
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(type_complexity))]
 fn unmerge<T1, T2, S>(reader: S) -> Box<Future<Item = (Vec<T1>, Vec<T2>), Error = S::Error>>
-    where S: Stream<Item = MergedItem<T1, T2>> + 'static,
-          T1: 'static,
-          T2: 'static
+where
+    S: Stream<Item = MergedItem<T1, T2>> + 'static,
+    T1: 'static,
+    T2: 'static,
 {
-    Box::new(reader
-                 .map(|i| match i {
-                          MergedItem::First(l) => (Some(l), None),
-                          MergedItem::Second(r) => (None, Some(r)),
-                          MergedItem::Both(l, r) => (Some(l), Some(r)),
-                      })
-                 .fold((Vec::new(), Vec::new()), |mut v, i| {
-        i.0.map(|i| v.0.push(i));
-        i.1.map(|i| v.1.push(i));
-        Ok(v)
-    }))
+    Box::new(
+        reader
+            .map(|i| match i {
+                MergedItem::First(l) => (Some(l), None),
+                MergedItem::Second(r) => (None, Some(r)),
+                MergedItem::Both(l, r) => (Some(l), Some(r)),
+            })
+            .fold((Vec::new(), Vec::new()), |mut v, i| {
+                i.0.map(|i| v.0.push(i));
+                i.1.map(|i| v.1.push(i));
+                Ok(v)
+            }),
+    )
 }

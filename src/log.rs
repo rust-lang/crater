@@ -22,7 +22,8 @@ fn global_log_name() -> &'static Path {
 }
 
 pub fn redirect<F, R>(path: &Path, f: F) -> Result<R>
-    where F: FnOnce() -> Result<R>
+where
+    F: FnOnce() -> Result<R>,
 {
     let file = file_drain(path);
     let term = TERM_DRAIN.clone();
@@ -45,8 +46,9 @@ lazy_static! {
     };
 }
 
-fn file_drain(path: &Path)
-              -> slog::Fuse<slog_term::FullFormat<slog_term::PlainSyncDecorator<File>>> {
+fn file_drain(
+    path: &Path,
+) -> slog::Fuse<slog_term::FullFormat<slog_term::PlainSyncDecorator<File>>> {
     let f = OpenOptions::new()
         .create(true)
         .append(true)
@@ -67,8 +69,10 @@ pub fn init() -> slog_scope::GlobalLoggerGuard {
     let _guard = slog_scope::set_global_logger(slog::Logger::root(drain, slog_o!{}));
 
 
-    info!("program args: {}",
-          env::args().skip(1).collect::<Vec<_>>().join(" "));
+    info!(
+        "program args: {}",
+        env::args().skip(1).collect::<Vec<_>>().join(" ")
+    );
 
     _guard
 }

@@ -40,20 +40,21 @@ impl List for RecentList {
         info!("creating recent list");
         fs::create_dir_all(&*LIST_DIR)?;
 
-        let crates =
-            registry::crates_index_registry()?
-                .crates()
-                .map(|crate_| {
-                         (crate_.name().to_owned(), crate_.latest_version().version().to_owned())
-                     });
+        let crates = registry::crates_index_registry()?.crates().map(|crate_| {
+            (
+                crate_.name().to_owned(),
+                crate_.latest_version().version().to_owned(),
+            )
+        });
         write_crate_list(&Self::path(), crates)?;
         info!("recent crates written to {}", Self::path().display());
         Ok(())
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines = file::read_lines(&Self::path())
-            .chain_err(|| "unable to read recent list. run `cargobomb create-lists`?")?;
+        let lines = file::read_lines(&Self::path()).chain_err(
+            || "unable to read recent list. run `cargobomb create-lists`?",
+        )?;
         split_crate_lines(&lines)
     }
 
@@ -64,7 +65,8 @@ impl List for RecentList {
 
 // (String, String) corresponds to (crate name, crate version)
 fn write_crate_list<I>(path: &Path, crates: I) -> Result<()>
-    where I: Iterator<Item = (String, String)>
+where
+    I: Iterator<Item = (String, String)>,
 {
     let strings = crates
         .map(|(name, version)| format!("{}:{}", name, version))
@@ -73,14 +75,17 @@ fn write_crate_list<I>(path: &Path, crates: I) -> Result<()>
 }
 
 fn split_crate_lines(lines: &[String]) -> Result<Vec<Crate>> {
-    Ok(lines
-           .iter()
-           .filter_map(|line| {
-                           line.find(':')
-                               .map(|i| (line[..i].to_string(), line[i + 1..].to_string()))
-                       })
-           .map(|(name, version)| Crate::Version { name, version })
-           .collect())
+    Ok(
+        lines
+            .iter()
+            .filter_map(|line| {
+                line.find(':').map(|i| {
+                    (line[..i].to_string(), line[i + 1..].to_string())
+                })
+            })
+            .map(|(name, version)| Crate::Version { name, version })
+            .collect(),
+    )
 }
 
 pub struct PopList;
@@ -111,24 +116,25 @@ impl List for PopList {
         let mut crates = index.crates().collect::<Vec<_>>();
 
         crates.sort_by(|a, b| {
-                           let count_a = counts.get(a.name()).cloned().unwrap_or(0);
-                           let count_b = counts.get(b.name()).cloned().unwrap_or(0);
-                           count_b.cmp(&count_a)
-                       });
-        let crates =
-            crates
-                .into_iter()
-                .map(|crate_| {
-                         (crate_.name().to_owned(), crate_.latest_version().version().to_owned())
-                     });
+            let count_a = counts.get(a.name()).cloned().unwrap_or(0);
+            let count_b = counts.get(b.name()).cloned().unwrap_or(0);
+            count_b.cmp(&count_a)
+        });
+        let crates = crates.into_iter().map(|crate_| {
+            (
+                crate_.name().to_owned(),
+                crate_.latest_version().version().to_owned(),
+            )
+        });
         write_crate_list(&Self::path(), crates)?;
         info!("pop crates written to {}", Self::path().display());
         Ok(())
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines = file::read_lines(&Self::path())
-            .chain_err(|| "unable to read pop list. run `cargobomb create-lists`?")?;
+        let lines = file::read_lines(&Self::path()).chain_err(
+            || "unable to read pop list. run `cargobomb create-lists`?",
+        )?;
         split_crate_lines(&lines)
     }
 
@@ -209,8 +215,9 @@ impl List for HotList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines = file::read_lines(&Self::path())
-            .chain_err(|| "unable to read hot list. run `cargobomb create-lists`?")?;
+        let lines = file::read_lines(&Self::path()).chain_err(
+            || "unable to read hot list. run `cargobomb create-lists`?",
+        )?;
         split_crate_lines(&lines)
     }
 
@@ -233,11 +240,15 @@ impl List for GitHubCandidateList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        Ok(file::read_lines(&Self::path())
-               .chain_err(|| "unable to read gh-candidates list. run `cargobomb create-lists`?",)?
-               .into_iter()
-               .map(|line| Crate::Repo { url: line })
-               .collect())
+        Ok(
+            file::read_lines(&Self::path())
+                .chain_err(
+                    || "unable to read gh-candidates list. run `cargobomb create-lists`?",
+                )?
+                .into_iter()
+                .map(|line| Crate::Repo { url: line })
+                .collect(),
+        )
     }
 
     fn path() -> PathBuf {
@@ -252,9 +263,11 @@ fn gh_candidate_cache_path() -> PathBuf {
 fn create_gh_candidate_list_from_cache() -> Result<()> {
     info!("creating gh candidate list from cache");
     fs::create_dir_all(&*LIST_DIR)?;
-    info!("copying {} to {}",
-          gh_candidate_cache_path().display(),
-          GitHubCandidateList::path().display());
+    info!(
+        "copying {} to {}",
+        gh_candidate_cache_path().display(),
+        GitHubCandidateList::path().display()
+    );
     fs::copy(&gh_candidate_cache_path(), &GitHubCandidateList::path())?;
     Ok(())
 }
@@ -266,9 +279,11 @@ impl List for GitHubAppList {
         let crates = GitHubCandidateList::read()?;
         let delay = 100;
 
-        info!("testing {} repos. {}ms+",
-              crates.len(),
-              crates.len() * delay);
+        info!(
+            "testing {} repos. {}ms+",
+            crates.len(),
+            crates.len() * delay
+        );
 
         // Look for Cargo.lock files in the Rust repos we're aware of
         let mut apps = Vec::new();
@@ -289,11 +304,15 @@ impl List for GitHubAppList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        Ok(file::read_lines(&GitHubAppList::path())
-               .chain_err(|| "unable to read gh-app list. run `cargobomb create-lists`?")?
-               .into_iter()
-               .map(|line| Crate::Repo { url: line })
-               .collect())
+        Ok(
+            file::read_lines(&GitHubAppList::path())
+                .chain_err(
+                    || "unable to read gh-app list. run `cargobomb create-lists`?",
+                )?
+                .into_iter()
+                .map(|line| Crate::Repo { url: line })
+                .collect(),
+        )
     }
 
     fn path() -> PathBuf {
@@ -308,9 +327,11 @@ fn gh_app_cache_path() -> PathBuf {
 fn create_gh_app_list_from_cache() -> Result<()> {
     info!("creating gh app list from cache");
     fs::create_dir_all(&*LIST_DIR)?;
-    info!("copying {} to {}",
-          gh_app_cache_path().display(),
-          GitHubAppList::path().display());
+    info!(
+        "copying {} to {}",
+        gh_app_cache_path().display(),
+        GitHubAppList::path().display()
+    );
     fs::copy(&gh_app_cache_path(), &GitHubAppList::path())?;
     Ok(())
 }
@@ -328,9 +349,9 @@ impl Crate {
             Crate::Repo { url } => {
                 if let Some(sha) = shas.get(&url) {
                     Ok(ExCrate::Repo {
-                           url,
-                           sha: sha.to_string(),
-                       })
+                        url,
+                        sha: sha.to_string(),
+                    })
                 } else {
                     Err(format!("missing sha for {}", url).into())
                 }

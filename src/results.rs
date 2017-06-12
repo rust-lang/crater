@@ -24,7 +24,9 @@ pub trait CrateResultWriter {
     /// toolchain.
     fn result_path_fragement(&self) -> PathBuf;
 
-    fn record_results<F>(&self, f: F) -> Result<TestResult> where F: FnOnce() -> Result<TestResult>;
+    fn record_results<F>(&self, f: F) -> Result<TestResult>
+    where
+        F: FnOnce() -> Result<TestResult>;
     fn load_test_result(&self) -> Result<Option<TestResult>>;
     fn read_log(&self) -> Result<fs::File>;
     fn delete_result(&self) -> Result<()>;
@@ -37,8 +39,8 @@ fn crate_to_dir(c: &ExCrate) -> String {
             ref version,
         } => format!("reg/{}-{}", name, version),
         ExCrate::Repo { ref url, ref sha } => {
-            let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)
-                .expect("malformed github repo name");
+            let (org, name) =
+                gh_mirrors::gh_url_to_org_and_name(url).expect("malformed github repo name");
             format!("gh/{}.{}.{}", org, name, sha)
         }
     }
@@ -103,7 +105,8 @@ impl<'a> CrateResultWriter for ResultWriter<'a> {
     }
 
     fn record_results<F>(&self, f: F) -> Result<TestResult>
-        where F: FnOnce() -> Result<TestResult>
+    where
+        F: FnOnce() -> Result<TestResult>,
     {
         self.init()?;
         let log_file = self.result_log();
@@ -119,8 +122,9 @@ impl<'a> CrateResultWriter for ResultWriter<'a> {
         let result_file = self.result_file();
         if result_file.exists() {
             let s = file::read_string(&result_file)?;
-            let r = s.parse::<TestResult>()
-                .chain_err(|| format!("invalid test result value: '{}'", s))?;
+            let r = s.parse::<TestResult>().chain_err(|| {
+                format!("invalid test result value: '{}'", s)
+            })?;
             Ok(Some(r))
         } else {
             Ok(None)
@@ -181,10 +185,9 @@ impl FromStr for TestResult {
 impl TestResult {
     fn to_string(&self) -> String {
         match *self {
-                TestResult::BuildFail => "build-fail",
-                TestResult::TestFail => "test-fail",
-                TestResult::TestPass => "test-pass",
-            }
-            .to_string()
+            TestResult::BuildFail => "build-fail",
+            TestResult::TestFail => "test-fail",
+            TestResult::TestPass => "test-pass",
+        }.to_string()
     }
 }

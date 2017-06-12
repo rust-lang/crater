@@ -77,11 +77,11 @@ impl Cmd for DefineEx {
     fn run(&self) -> Result<()> {
         let &DefineEx(ref ex, ref tc1, ref tc2, ref mode, ref crates) = self;
         ex::define(ex::ExOpts {
-                       name: ex.0.clone(),
-                       toolchains: vec![tc1.clone(), tc2.clone()],
-                       mode: mode.clone(),
-                       crates: crates.clone(),
-                   })
+            name: ex.0.clone(),
+            toolchains: vec![tc1.clone(), tc2.clone()],
+            mode: mode.clone(),
+            crates: crates.clone(),
+        })
     }
 }
 impl Cmd for PrepareEx {
@@ -182,24 +182,28 @@ pub mod conv {
                 .required(false)
                 .long("mode")
                 .default_value(ExMode::BuildAndTest.to_str())
-                .possible_values(&[
-                    ExMode::BuildAndTest.to_str(),
-                    ExMode::BuildOnly.to_str(),
-                    ExMode::CheckOnly.to_str(),
-                    ExMode::UnstableFeatures.to_str(),
-                ])
+                .possible_values(
+                    &[
+                        ExMode::BuildAndTest.to_str(),
+                        ExMode::BuildOnly.to_str(),
+                        ExMode::CheckOnly.to_str(),
+                        ExMode::UnstableFeatures.to_str(),
+                    ],
+                )
         };
         let crate_select = || {
             Arg::with_name("crate-select")
                 .required(false)
                 .long("crate-select")
                 .default_value(ExCrateSelect::Demo.to_str())
-                .possible_values(&[
-                    ExCrateSelect::Demo.to_str(),
-                    ExCrateSelect::Full.to_str(),
-                    ExCrateSelect::SmallRandom.to_str(),
-                    ExCrateSelect::Top100.to_str(),
-                ])
+                .possible_values(
+                    &[
+                        ExCrateSelect::Demo.to_str(),
+                        ExCrateSelect::Full.to_str(),
+                        ExCrateSelect::SmallRandom.to_str(),
+                        ExCrateSelect::Top100.to_str(),
+                    ],
+                )
         };
 
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
@@ -216,8 +220,10 @@ pub mod conv {
 
         vec![
             // Local prep
-            cmd("prepare-local",
-                "acquire toolchains, build containers, build crate lists"),
+            cmd(
+                "prepare-local",
+                "acquire toolchains, build containers, build crate lists"
+            ),
 
             // List creation
             cmd("create-lists", "create all the lists of crates"),
@@ -235,19 +241,23 @@ pub mod conv {
                 .arg(ex2()),
             cmd("delete-ex", "delete shared data for experiment").arg(ex()),
 
-            cmd("delete-all-target-dirs",
-                "delete the cargo target dirs for an experiment")
-                    .arg(ex()),
+            cmd(
+                "delete-all-target-dirs",
+                "delete the cargo target dirs for an experiment"
+            ).arg(ex()),
             cmd("delete-all-results", "delete all results for an experiment").arg(ex()),
-            cmd("delete-result",
-                "delete results for a crate from an experiment")
-                    .arg(ex())
-                    .arg(Arg::with_name("toolchain")
-                             .long("toolchain")
-                             .short("t")
-                             .takes_value(true)
-                             .required(false))
-                    .arg(Arg::with_name("crate").required(true)),
+            cmd(
+                "delete-result",
+                "delete results for a crate from an experiment"
+            ).arg(ex())
+                .arg(
+                    Arg::with_name("toolchain")
+                        .long("toolchain")
+                        .short("t")
+                        .takes_value(true)
+                        .required(false)
+                )
+                .arg(Arg::with_name("crate").required(true)),
 
             // Experimenting
             cmd("run", "run an experiment, with all toolchains").arg(ex()),
@@ -304,46 +314,58 @@ pub mod conv {
         }
 
         Ok(match m.subcommand() {
-               // Local prep
-               ("prepare-local", _) => Box::new(PrepareLocal),
-               ("create-lists", _) => Box::new(CreateLists),
+            // Local prep
+            ("prepare-local", _) => Box::new(PrepareLocal),
+            ("create-lists", _) => Box::new(CreateLists),
 
-               // Master experiment prep
-               ("define-ex", Some(m)) => {
-                   Box::new(DefineEx(ex(m)?, tc1(m)?, tc2(m)?, mode(m)?, crate_select(m)?))
-               }
-               ("prepare-ex", Some(m)) => Box::new(PrepareEx(ex(m)?)),
-               ("copy-ex", Some(m)) => Box::new(CopyEx(ex1(m)?, ex2(m)?)),
-               ("delete-ex", Some(m)) => Box::new(DeleteEx(ex(m)?)),
+            // Master experiment prep
+            ("define-ex", Some(m)) => {
+                Box::new(DefineEx(
+                    ex(m)?,
+                    tc1(m)?,
+                    tc2(m)?,
+                    mode(m)?,
+                    crate_select(m)?,
+                ))
+            }
+            ("prepare-ex", Some(m)) => Box::new(PrepareEx(ex(m)?)),
+            ("copy-ex", Some(m)) => Box::new(CopyEx(ex1(m)?, ex2(m)?)),
+            ("delete-ex", Some(m)) => Box::new(DeleteEx(ex(m)?)),
 
-               // Local experiment prep
-               ("delete-all-target-dirs", Some(m)) => Box::new(DeleteAllTargetDirs(ex(m)?)),
-               ("delete-all-results", Some(m)) => Box::new(DeleteAllResults(ex(m)?)),
-               ("delete-result", Some(m)) => {
-                   use result::OptionResultExt;
-                   Box::new(DeleteResult(ex(m)?,
-                                         m.value_of("tc").map(str::parse).invert()?,
-                                         m.value_of("crate").map(str::parse).expect("")?))
-               }
+            // Local experiment prep
+            ("delete-all-target-dirs", Some(m)) => Box::new(DeleteAllTargetDirs(ex(m)?)),
+            ("delete-all-results", Some(m)) => Box::new(DeleteAllResults(ex(m)?)),
+            ("delete-result", Some(m)) => {
+                use result::OptionResultExt;
+                Box::new(DeleteResult(
+                    ex(m)?,
+                    m.value_of("tc").map(str::parse).invert()?,
+                    m.value_of("crate").map(str::parse).expect("")?,
+                ))
+            }
 
-               // Experimenting
-               ("run", Some(m)) => Box::new(Run(ex(m)?)),
-               ("run-tc", Some(m)) => Box::new(RunTc(ex(m)?, tc(m)?)),
+            // Experimenting
+            ("run", Some(m)) => Box::new(Run(ex(m)?)),
+            ("run-tc", Some(m)) => Box::new(RunTc(ex(m)?, tc(m)?)),
 
-               // Reporting
-               ("gen-report", Some(m)) => {
-                   Box::new(GenReport(ex(m)?,
-                                      m.value_of("destination").map(PathBuf::from).expect("")))
-               }
-               ("publish-report", Some(m)) => {
-                   Box::new(PublishReport(ex(m)?,
-                                          m.value_of("destination").map(str::parse).expect("")?))
-               }
+            // Reporting
+            ("gen-report", Some(m)) => {
+                Box::new(GenReport(
+                    ex(m)?,
+                    m.value_of("destination").map(PathBuf::from).expect(""),
+                ))
+            }
+            ("publish-report", Some(m)) => {
+                Box::new(PublishReport(
+                    ex(m)?,
+                    m.value_of("destination").map(str::parse).expect("")?,
+                ))
+            }
 
-               ("serve-report", _) => Box::new(Serve),
+            ("serve-report", _) => Box::new(Serve),
 
-               (s, _) => panic!("unimplemented args_to_cmd {}", s),
-           })
+            (s, _) => panic!("unimplemented args_to_cmd {}", s),
+        })
     }
 
     impl FromStr for Ex {

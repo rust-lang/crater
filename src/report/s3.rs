@@ -32,12 +32,12 @@ impl FromStr for S3Prefix {
             } => {
                 if scheme == "s3" {
                     Ok(S3Prefix {
-                           bucket,
-                           prefix: match prefix {
-                               Some(prefix) => prefix[1..].into(),
-                               None => PathBuf::new(),
-                           },
-                       })
+                        bucket,
+                        prefix: match prefix {
+                            Some(prefix) => prefix[1..].into(),
+                            None => PathBuf::new(),
+                        },
+                    })
                 } else {
                     Err(ErrorKind::BadS3Uri.into())
                 }
@@ -81,13 +81,13 @@ impl S3Writer {
     fn write_vec<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {
         self.client
             .put_object(&PutObjectRequest {
-                            acl: Some("public-read".into()),
-                            body: Some(s),
-                            bucket: self.prefix.bucket.clone(),
-                            key: self.prefix.prefix.join(path).to_string_lossy().into(),
-                            content_type: Some(mime.to_string()),
-                            ..Default::default()
-                        })
+                acl: Some("public-read".into()),
+                body: Some(s),
+                bucket: self.prefix.bucket.clone(),
+                key: self.prefix.prefix.join(path).to_string_lossy().into(),
+                content_type: Some(mime.to_string()),
+                ..Default::default()
+            })
             .chain_err(|| "S3")?;
         Ok(())
     }

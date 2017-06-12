@@ -53,20 +53,18 @@ pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
         .into_iter()
         .map(|(krate, _)| {
             // Any errors here will turn into unknown results
-            let crate_results = ex.toolchains
-                .iter()
-                .map(|tc| -> Result<BuildTestResult> {
-                    let writer = db.for_crate(&krate, tc);
-                    let res = writer.load_test_result()?;
-                    // If there was no test result return an error
-                    let res = res.ok_or_else(|| Error::from("no result"))?;
-                    let rel_log = writer.result_path_fragement();
+            let crate_results = ex.toolchains.iter().map(|tc| -> Result<BuildTestResult> {
+                let writer = db.for_crate(&krate, tc);
+                let res = writer.load_test_result()?;
+                // If there was no test result return an error
+                let res = res.ok_or_else(|| Error::from("no result"))?;
+                let rel_log = writer.result_path_fragement();
 
-                    Ok(BuildTestResult {
-                           res: res,
-                           log: format!("{}", rel_log.display()),
-                       })
-                });
+                Ok(BuildTestResult {
+                    res: res,
+                    log: format!("{}", rel_log.display()),
+                })
+            });
             // Convert errors to Nones
             let mut crate_results = crate_results.map(|r| r.ok()).collect::<Vec<_>>();
             let crate2 = crate_results.pop().expect("");
@@ -93,7 +91,11 @@ pub fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> 
 
             match writer.read_log() {
                 Ok(ref mut result_log) => {
-                    dest.copy(result_log, rel_log.join("log.txt"), &mime::TEXT_PLAIN_UTF_8)?
+                    dest.copy(
+                        result_log,
+                        rel_log.join("log.txt"),
+                        &mime::TEXT_PLAIN_UTF_8,
+                    )?
                 }
                 Err(e) => error!{"Could not read log for {} {}: {}", krate, tc.to_string(), e},
             }
@@ -110,15 +112,21 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
     let shas = ex.load_shas()?;
 
     info!("writing results to {}", dest);
-    dest.write_string("results.json",
-                      serde_json::to_string(&res)?.into(),
-                      &mime::APPLICATION_JSON)?;
-    dest.write_string("config.json",
-                      serde_json::to_string(&ex)?.into(),
-                      &mime::APPLICATION_JSON)?;
-    dest.write_string("shas.json",
-                      serde_json::to_string(&shas)?.into(),
-                      &mime::APPLICATION_JSON)?;
+    dest.write_string(
+        "results.json",
+        serde_json::to_string(&res)?.into(),
+        &mime::APPLICATION_JSON,
+    )?;
+    dest.write_string(
+        "config.json",
+        serde_json::to_string(&ex)?.into(),
+        &mime::APPLICATION_JSON,
+    )?;
+    dest.write_string(
+        "shas.json",
+        serde_json::to_string(&shas)?.into(),
+        &mime::APPLICATION_JSON,
+    )?;
 
     write_html_files(dest)?;
     write_logs(&ex, dest)?;
@@ -187,7 +195,11 @@ fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
         .chain_err(|| "Couldn't render template")?;
 
     dest.write_string(&html_out, html.into(), &mime::TEXT_HTML)?;
-    dest.write_string(&js_out, js_in.into(), &mime::TEXT_JAVASCRIPT)?;
+    dest.write_string(
+        &js_out,
+        js_in.into(),
+        &mime::TEXT_JAVASCRIPT,
+    )?;
     dest.write_string(&css_out, css_in.into(), &mime::TEXT_CSS)?;
 
     Ok(())

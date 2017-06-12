@@ -2,8 +2,7 @@
 extern crate clap;
 extern crate dotenv;
 extern crate result;
-#[macro_use(slog_info, slog_log,
-            slog_record, slog_record_static, slog_b, slog_kv)]
+#[macro_use(slog_info, slog_log, slog_record, slog_record_static, slog_b, slog_kv)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
@@ -36,12 +35,14 @@ fn main() {
             false
         }
     };
-    info!("{}",
-          if success {
-              "command succeeded"
-          } else {
-              "command failed"
-          });
+    info!(
+        "{}",
+        if success {
+            "command succeeded"
+        } else {
+            "command failed"
+        }
+    );
     log::finish();
     process::exit(if success { 0 } else { 1 });
 }

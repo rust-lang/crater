@@ -28,13 +28,15 @@ struct Server {
 }
 
 impl Server {
-    fn handle_get<F, S>(&self,
-                        req: Request,
-                        params: Params,
-                        handler: F)
-                        -> <Server as Service>::Future
-        where F: FnOnce(&Data, Params) -> S,
-              S: Serialize
+    fn handle_get<F, S>(
+        &self,
+        req: Request,
+        params: Params,
+        handler: F,
+    ) -> <Server as Service>::Future
+    where
+        F: FnOnce(&Data, Params) -> S,
+        S: Serialize,
     {
         if *req.method() != Get {
             return self.error(StatusCode::BadRequest);
@@ -47,12 +49,13 @@ impl Server {
         futures::future::ok(response).boxed()
     }
 
-    fn handle_static(&self,
-                     req: Request,
-                     _params: Params,
-                     content_type: ContentType,
-                     body: &'static str)
-                     -> <Server as Service>::Future {
+    fn handle_static(
+        &self,
+        req: Request,
+        _params: Params,
+        content_type: ContentType,
+        body: &'static str,
+    ) -> <Server as Service>::Future {
         if *req.method() != Get {
             return self.error(StatusCode::BadRequest);
         };
@@ -60,15 +63,17 @@ impl Server {
         futures::future::ok(response).boxed()
     }
 
-    fn handle_template<F, S>(&self,
-                             req: Request,
-                             params: Params,
-                             content_type: ContentType,
-                             context_fn: F,
-                             template: &'static str)
-                             -> <Server as Service>::Future
-        where F: FnOnce(&Data, Params) -> S + Send + 'static,
-              S: Serialize
+    fn handle_template<F, S>(
+        &self,
+        req: Request,
+        params: Params,
+        content_type: ContentType,
+        context_fn: F,
+        template: &'static str,
+    ) -> <Server as Service>::Future
+    where
+        F: FnOnce(&Data, Params) -> S + Send + 'static,
+        S: Serialize,
     {
         if *req.method() != Get {
             return self.error(StatusCode::BadRequest);
@@ -85,14 +90,16 @@ impl Server {
         futures::future::ok(response).boxed()
     }
 
-    fn handle_post<F, D, S>(&self,
-                            req: Request,
-                            params: Params,
-                            handler: F)
-                            -> <Server as Service>::Future
-        where F: FnOnce(D, &Data, Params) -> S + Send + 'static,
-              D: DeserializeOwned,
-              S: Serialize
+    fn handle_post<F, D, S>(
+        &self,
+        req: Request,
+        params: Params,
+        handler: F,
+    ) -> <Server as Service>::Future
+    where
+        F: FnOnce(D, &Data, Params) -> S + Send + 'static,
+        D: DeserializeOwned,
+        S: Serialize,
     {
         if *req.method() != Post {
             return self.error(StatusCode::BadRequest);
@@ -117,9 +124,11 @@ impl Server {
                         let body: D = match serde_json::from_slice(&body) {
                             Ok(d) => d,
                             Err(err) => {
-                                error!("failed to deserialize request {}: {:?}",
-                                       String::from_utf8_lossy(&body),
-                                       err);
+                                error!(
+                                    "failed to deserialize request {}: {:?}",
+                                    String::from_utf8_lossy(&body),
+                                    err
+                                );
                                 return Response::new()
                                            .with_header(ContentType::plaintext())
                                            .with_body(format!("Failed to deserialize request; {:?}",
@@ -136,10 +145,11 @@ impl Server {
     }
 
     fn error(&self, status: StatusCode) -> <Server as Service>::Future {
-        futures::future::ok(Response::new()
-                                .with_header(ContentType::html())
-                                .with_status(status))
-                .boxed()
+        futures::future::ok(
+            Response::new()
+                .with_header(ContentType::html())
+                .with_status(status),
+        ).boxed()
     }
 }
 
@@ -172,41 +182,53 @@ pub fn start(data: Data) {
     let mut router = Router::<Handler>::new();
     route!(router, "/api/get", handle_get, api::get::handler);
     route!(router, "/api/post", handle_post, api::post::handler);
-    route!(router,
-           "/api/ex/:experiment/results",
-           handle_get,
-           api::ex_report::handler);
-    route!(router,
-           "/api/ex/:experiment/config",
-           handle_get,
-           api::ex_config::handler);
-    route!(router,
-           "/report/:experiment",
-           handle_template,
-           ContentType::html(),
-           api::template_report::handler,
-           include_str!("../../template/report.html"));
-    route!(router,
-           "/static/report.js",
-           handle_static,
-           ContentType(mime::TEXT_JAVASCRIPT),
-           include_str!("../../static/report.js"));
-    route!(router,
-           "/static/report.css",
-           handle_static,
-           ContentType(mime::TEXT_CSS),
-           include_str!("../../static/report.css"));
+    route!(
+        router,
+        "/api/ex/:experiment/results",
+        handle_get,
+        api::ex_report::handler
+    );
+    route!(
+        router,
+        "/api/ex/:experiment/config",
+        handle_get,
+        api::ex_config::handler
+    );
+    route!(
+        router,
+        "/report/:experiment",
+        handle_template,
+        ContentType::html(),
+        api::template_report::handler,
+        include_str!("../../template/report.html")
+    );
+    route!(
+        router,
+        "/static/report.js",
+        handle_static,
+        ContentType(mime::TEXT_JAVASCRIPT),
+        include_str!("../../static/report.js")
+    );
+    route!(
+        router,
+        "/static/report.css",
+        handle_static,
+        ContentType(mime::TEXT_CSS),
+        include_str!("../../static/report.css")
+    );
 
     let server = Arc::new(Server {
-                              router,
-                              data: ArcCell::new(Arc::new(data)),
-                              pool: CpuPool::new_num_cpus(),
-                          });
+        router,
+        data: ArcCell::new(Arc::new(data)),
+        pool: CpuPool::new_num_cpus(),
+    });
     let mut server_address: SocketAddr = "0.0.0.0:2346".parse().unwrap();
-    server_address.set_port(env::var("PORT")
-                                .ok()
-                                .and_then(|x| x.parse().ok())
-                                .unwrap_or(2346));
+    server_address.set_port(
+        env::var("PORT")
+            .ok()
+            .and_then(|x| x.parse().ok())
+            .unwrap_or(2346),
+    );
     let server = Http::new().bind(&server_address, move || Ok(server.clone()));
     server.unwrap().run().unwrap();
 }

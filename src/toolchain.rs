@@ -20,7 +20,10 @@ const RUST_CI_MASTER_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws
 const RUST_CI_COMPONENTS: [(&'static str, &'static str); 3] =
     [
         ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.gz"),
-        ("rust-std-x86_64-unknown-linux-gnu", "rust-std-nightly-x86_64-unknown-linux-gnu.tar.gz"),
+        (
+            "rust-std-x86_64-unknown-linux-gnu",
+            "rust-std-nightly-x86_64-unknown-linux-gnu.tar.gz",
+        ),
         ("cargo", "cargo-nightly-x86_64-unknown-linux-gnu.tar.gz"),
     ];
 
@@ -100,19 +103,24 @@ fn rustup_exists() -> bool {
 }
 
 fn rustup_run(name: &str, args: &[&str]) -> Result<()> {
-    run::run(name,
-             args,
-             &[("CARGO_HOME", &*CARGO_HOME), ("RUSTUP_HOME", &*RUSTUP_HOME)])
+    run::run(
+        name,
+        args,
+        &[("CARGO_HOME", &*CARGO_HOME), ("RUSTUP_HOME", &*RUSTUP_HOME)],
+    )
 }
 
 fn install_rustup() -> Result<()> {
     info!("installing rustup");
-    let rustup_url = &format!("{}/{}/rustup-init{}",
-            RUSTUP_BASE_URL,
-            &util::this_target(),
-            EXE_SUFFIX);
-    let mut response = dl::download(rustup_url)
-        .chain_err(|| "unable to download rustup")?;
+    let rustup_url = &format!(
+        "{}/{}/rustup-init{}",
+        RUSTUP_BASE_URL,
+        &util::this_target(),
+        EXE_SUFFIX
+    );
+    let mut response = dl::download(rustup_url).chain_err(
+        || "unable to download rustup",
+    )?;
 
     let tempdir = TempDir::new("cargobomb")?;
     let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
@@ -124,9 +132,9 @@ fn install_rustup() -> Result<()> {
 
     // FIXME: Wish I could install rustup without installing a toolchain
     util::try_hard(|| {
-                       rustup_run(&installer.to_string_lossy(), &["-y", "--no-modify-path"])
-                           .chain_err(|| "unable to run rustup-init")
-                   })
+        rustup_run(&installer.to_string_lossy(), &["-y", "--no-modify-path"])
+            .chain_err(|| "unable to run rustup-init")
+    })
 }
 
 pub fn make_executable(path: &Path) -> Result<()> {
@@ -155,17 +163,18 @@ pub fn make_executable(path: &Path) -> Result<()> {
 fn update_rustup() -> Result<()> {
     info!("updating rustup");
     util::try_hard(|| {
-                       rustup_run(&rustup_exe(), &["self", "update"])
-                           .chain_err(|| "unable to run rustup self-update")
-                   })
+        rustup_run(&rustup_exe(), &["self", "update"]).chain_err(
+            || "unable to run rustup self-update",
+        )
+    })
 }
 
 fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
     info!("installing toolchain {}", toolchain);
     util::try_hard(|| {
-                       rustup_run(&rustup_exe(), &["toolchain", "install", toolchain])
-                           .chain_err(|| "unable to install toolchain via rustup")
-                   })
+        rustup_run(&rustup_exe(), &["toolchain", "install", toolchain])
+            .chain_err(|| "unable to install toolchain via rustup")
+    })
 }
 
 fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
@@ -225,12 +234,13 @@ impl Toolchain {
         ex_target_dir(ex_name).join(self.to_string())
     }
 
-    pub fn run_cargo(&self,
-                     ex_name: &str,
-                     source_dir: &Path,
-                     args: &[&str],
-                     cargo_state: CargoState)
-                     -> Result<()> {
+    pub fn run_cargo(
+        &self,
+        ex_name: &str,
+        source_dir: &Path,
+        args: &[&str],
+        cargo_state: CargoState,
+    ) -> Result<()> {
         let toolchain_name = self.rustup_name();
         let ex_target_dir = self.target_dir(ex_name);
 

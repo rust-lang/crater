@@ -43,9 +43,11 @@ const QUERIES_PER: usize = 40;
 const TIME_PER: usize = 6;
 
 pub fn get_candidate_repos() -> Result<Vec<String>> {
-    info!("making up to {} queries. time: {} s. take a break",
-          QUERIES.len() * QUERIES_PER,
-          QUERIES.len() * QUERIES_PER * TIME_PER);
+    info!(
+        "making up to {} queries. time: {} s. take a break",
+        QUERIES.len() * QUERIES_PER,
+        QUERIES.len() * QUERIES_PER * TIME_PER
+    );
 
     let mut urls = HashSet::new();
     'next_query: for q in QUERIES {
@@ -54,11 +56,10 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
             info!("downloading {}", url);
 
             let mut response = if page < 20 {
-                    dl::download_limit(&url, 10000)
-                } else {
-                    dl::download_no_retry(&url)
-                }
-                .chain_err(|| "unable to query github for rust repos")?;
+                dl::download_limit(&url, 10000)
+            } else {
+                dl::download_no_retry(&url)
+            }.chain_err(|| "unable to query github for rust repos")?;
 
             // After some point, errors indicate the end of available results
             if page > 20 && *response.status() == reqwest::StatusCode::UnprocessableEntity {
@@ -91,17 +92,19 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
 }
 
 pub fn is_rust_app(name: &str) -> Result<bool> {
-    let url = format!("https://raw.githubusercontent.com/{}/master/Cargo.lock",
-                      name);
+    let url = format!(
+        "https://raw.githubusercontent.com/{}/master/Cargo.lock",
+        name
+    );
     info!("testing {}", url);
 
     let is_app = dl::download_no_retry(&url)
         .and_then(|mut response| {
-                      let mut buf = String::new();
-                      response.read_to_string(&mut buf)?;
-                      // GitHub returns a successful result when the file doesn't exist
-                      Ok(!buf.contains("404: Not Found") && !buf.is_empty())
-                  })
+            let mut buf = String::new();
+            response.read_to_string(&mut buf)?;
+            // GitHub returns a successful result when the file doesn't exist
+            Ok(!buf.contains("404: Not Found") && !buf.is_empty())
+        })
         .unwrap_or(false);
 
     if is_app {

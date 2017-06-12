@@ -40,10 +40,12 @@ impl<'a> MountConfig<'a> {
             Perm::ReadWrite => "rw",
             Perm::ReadOnly => "ro",
         };
-        format!("{}:{}:{},Z",
-                absolute(&self.host_path).display(),
-                self.container_path,
-                perm)
+        format!(
+            "{}:{}:{},Z",
+            absolute(&self.host_path).display(),
+            self.container_path,
+            perm
+        )
     }
 }
 

@@ -74,11 +74,13 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                     skipped_crates += 1;
 
                     info!("skipping crate {}. existing result: {}", c, r);
-                    info!("delete result file to rerun test: \
+                    info!(
+                        "delete result file to rerun test: \
                            \"cargobomb delete-result {} --toolchain {} {}\"",
-                          ex.name,
-                          tc.to_string(),
-                          c);
+                        ex.name,
+                        tc.to_string(),
+                        c
+                    );
                     Ok(r)
                 } else {
                     completed_crates += 1;
@@ -88,12 +90,9 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                         with_captured_lockfile(ex, c, source_path)?;
 
                         writer.record_results(|| {
-                                                  info!("testing {} against {} for {}",
-                                                        c,
-                                                        tc.to_string(),
-                                                        ex.name);
-                                                  test_fn(ex, source_path, tc)
-                                              })
+                            info!("testing {} against {} for {}", c, tc.to_string(), ex.name);
+                            test_fn(ex, source_path, tc)
+                        })
                     })
                 }
             };
@@ -105,11 +104,13 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                 }
                 Ok(ref r) => {
                     // FIXME: Should errors be recorded?
-                    info!("test result! ex: {}, c: {}, tc: {}, r: {}",
-                          ex.name,
-                          c,
-                          tc.to_string(),
-                          r);
+                    info!(
+                        "test result! ex: {}, c: {}, tc: {}, r: {}",
+                        ex.name,
+                        c,
+                        tc.to_string(),
+                        r
+                    );
                 }
             }
 
@@ -139,20 +140,26 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                 format!("{:0} hours", remaining_time / 60 / 60)
             };
 
-            info!("progress: {} / {}",
-                  completed_crates + skipped_crates,
-                  total_crates);
-            info!("{} crates tested in {} s. {:.2} s/crate. {} crates remaining. ~{}",
-                  completed_crates,
-                  elapsed,
-                  seconds_per_test,
-                  remaining_tests,
-                  remaining_time_str);
-            info!("results: {} build-fail / {} test-fail / {} test-pass / {} errors",
-                  sum_build_fail,
-                  sum_test_fail,
-                  sum_test_pass,
-                  sum_errors);
+            info!(
+                "progress: {} / {}",
+                completed_crates + skipped_crates,
+                total_crates
+            );
+            info!(
+                "{} crates tested in {} s. {:.2} s/crate. {} crates remaining. ~{}",
+                completed_crates,
+                elapsed,
+                seconds_per_test,
+                remaining_tests,
+                remaining_time_str
+            );
+            info!(
+                "results: {} build-fail / {} test-fail / {} test-pass / {} errors",
+                sum_build_fail,
+                sum_test_fail,
+                sum_test_pass,
+                sum_errors
+            );
         }
     }
 
@@ -169,49 +176,59 @@ fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     Ok(())
 }
 
-fn test_build_and_test(ex: &Experiment,
-                       source_path: &Path,
-                       toolchain: &Toolchain)
-                       -> Result<TestResult> {
-    let build_r = toolchain.run_cargo(&ex.name,
-                                      source_path,
-                                      &["build", "--frozen"],
-                                      CargoState::Locked);
+fn test_build_and_test(
+    ex: &Experiment,
+    source_path: &Path,
+    toolchain: &Toolchain,
+) -> Result<TestResult> {
+    let build_r = toolchain.run_cargo(
+        &ex.name,
+        source_path,
+        &["build", "--frozen"],
+        CargoState::Locked,
+    );
     let mut test_r;
 
     if build_r.is_ok() {
         // First build, with --no-run
-        test_r = Some(toolchain.run_cargo(&ex.name,
-                                          source_path.into(),
-                                          &["test", "--frozen", "--no-run"],
-                                          CargoState::Locked));
+        test_r = Some(toolchain.run_cargo(
+            &ex.name,
+            source_path.into(),
+            &["test", "--frozen", "--no-run"],
+            CargoState::Locked,
+        ));
         // Then run
         test_r = test_r.map(|_| {
-                                toolchain.run_cargo(&ex.name,
-                                                    source_path.into(),
-                                                    &["test", "--frozen"],
-                                                    CargoState::Locked)
-                            });
+            toolchain.run_cargo(
+                &ex.name,
+                source_path.into(),
+                &["test", "--frozen"],
+                CargoState::Locked,
+            )
+        });
     } else {
         test_r = None;
     }
 
     Ok(match (build_r, test_r) {
-           (Err(_), None) => TestResult::BuildFail,
-           (Ok(_), Some(Err(_))) => TestResult::TestFail,
-           (Ok(_), Some(Ok(_))) => TestResult::TestPass,
-           (_, _) => unreachable!(),
-       })
+        (Err(_), None) => TestResult::BuildFail,
+        (Ok(_), Some(Err(_))) => TestResult::TestFail,
+        (Ok(_), Some(Ok(_))) => TestResult::TestPass,
+        (_, _) => unreachable!(),
+    })
 }
 
-fn test_build_only(ex: &Experiment,
-                   source_path: &Path,
-                   toolchain: &Toolchain)
-                   -> Result<TestResult> {
-    let r = toolchain.run_cargo(&ex.name,
-                                source_path.into(),
-                                &["build", "--frozen"],
-                                CargoState::Locked);
+fn test_build_only(
+    ex: &Experiment,
+    source_path: &Path,
+    toolchain: &Toolchain,
+) -> Result<TestResult> {
+    let r = toolchain.run_cargo(
+        &ex.name,
+        source_path.into(),
+        &["build", "--frozen"],
+        CargoState::Locked,
+    );
 
     if r.is_ok() {
         Ok(TestResult::TestPass)
@@ -220,14 +237,17 @@ fn test_build_only(ex: &Experiment,
     }
 }
 
-fn test_check_only(ex: &Experiment,
-                   source_path: &Path,
-                   toolchain: &Toolchain)
-                   -> Result<TestResult> {
-    let r = toolchain.run_cargo(&ex.name,
-                                source_path.into(),
-                                &["check", "--frozen"],
-                                CargoState::Locked);
+fn test_check_only(
+    ex: &Experiment,
+    source_path: &Path,
+    toolchain: &Toolchain,
+) -> Result<TestResult> {
+    let r = toolchain.run_cargo(
+        &ex.name,
+        source_path.into(),
+        &["check", "--frozen"],
+        CargoState::Locked,
+    );
 
     if r.is_ok() {
         Ok(TestResult::TestPass)
@@ -236,10 +256,11 @@ fn test_check_only(ex: &Experiment,
     }
 }
 
-fn test_find_unstable_features(_ex: &Experiment,
-                               source_path: &Path,
-                               _toolchain: &Toolchain)
-                               -> Result<TestResult> {
+fn test_find_unstable_features(
+    _ex: &Experiment,
+    source_path: &Path,
+    _toolchain: &Toolchain,
+) -> Result<TestResult> {
     use walkdir::*;
 
     fn is_hidden(entry: &DirEntry) -> bool {
@@ -252,15 +273,17 @@ fn test_find_unstable_features(_ex: &Experiment,
 
     let mut features = HashSet::new();
 
-    for entry in WalkDir::new(source_path)
-            .into_iter()
-            .filter_entry(|e| !is_hidden(e)) {
+    for entry in WalkDir::new(source_path).into_iter().filter_entry(
+        |e| !is_hidden(e),
+    )
+    {
         let entry = entry.chain_err(|| "walk dir")?;
         if !entry
-                .file_name()
-                .to_str()
-                .map(|s| s.contains(".rs"))
-                .unwrap_or(false) {
+            .file_name()
+            .to_str()
+            .map(|s| s.contains(".rs"))
+            .unwrap_or(false)
+        {
             continue;
         }
         if !entry.file_type().is_file() {
@@ -297,18 +320,18 @@ fn parse_features(path: &Path) -> Result<Vec<String>> {
 
     fn eat_token<'a>(s: Option<&'a str>, tok: &str) -> Option<&'a str> {
         eat_whitespace(s).and_then(|s| if s.starts_with(tok) {
-                                       Some(&s[tok.len()..])
-                                   } else {
-                                       None
-                                   })
+            Some(&s[tok.len()..])
+        } else {
+            None
+        })
     }
 
     fn eat_whitespace(s: Option<&str>) -> Option<&str> {
         s.and_then(|s| if let Some(i) = s.find(|c: char| !c.is_whitespace()) {
-                       Some(&s[i..])
-                   } else {
-                       None
-                   })
+            Some(&s[i..])
+        } else {
+            None
+        })
     }
 
     fn parse_list(s: Option<&str>, open: &str, close: &str) -> Vec<String> {

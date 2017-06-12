@@ -6,6 +6,9 @@ extern crate result;
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
+extern crate structopt;
+#[macro_use]
+extern crate structopt_derive;
 
 extern crate cargobomb;
 

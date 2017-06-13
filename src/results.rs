@@ -141,9 +141,9 @@ impl<'a> ResultWriter<'a> {
 
 
     fn result_dir(&self) -> PathBuf {
-        ex_dir(&self.db.ex.name)
-            .join("res")
-            .join(self.result_path_fragement())
+        ex_dir(&self.db.ex.name).join("res").join(
+            self.result_path_fragement(),
+        )
     }
 
     fn result_file(&self) -> PathBuf {

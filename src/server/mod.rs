@@ -19,8 +19,12 @@ mod api;
 
 pub struct Data;
 
-type Handler =
-    Box<Fn(&Server, Request, Params) -> BoxFuture<Response, hyper::Error> + Sync + Send + 'static>;
+type Handler = Box<
+    Fn(&Server, Request, Params) -> BoxFuture<Response, hyper::Error>
+        + Sync
+        + Send
+        + 'static,
+>;
 struct Server {
     router: Router<Handler>,
     data: ArcCell<Data>,
@@ -43,9 +47,9 @@ impl Server {
         };
         let data = self.data.get();
         let result = handler(&data, params);
-        let response = Response::new()
-            .with_header(ContentType::json())
-            .with_body(serde_json::to_string(&result).unwrap());
+        let response = Response::new().with_header(ContentType::json()).with_body(
+            serde_json::to_string(&result).unwrap(),
+        );
         futures::future::ok(response).boxed()
     }
 
@@ -136,9 +140,9 @@ impl Server {
                             }
                         };
                         let result = handler(body, &data, params);
-                        Response::new()
-                            .with_header(ContentType::json())
-                            .with_body(serde_json::to_string(&result).unwrap())
+                        Response::new().with_header(ContentType::json()).with_body(
+                            serde_json::to_string(&result).unwrap(),
+                        )
                     })
             })
             .boxed()

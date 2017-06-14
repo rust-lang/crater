@@ -34,16 +34,43 @@ use std::str::FromStr;
 #[derive(Debug, Clone)]
 pub struct Ex(String);
 
+#[derive(Debug, Clone)]
+pub struct Dest(PathBuf);
+
 pub trait Cmd {
     fn run(&self) -> Result<()>;
 }
 
 struct PrepareLocal;
 struct DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect);
-struct PrepareEx(Ex);
-struct Run(Ex);
-struct RunTc(Ex, Toolchain);
-struct GenReport(Ex, PathBuf);
+#[derive(StructOpt)]
+#[structopt(name = "prepare-ex", about = "prepare shared and local data for experiment")]
+struct PrepareEx {
+    #[structopt(name = "experiment", long = "ex", default_value = "default")]
+    ex: Ex,
+}
+#[derive(StructOpt)]
+#[structopt(name = "run", about = "run an experiment, with all toolchains")]
+struct Run {
+    #[structopt(name = "experiment", long = "ex", default_value = "default")]
+    ex: Ex,
+}
+#[derive(StructOpt)]
+#[structopt(name = "run-tc", about = "run an experiment, with a single toolchain")]
+struct RunTc {
+    #[structopt(name = "experiment", long = "ex", default_value = "default")]
+    ex: Ex,
+    #[structopt(name = "toolchain")]
+    tc: Toolchain,
+}
+#[derive(StructOpt)]
+#[structopt(name = "gen-report", about = "generate the experiment report")]
+struct GenReport {
+    #[structopt(name = "experiment", long = "ex", default_value = "default")]
+    ex: Ex,
+    #[structopt(name = "destination")]
+    dest: Dest,
+}
 #[derive(StructOpt)]
 #[structopt(name = "publish-report", about = "publish the experiment report to S3")]
 struct PublishReport {
@@ -98,8 +125,7 @@ impl Cmd for DefineEx {
 }
 impl Cmd for PrepareEx {
     fn run(&self) -> Result<()> {
-        let &PrepareEx(ref ex) = self;
-        let ex = ex::Experiment::load(&ex.0)?;
+        let ex = ex::Experiment::load(&self.ex.0)?;
         ex.prepare_shared()?;
         ex.prepare_local()?;
 
@@ -142,22 +168,22 @@ impl Cmd for DeleteResult {
 // Experimenting
 impl Cmd for Run {
     fn run(&self) -> Result<()> {
-        let &Run(ref ex) = self;
-        ex_run::run_ex_all_tcs(&ex.0)
+        ex_run::run_ex_all_tcs(&self.ex.0)
     }
 }
 impl Cmd for RunTc {
     fn run(&self) -> Result<()> {
-        let &RunTc(ref ex, ref tc) = self;
-        ex_run::run_ex(&ex.0, tc.clone())
+        ex_run::run_ex(&self.ex.0, self.tc.clone())
     }
 }
 
 // Reporting
 impl Cmd for GenReport {
     fn run(&self) -> Result<()> {
-        let &GenReport(ref ex, ref path) = self;
-        report::gen(&ex.0, &report::FileWriter::create(path.into())?)
+        report::gen(
+            &self.ex.0,
+            &report::FileWriter::create(self.dest.0.clone())?,
+        )
     }
 }
 
@@ -215,7 +241,6 @@ pub mod conv {
         let ex = || opt("ex", "default");
         let ex1 = || req("ex-1");
         let ex2 = || req("ex-2");
-        let req_tc = || req("tc");
         let tc1 = || req("tc-1");
         let tc2 = || req("tc-2");
         let mode = || {
@@ -276,7 +301,7 @@ pub mod conv {
                 .arg(tc2())
                 .arg(mode())
                 .arg(crate_select()),
-            cmd("prepare-ex", "prepare shared and local data for experiment").arg(ex()),
+            PrepareEx::clap(),
             cmd("copy-ex", "copy all data from one experiment to another")
                 .arg(ex1())
                 .arg(ex2()),
@@ -301,15 +326,11 @@ pub mod conv {
                 .arg(Arg::with_name("crate").required(true)),
 
             // Experimenting
-            cmd("run", "run an experiment, with all toolchains").arg(ex()),
-            cmd("run-tc", "run an experiment, with a single toolchain")
-                .arg(ex())
-                .arg(req_tc()),
+            Run::clap(),
+            RunTc::clap(),
 
             // Reporting
-            cmd("gen-report", "generate the experiment report")
-                .arg(ex())
-                .arg(Arg::with_name("destination").required(true)),
+            GenReport::clap(),
             PublishReport::clap(),
 
             cmd("serve-report", "serve report"),
@@ -328,10 +349,6 @@ pub mod conv {
 
         fn ex2(m: &ArgMatches) -> Result<Ex> {
             m.value_of("ex-2").expect("").parse::<Ex>()
-        }
-
-        fn tc(m: &ArgMatches) -> Result<Toolchain> {
-            m.value_of("tc").expect("").parse()
         }
 
         fn tc1(m: &ArgMatches) -> Result<Toolchain> {
@@ -367,7 +384,7 @@ pub mod conv {
                     crate_select(m)?,
                 ))
             }
-            ("prepare-ex", Some(m)) => Box::new(PrepareEx(ex(m)?)),
+            ("prepare-ex", Some(m)) => Box::new(PrepareEx::from_clap(m.clone())),
             ("copy-ex", Some(m)) => Box::new(CopyEx(ex1(m)?, ex2(m)?)),
             ("delete-ex", Some(m)) => Box::new(DeleteEx(ex(m)?)),
 
@@ -384,16 +401,11 @@ pub mod conv {
             }
 
             // Experimenting
-            ("run", Some(m)) => Box::new(Run(ex(m)?)),
-            ("run-tc", Some(m)) => Box::new(RunTc(ex(m)?, tc(m)?)),
+            ("run", Some(m)) => Box::new(Run::from_clap(m.clone())),
+            ("run-tc", Some(m)) => Box::new(RunTc::from_clap(m.clone())),
 
             // Reporting
-            ("gen-report", Some(m)) => {
-                Box::new(GenReport(
-                    ex(m)?,
-                    m.value_of("destination").map(PathBuf::from).expect(""),
-                ))
-            }
+            ("gen-report", Some(m)) => Box::new(GenReport::from_clap(m.clone())),
             ("publish-report", Some(m)) => Box::new(PublishReport::from_clap(m.clone())),
 
             ("serve-report", _) => Box::new(Serve),
@@ -407,6 +419,14 @@ pub mod conv {
 
         fn from_str(ex: &str) -> Result<Ex> {
             Ok(Ex(ex.to_string()))
+        }
+    }
+
+    impl FromStr for Dest {
+        type Err = Error;
+
+        fn from_str(ex: &str) -> Result<Dest> {
+            Ok(Dest(ex.into()))
         }
     }
 }

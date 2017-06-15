@@ -15,16 +15,16 @@ use util;
 const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";
 
 const RUST_CI_TRY_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds-try";
-const RUST_CI_MASTER_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds/";
+const RUST_CI_MASTER_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds";
 
 const RUST_CI_COMPONENTS: [(&'static str, &'static str); 3] =
     [
-        ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.gz"),
+        ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.xz"),
         (
             "rust-std-x86_64-unknown-linux-gnu",
-            "rust-std-nightly-x86_64-unknown-linux-gnu.tar.gz",
+            "rust-std-nightly-x86_64-unknown-linux-gnu.tar.xz",
         ),
-        ("cargo", "cargo-nightly-x86_64-unknown-linux-gnu.tar.gz"),
+        ("cargo", "cargo-nightly-x86_64-unknown-linux-gnu.tar.xz"),
     ];
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -202,7 +202,7 @@ fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
         if *response.status() != reqwest::StatusCode::Ok {
             return Err(ErrorKind::Download.into());
         }
-        tx = dist::component::TarGzPackage::new(response, &cfg)?
+        tx = dist::component::TarXzPackage::new(response, &cfg)?
             .install(&target, component, None, tx)?;
     }
     tx.commit();

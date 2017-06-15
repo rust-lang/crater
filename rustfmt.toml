@@ -2,14 +2,3 @@ reorder_imports = true
 reorder_imported_names = true
 normalize_imports = true
 normalize_comments = false
-
-# RFC Formatting
-# https://github.com/rust-lang-nursery/rustfmt/blob/master/rfc-rustfmt.toml
-fn_args_layout = "Block"
-array_layout = "Block"
-control_style = "Rfc"
-where_style = "Rfc"
-generics_indent = "Block"
-fn_call_style = "Block"
-combine_control_expr = true
-fn_args_paren_newline = false

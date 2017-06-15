@@ -326,9 +326,9 @@ fn download_crates(ex: &Experiment) -> Result<()> {
 fn frob_tomls(ex: &Experiment) -> Result<()> {
     for (krate, dir) in ex_crates_and_dirs(ex)? {
         if let ExCrate::Version {
-                ref name,
-                ref version,
-            } = krate
+            ref name,
+            ref version,
+        } = krate
         {
             fs::create_dir_all(&froml_dir(&ex.name))?;
             let out = froml_path(&ex.name, name, version);

@@ -12,7 +12,7 @@ extern crate structopt_derive;
 
 extern crate cargobomb;
 
-mod model;
+mod cli;
 
 use cargobomb::{log, util};
 use cargobomb::errors::*;
@@ -52,7 +52,7 @@ fn main() {
 
 fn main_() -> Result<()> {
     let matches = cli().get_matches();
-    let cmd = model::conv::clap_args_to_cmd(&matches)?;
+    let cmd = cli::conv::clap_args_to_cmd(&matches)?;
     cmd.run()
 }
 
@@ -63,5 +63,5 @@ fn cli() -> App<'static, 'static> {
         .setting(AppSettings::VersionlessSubcommands)
         .setting(AppSettings::DeriveDisplayOrder)
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .subcommands(model::conv::clap_cmds())
+        .subcommands(cli::conv::clap_cmds())
 }

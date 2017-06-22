@@ -14,7 +14,9 @@ Crates with flaky test suites.
 - hashconsing-0.3.0 - flaky
 - https://github.com/tinco/rust-static_any_map - flaky
 - https://github.com/yggie/mach - flaky
+- hyperdav-0.1.2 - network
 - json-0.11.3 - flaky
+- lazy-socket-0.2.1 - flaky
 - lodepng - command curl not found
 - namedarg_hack-0.1.* - bad channel detection
 - notify-3.0.1 flaky
@@ -22,6 +24,7 @@ Crates with flaky test suites.
 - psutil-1.0.0 - flaky
 - quandl-v3-1.0.0 - network
 - region-0.0.5 - flaky https://github.com/rust-lang/rust/issues/38717
+- rustlearn-0.4.2 - flaky
 - s_app_dir-0.0.0 - flaky
 - sacn-0.1.1 - flaky
 - schedule_recv-0.1.0 timing-based

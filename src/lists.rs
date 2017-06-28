@@ -3,6 +3,7 @@ use errors::*;
 use ex::ExCrate;
 use file;
 use gh;
+use gh_mirrors;
 use registry;
 use semver::{Version, VersionReq};
 use std::collections::{HashMap, HashSet};
@@ -346,10 +347,12 @@ impl Crate {
     pub fn into_ex_crate(self, shas: &HashMap<String, String>) -> Result<ExCrate> {
         match self {
             Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
-            Crate::Repo { url } => {
-                if let Some(sha) = shas.get(&url) {
+            Crate::Repo { ref url } => {
+                if let Some(sha) = shas.get(url) {
+                    let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
                     Ok(ExCrate::Repo {
-                        url,
+                        org,
+                        name,
                         sha: sha.to_string(),
                     })
                 } else {

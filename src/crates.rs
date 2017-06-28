@@ -32,8 +32,13 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
                 }
                 // crates.io doesn't rate limit. Go fast
             }
-            ExCrate::Repo { ref url, ref sha } => {
-                let r = dl_repo(url, dir, sha).chain_err(|| format!("unable to download {}", url));
+            ExCrate::Repo {
+                ref org,
+                ref name,
+                ref sha,
+            } => {
+                let url = format!("https://github.com/{}/{}", org, name);
+                let r = dl_repo(&url, dir, sha).chain_err(|| format!("unable to download {}", url));
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {

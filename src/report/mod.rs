@@ -1,7 +1,6 @@
 use errors::*;
 use ex;
 use file;
-use gh_mirrors;
 use handlebars::Handlebars;
 use mime::{self, Mime};
 use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
@@ -72,7 +71,7 @@ pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
             let comp = compare(&crate1, &crate2);
 
             CrateResult {
-                name: crate_to_name(&krate).unwrap_or_else(|_| "<unknown>".into()),
+                name: crate_to_name(&krate),
                 res: comp,
                 runs: [crate1, crate2],
             }
@@ -135,16 +134,17 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
 }
 
 
-fn crate_to_name(c: &ex::ExCrate) -> Result<String> {
+fn crate_to_name(c: &ex::ExCrate) -> String {
     match *c {
         ex::ExCrate::Version {
             ref name,
             ref version,
-        } => Ok(format!("{}-{}", name, version)),
-        ex::ExCrate::Repo { ref url, ref sha } => {
-            let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-            Ok(format!("{}.{}.{}", org, name, sha))
-        }
+        } => format!("{}-{}", name, version),
+        ex::ExCrate::Repo {
+            ref org,
+            ref name,
+            ref sha,
+        } => format!("{}.{}.{}", org, name, sha),
     }
 }
 

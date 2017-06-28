@@ -249,20 +249,25 @@ impl Experiment {
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub enum ExCrate {
     Version { name: String, version: String },
-    Repo { url: String, sha: String },
+    Repo {
+        org: String,
+        name: String,
+        sha: String,
+    },
 }
 
 impl ExCrate {
-    fn dir(&self) -> Result<PathBuf> {
+    fn dir(&self) -> PathBuf {
         match *self {
             ExCrate::Version {
                 ref name,
                 ref version,
-            } => Ok(registry_dir().join(format!("{}-{}", name, version))),
-            ExCrate::Repo { ref url, ref sha } => {
-                let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-                Ok(gh_dir().join(format!("{}.{}.{}", org, name, sha)))
-            }
+            } => registry_dir().join(format!("{}-{}", name, version)),
+            ExCrate::Repo {
+                ref org,
+                ref name,
+                ref sha,
+            } => gh_dir().join(format!("{}.{}.{}", org, name, sha)),
         }
     }
 }
@@ -274,7 +279,11 @@ impl Display for ExCrate {
                 ref name,
                 ref version,
             } => format!("{}-{}", name, version),
-            ExCrate::Repo { ref url, ref sha } => format!("{}#{}", url, sha),
+            ExCrate::Repo {
+                ref org,
+                ref name,
+                ref sha,
+            } => format!("https://github.com/{}/{}#{}", org, name, sha),
         };
         s.fmt(f)
     }
@@ -288,8 +297,10 @@ impl FromStr for ExCrate {
             if let Some(hash_idx) = s.find('#') {
                 let repo = &s[..hash_idx];
                 let sha = &s[hash_idx + 1..];
+                let (org, name) = gh_mirrors::gh_url_to_org_and_name(repo)?;
                 Ok(ExCrate::Repo {
-                    url: repo.to_string(),
+                    org,
+                    name,
                     sha: sha.to_string(),
                 })
             } else {
@@ -318,13 +329,7 @@ pub fn ex_crates_and_dirs(ex: &Experiment) -> Result<Vec<(ExCrate, PathBuf)>> {
                 return None;
             }
         };
-        let dir = match c.dir() {
-            Ok(dir) => dir,
-            Err(e) => {
-                util::report_error(&e);
-                return None;
-            }
-        };
+        let dir = c.dir();
         Some((c, dir))
     });
     Ok(crates.collect())
@@ -410,7 +415,7 @@ pub fn with_work_crate<F, R>(
 where
     F: Fn(&Path) -> Result<R>,
 {
-    let src_dir = crate_.dir()?;
+    let src_dir = crate_.dir();
     let dest_dir = crate_work_dir(&ex.name, toolchain);
     info!(
         "creating temporary build dir for {} in {}",

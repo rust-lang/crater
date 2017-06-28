@@ -3,7 +3,6 @@ use ex::ExCrate;
 use ex::Experiment;
 use ex::ex_dir;
 use file;
-use gh_mirrors;
 use log;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
@@ -38,11 +37,11 @@ fn crate_to_dir(c: &ExCrate) -> String {
             ref name,
             ref version,
         } => format!("reg/{}-{}", name, version),
-        ExCrate::Repo { ref url, ref sha } => {
-            let (org, name) =
-                gh_mirrors::gh_url_to_org_and_name(url).expect("malformed github repo name");
-            format!("gh/{}.{}.{}", org, name, sha)
-        }
+        ExCrate::Repo {
+            ref org,
+            ref name,
+            ref sha,
+        } => format!("gh/{}.{}.{}", org, name, sha),
     }
 }
 

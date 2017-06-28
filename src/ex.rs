@@ -257,7 +257,7 @@ pub enum ExCrate {
 }
 
 impl ExCrate {
-    fn dir(&self) -> PathBuf {
+    pub fn dir(&self) -> PathBuf {
         match *self {
             ExCrate::Version {
                 ref name,
@@ -319,28 +319,12 @@ impl FromStr for ExCrate {
     }
 }
 
-pub fn ex_crates_and_dirs(ex: &Experiment) -> Result<Vec<(ExCrate, PathBuf)>> {
-    let shas = ex.load_shas()?;
-    let crates = ex.crates.clone().into_iter().filter_map(|c| {
-        let c = match c.into_ex_crate(&shas) {
-            Ok(c) => c,
-            Err(e) => {
-                util::report_error(&e);
-                return None;
-            }
-        };
-        let dir = c.dir();
-        Some((c, dir))
-    });
-    Ok(crates.collect())
-}
-
 fn download_crates(ex: &Experiment) -> Result<()> {
-    crates::prepare(&ex_crates_and_dirs(ex)?)
+    crates::prepare(&ex.crates()?)
 }
 
 fn frob_tomls(ex: &Experiment) -> Result<()> {
-    for (krate, dir) in ex_crates_and_dirs(ex)? {
+    for krate in ex.crates()? {
         if let ExCrate::Version {
             ref name,
             ref version,
@@ -348,7 +332,7 @@ fn frob_tomls(ex: &Experiment) -> Result<()> {
         {
             fs::create_dir_all(&froml_dir(&ex.name))?;
             let out = froml_path(&ex.name, name, version);
-            let r = toml_frobber::frob_toml(&dir, name, version, &out);
+            let r = toml_frobber::frob_toml(&krate.dir(), name, version, &out);
             if let Err(e) = r {
                 info!("couldn't frob: {}", e);
                 util::report_error(&e);
@@ -436,10 +420,8 @@ fn capture_lockfiles(
 ) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    let crates = ex_crates_and_dirs(ex)?;
-
-    for (ref c, ref dir) in crates {
-        if dir.join("Cargo.lock").exists() {
+    for c in &ex.crates()? {
+        if c.dir().join("Cargo.lock").exists() {
             info!("crate {} has a lockfile. skipping", c);
             continue;
         }

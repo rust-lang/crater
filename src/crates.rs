@@ -5,7 +5,7 @@ use flate2::read::GzDecoder;
 use gh_mirrors;
 use std::fs;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::thread;
 use std::time::Duration;
 use tar::Archive;
@@ -13,18 +13,21 @@ use util;
 
 const CRATES_ROOT: &'static str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
-pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
+pub fn prepare(list: &[ExCrate]) -> Result<()> {
     info!("preparing {} crates", list.len());
     let mut successes = 0;
-    for &(ref crate_, ref dir) in list {
+    for crate_ in list {
+        let dir = crate_.dir();
         match *crate_ {
             ExCrate::Version {
                 ref name,
                 ref version,
             } => {
-                let r = dl_registry(name, &version.to_string(), dir).chain_err(|| {
-                    format!("unable to download {}-{}", name, version)
-                });
+                let r = dl_registry(name, &version.to_string(), &dir).chain_err(
+                    || {
+                        format!("unable to download {}-{}", name, version)
+                    },
+                );
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {
@@ -38,7 +41,8 @@ pub fn prepare(list: &[(ExCrate, PathBuf)]) -> Result<()> {
                 ref sha,
             } => {
                 let url = format!("https://github.com/{}/{}", org, name);
-                let r = dl_repo(&url, dir, sha).chain_err(|| format!("unable to download {}", url));
+                let r =
+                    dl_repo(&url, &dir, sha).chain_err(|| format!("unable to download {}", url));
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {

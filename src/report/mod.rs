@@ -49,9 +49,9 @@ pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
     let db = FileDB::for_experiment(ex);
     assert_eq!(ex.toolchains.len(), 2);
 
-    let res = ex::ex_crates_and_dirs(ex)?
+    let res = ex.crates()?
         .into_iter()
-        .map(|(krate, _)| {
+        .map(|krate| {
             // Any errors here will turn into unknown results
             let crate_results = ex.toolchains.iter().map(|tc| -> Result<BuildTestResult> {
                 let writer = db.for_crate(&krate, tc);
@@ -82,9 +82,9 @@ pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
     Ok(TestResults { crates: res })
 }
 
-pub fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
+fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
     let db = FileDB::for_experiment(ex);
-    for (krate, _) in ex::ex_crates_and_dirs(ex)? {
+    for krate in ex.crates()? {
         for tc in &ex.toolchains {
             let writer = db.for_crate(&krate, tc);
             let rel_log = writer.result_path_fragement();

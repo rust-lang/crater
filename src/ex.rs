@@ -235,6 +235,15 @@ impl Experiment {
         let shas = serde_json::from_str(&shas)?;
         Ok(shas)
     }
+
+    pub fn crates(&self) -> Result<Vec<ExCrate>> {
+        let shas = self.load_shas()?;
+        self.crates
+            .clone()
+            .into_iter()
+            .map(|c| c.into_ex_crate(&shas))
+            .collect()
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
@@ -302,18 +311,20 @@ impl FromStr for ExCrate {
 pub fn ex_crates_and_dirs(ex: &Experiment) -> Result<Vec<(ExCrate, PathBuf)>> {
     let shas = ex.load_shas()?;
     let crates = ex.crates.clone().into_iter().filter_map(|c| {
-        let c = c.into_ex_crate(&shas);
-        if let Err(e) = c {
-            util::report_error(&e);
-            return None;
-        }
-        let c = c.expect("");
-        let dir = c.dir();
-        if let Err(e) = dir {
-            util::report_error(&e);
-            return None;
-        }
-        let dir = dir.expect("");
+        let c = match c.into_ex_crate(&shas) {
+            Ok(c) => c,
+            Err(e) => {
+                util::report_error(&e);
+                return None;
+            }
+        };
+        let dir = match c.dir() {
+            Ok(dir) => dir,
+            Err(e) => {
+                util::report_error(&e);
+                return None;
+            }
+        };
         Some((c, dir))
     });
     Ok(crates.collect())
@@ -500,8 +511,7 @@ pub fn with_captured_lockfile(ex: &Experiment, crate_: &ExCrate, path: &Path) ->
 }
 
 fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
-    let crates = ex_crates_and_dirs(ex)?;
-    for (ref c, _) in crates {
+    for c in &ex.crates()? {
         let r = with_work_crate(ex, toolchain, c, |path| {
             with_frobbed_toml(ex, c, path)?;
             with_captured_lockfile(ex, c, path)?;

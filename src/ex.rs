@@ -235,25 +235,39 @@ impl Experiment {
         let shas = serde_json::from_str(&shas)?;
         Ok(shas)
     }
+
+    pub fn crates(&self) -> Result<Vec<ExCrate>> {
+        let shas = self.load_shas()?;
+        self.crates
+            .clone()
+            .into_iter()
+            .map(|c| c.into_ex_crate(&shas))
+            .collect()
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub enum ExCrate {
     Version { name: String, version: String },
-    Repo { url: String, sha: String },
+    Repo {
+        org: String,
+        name: String,
+        sha: String,
+    },
 }
 
 impl ExCrate {
-    fn dir(&self) -> Result<PathBuf> {
+    pub fn dir(&self) -> PathBuf {
         match *self {
             ExCrate::Version {
                 ref name,
                 ref version,
-            } => Ok(registry_dir().join(format!("{}-{}", name, version))),
-            ExCrate::Repo { ref url, ref sha } => {
-                let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-                Ok(gh_dir().join(format!("{}.{}.{}", org, name, sha)))
-            }
+            } => registry_dir().join(format!("{}-{}", name, version)),
+            ExCrate::Repo {
+                ref org,
+                ref name,
+                ref sha,
+            } => gh_dir().join(format!("{}.{}.{}", org, name, sha)),
         }
     }
 }
@@ -265,7 +279,11 @@ impl Display for ExCrate {
                 ref name,
                 ref version,
             } => format!("{}-{}", name, version),
-            ExCrate::Repo { ref url, ref sha } => format!("{}#{}", url, sha),
+            ExCrate::Repo {
+                ref org,
+                ref name,
+                ref sha,
+            } => format!("https://github.com/{}/{}#{}", org, name, sha),
         };
         s.fmt(f)
     }
@@ -279,8 +297,10 @@ impl FromStr for ExCrate {
             if let Some(hash_idx) = s.find('#') {
                 let repo = &s[..hash_idx];
                 let sha = &s[hash_idx + 1..];
+                let (org, name) = gh_mirrors::gh_url_to_org_and_name(repo)?;
                 Ok(ExCrate::Repo {
-                    url: repo.to_string(),
+                    org,
+                    name,
                     sha: sha.to_string(),
                 })
             } else {
@@ -299,32 +319,12 @@ impl FromStr for ExCrate {
     }
 }
 
-pub fn ex_crates_and_dirs(ex: &Experiment) -> Result<Vec<(ExCrate, PathBuf)>> {
-    let shas = ex.load_shas()?;
-    let crates = ex.crates.clone().into_iter().filter_map(|c| {
-        let c = c.into_ex_crate(&shas);
-        if let Err(e) = c {
-            util::report_error(&e);
-            return None;
-        }
-        let c = c.expect("");
-        let dir = c.dir();
-        if let Err(e) = dir {
-            util::report_error(&e);
-            return None;
-        }
-        let dir = dir.expect("");
-        Some((c, dir))
-    });
-    Ok(crates.collect())
-}
-
 fn download_crates(ex: &Experiment) -> Result<()> {
-    crates::prepare(&ex_crates_and_dirs(ex)?)
+    crates::prepare(&ex.crates()?)
 }
 
 fn frob_tomls(ex: &Experiment) -> Result<()> {
-    for (krate, dir) in ex_crates_and_dirs(ex)? {
+    for krate in ex.crates()? {
         if let ExCrate::Version {
             ref name,
             ref version,
@@ -332,7 +332,7 @@ fn frob_tomls(ex: &Experiment) -> Result<()> {
         {
             fs::create_dir_all(&froml_dir(&ex.name))?;
             let out = froml_path(&ex.name, name, version);
-            let r = toml_frobber::frob_toml(&dir, name, version, &out);
+            let r = toml_frobber::frob_toml(&krate.dir(), name, version, &out);
             if let Err(e) = r {
                 info!("couldn't frob: {}", e);
                 util::report_error(&e);
@@ -399,7 +399,7 @@ pub fn with_work_crate<F, R>(
 where
     F: Fn(&Path) -> Result<R>,
 {
-    let src_dir = crate_.dir()?;
+    let src_dir = crate_.dir();
     let dest_dir = crate_work_dir(&ex.name, toolchain);
     info!(
         "creating temporary build dir for {} in {}",
@@ -420,10 +420,8 @@ fn capture_lockfiles(
 ) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    let crates = ex_crates_and_dirs(ex)?;
-
-    for (ref c, ref dir) in crates {
-        if dir.join("Cargo.lock").exists() {
+    for c in &ex.crates()? {
+        if c.dir().join("Cargo.lock").exists() {
             info!("crate {} has a lockfile. skipping", c);
             continue;
         }
@@ -500,8 +498,7 @@ pub fn with_captured_lockfile(ex: &Experiment, crate_: &ExCrate, path: &Path) ->
 }
 
 fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
-    let crates = ex_crates_and_dirs(ex)?;
-    for (ref c, _) in crates {
+    for c in &ex.crates()? {
         let r = with_work_crate(ex, toolchain, c, |path| {
             with_frobbed_toml(ex, c, path)?;
             with_captured_lockfile(ex, c, path)?;

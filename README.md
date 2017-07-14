@@ -117,7 +117,7 @@ nightly/beta/stable toolchains are installed.
 
 And for each "regressed" crate do the following:
 
-- If this crate and revision is on the [blacklist.md], skip it.
+- If this crate and revision is on the [blacklist](blacklist.md), skip it.
 - If the regression was actually in a _dependency_, go find _that_
   in the regression list, and deal with it first.
 - Find the git repo. If I can't find it (rare) I just skip the crate.

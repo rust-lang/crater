@@ -115,6 +115,7 @@ https://github.com/farseerfc/ydcv-rs
 
 # Data size
 
+```
 $ du work -hs
 69G     work
 $ du work/ex/default/ -hs
@@ -123,6 +124,7 @@ $ du work/local/target-dirs/default/ -hs
 48G     work/local/target-dirs/default/
 $ du work/shared/crates/ -hs
 7.7G    work/shared/crates/
+```
 
 
 # Building docker container

@@ -33,7 +33,6 @@ Cargobomb is a successor to [crater].
 
 __Warning: do not run cargobomb in an unsandboxed environment.__  
 ___Cargobomb executes malicious code that will destroy what you love.___  
-_Cargobomb does not work yet. There is nothing to see here._
 
 [crater]: https://github.com/brson/taskcluster-crater
 

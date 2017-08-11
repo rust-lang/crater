@@ -238,11 +238,21 @@ impl Experiment {
 
     pub fn crates(&self) -> Result<Vec<ExCrate>> {
         let shas = self.load_shas()?;
-        self.crates
+        let (oks, fails): (Vec<_>, Vec<_>) = self.crates
             .clone()
             .into_iter()
             .map(|c| c.into_ex_crate(&shas))
-            .collect()
+            .partition(Result::is_ok);
+        if !fails.is_empty() {
+            let fails = fails
+                .into_iter()
+                .map(Result::unwrap_err)
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>();
+            Err(fails.join(", ").into())
+        } else {
+            oks.into_iter().collect()
+        }
     }
 }
 

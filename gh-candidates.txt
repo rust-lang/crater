@@ -154,7 +154,6 @@ adwhit/krust
 adwhit/matasano-cryptopals-rs
 adwhit/uCTF-rs
 aehernandez/Rump
-AelitaBot/aelita
 aepsil0n/acacia
 aepsil0n/benzene
 aepsil0n/carboxyl
@@ -255,7 +254,6 @@ aldanor/typeinfo
 aldeka/brick
 aldrio/omdb-rs
 alegalle/rustgl_4_2_core
-aleics/pathtracer
 aleics/rsmath
 aleics/rustgen
 alejandro/rust-rants
@@ -1224,7 +1222,6 @@ bsteinb/rust-iteratorcomprehensions
 bstil22/rust_programs
 bsundsrud/community
 bsundsrud/rust-pgx
-bsvercl/automatic-palm-tree
 bt3ze/cs4414-mst
 bt3ze/parallelmst
 btipling/korasho
@@ -2395,7 +2392,6 @@ DrkSephy/rust-sandbox
 DrKwint/bayes
 DrKwint/Decision-Tree-ID3
 DrKwint/simgraph
-DrKwint/sparse-rs
 drm343/d6trpg
 drm343/plurk-api
 drmugg123/gta_44
@@ -2870,7 +2866,6 @@ fiji-flo/egl-rs
 fiji-flo/gtmpl-rust
 FillZpp/SairaDB
 firba1/gamelog
-FirstTimeInForever/sergey_game
 FirstTimeInForever/srand
 Firstyear/ds_rust
 fishman/rustforruby
@@ -5422,7 +5417,6 @@ maxtnuk/My_workspace
 max-ym/kobzar
 max-ym/kobzar-ccs
 max-ym/rust-asm-x86_64
-mayacifelli/sign-rs
 mayah/rust-puyoai
 mayah/x86intrin
 mayflower/duck
@@ -7939,7 +7933,6 @@ sfackler/serde-humantime
 sfackler/serde-transcode
 sfikas/rusteval
 sfriedel/lexer-rs
-Sgawrys/FunQ
 Sgeo/hlist
 sgnr/microas
 sgnr/okasaki
@@ -7992,7 +7985,6 @@ shmutalov/tick-tack-toe-killer-rs
 shockham/caper
 shockham/httpd_rs
 shockham/temple
-shoelle/rocket2
 shosanna/bfs_rust
 shrink0r/hbmon-rust
 shssoichiro/avsser

@@ -35,7 +35,6 @@ https://github.com/admazzola/metal
 https://github.com/adnelson/nix-browse
 https://github.com/AdrianDanis/R4
 https://github.com/AdrienChampion/benchi
-https://github.com/AelitaBot/aelita
 https://github.com/AerialX/rust-emscripten-example
 https://github.com/afishberg/feo-boy
 https://github.com/afonso360/RustBox
@@ -62,7 +61,6 @@ https://github.com/alan-andrade/rust-irc
 https://github.com/alan-andrade/snake2-rs
 https://github.com/alberdingk-thijm/podesta
 https://github.com/albertp007/RustQ
-https://github.com/aleics/pathtracer
 https://github.com/aleics/rsmath
 https://github.com/aleksanb/plates
 https://github.com/alem0lars/fizzy
@@ -224,7 +222,6 @@ https://github.com/birdperson-lives/rust-game-of-life
 https://github.com/birlscript/birlscript
 https://github.com/bitsparrow/bitsparrow-derive
 https://github.com/bkoropoff/rust-viewbox
-https://github.com/blaidlee/stutter
 https://github.com/BlakeWilliams/rust-brainfuck
 https://github.com/BlakeWilliams/slack_markov
 https://github.com/BlakeWilliams/straw
@@ -272,7 +269,6 @@ https://github.com/brunodea/gebemula
 https://github.com/brunoom1/pass_gen
 https://github.com/bschwind/mqtt
 https://github.com/bspaulding/rust-tutorial
-https://github.com/bsvercl/automatic-palm-tree
 https://github.com/buntine/rust-crawler
 https://github.com/buntine/rust-dining-philosophers
 https://github.com/BurningMind/ion
@@ -428,7 +424,6 @@ https://github.com/crespyl/rust_ca
 https://github.com/cristeahub/hvilkenukeerdet
 https://github.com/cristianoliveira/funzzy
 https://github.com/cristicbz/rust-doom
-https://github.com/cropped/rust-test
 https://github.com/crumblingstatue/noten
 https://github.com/CryZe/demangle-tww
 https://github.com/CryZe/livesplit-core
@@ -566,8 +561,6 @@ https://github.com/dread-deimos/rust-cowbulls-tutorial
 https://github.com/dreamersdw/roxy
 https://github.com/DrKwint/bayes
 https://github.com/DrKwint/Decision-Tree-ID3
-https://github.com/DrKwint/sparse-rs
-https://github.com/Drogglbecher/dfc
 https://github.com/dropbox/ruba
 https://github.com/druerridge/chat_server_rust
 https://github.com/Dryvnt/proxygen
@@ -592,7 +585,6 @@ https://github.com/echelon/etherdream-emulator
 https://github.com/echochamber/rust_spin_wheel
 https://github.com/eecs395rust/SimpleProxy
 https://github.com/eecs395rust/Spied-Weber
-https://github.com/EfficientConversation/EC-Bot
 https://github.com/efyang/conway
 https://github.com/EGhiorzi/RUSThello
 https://github.com/elarrick/rust_hello_world
@@ -639,7 +631,6 @@ https://github.com/Euphoric/EconomicSim
 https://github.com/evanfarrar/trileks
 https://github.com/eviltobz/teensyRust
 https://github.com/exceptional-lang/exceptional-rs
-https://github.com/excitedneon/surreal-roguething
 https://github.com/exe-dealer/httpchunks
 https://github.com/exonum/workshop
 https://github.com/exoticorn/gba-rust
@@ -664,7 +655,6 @@ https://github.com/fhartwig/punch
 https://github.com/Fiedzia/rustbar
 https://github.com/fiirhok/mailcheck.rs
 https://github.com/firba1/gamelog
-https://github.com/FirstTimeInForever/sergey_game
 https://github.com/fitzgen/hottub
 https://github.com/fitzgen/oxischeme
 https://github.com/Fitzsimmons/cmdipass
@@ -1262,10 +1252,8 @@ https://github.com/matt-williams/appengine-rust
 https://github.com/mattyhall/timmy
 https://github.com/maufl/uip
 https://github.com/max6cn/Kaleidoscope.rs
-https://github.com/maxice8/svctrl
 https://github.com/maxjacobson/guessing_game
 https://github.com/maxsnew/cargo-dot
-https://github.com/mayacifelli/sign-rs
 https://github.com/mayflower/duck
 https://github.com/mazurwiktor/rustgrepper
 https://github.com/mbandazian/cs4414-ps2
@@ -1432,7 +1420,6 @@ https://github.com/NicolasLM/nucleon
 https://github.com/niconii/nico2
 https://github.com/nika-begiashvili/rustnpp
 https://github.com/nikita-b/f-console
-https://github.com/niko2342/discogs-api
 https://github.com/nikomatsakis/cargo-incremental
 https://github.com/nikomatsakis/chalk
 https://github.com/nikomatsakis/rusty-wam
@@ -1457,7 +1444,6 @@ https://github.com/Nonius/pomodoro
 https://github.com/Norbytus/rocket_try
 https://github.com/NotBad4U/Niepce
 https://github.com/NotGyro/Gestalt
-https://github.com/nottxy/mdrive
 https://github.com/nrc/derive-new
 https://github.com/nrc/rls-analysis
 https://github.com/nrc/rls-span
@@ -1829,13 +1815,10 @@ https://github.com/sevagh/pq-rs
 https://github.com/seven1m/puzzlecube
 https://github.com/sezna/rust-linguist
 https://github.com/sfackler/cargo-tree
-https://github.com/Sgawrys/FunQ
 https://github.com/Sh4d1/rush
 https://github.com/shaded-enmity/liceum
 https://github.com/Shadlock0133/rustpusher
 https://github.com/shalugin/rust-experiment
-https://github.com/shanestillwell/rust_dining
-https://github.com/shanestillwell/rust_guessing_game
 https://github.com/sharkdp/fd
 https://github.com/shepmaster/human-resource-machine
 https://github.com/shepmaster/strata-rust
@@ -1843,7 +1826,6 @@ https://github.com/shioju/sumr
 https://github.com/shmatov/code-explorer
 https://github.com/shmup/chat
 https://github.com/shockham/httpd_rs
-https://github.com/shoelle/rocket2
 https://github.com/shssoichiro/avsser
 https://github.com/shssoichiro/oxipng
 https://github.com/shuhei/colortty
@@ -1987,7 +1969,6 @@ https://github.com/tamird/crawl
 https://github.com/tamuundangan/ducter
 https://github.com/taravancil/passkeeper
 https://github.com/target-san/httpdl
-https://github.com/tasuten/ttmp
 https://github.com/tatsuya6502/bitwise_rust
 https://github.com/tbehner/frust
 https://github.com/tchagnon/raylang-rust
@@ -2007,7 +1988,6 @@ https://github.com/th0razine/rust-injector
 https://github.com/th0rex/ams
 https://github.com/ThatOtherPerson/sembler
 https://github.com/thebigcheeze/rust-torque
-https://github.com/TheCatPlusPlus/rust-manifest-test
 https://github.com/TheDan64/limonite
 https://github.com/thegene/rustinacci
 https://github.com/the-guitarman/rust_fizzbuzz
@@ -2115,7 +2095,6 @@ https://github.com/valarauca/bratwurst
 https://github.com/valarauca/car
 https://github.com/Valve/tyrion
 https://github.com/vanetix/cc-control
-https://github.com/vanufryiuk/O2
 https://github.com/Varentsov/rust-mosaic
 https://github.com/VBChunguk/hyeong-rs
 https://github.com/vberger/gtp-rust
@@ -2157,7 +2136,6 @@ https://github.com/volks73/panser
 https://github.com/VoxWave/AudioGen
 https://github.com/vrcod/rust-pi-approximation
 https://github.com/vrcod/rust-twitter-streaming
-https://github.com/vtduncan/rust_repro_matrix
 https://github.com/vthriller/smart-rs
 https://github.com/Vzaa/yuvdiff
 https://github.com/wackywendell/gzserde

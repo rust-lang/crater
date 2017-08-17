@@ -257,21 +257,51 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
    - Give yourself a pat on the back! Good job!
    - Go to next run.
 
-
 (The runs can be stopped and restarted at any time. - really? How? asks aidanhs)
 
-TODO: make these triaging steps mechanical, with precise docker commands to run
-to get the appropriate toolchains for PR runs.
+If a beta run has completed, regressions need reporting (PR runs are left to the
+people involved in the PR). To report regressions you'll need to
+navigate to the results page, wait for a bit (<30s) for the results to load (the
+buttons will be populated with numbers) and then click 'regressed'. The triage
+process (e.g. checking the cause of a regression) is 'crowd-sourced', we just
+report the issues (for now).
+
+You can follow whatever process you like for working through regressions,
+but a suggestion workflow is described below, per regression:
+
+ - Open the regression log (i.e. 'toolchain 2').
+ - If the regression is on the [blacklist](blacklist.md), skip it.
+ - If the breakage is 'obviously deliberate', e.g. a lint changing to deny by
+   default, find the original PR and double check it went through a cargobomb
+   run. Skip reporting if so.
+ - If the regression is in a dependency, it will have probably caused multiple
+   regressions so make sure to deal with the dependency first and then ignore
+   any duplicates.
+ - If this is not a .1 beta (i.e. it's a second beta run), search for the
+   regression already being reported. If it was closed as "wanted regression"
+   skip reporting, if it was closed as "fixed" then reopen with a link to the
+   log.
+ - Report the regression per the template below:
+
+This template varies depending on crate source (crates.io or a git repo):
+```
+[CRATENAME-1.0.1](https://crates.io/crates/cratename) regressed from stable to beta - http://cargobomb-reports.../log.txt, cc @AUTHOR
+[AUTHOR/REPO#COMMITISH](https://github.com/author/repo/tree/COMMITISH) regressed from stable to beta - http://cargobomb-reports.../log.txt, cc @AUTHOR
+```
+where AUTHOR is the github username of the crate author (may not be available
+if the crate is from crates.io in rare cases). You should also paste a snippet
+of the error in the issue.
+
+When in doubt file an issue. It's best to force the Rust devs to
+acknowledge the regression.
+
+If you are interested in triaging once the issues are raised,
+you can follow the rough instructions below (to be made clearer):
 
 To triage the reports I use another sandboxed Rust environment to
 verify the regressions before filing them. Make sure the current
 nightly/beta/stable toolchains are installed.
 
-And for each "regressed" crate do the following:
-
-- If this crate and revision is on the [blacklist](blacklist.md), skip it.
-- If the regression was actually in a _dependency_, go find _that_
-  in the regression list, and deal with it first.
 - Find the git repo. If I can't find it (rare) I just skip the crate.
 - Check out the git repo
 - If the repo has version tags, check out the corresponding version,
@@ -285,21 +315,6 @@ And for each "regressed" crate do the following:
 - Run `cargo +beta test` to verify that it fails. Note that this is checking
   'beta' even if cargobomb was against 'nightly'. If that succeeds then
   I move on to `cargo +nightly test`.
-- Assuming that fails, I open an issue using a [standard
-  format](https://github.com/rust-lang/rust/issues/41803) filled with
-  enough info to repro.
-- Ping the crate author to alert them.
-
-For crates exhibiting identical regressions, I add a comment to the
-original issue mentioning the crate name and version and pinging its
-author.
-
-For crates exhibiting issues that I _know_ have been filed and
-resolved, I usually decline to file them, unless there is an epidemic
-of related failures that I feel need to be escalated.
-
-When in doubt file an issue. It's best to force the Rust devs to
-acknowledge the regression.
 
 ## License
 

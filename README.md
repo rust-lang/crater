@@ -117,8 +117,7 @@ Host cargobomb-test
 ```
 
 which will let you do `ssh cargobomb-test` etc from your static IP
-machine. ssh-agent forwarding with `ssh -A` or ProxyJump on a more recent
-OpenSSH are alternatives to the above..
+machine. If you have a recent OpenSSH, you can use `ProxyJump` instead.
 
 ### General cargobomb server notes
 

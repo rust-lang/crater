@@ -34,4 +34,12 @@ Crates with flaky test suites.
 - tasks-framework-0.1.0 - racy
 - unsafe-any-0.4.1 - flaky
 - update_rate-1.0.0 - timing
-- vec-vp-tree-0.2.0-alpha.1 - flaky
+- vec-vp-tree-0.2.0-alpha.1 - flaky https://github.com/abonander/vec-vp-tree/issues/1
+- diesel_codegen_shared-0.8.0 - flaky https://github.com/diesel-rs/diesel/issues/475
+- entity_rust-0.0.8 - flaky https://github.com/tinco/entity_rust/issues/1
+- lua53-ext-0.1.1 - flaky https://github.com/Jellonator/rust-lua53-ext/issues/1
+- milagro-crypto-0.1.14 - flaky
+- mock_me-0.2.2 - flaky https://github.com/craftytrickster/mock_me/issues/7
+- proxy_config-0.0.2 - flaky https://github.com/mattico/proxy-config/issues/16
+- vidar-0.1.0 - flaky https://github.com/aesir-vanir/vidar/issues/1
+- https://github.com/kurnevsky/opai-rs - flaky https://github.com/kurnevsky/opai-rs/issues/5

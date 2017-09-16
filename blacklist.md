@@ -6,21 +6,28 @@ Crates with flaky test suites.
 - basiccountminsketch-0.1.0 - flaky
 - bson-0.1.5 - flaky
 - canteen-0.3.5 - broken test
-- ctx-0.2.0 - timing
 - crust-0.25.0 - network/timing?
+- ctx-0.2.0 - timing
+- diesel_codegen_shared-0.8.0 - flaky https://github.com/diesel-rs/diesel/issues/475
+- entity_rust-0.0.8 - flaky https://github.com/tinco/entity_rust/issues/1
 - flame-0.1.10 - flaky
 - fountaincode-0.0.8 - slow
 - gcc-0.3.46 - flaky
 - hashconsing-0.3.0 - flaky
+- https://github.com/kurnevsky/opai-rs - flaky https://github.com/kurnevsky/opai-rs/issues/5
 - https://github.com/tinco/rust-static_any_map - flaky
 - https://github.com/yggie/mach - flaky
 - hyperdav-0.1.2 - network
 - json-0.11.3 - flaky
 - lazy-socket-0.2.1 - flaky
 - lodepng - command curl not found
+- lua53-ext-0.1.1 - flaky https://github.com/Jellonator/rust-lua53-ext/issues/1
+- milagro-crypto-0.1.14 - flaky
+- mock_me-0.2.2 - flaky https://github.com/craftytrickster/mock_me/issues/7
 - namedarg_hack-0.1.* - bad channel detection
 - notify-3.0.1 flaky
 - phant-0.1.5 - flaky
+- proxy_config-0.0.2 - flaky https://github.com/mattico/proxy-config/issues/16
 - psutil-1.0.0 - flaky
 - quandl-v3-1.0.0 - network
 - region-0.0.5 - flaky https://github.com/rust-lang/rust/issues/38717
@@ -34,4 +41,5 @@ Crates with flaky test suites.
 - tasks-framework-0.1.0 - racy
 - unsafe-any-0.4.1 - flaky
 - update_rate-1.0.0 - timing
-- vec-vp-tree-0.2.0-alpha.1 - flaky
+- vec-vp-tree-0.2.0-alpha.1 - flaky https://github.com/abonander/vec-vp-tree/issues/1
+- vidar-0.1.0 - flaky https://github.com/aesir-vanir/vidar/issues/1

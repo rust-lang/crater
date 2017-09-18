@@ -249,10 +249,18 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
  - Uploading
    - Switch to the `master` multiplexer window.
    - If the upload is ongoing, go to the next run.
+   - If the upload failed, fix it. Known errors:
+     - `<Error><Code>InternalError</Code><Message>...` - probably an s3 failure, try running
+       upload again.
    - Run `cargo run --release -- delete-all-target-dirs --ex EX_NAME`. This will take ~2min.
    - Change status to 'Complete' and add the results link,
      `http://cargobomb-reports.s3.amazonaws.com/EX_NAME/index.html`.
-   - Update either the PR or the person requesting the beta run.
+   - Update either the PR or the person requesting the beta run. Template is:
+     ```
+     Cargobomb results: <url>. 'Blacklisted' crates (spurious failures etc) can be found
+     [here](https://github.com/rust-lang-nursery/cargobomb/blob/master/blacklist.md).
+     If you see any spurious failures not on the list, please make a PR against that file.
+     ```
    - Give yourself a pat on the back! Good job!
    - Go to next run.
 

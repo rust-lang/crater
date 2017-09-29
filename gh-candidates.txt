@@ -1180,6 +1180,7 @@ brson/cargo-crusader
 brson/ctrs
 brson/error-chain
 brson/heka-rs
+brson/hello-rs
 brson/httptest
 brson/mygame
 brson/og_fmt

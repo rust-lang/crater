@@ -48,11 +48,12 @@ of its output is into the `./work` directory, where it maintains its
 own rustup installation, crate mirrors, etc.
 
 ```
+cd docker && docker build . && cd ..    # This takes a while
 cargo run -- prepare-local
 cargo run -- define-ex stable beta
 cargo run -- prepare-ex
 cargo run -- run
-cargo run -- gen-report
+cargo run -- gen-report work/ex/default/
 ```
 
 This will output a report to `./work/ex/default/index.html`.

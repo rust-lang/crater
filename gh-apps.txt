@@ -263,6 +263,7 @@ https://github.com/brocode/fw
 https://github.com/brson/cargo-bake
 https://github.com/brson/cargobomb
 https://github.com/brson/cargo-crusader
+https://github.com/brson/hello-rs
 https://github.com/brson/httptest
 https://github.com/bruceadams/wdscli
 https://github.com/brunodea/gebemula

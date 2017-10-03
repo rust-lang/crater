@@ -1,6 +1,6 @@
 # cargobomb
 
-[![Build Status](https://travis-ci.org/rust-lang-nursery/cargobomb.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/cargobomb)
+[![Build Status](https://travis-ci.org/rust-lang-nursery/crater.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/crater)
 
 Cargobomb is a laboratory for running experiments across a large body
 of Rust source code. Its primary purpose is to detect regressions in
@@ -48,11 +48,12 @@ of its output is into the `./work` directory, where it maintains its
 own rustup installation, crate mirrors, etc.
 
 ```
+cd docker && docker build . && cd ..    # This takes a while
 cargo run -- prepare-local
 cargo run -- define-ex stable beta
 cargo run -- prepare-ex
 cargo run -- run
-cargo run -- gen-report
+cargo run -- gen-report work/ex/default/
 ```
 
 This will output a report to `./work/ex/default/index.html`.

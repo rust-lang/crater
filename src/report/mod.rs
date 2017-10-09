@@ -81,9 +81,16 @@ pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
     Ok(TestResults { crates: res })
 }
 
+const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
+
 fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
     let db = FileDB::for_experiment(ex);
-    for krate in ex.crates()? {
+    let crates = ex.crates()?;
+    let num_crates = crates.len();
+    for (i, krate) in crates.into_iter().enumerate() {
+        if i % (num_crates / PROGRESS_FRACTION) == 0 {
+            info!("wrote logs for {}/{} crates", i, num_crates)
+        }
         for tc in &ex.toolchains {
             let writer = db.for_crate(&krate, tc);
             let rel_log = writer.result_path_fragement();
@@ -111,6 +118,7 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
     let shas = ex.load_shas()?;
 
     info!("writing results to {}", dest);
+    info!("writing metadata");
     dest.write_string(
         "results.json",
         serde_json::to_string(&res)?.into(),
@@ -127,7 +135,9 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
         &mime::APPLICATION_JSON,
     )?;
 
+    info!("writing html files");
     write_html_files(dest)?;
+    info!("writing logs");
     write_logs(&ex, dest)?;
 
     Ok(())

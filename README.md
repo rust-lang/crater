@@ -1,8 +1,8 @@
-# cargobomb
+# Crater
 
 [![Build Status](https://travis-ci.org/rust-lang-nursery/crater.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/crater)
 
-Cargobomb is a laboratory for running experiments across a large body
+Crater is a laboratory for running experiments across a large body
 of Rust source code. Its primary purpose is to detect regressions in
 the Rust compiler, and it does this by building large numbers of
 crates, running their test suites, and comparing the results between
@@ -11,7 +11,7 @@ two versions of Rust.
 It can operate completely locally, with only a dependency on docker,
 or it can run distributed on AWS. It should work on Windows.
 
-Some of the goals of cargobomb:
+Some of the goals of Crater:
 
 - Discover Rust codebases from crates.io and GitHub
 - Download all Rust code to a local disk
@@ -29,21 +29,21 @@ Some of the goals of cargobomb:
 - Test against Linux-based cross targets under docker
 - Hosted, distributed testing on AWS
 
-Cargobomb is a successor to [crater].
+Crater is a successor to https://github.com/brson/taskcluster-crater.
+It was subsequently named cargobomb before resuming the Crater name, so for now the code still refers to cargobomb in many places (Being addressed in #134).
 
-__Warning: do not run cargobomb in an unsandboxed environment.__  
-___Cargobomb executes malicious code that will destroy what you love.___  
+__Warning: do not run Crater in an unsandboxed environment.__
+___Crater executes malicious code that will destroy what you love.___
 
-[crater]: https://github.com/brson/taskcluster-crater
 
 ## Basic local use
 
-These commands will run cargobomb, in local configuration, on the demo
+These commands will run Crater, in local configuration, on the demo
 crate set. This is safe to run unsanboxed because the set of crates
 tested is limited to the 'demo' set. This requires the user have
 access to the docker daemon.
 
-Today cargobomb expects to be run out of its source directory, and all
+Today Crater expects to be run out of its source directory, and all
 of its output is into the `./work` directory, where it maintains its
 own rustup installation, crate mirrors, etc.
 
@@ -83,18 +83,18 @@ Toolchains for rust PRs that have been built by by asking bors to try a PR can
 be specified using `try#<SHA1 of try merge>`. You will probably want to specify
 the comparison commit as `master#<SHA1 of master before try merge>`.
 
-## Operational workflow for production cargobomb
+## Operational workflow for production Crater
 
 ### Getting access
 
-There are three 'official' cargobomb machines:
+There are three 'official' Crater machines:
 
- - cargobomb-test (54.177.234.51) - 1 core, 4GB RAM, for experimenting
- - cargobomb-try (54.241.86.211) - 8 core, 30GB RAM, for doing PR runs
- - cargobomb-prod (54.177.126.219) - 8 core, 30GB RAM, for doing beta runs (but can do PR runs if free)
+ - crater-test (54.177.234.51) - 1 core, 4GB RAM, for experimenting
+ - crater-try (54.241.86.211) - 8 core, 30GB RAM, for doing PR runs
+ - crater-prod (54.177.126.219) - 8 core, 30GB RAM, for doing beta runs (but can do PR runs if free)
 
 These can only be accessed via the bastion - you `ssh` to the bastion,
-then `ssh` to the cargobomb machine. The bastion has restricted access
+then `ssh` to the Crater machine. The bastion has restricted access
 and you will need a static IP address (if you have a long-running server
 in the cloud, that's usually fine) and a public SSH key (you should add
 the key to github and then link to https://github.com/yourusername.keys,
@@ -110,19 +110,19 @@ Host rust-bastion
     # Bastion IP below
     HostName 0.0.0.0
     User bastionusername
-Host cargobomb-test
+Host crater-test
     HostName 54.177.234.51
     ProxyCommand ssh -q rust-bastion nc -q0 %h 22
     User ec2-user
-# [...and so on for cargobomb-try and cargobomb-prod...]
+# [...and so on for crater-try and crater-prod...]
 ```
 
-which will let you do `ssh cargobomb-test` etc from your static IP
+which will let you do `ssh crater-test` etc from your static IP
 machine. If you have a recent OpenSSH, you can use `ProxyJump` instead.
 
-### General cargobomb server notes
+### General Crater server notes
 
-The cargobomb servers use a terminal multiplexer (a way to keep multiple
+The Crater servers use a terminal multiplexer (a way to keep multiple
 terminals running on a server). Enter the multiplexer by logging onto a
 server and running `byobu`. You'll notice a bit of text along the
 bottom saying something like "0:master 1:tc1 2:tc2" - these are
@@ -144,9 +144,9 @@ Some useful operations:
  - Ctrl+Z , - rename a window, useful after recreating an accidentally
    closed window (hit enter to accept new name)
 
-### Cargobomb triage process
+### Crater triage process
 
-On your day for cargobomb triage, open the
+On your day for Crater triage, open the
 [sheet](https://docs.google.com/spreadsheets/d/1VPi_7ErvvX76fa3VqvQ3YnQmDk3bS7fYnkzvApIWkKo/edit#gid=0).
 Click the top left cell and make sure every PR on that list has an
 entry on the sheet and make sure every row on the sheet without
@@ -164,7 +164,7 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
      running.
    - Switch to the `master` multiplexer window.
    - Run `docker ps` to make sure no containers are running.
-   - Run `df -h /home/ec2-user/cargobomb/work`, disk usage should be
+   - Run `df -h /home/ec2-user/crater/work`, disk usage should be
      <250GB of the 1TB disk (a full run may consume 600GB)
      - If disk usage is greater, there are probably target directories
        left over from a previous run. Run `du -sh work/local/target-dirs/*`,
@@ -173,7 +173,7 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
        `cargo run --release -- delete-all-target-dirs --ex MY_EX`.
    - Run `docker ps -aq | xargs --no-run-if-empty docker rm` to clean up all terminated
      Docker containers.
-   - Run `git stash && git pull && git stash pop` to get the latest cargobomb changes.
+   - Run `git stash && git pull && git stash pop` to get the latest Crater changes.
      If this fails, it means there were local changes that conflict with upstream
      changes. Ping aidanhs and tomprince on IRC.
    - Run `cargo run --release -- prepare-local`. This may take between 5s and 5min, depending
@@ -208,7 +208,7 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
    - If preparation failed, fix it. Known errors:
      - "missing sha for ..." - remove the referenced repository from `gh-apps.txt`
        and `gh-candidates.txt` (may be present in one or both). Make the same
-       change locally and make a PR against cargobomb. Use
+       change locally and make a PR against Crater. Use
        `cargo run --release -- delete-all-target-dirs --ex EX_NAME` and
        `cargo run --release -- delete-ex --ex EX_NAME`, then jump to start of 'Pending'.
    - Switch to the `tc1` multiplexer window.
@@ -258,8 +258,8 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
      `http://cargobomb-reports.s3.amazonaws.com/EX_NAME/index.html`.
    - Update either the PR or the person requesting the beta run. Template is:
      ```
-     Cargobomb results: <url>. 'Blacklisted' crates (spurious failures etc) can be found
-     [here](https://github.com/rust-lang-nursery/cargobomb/blob/master/blacklist.md).
+     Crater results: <url>. 'Blacklisted' crates (spurious failures etc) can be found
+     [here](https://github.com/rust-lang-nursery/crater/blob/master/blacklist.md).
      If you see any spurious failures not on the list, please make a PR against that file.
      ```
    - Give yourself a pat on the back! Good job!
@@ -280,7 +280,7 @@ but a suggestion workflow is described below, per regression:
  - Open the regression log (i.e. 'toolchain 2').
  - If the regression is on the [blacklist](blacklist.md), skip it.
  - If the breakage is 'obviously deliberate', e.g. a lint changing to deny by
-   default, find the original PR and double check it went through a cargobomb
+   default, find the original PR and double check it went through a Crater
    run. Skip reporting if so.
  - If the regression is in a dependency, it will have probably caused multiple
    regressions so make sure to deal with the dependency first and then ignore
@@ -321,7 +321,7 @@ nightly/beta/stable toolchains are installed.
   - I will run `cargo +PREVIOUS_RELEASE test` and see if that fails too,
     and if so move on.
 - Run `cargo +beta test` to verify that it fails. Note that this is checking
-  'beta' even if cargobomb was against 'nightly'. If that succeeds then
+  'beta' even if Crater was against 'nightly'. If that succeeds then
   I move on to `cargo +nightly test`.
 
 ## License

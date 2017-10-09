@@ -89,9 +89,9 @@ the comparison commit as `master#<SHA1 of master before try merge>`.
 
 There are three 'official' Crater machines:
 
- - crater-test (54.177.234.51) - 1 core, 4GB RAM, for experimenting
- - crater-try (54.241.86.211) - 8 core, 30GB RAM, for doing PR runs
- - crater-prod (54.177.126.219) - 8 core, 30GB RAM, for doing beta runs (but can do PR runs if free)
+ - cargobomb-test (54.177.234.51) - 1 core, 4GB RAM, for experimenting
+ - cargobomb-try (54.241.86.211) - 8 core, 30GB RAM, for doing PR runs
+ - cargobomb-prod (54.177.126.219) - 8 core, 30GB RAM, for doing beta runs (but can do PR runs if free)
 
 These can only be accessed via the bastion - you `ssh` to the bastion,
 then `ssh` to the Crater machine. The bastion has restricted access
@@ -110,14 +110,14 @@ Host rust-bastion
     # Bastion IP below
     HostName 0.0.0.0
     User bastionusername
-Host crater-test
+Host cargobomb-test
     HostName 54.177.234.51
     ProxyCommand ssh -q rust-bastion nc -q0 %h 22
     User ec2-user
-# [...and so on for crater-try and crater-prod...]
+# [...and so on for cargobomb-try and cargobomb-prod...]
 ```
 
-which will let you do `ssh crater-test` etc from your static IP
+which will let you do `ssh cargobomb-test` etc from your static IP
 machine. If you have a recent OpenSSH, you can use `ProxyJump` instead.
 
 ### General Crater server notes
@@ -164,7 +164,7 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
      running.
    - Switch to the `master` multiplexer window.
    - Run `docker ps` to make sure no containers are running.
-   - Run `df -h /home/ec2-user/crater/work`, disk usage should be
+   - Run `df -h /home/ec2-user/cargobomb/work`, disk usage should be
      <250GB of the 1TB disk (a full run may consume 600GB)
      - If disk usage is greater, there are probably target directories
        left over from a previous run. Run `du -sh work/local/target-dirs/*`,

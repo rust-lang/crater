@@ -37,7 +37,7 @@
 - rust type system query language
 - select only most recent crates.io crates
 - api usage counts across ecosystem
-- create toolset for doing analysis on cargobomb
+- create toolset for doing analysis on Crater
 - analyze unsafe rust transitively
 - markdown logging
 - clean ex target directory
@@ -104,7 +104,7 @@
   that crate's tests, looking for combinations that don't pass
 - crusader testing
 - check for working docker before running tests
-- build docker image from cargobomb
+- build docker image from Crater
 
 # Apps I didn't find through search :-/
 
@@ -135,7 +135,7 @@ docker build -t cargobomb docker
 
 # Data model
 
-- master/ - 
+- master/ -
   - state.json
 - local/ - mutable state local to a machine
   - cargo-home/

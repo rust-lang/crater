@@ -1,5 +1,5 @@
 [package]
-name = "cargobomb"
+name = "crater"
 version = "0.1.0"
 authors = ["Brian Anderson <banderson@mozilla.com>"]
 

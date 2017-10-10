@@ -122,7 +122,7 @@ fn install_rustup() -> Result<()> {
         || "unable to download rustup",
     )?;
 
-    let tempdir = TempDir::new("cargobomb")?;
+    let tempdir = TempDir::new("crater")?;
     let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
     {
         let mut file = File::create(installer)?;

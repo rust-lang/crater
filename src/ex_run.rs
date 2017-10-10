@@ -76,7 +76,7 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                     info!("skipping crate {}. existing result: {}", c, r);
                     info!(
                         "delete result file to rerun test: \
-                           \"cargobomb delete-result {} --toolchain {} {}\"",
+                           \"crater delete-result {} --toolchain {} {}\"",
                         ex.name,
                         tc.to_string(),
                         c

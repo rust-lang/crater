@@ -1,6 +1,6 @@
 /*!
 
-Cargobomb works by serially processing a queue of commands, each of
+Crater works by serially processing a queue of commands, each of
 which transforms the application state in some discrete way, and
 designed to be resilient to I/O errors. The application state is
 backed by a directory in the filesystem, and optionally synchronized
@@ -17,15 +17,15 @@ rewrite.
 
 */
 
-use cargobomb::docker;
-use cargobomb::errors::*;
-use cargobomb::ex;
-use cargobomb::ex::{ExCrate, ExCrateSelect, ExMode};
-use cargobomb::ex_run;
-use cargobomb::lists;
-use cargobomb::report;
-use cargobomb::server;
-use cargobomb::toolchain::Toolchain;
+use crater::docker;
+use crater::errors::*;
+use crater::ex;
+use crater::ex::{ExCrate, ExCrateSelect, ExMode};
+use crater::ex_run;
+use crater::lists;
+use crater::report;
+use crater::server;
+use crater::toolchain::Toolchain;
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;

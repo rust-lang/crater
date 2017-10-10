@@ -5,9 +5,9 @@ use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-static IMAGE_NAME: &'static str = "cargobomb";
+static IMAGE_NAME: &'static str = "crater";
 
-/// Builds the docker container image, 'cargobomb', what will be used
+/// Builds the docker container image, 'crater', what will be used
 /// to isolate builds from each other. This expects the Dockerfile
 /// to exist in the `docker` directory, at runtime.
 pub fn build_container() -> Result<()> {

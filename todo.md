@@ -130,7 +130,7 @@ $ du work/shared/crates/ -hs
 # Building docker container
 
 ```
-docker build -t cargobomb docker
+docker build -t crater docker
 ```
 
 # Data model

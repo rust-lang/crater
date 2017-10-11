@@ -307,9 +307,7 @@ impl List for GitHubAppList {
     fn read() -> Result<Vec<Crate>> {
         Ok(
             file::read_lines(&GitHubAppList::path())
-                .chain_err(
-                    || "unable to read gh-app list. run `crater create-lists`?",
-                )?
+                .chain_err(|| "unable to read gh-app list. run `crater create-lists`?")?
                 .into_iter()
                 .map(|line| Crate::Repo { url: line })
                 .collect(),

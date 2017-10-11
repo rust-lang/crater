@@ -14,9 +14,9 @@ extern crate crater;
 
 mod cli;
 
+use clap::{App, AppSettings};
 use crater::{log, util};
 use crater::errors::*;
-use clap::{App, AppSettings};
 use std::panic;
 use std::process;
 

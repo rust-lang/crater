@@ -8,6 +8,8 @@ use std::fmt::{self, Display};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::thread;
+use std::time::Duration;
 use uri::Uri;
 
 #[derive(Debug, Clone)]
@@ -61,7 +63,7 @@ fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
     let client = make_client(Region::UsEast1);
     let response = client
         .get_bucket_location(&GetBucketLocationRequest { bucket: bucket.into() })
-        .chain_err(|| "S3")?;
+        .chain_err(|| "S3 failure to get bucket location")?;
     let region = match response.location_constraint.as_ref() {
         Some(region) if region == "" => Region::UsEast1,
         Some(region) => region.parse().chain_err(|| "Unknown bucket region.")?,
@@ -71,6 +73,8 @@ fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
     Ok(Box::new(make_client(region)))
 }
 
+const S3RETRIES: u64 = 4;
+
 impl S3Writer {
     pub fn create(prefix: S3Prefix) -> Result<S3Writer> {
         let client = get_client_for_bucket(&prefix.bucket)?;
@@ -79,17 +83,39 @@ impl S3Writer {
     }
 
     fn write_vec<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {
-        self.client
-            .put_object(&PutObjectRequest {
-                acl: Some("public-read".into()),
-                body: Some(s),
-                bucket: self.prefix.bucket.clone(),
-                key: self.prefix.prefix.join(path).to_string_lossy().into(),
-                content_type: Some(mime.to_string()),
-                ..Default::default()
-            })
-            .chain_err(|| "S3")?;
-        Ok(())
+        let mut retry = 0;
+        let req = PutObjectRequest {
+            acl: Some("public-read".into()),
+            body: Some(s),
+            bucket: self.prefix.bucket.clone(),
+            key: self.prefix
+                .prefix
+                .join(path.as_ref())
+                .to_string_lossy()
+                .into(),
+            content_type: Some(mime.to_string()),
+            ..Default::default()
+        };
+        loop {
+            match self.client.put_object(&req) {
+                Err(_) if retry < S3RETRIES => {
+                    retry += 1;
+                    thread::sleep(Duration::from_secs(2 * retry));
+                    warn!(
+                        "retry ({}/{}) S3 put to {:?}",
+                        retry,
+                        S3RETRIES,
+                        path.as_ref()
+                    );
+                    continue;
+                }
+                r => {
+                    return r.map(|_| ()).chain_err(|| {
+                        format!("S3 failure to upload {:?}", path.as_ref())
+                    })
+                }
+            }
+        }
     }
 }
 

@@ -1,18 +1,17 @@
 FROM ubuntu:16.04
 
 ENV LAST_UPDATE=2017-05-25
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update
 
 # Tools
-RUN apt-get install -y gcc
-RUN apt-get install -y pkg-config
-RUN apt-get install -y cmake
+RUN apt-get install -y gcc pkg-config cmake
 
 # Native deps
 RUN apt-get install -y libssl-dev
 # Hopefully this pulls in lots of stuff
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --install-suggests libgtk-3-dev
+RUN apt-get install -y --install-suggests libgtk-3-dev
 
 WORKDIR /source
 

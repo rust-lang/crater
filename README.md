@@ -50,7 +50,7 @@ own rustup installation, crate mirrors, etc.
 ```
 cd docker && docker build . && cd ..    # This takes a while
 cargo run -- prepare-local
-cargo run -- define-ex stable beta
+cargo run -- define-ex --crate-select=demo stable beta
 cargo run -- prepare-ex
 cargo run -- run
 cargo run -- gen-report work/ex/default/
@@ -58,13 +58,21 @@ cargo run -- gen-report work/ex/default/
 
 This will output a report to `./work/ex/default/index.html`.
 
-Here's what each of these steps does:
+Delete things with
+```
+cargo run -- delete-all-target-dirs
+cargo run -- delete-all-results
+cargo run -- delete-ex
+```
+Each command except `prepare-local` optionally takes an `--ex` argument
+to identify the experiment being referred to. If not supplied, this
+defaults to `default`. Here's what each of the steps does:
 
 * `prepare-local` - sets up the stable toolchain for internal use,
   builds the docker container, builds lists of crates. This needs to
   be rerun periodically, but not between every experiment.
 
-* `define-ex` - defines a new experiment, by default named 'default',
+* `define-ex` - defines a new experiment
   performing a build-test experiment on the 'demo' set of crates.
 
 * `prepare-ex` - fetches repos from github and captures their commit
@@ -76,6 +84,9 @@ Here's what each of these steps does:
 
 * `gen-report` - summarize the experiment results to
   work/ex/default/index.html
+
+* `delete-all-target-dirs`/`delete-all-results`/`delete-ex` - clean up
+  everything relating to this experiment
 
 ### Custom toolchains
 
@@ -195,7 +206,7 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
        and `BETA_DATE` is the date from
        `curl -sSL static.rust-lang.org/dist/channel-rust-beta.toml | grep '^date ='` (it is *not*
        necessarily the same date as retrieved in the `BETA_VERSION` command).
-   - Run `cargo run --release -- define-ex --ex EX_NAME EX_START EX_END --crate-select=full`.
+   - Run `cargo run --release -- define-ex --crate-select=full --ex EX_NAME EX_START EX_END`.
      This will complete in a few seconds.
    - Run `cargo run --release -- prepare-ex --ex EX_NAME`.
    - Change status to 'Preparing'.

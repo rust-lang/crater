@@ -10,13 +10,13 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
-extern crate cargobomb;
+extern crate crater;
 
 mod cli;
 
-use cargobomb::{log, util};
-use cargobomb::errors::*;
 use clap::{App, AppSettings};
+use crater::{log, util};
+use crater::errors::*;
 use std::panic;
 use std::process;
 
@@ -57,7 +57,7 @@ fn main_() -> Result<()> {
 }
 
 fn cli() -> App<'static, 'static> {
-    App::new("cargobomb")
+    App::new("crater")
         .version(env!("CARGO_PKG_VERSION"))
         .about("Kaboom!")
         .setting(AppSettings::VersionlessSubcommands)

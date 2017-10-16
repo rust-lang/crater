@@ -16,11 +16,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --install-suggests libgtk-
 
 WORKDIR /source
 
-# Create a cargobomb user that run.sh will map to the value of the host user via
+# Create a crater user that run.sh will map to the value of the host user via
 # the USER_ID environment variable, to make the files the container writes not
 # be owned by root, but by the running host user
 # re https://github.com/docker/docker/issues/7198#issuecomment-158566258
-RUN adduser --no-create-home --disabled-login --gecos "" cargobomb --uid 1000
+RUN adduser --no-create-home --disabled-login --gecos "" crater --uid 1000
 
 # The run.sh script configures the user id, controlled by -e USER_ID, and then
 # runs some command, controlled by -e CMD

@@ -1,5 +1,5 @@
 [root]
-name = "cargobomb"
+name = "crater"
 version = "0.1.0"
 dependencies = [
  "arc-cell 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",

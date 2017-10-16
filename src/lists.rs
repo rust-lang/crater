@@ -54,7 +54,7 @@ impl List for RecentList {
 
     fn read() -> Result<Vec<Crate>> {
         let lines = file::read_lines(&Self::path()).chain_err(
-            || "unable to read recent list. run `cargobomb create-lists`?",
+            || "unable to read recent list. run `crater create-lists`?",
         )?;
         split_crate_lines(&lines)
     }
@@ -134,7 +134,7 @@ impl List for PopList {
 
     fn read() -> Result<Vec<Crate>> {
         let lines = file::read_lines(&Self::path()).chain_err(
-            || "unable to read pop list. run `cargobomb create-lists`?",
+            || "unable to read pop list. run `crater create-lists`?",
         )?;
         split_crate_lines(&lines)
     }
@@ -217,7 +217,7 @@ impl List for HotList {
 
     fn read() -> Result<Vec<Crate>> {
         let lines = file::read_lines(&Self::path()).chain_err(
-            || "unable to read hot list. run `cargobomb create-lists`?",
+            || "unable to read hot list. run `crater create-lists`?",
         )?;
         split_crate_lines(&lines)
     }
@@ -244,7 +244,7 @@ impl List for GitHubCandidateList {
         Ok(
             file::read_lines(&Self::path())
                 .chain_err(
-                    || "unable to read gh-candidates list. run `cargobomb create-lists`?",
+                    || "unable to read gh-candidates list. run `crater create-lists`?",
                 )?
                 .into_iter()
                 .map(|line| Crate::Repo { url: line })
@@ -307,9 +307,7 @@ impl List for GitHubAppList {
     fn read() -> Result<Vec<Crate>> {
         Ok(
             file::read_lines(&GitHubAppList::path())
-                .chain_err(
-                    || "unable to read gh-app list. run `cargobomb create-lists`?",
-                )?
+                .chain_err(|| "unable to read gh-app list. run `crater create-lists`?")?
                 .into_iter()
                 .map(|line| Crate::Repo { url: line })
                 .collect(),
@@ -407,7 +405,7 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
     }
 
     if all.is_empty() {
-        bail!("no crates loaded. run `cargobomb prepare-lists`?");
+        bail!("no crates loaded. run `crater prepare-lists`?");
     }
 
     let mut all: Vec<_> = all.drain().collect();

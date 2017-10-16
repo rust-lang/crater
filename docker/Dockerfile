@@ -21,11 +21,9 @@ WORKDIR /source
 # re https://github.com/docker/docker/issues/7198#issuecomment-158566258
 RUN adduser --no-create-home --disabled-login --gecos "" crater --uid 1000
 
-# The run.sh script configures the user id, controlled by -e USER_ID, and then
+# Configure the user id, controlled by -e USER_ID, and then
 # runs some command, controlled by -e CMD
-COPY run.sh /run.sh
-CMD ["/run.sh"]
+CMD ["bash", "-c", "usermod -u \"$USER_ID\" crater && exec su crater -c \"/run2.sh $CMD\""]
 
-# run.sh script runs run2.sh under su, which sets up the environment and runs
-# $CMD
+# sets up the environment for $CMD
 COPY run2.sh /run2.sh

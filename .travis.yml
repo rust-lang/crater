@@ -4,12 +4,13 @@ language: rust
 cache: cargo
 rust:
   - stable
-  - nightly-2017-06-08
+  - nightly-2017-10-16
 
 env:
   global:
-    # Version of clippy known to work with pinned nightly.
-    - CLIPPY_VERSION=0.0.138
+    # Versions known to work with pinned nightly.
+    - CLIPPY_VERSION=0.0.165
+    - RUSTFMT_VERSION=0.2.9
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
@@ -22,13 +23,13 @@ before_script:
   - |
     if [[  $TRAVIS_RUST_VERSION =~ nightly-* ]]; then
         cargo install-update -i "clippy:$CLIPPY_VERSION"
+        cargo install-update -i "rustfmt-nightly:$RUSTFMT_VERSION"
     fi
-  - cargo install-update -i rustfmt
 script:
   - |
     RUSTFLAGS=-Dwarnings cargo build &&
     cargo test
   - |
-    cargo fmt -- --write-mode diff
+    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || RUSTFLAGS=-Dwarnings cargo fmt -- --write-mode diff
   - |
     [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || RUSTFLAGS=-Dwarnings cargo clippy

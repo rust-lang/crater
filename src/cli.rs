@@ -35,13 +35,16 @@ use std::str::FromStr;
 pub struct Ex(String);
 
 #[derive(Debug, Clone)]
+pub struct DockerEnv(String);
+
+#[derive(Debug, Clone)]
 pub struct Dest(PathBuf);
 
 pub trait Cmd {
     fn run(&self) -> Result<()>;
 }
 
-struct PrepareLocal;
+struct PrepareLocal(DockerEnv);
 struct DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect);
 #[derive(StructOpt)]
 #[structopt(name = "prepare-ex", about = "prepare shared and local data for experiment")]
@@ -91,9 +94,10 @@ struct Serve;
 // Local prep
 impl Cmd for PrepareLocal {
     fn run(&self) -> Result<()> {
+        let docker_env = &(self.0).0;
         let stable_tc = Toolchain::Dist("stable".into());
         stable_tc.prepare()?;
-        docker::build_container()?;
+        docker::build_container(docker_env)?;
         lists::create_all_lists(false)
     }
 }
@@ -278,7 +282,7 @@ pub mod conv {
             cmd(
                 "prepare-local",
                 "acquire toolchains, build containers, build crate lists",
-            ),
+            ).arg(opt("docker-env", "full")),
             // List creation
             cmd("create-lists", "create all the lists of crates"),
             // Master experiment prep
@@ -351,9 +355,13 @@ pub mod conv {
                 .parse::<ExCrateSelect>()
         }
 
+        fn docker_env(m: &ArgMatches) -> DockerEnv {
+            DockerEnv(m.value_of("docker-env").expect("").to_string())
+        }
+
         Ok(match m.subcommand() {
             // Local prep
-            ("prepare-local", _) => Box::new(PrepareLocal),
+            ("prepare-local", Some(m)) => Box::new(PrepareLocal(docker_env(m))),
             ("create-lists", _) => Box::new(CreateLists),
 
             // Master experiment prep

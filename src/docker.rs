@@ -10,8 +10,13 @@ static IMAGE_NAME: &'static str = "crater";
 /// Builds the docker container image, 'crater', what will be used
 /// to isolate builds from each other. This expects the Dockerfile
 /// to exist in the `docker` directory, at runtime.
-pub fn build_container() -> Result<()> {
-    run::run("docker", &["build", "-t", IMAGE_NAME, "docker"], &[])
+pub fn build_container(docker_env: &str) -> Result<()> {
+    let dockerfile = format!("docker/Dockerfile.{}", docker_env);
+    run::run(
+        "docker",
+        &["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"],
+        &[],
+    )
 }
 
 #[derive(Copy, Clone)]

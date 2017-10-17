@@ -87,8 +87,9 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
     let db = FileDB::for_experiment(ex);
     let crates = ex.crates()?;
     let num_crates = crates.len();
+    let progress_every = (num_crates / PROGRESS_FRACTION) + 1;
     for (i, krate) in crates.into_iter().enumerate() {
-        if i % (num_crates / PROGRESS_FRACTION) == 0 {
+        if i % progress_every == 0 {
             info!("wrote logs for {}/{} crates", i, num_crates)
         }
         for tc in &ex.toolchains {

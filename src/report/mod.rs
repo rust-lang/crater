@@ -10,6 +10,7 @@ use std::borrow::Cow;
 use std::convert::AsRef;
 use std::fmt::{self, Display};
 use std::fs::File;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 mod s3;
@@ -98,7 +99,7 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
             match writer.read_log() {
                 Ok(ref mut result_log) => {
                     dest.copy(
-                        result_log,
+                        &mut BufReader::new(result_log),
                         rel_log.join("log.txt"),
                         &mime::TEXT_PLAIN_UTF_8,
                     )?

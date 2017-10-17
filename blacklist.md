@@ -3,10 +3,12 @@
 Crates with flaky test suites.
 
 - MortenLohne.rasher - slow
+- s_app_dir-0.0.0 - broken test
 - basiccountminsketch-0.1.0 - flaky
 - bson-0.1.5 - flaky
 - canteen-0.3.5 - broken test
 - crust-0.25.0 - network/timing?
+- crux-0.3.0 - broken test
 - ctx-0.2.0 - timing
 - diesel_codegen_shared-0.8.0 - flaky https://github.com/diesel-rs/diesel/issues/475
 - entity_rust-0.0.8 - flaky https://github.com/tinco/entity_rust/issues/1

@@ -53,9 +53,8 @@ impl List for RecentList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines = file::read_lines(&Self::path()).chain_err(
-            || "unable to read recent list. run `crater create-lists`?",
-        )?;
+        let lines = file::read_lines(&Self::path())
+            .chain_err(|| "unable to read recent list. run `crater create-lists`?")?;
         split_crate_lines(&lines)
     }
 
@@ -80,9 +79,8 @@ fn split_crate_lines(lines: &[String]) -> Result<Vec<Crate>> {
         lines
             .iter()
             .filter_map(|line| {
-                line.find(':').map(|i| {
-                    (line[..i].to_string(), line[i + 1..].to_string())
-                })
+                line.find(':')
+                    .map(|i| (line[..i].to_string(), line[i + 1..].to_string()))
             })
             .map(|(name, version)| Crate::Version { name, version })
             .collect(),
@@ -133,9 +131,8 @@ impl List for PopList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines = file::read_lines(&Self::path()).chain_err(
-            || "unable to read pop list. run `crater create-lists`?",
-        )?;
+        let lines = file::read_lines(&Self::path())
+            .chain_err(|| "unable to read pop list. run `crater create-lists`?")?;
         split_crate_lines(&lines)
     }
 
@@ -216,9 +213,8 @@ impl List for HotList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines = file::read_lines(&Self::path()).chain_err(
-            || "unable to read hot list. run `crater create-lists`?",
-        )?;
+        let lines = file::read_lines(&Self::path())
+            .chain_err(|| "unable to read hot list. run `crater create-lists`?")?;
         split_crate_lines(&lines)
     }
 
@@ -243,9 +239,7 @@ impl List for GitHubCandidateList {
     fn read() -> Result<Vec<Crate>> {
         Ok(
             file::read_lines(&Self::path())
-                .chain_err(
-                    || "unable to read gh-candidates list. run `crater create-lists`?",
-                )?
+                .chain_err(|| "unable to read gh-candidates list. run `crater create-lists`?")?
                 .into_iter()
                 .map(|line| Crate::Repo { url: line })
                 .collect(),
@@ -345,18 +339,16 @@ impl Crate {
     pub fn into_ex_crate(self, shas: &HashMap<String, String>) -> Result<ExCrate> {
         match self {
             Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
-            Crate::Repo { ref url } => {
-                if let Some(sha) = shas.get(url) {
-                    let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-                    Ok(ExCrate::Repo {
-                        org,
-                        name,
-                        sha: sha.to_string(),
-                    })
-                } else {
-                    Err(format!("missing sha for {}", url).into())
-                }
-            }
+            Crate::Repo { ref url } => if let Some(sha) = shas.get(url) {
+                let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
+                Ok(ExCrate::Repo {
+                    org,
+                    name,
+                    sha: sha.to_string(),
+                })
+            } else {
+                Err(format!("missing sha for {}", url).into())
+            },
         }
     }
 

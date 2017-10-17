@@ -131,29 +131,29 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     });
     let output = Stream::merge(stdout, stderr);
     let output = timer.timeout_stream(output, heartbeat_timeout).map_err(
-        move |e| {
-            if e.kind() == io::ErrorKind::TimedOut {
-                kill_process(child_id);
-                Error::from(ErrorKind::Timeout(
-                    "not generating output for ",
-                    HEARTBEAT_TIMEOUT_SECS,
-                ))
-            } else {
-                e.into()
-            }
+        move |e| if e.kind() == io::ErrorKind::TimedOut {
+            kill_process(child_id);
+            Error::from(ErrorKind::Timeout(
+                "not generating output for ",
+                HEARTBEAT_TIMEOUT_SECS,
+            ))
+        } else {
+            e.into()
         },
     );
     let output: Box<Future<Item = _, Error = Error>> = if capture {
         unmerge(output)
     } else {
-        Box::new(output.for_each(|_| Ok(())).and_then(
-            |_| Ok((Vec::new(), Vec::new())),
-        ))
+        Box::new(
+            output
+                .for_each(|_| Ok(()))
+                .and_then(|_| Ok((Vec::new(), Vec::new()))),
+        )
     };
 
     #[cfg(unix)]
     fn kill_process(id: u32) {
-        use libc::{SIGKILL, kill, pid_t};
+        use libc::{kill, pid_t, SIGKILL};
         let r = unsafe { kill(id as pid_t, SIGKILL) };
         if r != 0 {
             // Something went wrong...

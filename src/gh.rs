@@ -56,7 +56,7 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
             info!("downloading {}", url);
 
             let mut response = if page < 20 {
-                dl::download_limit(&url, 10000)
+                dl::download_limit(&url, 10_000)
             } else {
                 dl::download_no_retry(&url)
             }.chain_err(|| "unable to query github for rust repos")?;

@@ -97,11 +97,7 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
 
             match writer.read_log() {
                 Ok(ref mut result_log) => {
-                    dest.copy(
-                        result_log,
-                        rel_log.join("log.txt"),
-                        &mime::TEXT_PLAIN_UTF_8,
-                    )?
+                    dest.copy(result_log, rel_log.join("log.txt"), &mime::TEXT_PLAIN_UTF_8)?
                 }
                 Err(e) => error!{"Could not read log for {} {}: {}", krate, tc.to_string(), e},
             }
@@ -161,20 +157,20 @@ fn crate_to_name(c: &ex::ExCrate) -> String {
 fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Comparison {
     use results::TestResult::*;
     match (r1, r2) {
-        (&Some(BuildTestResult { res: ref res1, .. }),
-         &Some(BuildTestResult { res: ref res2, .. })) => {
-            match (res1, res2) {
-                (&BuildFail, &BuildFail) => Comparison::SameBuildFail,
-                (&TestFail, &TestFail) => Comparison::SameTestFail,
-                (&TestPass, &TestPass) => Comparison::SameTestPass,
-                (&BuildFail, &TestFail) |
-                (&BuildFail, &TestPass) |
-                (&TestFail, &TestPass) => Comparison::Fixed,
-                (&TestPass, &TestFail) |
-                (&TestPass, &BuildFail) |
-                (&TestFail, &BuildFail) => Comparison::Regressed,
+        (
+            &Some(BuildTestResult { res: ref res1, .. }),
+            &Some(BuildTestResult { res: ref res2, .. }),
+        ) => match (res1, res2) {
+            (&BuildFail, &BuildFail) => Comparison::SameBuildFail,
+            (&TestFail, &TestFail) => Comparison::SameTestFail,
+            (&TestPass, &TestPass) => Comparison::SameTestPass,
+            (&BuildFail, &TestFail) | (&BuildFail, &TestPass) | (&TestFail, &TestPass) => {
+                Comparison::Fixed
             }
-        }
+            (&TestPass, &TestFail) | (&TestPass, &BuildFail) | (&TestFail, &BuildFail) => {
+                Comparison::Regressed
+            }
+        },
         _ => Comparison::Unknown,
     }
 }
@@ -205,11 +201,7 @@ fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
         .chain_err(|| "Couldn't render template")?;
 
     dest.write_string(&html_out, html.into(), &mime::TEXT_HTML)?;
-    dest.write_string(
-        &js_out,
-        js_in.into(),
-        &mime::TEXT_JAVASCRIPT,
-    )?;
+    dest.write_string(&js_out, js_in.into(), &mime::TEXT_JAVASCRIPT)?;
     dest.write_string(&css_out, css_in.into(), &mime::TEXT_CSS)?;
 
     Ok(())

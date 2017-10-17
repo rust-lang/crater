@@ -23,11 +23,8 @@ pub fn prepare(list: &[ExCrate]) -> Result<()> {
                 ref name,
                 ref version,
             } => {
-                let r = dl_registry(name, &version.to_string(), &dir).chain_err(
-                    || {
-                        format!("unable to download {}-{}", name, version)
-                    },
-                );
+                let r = dl_registry(name, &version.to_string(), &dir)
+                    .chain_err(|| format!("unable to download {}-{}", name, version));
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {
@@ -73,9 +70,7 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     }
     info!("downloading crate {}-{} to {}", name, vers, dir.display());
     let url = format!("{0}/{1}/{1}-{2}.crate", CRATES_ROOT, name, vers);
-    let bin = dl::download(&url).chain_err(
-        || format!("unable to download {}", url),
-    )?;
+    let bin = dl::download(&url).chain_err(|| format!("unable to download {}", url))?;
 
     fs::create_dir_all(&dir)?;
 

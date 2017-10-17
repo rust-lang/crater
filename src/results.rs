@@ -121,9 +121,8 @@ impl<'a> CrateResultWriter for ResultWriter<'a> {
         let result_file = self.result_file();
         if result_file.exists() {
             let s = file::read_string(&result_file)?;
-            let r = s.parse::<TestResult>().chain_err(|| {
-                format!("invalid test result value: '{}'", s)
-            })?;
+            let r = s.parse::<TestResult>()
+                .chain_err(|| format!("invalid test result value: '{}'", s))?;
             Ok(Some(r))
         } else {
             Ok(None)
@@ -140,9 +139,9 @@ impl<'a> ResultWriter<'a> {
 
 
     fn result_dir(&self) -> PathBuf {
-        ex_dir(&self.db.ex.name).join("res").join(
-            self.result_path_fragement(),
-        )
+        ex_dir(&self.db.ex.name)
+            .join("res")
+            .join(self.result_path_fragement())
     }
 
     fn result_file(&self) -> PathBuf {

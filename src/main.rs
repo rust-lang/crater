@@ -26,9 +26,7 @@ fn main() {
 
     let _guard = log::init();
     let success = match panic::catch_unwind(main_) {
-        Ok(Ok(())) => {
-            true
-        }
+        Ok(Ok(())) => true,
         Ok(Err(e)) => {
             util::report_error(&e);
             false

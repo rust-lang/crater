@@ -175,7 +175,7 @@ impl Experiment {
         capture_shas(self)?;
         download_crates(self)?;
         frob_tomls(self)?;
-        capture_lockfiles(self, &Toolchain::Dist("stable".into()), false)?;
+        capture_lockfiles(self, self.toolchains.last().unwrap(), false)?;
         Ok(())
     }
 
@@ -183,7 +183,7 @@ impl Experiment {
         // Local experiment prep
         delete_all_target_dirs(&self.name)?;
         ex_run::delete_all_results(&self.name)?;
-        fetch_deps(self, &Toolchain::Dist("stable".into()))?;
+        fetch_deps(self, self.toolchains.last().unwrap())?;
         prepare_all_toolchains(self)?;
 
         Ok(())

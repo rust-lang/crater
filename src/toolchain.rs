@@ -17,15 +17,14 @@ const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist"
 const RUST_CI_TRY_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds-try";
 const RUST_CI_MASTER_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds";
 
-const RUST_CI_COMPONENTS: [(&'static str, &'static str); 3] =
-    [
-        ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.xz"),
-        (
-            "rust-std-x86_64-unknown-linux-gnu",
-            "rust-std-nightly-x86_64-unknown-linux-gnu.tar.xz",
-        ),
-        ("cargo", "cargo-nightly-x86_64-unknown-linux-gnu.tar.xz"),
-    ];
+const RUST_CI_COMPONENTS: [(&'static str, &'static str); 3] = [
+    ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.xz"),
+    (
+        "rust-std-x86_64-unknown-linux-gnu",
+        "rust-std-nightly-x86_64-unknown-linux-gnu.tar.xz",
+    ),
+    ("cargo", "cargo-nightly-x86_64-unknown-linux-gnu.tar.xz"),
+];
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 /// A toolchain name, either a rustup channel identifier,
@@ -73,9 +72,13 @@ impl FromStr for Toolchain {
             }
         }
         if s.starts_with("try#") {
-            Ok(Toolchain::TryBuild { sha: get_sha(s)?.into() })
+            Ok(Toolchain::TryBuild {
+                sha: get_sha(s)?.into(),
+            })
         } else if s.starts_with("master#") {
-            Ok(Toolchain::Master { sha: get_sha(s)?.into() })
+            Ok(Toolchain::Master {
+                sha: get_sha(s)?.into(),
+            })
         } else {
             Ok(Toolchain::Dist(s.to_string()))
         }
@@ -118,9 +121,7 @@ fn install_rustup() -> Result<()> {
         &util::this_target(),
         EXE_SUFFIX
     );
-    let mut response = dl::download(rustup_url).chain_err(
-        || "unable to download rustup",
-    )?;
+    let mut response = dl::download(rustup_url).chain_err(|| "unable to download rustup")?;
 
     let tempdir = TempDir::new("crater")?;
     let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
@@ -163,9 +164,8 @@ pub fn make_executable(path: &Path) -> Result<()> {
 fn update_rustup() -> Result<()> {
     info!("updating rustup");
     util::try_hard(|| {
-        rustup_run(&rustup_exe(), &["self", "update"]).chain_err(
-            || "unable to run rustup self-update",
-        )
+        rustup_run(&rustup_exe(), &["self", "update"])
+            .chain_err(|| "unable to run rustup self-update")
     })
 }
 
@@ -198,12 +198,16 @@ fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
         };
         info!("installing component {}", component);
         let url = format!("{}/{}/{}", base_url, sha, file);
-        let response = dl::download_limit(&url, 10000)?;
+        let response = dl::download_limit(&url, 10_000)?;
         if *response.status() != reqwest::StatusCode::Ok {
             return Err(ErrorKind::Download.into());
         }
-        tx = dist::component::TarXzPackage::new(response, &cfg)?
-            .install(&target, component, None, tx)?;
+        tx = dist::component::TarXzPackage::new(response, &cfg)?.install(
+            &target,
+            component,
+            None,
+            tx,
+        )?;
     }
     tx.commit();
 
@@ -214,8 +218,7 @@ impl Toolchain {
     pub fn rustup_name(&self) -> String {
         match *self {
             Toolchain::Dist(ref n) => n.to_string(),
-            Toolchain::TryBuild { ref sha } |
-            Toolchain::Master { ref sha } => sha.to_string(),
+            Toolchain::TryBuild { ref sha } | Toolchain::Master { ref sha } => sha.to_string(),
         }
     }
 }

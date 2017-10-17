@@ -46,17 +46,17 @@ pub fn report_error(e: &Error) {
     error!("{}", e);
 
     for e in e.iter().skip(1) {
-        error!("caused by: {}", e);
+        error!("caused by: {}", e)
     }
 }
 
 pub fn report_panic(e: &Any) {
     if let Some(e) = e.downcast_ref::<String>() {
-        error!("panicked: {}", e);
+        error!("panicked: {}", e)
     } else if let Some(e) = e.downcast_ref::<&'static str>() {
-        error!("panicked: {}", e);
+        error!("panicked: {}", e)
     } else {
-        error!("panicked");
+        error!("panicked")
     }
 }
 
@@ -68,13 +68,13 @@ pub fn this_target() -> String {
     } else if cfg!(target_os = "macos") {
         "apple-darwin"
     } else {
-        panic!("unrecognized OS");
+        panic!("unrecognized OS")
     };
 
     let arch = if cfg!(target_arch = "x86_64") {
         "x86_64"
     } else {
-        panic!("unrecognized arch");
+        panic!("unrecognized arch")
     };
 
     format!("{}-{}", arch, os)
@@ -86,13 +86,9 @@ pub fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
     info!("copying {} to {}", src_dir.display(), dest_dir.display());
 
     if dest_dir.exists() {
-        remove_dir_all(dest_dir).chain_err(
-            || "unable to remove test dir",
-        )?;
+        remove_dir_all(dest_dir).chain_err(|| "unable to remove test dir")?;
     }
-    fs::create_dir_all(dest_dir).chain_err(
-        || "unable to create test dir",
-    )?;
+    fs::create_dir_all(dest_dir).chain_err(|| "unable to create test dir")?;
 
     fn is_hidden(entry: &DirEntry) -> bool {
         entry
@@ -104,9 +100,9 @@ pub fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
 
     let mut partial_dest_dir = PathBuf::from("./");
     let mut depth = 0;
-    for entry in WalkDir::new(src_dir).into_iter().filter_entry(
-        |e| !is_hidden(e),
-    )
+    for entry in WalkDir::new(src_dir)
+        .into_iter()
+        .filter_entry(|e| !is_hidden(e))
     {
         let entry = entry.chain_err(|| "walk dir")?;
         while entry.depth() <= depth && depth > 0 {

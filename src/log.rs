@@ -1,7 +1,6 @@
 use chrono::UTC;
 use dirs::LOG_DIR;
 use errors::*;
-
 use slog::{self, Drain};
 use slog_scope;
 use slog_term;

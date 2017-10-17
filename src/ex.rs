@@ -16,8 +16,7 @@ use toml_frobber;
 use toolchain::{self, CargoState, Toolchain};
 use util;
 
-#[derive(Serialize, Deserialize)]
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ExMode {
     BuildAndTest,
     BuildOnly,
@@ -95,14 +94,12 @@ fn demo_list() -> Result<Vec<Crate>> {
     let crates = lists::read_all_lists()?
         .into_iter()
         .filter(|c| match *c {
-            Crate::Version { ref name, .. } => {
-                if name == demo_crate && !found_demo_crate {
-                    found_demo_crate = true;
-                    true
-                } else {
-                    false
-                }
-            }
+            Crate::Version { ref name, .. } => if name == demo_crate && !found_demo_crate {
+                found_demo_crate = true;
+                true
+            } else {
+                false
+            },
             Crate::Repo { ref url } => url.contains(demo_gh_app),
         })
         .collect::<Vec<_>>();
@@ -112,7 +109,7 @@ fn demo_list() -> Result<Vec<Crate>> {
 }
 
 fn small_random() -> Result<Vec<Crate>> {
-    use rand::{Rng, thread_rng};
+    use rand::{thread_rng, Rng};
 
     const COUNT: usize = 20;
 
@@ -201,18 +198,16 @@ fn capture_shas(ex: &Experiment) -> Result<()> {
             let r = run::run_capture(Some(&dir), "git", &["log", "-n1", "--pretty=%H"], &[]);
 
             match r {
-                Ok((stdout, _)) => {
-                    if let Some(shaline) = stdout.get(0) {
-                        if !shaline.is_empty() {
-                            info!("sha for {}: {}", url, shaline);
-                            shas.insert(url.to_string(), shaline.to_string());
-                        } else {
-                            error!("bogus output from git log for {}", dir.display());
-                        }
+                Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
+                    if !shaline.is_empty() {
+                        info!("sha for {}: {}", url, shaline);
+                        shas.insert(url.to_string(), shaline.to_string());
                     } else {
                         error!("bogus output from git log for {}", dir.display());
                     }
-                }
+                } else {
+                    error!("bogus output from git log for {}", dir.display());
+                },
                 Err(e) => {
                     error!("unable to capture sha for {}: {}", dir.display(), e);
                 }
@@ -389,11 +384,7 @@ fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
         } => (name.to_string(), version.to_string()),
         _ => bail!("unimplemented crate type in `lockfile`"),
     };
-    Ok(lockfile_dir(ex_name).join(format!(
-        "{}-{}.lock",
-        crate_name,
-        crate_vers
-    )))
+    Ok(lockfile_dir(ex_name).join(format!("{}-{}.lock", crate_name, crate_vers)))
 }
 
 fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
@@ -526,7 +517,6 @@ fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
     }
 
     Ok(())
-
 }
 
 fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {

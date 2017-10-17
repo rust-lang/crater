@@ -20,7 +20,8 @@ mod api;
 pub struct Data;
 
 type Handler = Box<
-    Fn(&Server, Request, Params) -> BoxFuture<Response, hyper::Error>
+    Fn(&Server, Request, Params)
+        -> BoxFuture<Response, hyper::Error>
         + Sync
         + Send
         + 'static,
@@ -47,9 +48,9 @@ impl Server {
         };
         let data = self.data.get();
         let result = handler(&data, params);
-        let response = Response::new().with_header(ContentType::json()).with_body(
-            serde_json::to_string(&result).unwrap(),
-        );
+        let response = Response::new()
+            .with_header(ContentType::json())
+            .with_body(serde_json::to_string(&result).unwrap());
         futures::future::ok(response).boxed()
     }
 
@@ -134,15 +135,14 @@ impl Server {
                                     err
                                 );
                                 return Response::new()
-                                           .with_header(ContentType::plaintext())
-                                           .with_body(format!("Failed to deserialize request; {:?}",
-                                                              err));
+                                    .with_header(ContentType::plaintext())
+                                    .with_body(format!("Failed to deserialize request; {:?}", err));
                             }
                         };
                         let result = handler(body, &data, params);
-                        Response::new().with_header(ContentType::json()).with_body(
-                            serde_json::to_string(&result).unwrap(),
-                        )
+                        Response::new()
+                            .with_header(ContentType::json())
+                            .with_body(serde_json::to_string(&result).unwrap())
                     })
             })
             .boxed()
@@ -170,8 +170,6 @@ impl Service for Server {
             Ok(Match { handler, params }) => handler(self, req, params),
             Err(_) => self.error(StatusCode::NotFound),
         }
-
-
     }
 }
 
@@ -233,6 +231,6 @@ pub fn start(data: Data) {
             .and_then(|x| x.parse().ok())
             .unwrap_or(2346),
     );
-    let server = Http::new().bind(&server_address, move || Ok(server.clone()));
+    let server = Http::new().bind(&server_address, move || Ok(Arc::clone(&server)));
     server.unwrap().run().unwrap();
 }

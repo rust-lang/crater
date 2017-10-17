@@ -1,3 +1,6 @@
+// https://github.com/rust-lang-nursery/error-chain/issues/213
+// needs an upgrade to error-chain 0.11
+#![allow(unused_doc_comment)]
 error_chain! {
     foreign_links {
         IoError(::std::io::Error);

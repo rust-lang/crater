@@ -76,7 +76,7 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
                     info!("skipping crate {}. existing result: {}", c, r);
                     info!(
                         "delete result file to rerun test: \
-                           \"crater delete-result {} --toolchain {} {}\"",
+                         \"crater delete-result {} --toolchain {} {}\"",
                         ex.name,
                         tc.to_string(),
                         c
@@ -273,9 +273,9 @@ fn test_find_unstable_features(
 
     let mut features = HashSet::new();
 
-    for entry in WalkDir::new(source_path).into_iter().filter_entry(
-        |e| !is_hidden(e),
-    )
+    for entry in WalkDir::new(source_path)
+        .into_iter()
+        .filter_entry(|e| !is_hidden(e))
     {
         let entry = entry.chain_err(|| "walk dir")?;
         if !entry

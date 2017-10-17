@@ -14,7 +14,9 @@ pub mod get {
 
     #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     pub fn handler(_data: &Data, _params: Params) -> Response {
-        Response { text: String::from("This is a response!") }
+        Response {
+            text: String::from("This is a response!"),
+        }
     }
 }
 
@@ -33,13 +35,15 @@ pub mod post {
 
     #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     pub fn handler(post: Request, _data: &Data, _params: Params) -> Response {
-        Response { out: format!("Got {}!", post.input) }
+        Response {
+            out: format!("Got {}!", post.input),
+        }
     }
 }
 
 pub mod ex_report {
     use ex;
-    use report::{TestResults, generate_report};
+    use report::{generate_report, TestResults};
     use server::{Data, Params};
 
     #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]

@@ -46,30 +46,24 @@ struct DefineEx(Ex, Toolchain, Toolchain, ExMode, ExCrateSelect);
 #[derive(StructOpt)]
 #[structopt(name = "prepare-ex", about = "prepare shared and local data for experiment")]
 struct PrepareEx {
-    #[structopt(name = "experiment", long = "ex", default_value = "default")]
-    ex: Ex,
+    #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
 }
 #[derive(StructOpt)]
 #[structopt(name = "run", about = "run an experiment, with all toolchains")]
 struct Run {
-    #[structopt(name = "experiment", long = "ex", default_value = "default")]
-    ex: Ex,
+    #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
 }
 #[derive(StructOpt)]
 #[structopt(name = "run-tc", about = "run an experiment, with a single toolchain")]
 struct RunTc {
-    #[structopt(name = "experiment", long = "ex", default_value = "default")]
-    ex: Ex,
-    #[structopt(name = "toolchain")]
-    tc: Toolchain,
+    #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
+    #[structopt(name = "toolchain")] tc: Toolchain,
 }
 #[derive(StructOpt)]
 #[structopt(name = "gen-report", about = "generate the experiment report")]
 struct GenReport {
-    #[structopt(name = "experiment", long = "ex", default_value = "default")]
-    ex: Ex,
-    #[structopt(name = "destination")]
-    dest: Dest,
+    #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
+    #[structopt(name = "destination")] dest: Dest,
 }
 #[derive(StructOpt)]
 #[structopt(name = "publish-report", about = "publish the experiment report to S3")]
@@ -231,7 +225,6 @@ where
 // Boilerplate conversions on the model. Ideally all this would be generated.
 pub mod conv {
     use super::*;
-
     use clap::{App, Arg, ArgMatches, SubCommand};
     use std::str::FromStr;
     use structopt::StructOpt;
@@ -248,28 +241,24 @@ pub mod conv {
                 .required(false)
                 .long("mode")
                 .default_value(ExMode::BuildAndTest.to_str())
-                .possible_values(
-                    &[
-                        ExMode::BuildAndTest.to_str(),
-                        ExMode::BuildOnly.to_str(),
-                        ExMode::CheckOnly.to_str(),
-                        ExMode::UnstableFeatures.to_str(),
-                    ],
-                )
+                .possible_values(&[
+                    ExMode::BuildAndTest.to_str(),
+                    ExMode::BuildOnly.to_str(),
+                    ExMode::CheckOnly.to_str(),
+                    ExMode::UnstableFeatures.to_str(),
+                ])
         };
         let crate_select = || {
             Arg::with_name("crate-select")
                 .required(false)
                 .long("crate-select")
                 .default_value(ExCrateSelect::Demo.to_str())
-                .possible_values(
-                    &[
-                        ExCrateSelect::Demo.to_str(),
-                        ExCrateSelect::Full.to_str(),
-                        ExCrateSelect::SmallRandom.to_str(),
-                        ExCrateSelect::Top100.to_str(),
-                    ],
-                )
+                .possible_values(&[
+                    ExCrateSelect::Demo.to_str(),
+                    ExCrateSelect::Full.to_str(),
+                    ExCrateSelect::SmallRandom.to_str(),
+                    ExCrateSelect::Top100.to_str(),
+                ])
         };
 
         fn opt(n: &'static str, def: &'static str) -> Arg<'static, 'static> {
@@ -288,12 +277,10 @@ pub mod conv {
             // Local prep
             cmd(
                 "prepare-local",
-                "acquire toolchains, build containers, build crate lists"
+                "acquire toolchains, build containers, build crate lists",
             ),
-
             // List creation
             cmd("create-lists", "create all the lists of crates"),
-
             // Master experiment prep
             cmd("define-ex", "define an experiment")
                 .arg(ex())
@@ -306,39 +293,34 @@ pub mod conv {
                 .arg(ex1())
                 .arg(ex2()),
             cmd("delete-ex", "delete shared data for experiment").arg(ex()),
-
             cmd(
                 "delete-all-target-dirs",
-                "delete the cargo target dirs for an experiment"
+                "delete the cargo target dirs for an experiment",
             ).arg(ex()),
             cmd("delete-all-results", "delete all results for an experiment").arg(ex()),
             cmd(
                 "delete-result",
-                "delete results for a crate from an experiment"
+                "delete results for a crate from an experiment",
             ).arg(ex())
                 .arg(
                     Arg::with_name("toolchain")
                         .long("toolchain")
                         .short("t")
                         .takes_value(true)
-                        .required(false)
+                        .required(false),
                 )
                 .arg(Arg::with_name("crate").required(true)),
-
             // Experimenting
             Run::clap(),
             RunTc::clap(),
-
             // Reporting
             GenReport::clap(),
             PublishReport::clap(),
-
             cmd("serve-report", "serve report"),
         ]
     }
 
     pub fn clap_args_to_cmd(m: &ArgMatches) -> Result<Box<Cmd>> {
-
         fn ex(m: &ArgMatches) -> Result<Ex> {
             m.value_of("ex").expect("").parse::<Ex>()
         }
@@ -375,15 +357,13 @@ pub mod conv {
             ("create-lists", _) => Box::new(CreateLists),
 
             // Master experiment prep
-            ("define-ex", Some(m)) => {
-                Box::new(DefineEx(
-                    ex(m)?,
-                    tc1(m)?,
-                    tc2(m)?,
-                    mode(m)?,
-                    crate_select(m)?,
-                ))
-            }
+            ("define-ex", Some(m)) => Box::new(DefineEx(
+                ex(m)?,
+                tc1(m)?,
+                tc2(m)?,
+                mode(m)?,
+                crate_select(m)?,
+            )),
             ("prepare-ex", Some(m)) => Box::new(PrepareEx::from_clap(m.clone())),
             ("copy-ex", Some(m)) => Box::new(CopyEx(ex1(m)?, ex2(m)?)),
             ("delete-ex", Some(m)) => Box::new(DeleteEx(ex(m)?)),

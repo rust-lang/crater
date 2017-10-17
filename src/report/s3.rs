@@ -1,7 +1,7 @@
 use errors::*;
 use mime::Mime;
 use report::ReportWriter;
-use rusoto_core::{DefaultCredentialsProvider, Region, default_tls_client};
+use rusoto_core::{default_tls_client, DefaultCredentialsProvider, Region};
 use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3, S3Client};
 use std::borrow::Cow;
 use std::fmt::{self, Display};
@@ -31,19 +31,17 @@ impl FromStr for S3Prefix {
                 path: prefix,
                 query: None,
                 fragment: None,
-            } => {
-                if scheme == "s3" {
-                    Ok(S3Prefix {
-                        bucket,
-                        prefix: match prefix {
-                            Some(prefix) => prefix[1..].into(),
-                            None => PathBuf::new(),
-                        },
-                    })
-                } else {
-                    Err(ErrorKind::BadS3Uri.into())
-                }
-            }
+            } => if scheme == "s3" {
+                Ok(S3Prefix {
+                    bucket,
+                    prefix: match prefix {
+                        Some(prefix) => prefix[1..].into(),
+                        None => PathBuf::new(),
+                    },
+                })
+            } else {
+                Err(ErrorKind::BadS3Uri.into())
+            },
             _ => Err(ErrorKind::BadS3Uri.into()),
         }
     }
@@ -62,7 +60,9 @@ fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
     };
     let client = make_client(Region::UsEast1);
     let response = client
-        .get_bucket_location(&GetBucketLocationRequest { bucket: bucket.into() })
+        .get_bucket_location(&GetBucketLocationRequest {
+            bucket: bucket.into(),
+        })
         .chain_err(|| "S3 failure to get bucket location")?;
     let region = match response.location_constraint.as_ref() {
         Some(region) if region == "" => Region::UsEast1,
@@ -110,9 +110,8 @@ impl S3Writer {
                     continue;
                 }
                 r => {
-                    return r.map(|_| ()).chain_err(|| {
-                        format!("S3 failure to upload {:?}", path.as_ref())
-                    })
+                    return r.map(|_| ())
+                        .chain_err(|| format!("S3 failure to upload {:?}", path.as_ref()))
                 }
             }
         }

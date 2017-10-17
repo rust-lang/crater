@@ -48,8 +48,7 @@ of its output is into the `./work` directory, where it maintains its
 own rustup installation, crate mirrors, etc.
 
 ```
-cd docker && docker build . && cd ..    # This takes a while
-cargo run -- prepare-local
+cargo run -- prepare-local --docker-env mini
 cargo run -- define-ex --crate-select=demo stable beta
 cargo run -- prepare-ex
 cargo run -- run

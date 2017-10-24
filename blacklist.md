@@ -2,15 +2,14 @@
 
 Crates with flaky test suites.
 
-- MortenLohne.rasher - slow
-- s_app_dir-0.0.0 - broken test
-- ai-0.1.0 - flaky ("may fail due to randomness")
-- assert_cli-0.5.4 - runs external programs
+- ai - test has a comment stating it fails spuriously
+- assert_cli - skeptic test failure (process launch)
 - basiccountminsketch-0.1.0 - flaky
 - bmp085-0.1.2 - randomness
 - bson-0.1.5 - flaky
 - canteen-0.3.5 - broken test
 - cc-1.0.3 - flaky
+- conc - test timeout
 - crust-0.25.0 - network/timing?
 - crux-0.3.0 - broken test
 - ctx-0.2.0 - timing
@@ -31,9 +30,11 @@ Crates with flaky test suites.
 - loaded_dice-0.1.1 - randomness
 - lockless-0.2.0 - threads
 - lodepng - command curl not found
+- lockless-0.2.0 - test timeout
 - lua53-ext-0.1.1 - flaky https://github.com/Jellonator/rust-lua53-ext/issues/1
 - milagro-crypto-0.1.14 - flaky
 - mock_me-0.2.2 - flaky https://github.com/craftytrickster/mock_me/issues/7
+- MortenLohne.rasher - slow
 - namedarg_hack-0.1.* - bad channel detection
 - notify-3.0.1 flaky
 - phant-0.1.5 - flaky

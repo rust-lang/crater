@@ -4,6 +4,7 @@ Crates with flaky test suites.
 
 - MortenLohne.rasher - slow
 - s_app_dir-0.0.0 - broken test
+- ai-0.1.0 - flaky ("may fail due to randomness")
 - basiccountminsketch-0.1.0 - flaky
 - bson-0.1.5 - flaky
 - canteen-0.3.5 - broken test

@@ -5,9 +5,11 @@ Crates with flaky test suites.
 - MortenLohne.rasher - slow
 - s_app_dir-0.0.0 - broken test
 - ai-0.1.0 - flaky ("may fail due to randomness")
+- assert_cli-0.5.4 - runs external programs
 - basiccountminsketch-0.1.0 - flaky
 - bson-0.1.5 - flaky
 - canteen-0.3.5 - broken test
+- cc-1.0.3 - flaky
 - crust-0.25.0 - network/timing?
 - crux-0.3.0 - broken test
 - ctx-0.2.0 - timing
@@ -21,8 +23,11 @@ Crates with flaky test suites.
 - https://github.com/tinco/rust-static_any_map - flaky
 - https://github.com/yggie/mach - flaky
 - hyperdav-0.1.2 - network
+- inotify-0.1.12 - flaky
 - json-0.11.3 - flaky
 - lazy-socket-0.2.1 - flaky
+- libfuzzy-sys-0.1.0 - command automake-1.13 not found
+- loaded_dice-0.1.1 - randomness
 - lodepng - command curl not found
 - lua53-ext-0.1.1 - flaky https://github.com/Jellonator/rust-lua53-ext/issues/1
 - milagro-crypto-0.1.14 - flaky
@@ -42,6 +47,9 @@ Crates with flaky test suites.
 - simple-signal-1.1.0 - flaky
 - stringsort-2.0.0 - timing
 - tasks-framework-0.1.0 - racy
+- treeflection-0.1.30 - flaky
+- tokio-periodic-0.1.1 - timing-based
+- unbase-0.1.1 - racy
 - unsafe-any-0.4.1 - flaky
 - update_rate-1.0.0 - timing
 - vec-vp-tree-0.2.0-alpha.1 - flaky https://github.com/abonander/vec-vp-tree/issues/1

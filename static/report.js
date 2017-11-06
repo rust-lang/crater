@@ -147,7 +147,7 @@ function insertResults(results) {
 
 	let row = `
 	<div class="${res}">
-	    <span><a href="${url}" target="_blank">${name}</a></span>
+	    <span><a href="${url}" target="_blank" rel="noopener">${name}</a></span>
 	    ${html1}
 	    ${html2}
         </div>

@@ -128,10 +128,11 @@ function insertResults(results) {
     let resultsTableEl = document.getElementById("results");
 
     for (crate of results.crates) {
-	let name = crate.name;
-	let res = jsonCrateResToCss(crate.res);
-	let run1 = parseRunResult(crate.runs[0]);
-	let run2 = parseRunResult(crate.runs[1]);
+        let name = crate.name;
+        let url = crate.url;
+        let res = jsonCrateResToCss(crate.res);
+        let run1 = parseRunResult(crate.runs[0]);
+        let run2 = parseRunResult(crate.runs[1]);
 
         function runToHtml(run) {
             if (run.log) {
@@ -146,7 +147,7 @@ function insertResults(results) {
 
 	let row = `
 	<div class="${res}">
-	    <span>${name}</span>
+	    <span><a href="${url}" target="_blank" rel="noopener">${name}</a></span>
 	    ${html1}
 	    ${html2}
         </div>

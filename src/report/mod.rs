@@ -23,6 +23,7 @@ pub struct TestResults {
 #[derive(Serialize, Deserialize)]
 struct CrateResult {
     name: String,
+    url: String,
     res: Comparison,
     runs: [Option<BuildTestResult>; 2],
 }
@@ -72,6 +73,7 @@ pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
 
             CrateResult {
                 name: crate_to_name(&krate),
+                url: crate_to_url(&krate),
                 res: comp,
                 runs: [crate1, crate2],
             }
@@ -152,6 +154,20 @@ fn crate_to_name(c: &ex::ExCrate) -> String {
             ref name,
             ref sha,
         } => format!("{}.{}.{}", org, name, sha),
+    }
+}
+
+fn crate_to_url(c: &ex::ExCrate) -> String {
+    match *c {
+        ex::ExCrate::Version {
+            ref name,
+            ref version,
+        } => format!("https://crates.io/crates/{}/{}", name, version),
+        ex::ExCrate::Repo {
+            ref org,
+            ref name,
+            ref sha,
+        } => format!("https://github.com/{}/{}/tree/{}", org, name, sha),
     }
 }
 

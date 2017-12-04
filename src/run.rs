@@ -95,7 +95,7 @@ fn log_command_capture(cmd: Command) -> Result<ProcessOutput> {
     log_command_(cmd, true)
 }
 
-const MAX_TIMEOUT_SECS: u64 = 60 * 10 * 2;
+const MAX_TIMEOUT_SECS: u64 = 60 * 15;
 const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 2;
 
 fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {

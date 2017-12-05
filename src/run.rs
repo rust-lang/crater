@@ -40,7 +40,10 @@ pub fn run_full(cd: Option<&Path>, name: &str, args: &[&str], env: &[(&str, &str
     }
 
     info!("running `{}`", cmdstr);
-    let out = log_command(cmd)?;
+    let out = log_command(cmd).map_err(|e| {
+        info!("error running command: {}", e);
+        e
+    })?;
 
     if out.status.success() {
         Ok(())
@@ -72,7 +75,10 @@ where
     }
 
     info!("running `{}`", cmdstr);
-    let out = log_command_capture(cmd)?;
+    let out = log_command_capture(cmd).map_err(|e| {
+        info!("error running command: {}", e);
+        e
+    })?;
 
     if out.status.success() {
         Ok((out.stdout, out.stderr))

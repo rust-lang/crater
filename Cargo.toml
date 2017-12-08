@@ -28,7 +28,7 @@ result = "1"
 route-recognizer = "0.1.12"
 rusoto_core = "0.30.0"
 rusoto_s3 = "0.30.0"
-rustup-dist = { git = "https://github.com/rust-lang-nursery/rustup.rs", tag="1.4.0" }
+rustup-dist = { git = "https://github.com/rust-lang-nursery/rustup.rs", tag="1.7.0" }
 scopeguard = "0.3"
 semver = "0.9"
 serde = "1.0"

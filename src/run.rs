@@ -2,7 +2,6 @@
 
 use errors::*;
 use futures::{future, Future, Stream};
-use futures::stream::MergedItem;
 use futures_cpupool::CpuPool;
 use slog_scope;
 use std::convert::AsRef;
@@ -137,7 +136,9 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
             line
         }
     });
-    let output = Stream::merge(stdout, stderr);
+
+    let output = Stream::select(stdout.map(future::Either::A),
+                                stderr.map(future::Either::B));
     let output = timer.timeout_stream(output, heartbeat_timeout).map_err(
         move |e| if e.kind() == io::ErrorKind::TimedOut {
             kill_process(child_id);
@@ -153,10 +154,9 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     let output = if capture {
         unmerge(output)
     } else {
-        output
+        Box::new(output
             .for_each(|_| Ok(()))
-            .and_then(|_| Ok((Vec::new(), Vec::new())))
-            .boxed()
+            .and_then(|_| Ok((Vec::new(), Vec::new()))))
     };
     let pool = CpuPool::new(1);
     let output = pool.spawn(output);
@@ -192,19 +192,20 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
 
     // TODO: Handle errors from tokio_timer better, in particular TimerError::TooLong
     let (status, (stdout, stderr)) = core.run(child.select2(output).then(|res| {
-        match res {
+        let future: Box<Future<Item=_, Error=_>> = match res {
             // child exited, finish collecting output
             Ok(future::Either::A((status, output))) => {
-                output.map(move |sose| (status, sose)).boxed()
+                Box::new(output.map(move |sose| (status, sose)))
             }
             // output finished, wait for process to exit (possibly being killed by timeout)
-            Ok(future::Either::B((sose, child))) => child.map(move |status| (status, sose)).boxed(),
+            Ok(future::Either::B((sose, child))) => Box::new(child.map(move |status| (status, sose))),
             // child lived too long and was killed, finish collecting output so it goes to logs then
             // return timeout error (not interested in errors with output at this point, so ignore)
-            Err(future::Either::A((e, output))) => output.then(|_| future::err(e)).boxed(),
+            Err(future::Either::A((e, output))) => Box::new(output.then(|_| future::err(e))),
             // output collection failed (timeout, misc io error) and child was killed, drop timeout
-            Err(future::Either::B((e, _child))) => future::err(e).boxed(),
-        }
+            Err(future::Either::B((e, _child))) => Box::new(future::err(e)),
+        };
+        future
     }))?;
 
     Ok(ProcessOutput {
@@ -217,21 +218,19 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
 #[cfg_attr(feature = "cargo-clippy", allow(type_complexity))]
 fn unmerge<T1, T2, S>(reader: S) -> Box<Future<Item = (Vec<T1>, Vec<T2>), Error = S::Error> + Send>
 where
-    S: Stream<Item = MergedItem<T1, T2>> + Send + 'static,
+    S: Stream<Item = future::Either<T1, T2>> + Send + 'static,
     S::Error: Send,
     T1: Send + 'static,
     T2: Send + 'static,
 {
-    reader
+    Box::new(reader
         .map(|i| match i {
-            MergedItem::First(l) => (Some(l), None),
-            MergedItem::Second(r) => (None, Some(r)),
-            MergedItem::Both(l, r) => (Some(l), Some(r)),
+            future::Either::A(l) => (Some(l), None),
+            future::Either::B(r) => (None, Some(r)),
         })
         .fold((Vec::new(), Vec::new()), |mut v, i| {
             i.0.map(|i| v.0.push(i));
             i.1.map(|i| v.1.push(i));
             Ok(v)
-        })
-        .boxed()
+        }))
 }

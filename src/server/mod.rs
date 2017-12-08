@@ -31,6 +31,7 @@ struct Server {
     pool: CpuPool,
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 impl Server {
     fn handle_get<F, S>(
         &self,

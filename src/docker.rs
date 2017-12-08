@@ -61,7 +61,7 @@ pub struct ContainerConfig<'a> {
 }
 
 
-pub fn run(config: ContainerConfig) -> Result<()> {
+pub fn run(config: &ContainerConfig) -> Result<()> {
     let c = Container::create_container(config)?;
     defer!{{
         if let Err(e) = c.delete() {
@@ -141,7 +141,7 @@ impl Display for Container {
 }
 
 impl Container {
-    fn create_container(config: ContainerConfig) -> Result<Self> {
+    fn create_container(config: &ContainerConfig) -> Result<Self> {
         let mut args: Vec<String> = vec!["create".into()];
 
         for mount in &config.mounts {

@@ -12,12 +12,12 @@ use std::str::FromStr;
 use tempdir::TempDir;
 use util;
 
-const RUSTUP_BASE_URL: &'static str = "https://static.rust-lang.org/rustup/dist";
+const RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
 
-const RUST_CI_TRY_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds-try";
-const RUST_CI_MASTER_BASE_URL: &'static str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds";
+const RUST_CI_TRY_BASE_URL: &str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds-try";
+const RUST_CI_MASTER_BASE_URL: &str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds";
 
-const RUST_CI_COMPONENTS: [(&'static str, &'static str); 3] = [
+const RUST_CI_COMPONENTS: [(&str, &str); 3] = [
     ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.xz"),
     (
         "rust-std-x86_64-unknown-linux-gnu",
@@ -28,7 +28,7 @@ const RUST_CI_COMPONENTS: [(&'static str, &'static str); 3] = [
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 /// A toolchain name, either a rustup channel identifier,
-/// or a URL+branch+sha: https://github.com/rust-lang/rust+master+sha
+/// or a URL+branch+sha: `https://github.com/rust-lang/rust+master+sha`
 pub enum Toolchain {
     Dist(String), // rustup toolchain spec
     TryBuild { sha: String },
@@ -227,6 +227,7 @@ pub fn ex_target_dir(ex_name: &str) -> PathBuf {
     TARGET_DIR.join(ex_name)
 }
 
+#[derive(Copy, Clone)]
 pub enum CargoState {
     Locked,
     Unlocked,
@@ -266,6 +267,6 @@ impl Toolchain {
             // This is configured as CARGO_TARGET_DIR by the docker container itself
             target_dir: (ex_target_dir, docker::Perm::ReadWrite),
         };
-        docker::run(docker::rust_container(rust_env))
+        docker::run(&docker::rust_container(rust_env))
     }
 }

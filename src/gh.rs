@@ -12,7 +12,7 @@ use std::time::Duration;
 // see if it has a Cargo.lock in the root
 // https://raw.githubusercontent.com/brson/cargobomb/master/Cargo.lock
 
-const QUERIES: &'static [&'static str] = &[
+const QUERIES: &[&str] = &[
     "https://api.github.com/search/repositories?q=language:rust&sort=stars&order=asc",
     "https://api.github.com/search/repositories?q=language:rust&sort=stars&order=desc",
     "https://api.github.com/search/repositories?q=language:rust&sort=updated&order=asc",

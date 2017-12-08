@@ -11,7 +11,7 @@ use std::time::Duration;
 use tar::Archive;
 use util;
 
-const CRATES_ROOT: &'static str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
+const CRATES_ROOT: &str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
 pub fn prepare(list: &[ExCrate]) -> Result<()> {
     info!("preparing {} crates", list.len());

@@ -199,7 +199,7 @@ fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
         info!("installing component {}", component);
         let url = format!("{}/{}/{}", base_url, sha, file);
         let response = dl::download_limit(&url, 10_000)?;
-        if *response.status() != reqwest::StatusCode::Ok {
+        if response.status() != reqwest::StatusCode::Ok {
             return Err(ErrorKind::Download.into());
         }
         tx = dist::component::TarXzPackage::new(response, &cfg)?.install(

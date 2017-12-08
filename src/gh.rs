@@ -62,7 +62,7 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
             }.chain_err(|| "unable to query github for rust repos")?;
 
             // After some point, errors indicate the end of available results
-            if page > 20 && *response.status() == reqwest::StatusCode::UnprocessableEntity {
+            if page > 20 && response.status() == reqwest::StatusCode::UnprocessableEntity {
                 info!("error result. continuing");
                 thread::sleep(Duration::from_secs(TIME_PER as u64));
                 continue 'next_query;

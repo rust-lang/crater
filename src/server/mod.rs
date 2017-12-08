@@ -20,8 +20,7 @@ mod api;
 pub struct Data;
 
 type Handler = Box<
-    Fn(&Server, Request, Params)
-        -> Box<Future<Item = Response, Error = hyper::Error>>
+    Fn(&Server, Request, Params) -> Box<Future<Item = Response, Error = hyper::Error>>
         + Sync
         + Send
         + 'static,
@@ -118,33 +117,32 @@ impl Server {
             return Box::new(futures::future::err(hyper::Error::TooLarge));
         }
         let data = self.data.get();
-        Box::new(self.pool
-            .spawn_fn(move || {
-                req.body()
-                    .fold(Vec::new(), |mut acc, chunk| {
-                        acc.extend_from_slice(&*chunk);
-                        futures::future::ok::<_, <Self as Service>::Error>(acc)
-                    })
-                    .map(move |body| {
-                        let body: D = match serde_json::from_slice(&body) {
-                            Ok(d) => d,
-                            Err(err) => {
-                                error!(
-                                    "failed to deserialize request {}: {:?}",
-                                    String::from_utf8_lossy(&body),
-                                    err
-                                );
-                                return Response::new()
-                                    .with_header(ContentType::plaintext())
-                                    .with_body(format!("Failed to deserialize request; {:?}", err));
-                            }
-                        };
-                        let result = handler(body, &data, params);
-                        Response::new()
-                            .with_header(ContentType::json())
-                            .with_body(serde_json::to_string(&result).unwrap())
-                    })
-            }))
+        Box::new(self.pool.spawn_fn(move || {
+            req.body()
+                .fold(Vec::new(), |mut acc, chunk| {
+                    acc.extend_from_slice(&*chunk);
+                    futures::future::ok::<_, <Self as Service>::Error>(acc)
+                })
+                .map(move |body| {
+                    let body: D = match serde_json::from_slice(&body) {
+                        Ok(d) => d,
+                        Err(err) => {
+                            error!(
+                                "failed to deserialize request {}: {:?}",
+                                String::from_utf8_lossy(&body),
+                                err
+                            );
+                            return Response::new()
+                                .with_header(ContentType::plaintext())
+                                .with_body(format!("Failed to deserialize request; {:?}", err));
+                        }
+                    };
+                    let result = handler(body, &data, params);
+                    Response::new()
+                        .with_header(ContentType::json())
+                        .with_body(serde_json::to_string(&result).unwrap())
+                })
+        }))
     }
 
     fn error(&self, status: StatusCode) -> <Server as Service>::Future {

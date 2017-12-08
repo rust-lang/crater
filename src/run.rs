@@ -137,26 +137,29 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
         }
     });
 
-    let output = Stream::select(stdout.map(future::Either::A),
-                                stderr.map(future::Either::B));
-    let output = timer.timeout_stream(output, heartbeat_timeout).map_err(
-        move |e| if e.kind() == io::ErrorKind::TimedOut {
-            kill_process(child_id);
-            Error::from(ErrorKind::Timeout(
-                "not generating output for ",
-                HEARTBEAT_TIMEOUT_SECS,
-            ))
-        } else {
-            e.into()
-        },
-    );
+    let output = Stream::select(stdout.map(future::Either::A), stderr.map(future::Either::B));
+    let output = timer
+        .timeout_stream(output, heartbeat_timeout)
+        .map_err(move |e| {
+            if e.kind() == io::ErrorKind::TimedOut {
+                kill_process(child_id);
+                Error::from(ErrorKind::Timeout(
+                    "not generating output for ",
+                    HEARTBEAT_TIMEOUT_SECS,
+                ))
+            } else {
+                e.into()
+            }
+        });
 
     let output = if capture {
         unmerge(output)
     } else {
-        Box::new(output
-            .for_each(|_| Ok(()))
-            .and_then(|_| Ok((Vec::new(), Vec::new()))))
+        Box::new(
+            output
+                .for_each(|_| Ok(()))
+                .and_then(|_| Ok((Vec::new(), Vec::new()))),
+        )
     };
     let pool = CpuPool::new(1);
     let output = pool.spawn(output);
@@ -180,25 +183,27 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
         };
     }
 
-    let child = timer.timeout(child, max_timeout).map_err(
-        move |e| if e.kind() == io::ErrorKind::TimedOut {
+    let child = timer.timeout(child, max_timeout).map_err(move |e| {
+        if e.kind() == io::ErrorKind::TimedOut {
             kill_process(child_id);
             ErrorKind::Timeout("max time of", MAX_TIMEOUT_SECS).into()
         } else {
             e.into()
-        },
-    );
+        }
+    });
 
 
     // TODO: Handle errors from tokio_timer better, in particular TimerError::TooLong
     let (status, (stdout, stderr)) = core.run(child.select2(output).then(|res| {
-        let future: Box<Future<Item=_, Error=_>> = match res {
+        let future: Box<Future<Item = _, Error = _>> = match res {
             // child exited, finish collecting output
             Ok(future::Either::A((status, output))) => {
                 Box::new(output.map(move |sose| (status, sose)))
             }
             // output finished, wait for process to exit (possibly being killed by timeout)
-            Ok(future::Either::B((sose, child))) => Box::new(child.map(move |status| (status, sose))),
+            Ok(future::Either::B((sose, child))) => {
+                Box::new(child.map(move |status| (status, sose)))
+            }
             // child lived too long and was killed, finish collecting output so it goes to logs then
             // return timeout error (not interested in errors with output at this point, so ignore)
             Err(future::Either::A((e, output))) => Box::new(output.then(|_| future::err(e))),
@@ -223,14 +228,16 @@ where
     T1: Send + 'static,
     T2: Send + 'static,
 {
-    Box::new(reader
-        .map(|i| match i {
-            future::Either::A(l) => (Some(l), None),
-            future::Either::B(r) => (None, Some(r)),
-        })
-        .fold((Vec::new(), Vec::new()), |mut v, i| {
-            i.0.map(|i| v.0.push(i));
-            i.1.map(|i| v.1.push(i));
-            Ok(v)
-        }))
+    Box::new(
+        reader
+            .map(|i| match i {
+                future::Either::A(l) => (Some(l), None),
+                future::Either::B(r) => (None, Some(r)),
+            })
+            .fold((Vec::new(), Vec::new()), |mut v, i| {
+                i.0.map(|i| v.0.push(i));
+                i.1.map(|i| v.1.push(i));
+                Ok(v)
+            }),
+    )
 }

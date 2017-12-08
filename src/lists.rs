@@ -75,16 +75,14 @@ where
 }
 
 fn split_crate_lines(lines: &[String]) -> Result<Vec<Crate>> {
-    Ok(
-        lines
-            .iter()
-            .filter_map(|line| {
-                line.find(':')
-                    .map(|i| (line[..i].to_string(), line[i + 1..].to_string()))
-            })
-            .map(|(name, version)| Crate::Version { name, version })
-            .collect(),
-    )
+    Ok(lines
+        .iter()
+        .filter_map(|line| {
+            line.find(':')
+                .map(|i| (line[..i].to_string(), line[i + 1..].to_string()))
+        })
+        .map(|(name, version)| Crate::Version { name, version })
+        .collect())
 }
 
 pub struct PopList;
@@ -237,13 +235,11 @@ impl List for GitHubCandidateList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        Ok(
-            file::read_lines(&Self::path())
-                .chain_err(|| "unable to read gh-candidates list. run `crater create-lists`?")?
-                .into_iter()
-                .map(|line| Crate::Repo { url: line })
-                .collect(),
-        )
+        Ok(file::read_lines(&Self::path())
+            .chain_err(|| "unable to read gh-candidates list. run `crater create-lists`?")?
+            .into_iter()
+            .map(|line| Crate::Repo { url: line })
+            .collect())
     }
 
     fn path() -> PathBuf {
@@ -299,13 +295,11 @@ impl List for GitHubAppList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        Ok(
-            file::read_lines(&GitHubAppList::path())
-                .chain_err(|| "unable to read gh-app list. run `crater create-lists`?")?
-                .into_iter()
-                .map(|line| Crate::Repo { url: line })
-                .collect(),
-        )
+        Ok(file::read_lines(&GitHubAppList::path())
+            .chain_err(|| "unable to read gh-app list. run `crater create-lists`?")?
+            .into_iter()
+            .map(|line| Crate::Repo { url: line })
+            .collect())
     }
 
     fn path() -> PathBuf {

@@ -319,18 +319,22 @@ fn parse_features(path: &Path) -> Result<Vec<String>> {
     }
 
     fn eat_token<'a>(s: Option<&'a str>, tok: &str) -> Option<&'a str> {
-        eat_whitespace(s).and_then(|s| if s.starts_with(tok) {
-            Some(&s[tok.len()..])
-        } else {
-            None
+        eat_whitespace(s).and_then(|s| {
+            if s.starts_with(tok) {
+                Some(&s[tok.len()..])
+            } else {
+                None
+            }
         })
     }
 
     fn eat_whitespace(s: Option<&str>) -> Option<&str> {
-        s.and_then(|s| if let Some(i) = s.find(|c: char| !c.is_whitespace()) {
-            Some(&s[i..])
-        } else {
-            None
+        s.and_then(|s| {
+            if let Some(i) = s.find(|c: char| !c.is_whitespace()) {
+                Some(&s[i..])
+            } else {
+                None
+            }
         })
     }
 

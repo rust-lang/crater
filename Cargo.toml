@@ -8,7 +8,7 @@ opt-level = 0
 
 [dependencies]
 arc-cell = "0.1.5"
-chrono = "0.3"
+chrono = "0.4"
 clap = "2.11.3"
 crates-index = "0.10"
 dotenv = "0.10.0"

@@ -1,8 +1,9 @@
 #![deny(unused_must_use)]
 
 use errors::*;
-use futures::{Future, Stream};
+use futures::{future, Future, Stream};
 use futures::stream::MergedItem;
+use futures_cpupool::CpuPool;
 use slog_scope;
 use std::convert::AsRef;
 use std::ffi::OsStr;
@@ -39,7 +40,10 @@ pub fn run_full(cd: Option<&Path>, name: &str, args: &[&str], env: &[(&str, &str
     }
 
     info!("running `{}`", cmdstr);
-    let out = log_command(cmd)?;
+    let out = log_command(cmd).map_err(|e| {
+        info!("error running command: {}", e);
+        e
+    })?;
 
     if out.status.success() {
         Ok(())
@@ -71,7 +75,10 @@ where
     }
 
     info!("running `{}`", cmdstr);
-    let out = log_command_capture(cmd)?;
+    let out = log_command_capture(cmd).map_err(|e| {
+        info!("error running command: {}", e);
+        e
+    })?;
 
     if out.status.success() {
         Ok((out.stdout, out.stderr))
@@ -94,7 +101,7 @@ fn log_command_capture(cmd: Command) -> Result<ProcessOutput> {
     log_command_(cmd, true)
 }
 
-const MAX_TIMEOUT_SECS: u64 = 60 * 10 * 2;
+const MAX_TIMEOUT_SECS: u64 = 60 * 15;
 const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 2;
 
 fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
@@ -113,6 +120,7 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     let child_id = child.id();
 
     let heartbeat_timeout = Duration::from_secs(HEARTBEAT_TIMEOUT_SECS);
+    let max_timeout = Duration::from_secs(MAX_TIMEOUT_SECS);
 
     let logger = slog_scope::logger();
     let stdout = lines(BufReader::new(stdout)).map({
@@ -141,15 +149,17 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
             e.into()
         },
     );
-    let output: Box<Future<Item = _, Error = Error>> = if capture {
+
+    let output = if capture {
         unmerge(output)
     } else {
-        Box::new(
-            output
-                .for_each(|_| Ok(()))
-                .and_then(|_| Ok((Vec::new(), Vec::new()))),
-        )
+        output
+            .for_each(|_| Ok(()))
+            .and_then(|_| Ok((Vec::new(), Vec::new())))
+            .boxed()
     };
+    let pool = CpuPool::new(1);
+    let output = pool.spawn(output);
 
     #[cfg(unix)]
     fn kill_process(id: u32) {
@@ -170,18 +180,32 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
         };
     }
 
-    let child = timer
-        .timeout(child, Duration::from_secs(MAX_TIMEOUT_SECS))
-        .map_err(|e| if e.kind() == io::ErrorKind::TimedOut {
+    let child = timer.timeout(child, max_timeout).map_err(
+        move |e| if e.kind() == io::ErrorKind::TimedOut {
             kill_process(child_id);
             ErrorKind::Timeout("max time of", MAX_TIMEOUT_SECS).into()
         } else {
             e.into()
-        });
+        },
+    );
 
 
     // TODO: Handle errors from tokio_timer better, in particular TimerError::TooLong
-    let (status, (stdout, stderr)) = core.run(Future::join(child, output))?;
+    let (status, (stdout, stderr)) = core.run(child.select2(output).then(|res| {
+        match res {
+            // child exited, finish collecting output
+            Ok(future::Either::A((status, output))) => {
+                output.map(move |sose| (status, sose)).boxed()
+            }
+            // output finished, wait for process to exit (possibly being killed by timeout)
+            Ok(future::Either::B((sose, child))) => child.map(move |status| (status, sose)).boxed(),
+            // child lived too long and was killed, finish collecting output so it goes to logs then
+            // return timeout error (not interested in errors with output at this point, so ignore)
+            Err(future::Either::A((e, output))) => output.then(|_| future::err(e)).boxed(),
+            // output collection failed (timeout, misc io error) and child was killed, drop timeout
+            Err(future::Either::B((e, _child))) => future::err(e).boxed(),
+        }
+    }))?;
 
     Ok(ProcessOutput {
         status: status,
@@ -191,23 +215,23 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(type_complexity))]
-fn unmerge<T1, T2, S>(reader: S) -> Box<Future<Item = (Vec<T1>, Vec<T2>), Error = S::Error>>
+fn unmerge<T1, T2, S>(reader: S) -> Box<Future<Item = (Vec<T1>, Vec<T2>), Error = S::Error> + Send>
 where
-    S: Stream<Item = MergedItem<T1, T2>> + 'static,
-    T1: 'static,
-    T2: 'static,
+    S: Stream<Item = MergedItem<T1, T2>> + Send + 'static,
+    S::Error: Send,
+    T1: Send + 'static,
+    T2: Send + 'static,
 {
-    Box::new(
-        reader
-            .map(|i| match i {
-                MergedItem::First(l) => (Some(l), None),
-                MergedItem::Second(r) => (None, Some(r)),
-                MergedItem::Both(l, r) => (Some(l), Some(r)),
-            })
-            .fold((Vec::new(), Vec::new()), |mut v, i| {
-                i.0.map(|i| v.0.push(i));
-                i.1.map(|i| v.1.push(i));
-                Ok(v)
-            }),
-    )
+    reader
+        .map(|i| match i {
+            MergedItem::First(l) => (Some(l), None),
+            MergedItem::Second(r) => (None, Some(r)),
+            MergedItem::Both(l, r) => (Some(l), Some(r)),
+        })
+        .fold((Vec::new(), Vec::new()), |mut v, i| {
+            i.0.map(|i| v.0.push(i));
+            i.1.map(|i| v.1.push(i));
+            Ok(v)
+        })
+        .boxed()
 }

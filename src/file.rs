@@ -22,11 +22,9 @@ pub fn write_lines(path: &Path, lines: &[String]) -> Result<()> {
 
 pub fn read_lines(path: &Path) -> Result<Vec<String>> {
     let contents = read_string(path)?;
-    Ok(
-        contents
-            .lines()
-            .map(|l| l.to_string())
-            .filter(|l| !l.chars().all(|c| c.is_whitespace()))
-            .collect(),
-    )
+    Ok(contents
+        .lines()
+        .map(|l| l.to_string())
+        .filter(|l| !l.chars().all(|c| c.is_whitespace()))
+        .collect())
 }

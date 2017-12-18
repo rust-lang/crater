@@ -193,7 +193,7 @@ fn test_build_and_test(
         // First build, with --no-run
         test_r = Some(toolchain.run_cargo(
             &ex.name,
-            source_path.into(),
+            source_path,
             &["test", "--frozen", "--no-run"],
             CargoState::Locked,
         ));
@@ -201,7 +201,7 @@ fn test_build_and_test(
         test_r = test_r.map(|_| {
             toolchain.run_cargo(
                 &ex.name,
-                source_path.into(),
+                source_path,
                 &["test", "--frozen"],
                 CargoState::Locked,
             )
@@ -225,7 +225,7 @@ fn test_build_only(
 ) -> Result<TestResult> {
     let r = toolchain.run_cargo(
         &ex.name,
-        source_path.into(),
+        source_path,
         &["build", "--frozen"],
         CargoState::Locked,
     );
@@ -244,7 +244,7 @@ fn test_check_only(
 ) -> Result<TestResult> {
     let r = toolchain.run_cargo(
         &ex.name,
-        source_path.into(),
+        source_path,
         &["check", "--frozen"],
         CargoState::Locked,
     );
@@ -319,18 +319,22 @@ fn parse_features(path: &Path) -> Result<Vec<String>> {
     }
 
     fn eat_token<'a>(s: Option<&'a str>, tok: &str) -> Option<&'a str> {
-        eat_whitespace(s).and_then(|s| if s.starts_with(tok) {
-            Some(&s[tok.len()..])
-        } else {
-            None
+        eat_whitespace(s).and_then(|s| {
+            if s.starts_with(tok) {
+                Some(&s[tok.len()..])
+            } else {
+                None
+            }
         })
     }
 
     fn eat_whitespace(s: Option<&str>) -> Option<&str> {
-        s.and_then(|s| if let Some(i) = s.find(|c: char| !c.is_whitespace()) {
-            Some(&s[i..])
-        } else {
-            None
+        s.and_then(|s| {
+            if let Some(i) = s.find(|c: char| !c.is_whitespace()) {
+                Some(&s[i..])
+            } else {
+                None
+            }
         })
     }
 

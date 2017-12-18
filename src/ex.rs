@@ -253,7 +253,10 @@ impl Experiment {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub enum ExCrate {
-    Version { name: String, version: String },
+    Version {
+        name: String,
+        version: String,
+    },
     Repo {
         org: String,
         name: String,

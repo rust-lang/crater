@@ -11,7 +11,7 @@ use std::time::Duration;
 use tar::Archive;
 use util;
 
-const CRATES_ROOT: &'static str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
+const CRATES_ROOT: &str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
 pub fn prepare(list: &[ExCrate]) -> Result<()> {
     info!("preparing {} crates", list.len());
@@ -74,7 +74,7 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
 
     fs::create_dir_all(&dir)?;
 
-    let mut tar = Archive::new(GzDecoder::new(bin)?);
+    let mut tar = Archive::new(GzDecoder::new(bin));
     let r = unpack_without_first_dir(&mut tar, dir).chain_err(|| "unable to unpack crate tarball");
 
     if r.is_err() {

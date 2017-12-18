@@ -66,9 +66,8 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
         }
     }
 
-    util::try_hard(|| {
-        run::run("git", &["clone", &url, &dir.to_string_lossy()], &[])
-    }).chain_err(|| format!("unable to clone {}", url))?;
+    util::try_hard(|| run::run("git", &["clone", &url, &dir.to_string_lossy()], &[]))
+        .chain_err(|| format!("unable to clone {}", url))?;
 
     if !exists() {
         Err(format!("commit {} does not exist in {}", sha, url).into())

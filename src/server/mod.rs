@@ -1,5 +1,5 @@
 use arc_cell::ArcCell;
-use futures::{self, BoxFuture, Future, Stream};
+use futures::{self, Future, Stream};
 use futures_cpupool::CpuPool;
 use handlebars::Handlebars;
 use hyper::{self, Get, Post, StatusCode};
@@ -20,8 +20,7 @@ mod api;
 pub struct Data;
 
 type Handler = Box<
-    Fn(&Server, Request, Params)
-        -> BoxFuture<Response, hyper::Error>
+    Fn(&Server, Request, Params) -> Box<Future<Item = Response, Error = hyper::Error>>
         + Sync
         + Send
         + 'static,
@@ -32,6 +31,7 @@ struct Server {
     pool: CpuPool,
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 impl Server {
     fn handle_get<F, S>(
         &self,
@@ -51,7 +51,7 @@ impl Server {
         let response = Response::new()
             .with_header(ContentType::json())
             .with_body(serde_json::to_string(&result).unwrap());
-        futures::future::ok(response).boxed()
+        Box::new(futures::future::ok(response))
     }
 
     fn handle_static(
@@ -65,7 +65,7 @@ impl Server {
             return self.error(StatusCode::BadRequest);
         };
         let response = Response::new().with_header(content_type).with_body(body);
-        futures::future::ok(response).boxed()
+        Box::new(futures::future::ok(response))
     }
 
     fn handle_template<F, S>(
@@ -92,7 +92,7 @@ impl Server {
             .template_render(template, &context)
             .unwrap();
         let response = Response::new().with_header(content_type).with_body(body);
-        futures::future::ok(response).boxed()
+        Box::new(futures::future::ok(response))
     }
 
     fn handle_post<F, D, S>(
@@ -115,45 +115,43 @@ impl Server {
             .0;
         if length > 10_000 {
             // 10 kB
-            return futures::future::err(hyper::Error::TooLarge).boxed();
+            return Box::new(futures::future::err(hyper::Error::TooLarge));
         }
         let data = self.data.get();
-        self.pool
-            .spawn_fn(move || {
-                req.body()
-                    .fold(Vec::new(), |mut acc, chunk| {
-                        acc.extend_from_slice(&*chunk);
-                        futures::future::ok::<_, <Self as Service>::Error>(acc)
-                    })
-                    .map(move |body| {
-                        let body: D = match serde_json::from_slice(&body) {
-                            Ok(d) => d,
-                            Err(err) => {
-                                error!(
-                                    "failed to deserialize request {}: {:?}",
-                                    String::from_utf8_lossy(&body),
-                                    err
-                                );
-                                return Response::new()
-                                    .with_header(ContentType::plaintext())
-                                    .with_body(format!("Failed to deserialize request; {:?}", err));
-                            }
-                        };
-                        let result = handler(body, &data, params);
-                        Response::new()
-                            .with_header(ContentType::json())
-                            .with_body(serde_json::to_string(&result).unwrap())
-                    })
-            })
-            .boxed()
+        Box::new(self.pool.spawn_fn(move || {
+            req.body()
+                .fold(Vec::new(), |mut acc, chunk| {
+                    acc.extend_from_slice(&*chunk);
+                    futures::future::ok::<_, <Self as Service>::Error>(acc)
+                })
+                .map(move |body| {
+                    let body: D = match serde_json::from_slice(&body) {
+                        Ok(d) => d,
+                        Err(err) => {
+                            error!(
+                                "failed to deserialize request {}: {:?}",
+                                String::from_utf8_lossy(&body),
+                                err
+                            );
+                            return Response::new()
+                                .with_header(ContentType::plaintext())
+                                .with_body(format!("Failed to deserialize request; {:?}", err));
+                        }
+                    };
+                    let result = handler(body, &data, params);
+                    Response::new()
+                        .with_header(ContentType::json())
+                        .with_body(serde_json::to_string(&result).unwrap())
+                })
+        }))
     }
 
     fn error(&self, status: StatusCode) -> <Server as Service>::Future {
-        futures::future::ok(
+        Box::new(futures::future::ok(
             Response::new()
                 .with_header(ContentType::html())
                 .with_status(status),
-        ).boxed()
+        ))
     }
 }
 
@@ -161,7 +159,7 @@ impl Service for Server {
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
-    type Future = BoxFuture<Self::Response, Self::Error>;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: Request) -> Self::Future {
         info!("handling: req.path()={:?}", req.path());

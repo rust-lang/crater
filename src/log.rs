@@ -1,4 +1,4 @@
-use chrono::UTC;
+use chrono::Utc;
 use dirs::LOG_DIR;
 use errors::*;
 use slog::{self, Drain};
@@ -15,7 +15,7 @@ use std::time::Instant;
 fn global_log_name() -> &'static Path {
     lazy_static! {
         static ref PATH: PathBuf = LOG_DIR.join(
-                format!("{}", UTC::now().format("%Y-%m-%dT%H-%M-%S.%f")));
+                format!("{}", Utc::now().format("%Y-%m-%dT%H-%M-%S.%f")));
     };
     &*PATH
 }

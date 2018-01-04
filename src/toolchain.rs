@@ -14,8 +14,7 @@ use util;
 
 const RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
 
-const RUST_CI_TRY_BASE_URL: &str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds-try";
-const RUST_CI_MASTER_BASE_URL: &str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds";
+const RUST_CI_BASE_URL: &str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds";
 
 const RUST_CI_COMPONENTS: [(&str, &str); 3] = [
     ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.xz"),
@@ -41,8 +40,9 @@ impl Toolchain {
 
         match *self {
             Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
-            Toolchain::Master { ref sha } => init_toolchain_from_ci(RUST_CI_MASTER_BASE_URL, sha)?,
-            Toolchain::TryBuild { ref sha } => init_toolchain_from_ci(RUST_CI_TRY_BASE_URL, sha)?,
+            Toolchain::Master { ref sha } | Toolchain::TryBuild { ref sha } => {
+                init_toolchain_from_ci(RUST_CI_BASE_URL, sha)?
+            }
         }
 
         Ok(())

@@ -176,39 +176,41 @@ fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     Ok(())
 }
 
+fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain) -> Result<()> {
+    toolchain
+        .run_cargo(
+            &ex.name,
+            source_path,
+            &["build", "--frozen"],
+            CargoState::Locked,
+        )
+        .map(|_| {
+            toolchain.run_cargo(
+                &ex.name,
+                source_path,
+                &["test", "--frozen", "--no-run"],
+                CargoState::Locked,
+            )
+        })
+        .map(|_| ())
+}
+
 fn test_build_and_test(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
 ) -> Result<TestResult> {
-    let build_r = toolchain.run_cargo(
-        &ex.name,
-        source_path,
-        &["build", "--frozen"],
-        CargoState::Locked,
-    );
-    let mut test_r;
-
-    if build_r.is_ok() {
-        // First build, with --no-run
-        test_r = Some(toolchain.run_cargo(
+    let build_r = build(ex, source_path, toolchain);
+    let test_r = if build_r.is_ok() {
+        Some(toolchain.run_cargo(
             &ex.name,
             source_path,
-            &["test", "--frozen", "--no-run"],
+            &["test", "--frozen"],
             CargoState::Locked,
-        ));
-        // Then run
-        test_r = test_r.map(|_| {
-            toolchain.run_cargo(
-                &ex.name,
-                source_path,
-                &["test", "--frozen"],
-                CargoState::Locked,
-            )
-        });
+        ))
     } else {
-        test_r = None;
-    }
+        None
+    };
 
     Ok(match (build_r, test_r) {
         (Err(_), None) => TestResult::BuildFail,
@@ -223,13 +225,7 @@ fn test_build_only(
     source_path: &Path,
     toolchain: &Toolchain,
 ) -> Result<TestResult> {
-    let r = toolchain.run_cargo(
-        &ex.name,
-        source_path,
-        &["build", "--frozen"],
-        CargoState::Locked,
-    );
-
+    let r = build(ex, source_path, toolchain);
     if r.is_ok() {
         Ok(TestResult::TestPass)
     } else {

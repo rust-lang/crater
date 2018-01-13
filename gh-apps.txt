@@ -564,6 +564,7 @@ https://github.com/brocode/fblog
 https://github.com/brocode/fw
 https://github.com/brson/cargo-index-tool
 https://github.com/brson/httptest
+https://github.com/brson/hello-rs
 https://github.com/brunodea/gebemula
 https://github.com/bschwind/mqtt
 https://github.com/buntine/rust-crawler

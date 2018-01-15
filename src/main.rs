@@ -1,7 +1,5 @@
 #![deny(unused_extern_crates)]
-extern crate clap;
 extern crate dotenv;
-extern crate result;
 #[macro_use(slog_info, slog_log, slog_record, slog_record_static, slog_b, slog_kv)]
 extern crate slog;
 #[macro_use]
@@ -14,7 +12,7 @@ extern crate crater;
 
 mod cli;
 
-use clap::{App, AppSettings};
+use structopt::StructOpt;
 use crater::{log, util};
 use crater::errors::*;
 use std::panic;
@@ -49,17 +47,5 @@ fn main() {
 }
 
 fn main_() -> Result<()> {
-    let matches = cli().get_matches();
-    let cmd = cli::conv::clap_args_to_cmd(&matches)?;
-    cmd.run()
-}
-
-fn cli() -> App<'static, 'static> {
-    App::new("crater")
-        .version(env!("CARGO_PKG_VERSION"))
-        .about("Kaboom!")
-        .setting(AppSettings::VersionlessSubcommands)
-        .setting(AppSettings::DeriveDisplayOrder)
-        .setting(AppSettings::SubcommandRequiredElseHelp)
-        .subcommands(cli::conv::clap_cmds())
+    cli::Crater::from_args().run()
 }

@@ -14,7 +14,7 @@ use util;
 
 const RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
 
-const RUST_CI_BASE_URL: &str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds";
+const RUST_CI_BASE_URL: &str = "https://rust-lang-ci.s3.amazonaws.com/rustc-builds-alt";
 
 const RUST_CI_COMPONENTS: [(&str, &str); 3] = [
     ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.xz"),

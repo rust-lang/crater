@@ -89,7 +89,7 @@ defaults to `default`. Here's what each of the steps does:
 
 ### Custom toolchains
 
-Toolchains for rust PRs that have been built by by asking bors to try a PR can
+Toolchains for rust PRs that have been built by asking bors to try a PR can
 be specified using `try#<SHA1 of try merge>`. You will probably want to specify
 the comparison commit as `master#<SHA1 of master before try merge>`.
 

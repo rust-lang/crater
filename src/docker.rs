@@ -60,7 +60,6 @@ pub struct ContainerConfig<'a> {
     pub env: Vec<(&'static str, String)>,
 }
 
-
 pub fn run(config: &ContainerConfig) -> Result<()> {
     let c = Container::create_container(config)?;
     defer!{{

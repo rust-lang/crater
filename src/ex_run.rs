@@ -147,18 +147,11 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
             );
             info!(
                 "{} crates tested in {} s. {:.2} s/crate. {} crates remaining. ~{}",
-                completed_crates,
-                elapsed,
-                seconds_per_test,
-                remaining_tests,
-                remaining_time_str
+                completed_crates, elapsed, seconds_per_test, remaining_tests, remaining_time_str
             );
             info!(
                 "results: {} build-fail / {} test-fail / {} test-pass / {} errors",
-                sum_build_fail,
-                sum_test_fail,
-                sum_test_pass,
-                sum_errors
+                sum_build_fail, sum_test_fail, sum_test_pass, sum_errors
             );
         }
     }

@@ -47,7 +47,6 @@ impl FromStr for S3Prefix {
     }
 }
 
-
 pub struct S3Writer {
     prefix: S3Prefix,
     client: Box<S3>,

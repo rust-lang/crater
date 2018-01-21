@@ -65,7 +65,6 @@ pub mod ex_config {
     }
 }
 
-
 pub mod template_report {
     use report::Context;
     use server::{Data, Params};

@@ -35,11 +35,13 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
     info!("ensuring sha {} in {}", sha, url);
     let depths = &[1, 10, 100, 1000];
 
-    let exists = || if dir.exists() {
-        let r = run::cd_run(dir, "git", &["log", sha], &[]);
-        r.is_ok()
-    } else {
-        false
+    let exists = || {
+        if dir.exists() {
+            let r = run::cd_run(dir, "git", &["log", sha], &[]);
+            r.is_ok()
+        } else {
+            false
+        }
     };
 
     if exists() {

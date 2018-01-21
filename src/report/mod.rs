@@ -44,7 +44,6 @@ struct BuildTestResult {
     log: String,
 }
 
-
 pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
     let db = FileDB::for_experiment(ex);
     assert_eq!(ex.toolchains.len(), 2);
@@ -109,7 +108,6 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
     Ok(())
 }
 
-
 pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
@@ -141,7 +139,6 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
 
     Ok(())
 }
-
 
 fn crate_to_name(c: &ex::ExCrate) -> String {
     match *c {
@@ -198,7 +195,6 @@ pub struct Context {
     pub results_url: String,
     pub static_url: String,
 }
-
 
 fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
     let html_in = include_str!("../../template/report.html");

@@ -32,7 +32,6 @@ pub enum ExCrateSelect {
     Top100,
 }
 
-
 pub fn ex_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name)
 }
@@ -222,7 +221,6 @@ fn capture_shas(ex: &Experiment) -> Result<()> {
 
     Ok(())
 }
-
 
 impl Experiment {
     pub fn load_shas(&self) -> Result<HashMap<String, String>> {

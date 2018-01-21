@@ -192,7 +192,6 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
         }
     });
 
-
     // TODO: Handle errors from tokio_timer better, in particular TimerError::TooLong
     let (status, (stdout, stderr)) = core.run(child.select2(output).then(|res| {
         let future: Box<Future<Item = _, Error = _>> = match res {

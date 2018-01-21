@@ -12,11 +12,11 @@ extern crate crater;
 
 mod cli;
 
-use structopt::StructOpt;
 use crater::{log, util};
 use crater::errors::*;
 use std::panic;
 use std::process;
+use structopt::StructOpt;
 
 fn main() {
     // Ignore errors loading `.env` file.

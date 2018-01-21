@@ -73,9 +73,12 @@ pub enum Crater {
 
     #[structopt(name = "define-ex", about = "define an experiment")]
     DefineEx {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
-        #[structopt(name = "tc-1")] tc1: Toolchain,
-        #[structopt(name = "tc-2")] tc2: Toolchain,
+        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        ex: Ex,
+        #[structopt(name = "tc-1")]
+        tc1: Toolchain,
+        #[structopt(name = "tc-2")]
+        tc2: Toolchain,
         #[structopt(name = "mode", long = "mode",
                     default_value_raw = "ExMode::BuildAndTest.to_str()",
                     possible_values_raw = "&[
@@ -98,7 +101,8 @@ pub enum Crater {
 
     #[structopt(name = "prepare-ex", about = "prepare shared and local data for experiment")]
     PrepareEx {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
+        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        ex: Ex,
     },
 
     #[structopt(name = "copy-ex", about = "copy all data from one experiment to another")]
@@ -109,42 +113,53 @@ pub enum Crater {
 
     #[structopt(name = "delete-ex", about = "delete shared data for experiment")]
     DeleteEx {
-        #[structopt(long = "ex", default_value = "default")] ex: Ex,
+        #[structopt(long = "ex", default_value = "default")]
+        ex: Ex,
     },
 
     #[structopt(name = "delete-all-target-dirs",
                 about = "delete the cargo target dirs for an experiment")]
     DeleteAllTargetDirs {
-        #[structopt(long = "ex", default_value = "default")] ex: Ex,
+        #[structopt(long = "ex", default_value = "default")]
+        ex: Ex,
     },
 
     #[structopt(name = "delete-all-results", about = "delete all results for an experiment")]
     DeleteAllResults {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
+        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        ex: Ex,
     },
 
     #[structopt(name = "delete-result", about = "delete results for a crate from an experiment")]
     DeleteResult {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
-        #[structopt(name = "toolchain", long = "toolchain", short = "t")] tc: Option<Toolchain>,
-        #[structopt(name = "crate")] krate: ExCrate,
+        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        ex: Ex,
+        #[structopt(name = "toolchain", long = "toolchain", short = "t")]
+        tc: Option<Toolchain>,
+        #[structopt(name = "crate")]
+        krate: ExCrate,
     },
 
     #[structopt(name = "run", about = "run an experiment, with all toolchains")]
     Run {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
+        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        ex: Ex,
     },
 
     #[structopt(name = "run-tc", about = "run an experiment, with a single toolchain")]
     RunTc {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
-        #[structopt(name = "toolchain")] tc: Toolchain,
+        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        ex: Ex,
+        #[structopt(name = "toolchain")]
+        tc: Toolchain,
     },
 
     #[structopt(name = "gen-report", about = "generate the experiment report")]
     GenReport {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")] ex: Ex,
-        #[structopt(name = "destination")] dest: Dest,
+        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        ex: Ex,
+        #[structopt(name = "destination")]
+        dest: Dest,
     },
 
     #[structopt(name = "publish-report", about = "publish the experiment report to S3")]

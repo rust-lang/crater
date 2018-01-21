@@ -31,7 +31,6 @@ where
     slog_scope::scope(&slog::Logger::root(drain, slog_o!()), f)
 }
 
-
 lazy_static! {
     static ref START_TIME: Instant = Instant::now();
 }
@@ -66,7 +65,6 @@ pub fn init() -> slog_scope::GlobalLoggerGuard {
 
     let drain = slog::Duplicate(term, file).fuse();
     let _guard = slog_scope::set_global_logger(slog::Logger::root(drain, slog_o!{}));
-
 
     info!(
         "program args: {}",

@@ -82,7 +82,6 @@ pub struct ResultWriter<'a> {
     toolchain: Toolchain,
 }
 
-
 impl<'a> CrateResultWriter for ResultWriter<'a> {
     fn delete_result(&self) -> Result<()> {
         let result_dir = self.result_dir();
@@ -137,7 +136,6 @@ impl<'a> ResultWriter<'a> {
         Ok(())
     }
 
-
     fn result_dir(&self) -> PathBuf {
         ex_dir(&self.db.ex.name)
             .join("res")
@@ -152,8 +150,6 @@ impl<'a> ResultWriter<'a> {
         self.result_dir().join("log.txt")
     }
 }
-
-
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum TestResult {

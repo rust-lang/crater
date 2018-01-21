@@ -4,13 +4,13 @@ language: rust
 cache: cargo
 rust:
   - stable
-  - nightly-2017-12-07
+  - nightly-2018-01-20
 
 env:
   global:
     # Versions known to work with pinned nightly.
-    - CLIPPY_VERSION=0.0.175
-    - RUSTFMT_VERSION=0.2.17
+    - CLIPPY_VERSION=0.0.180
+    - RUSTFMT_VERSION=0.3.6
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH

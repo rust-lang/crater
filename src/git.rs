@@ -13,6 +13,7 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
             "git",
             &["clone", "--depth", "1", &url, &dir.to_string_lossy()],
             &[],
+            false,
         ).chain_err(|| format!("unable to clone {}", url));
 
         if r.is_err() && dir.exists() {
@@ -60,6 +61,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
                     &dir.to_string_lossy(),
                 ],
                 &[],
+                false,
             )
         }).chain_err(|| format!("unable to clone {}", url))?;
 
@@ -68,7 +70,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
         }
     }
 
-    util::try_hard(|| run::run("git", &["clone", &url, &dir.to_string_lossy()], &[]))
+    util::try_hard(|| run::run("git", &["clone", &url, &dir.to_string_lossy()], &[], false))
         .chain_err(|| format!("unable to clone {}", url))?;
 
     if !exists() {

@@ -110,6 +110,7 @@ fn rustup_run(name: &str, args: &[&str]) -> Result<()> {
         name,
         args,
         &[("CARGO_HOME", &*CARGO_HOME), ("RUSTUP_HOME", &*RUSTUP_HOME)],
+        false,
     )
 }
 
@@ -244,6 +245,7 @@ impl Toolchain {
         source_dir: &Path,
         args: &[&str],
         cargo_state: CargoState,
+        quiet: bool,
     ) -> Result<()> {
         let toolchain_name = self.rustup_name();
         let ex_target_dir = self.target_dir(ex_name);
@@ -267,6 +269,6 @@ impl Toolchain {
             // This is configured as CARGO_TARGET_DIR by the docker container itself
             target_dir: (ex_target_dir, docker::Perm::ReadWrite),
         };
-        docker::run(&docker::rust_container(rust_env))
+        docker::run(&docker::rust_container(rust_env), quiet)
     }
 }

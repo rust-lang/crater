@@ -16,6 +16,7 @@ pub fn build_container(docker_env: &str) -> Result<()> {
         "docker",
         &["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"],
         &[],
+        false,
     )
 }
 
@@ -60,14 +61,14 @@ pub struct ContainerConfig<'a> {
     pub env: Vec<(&'static str, String)>,
 }
 
-pub fn run(config: &ContainerConfig) -> Result<()> {
+pub fn run(config: &ContainerConfig, quiet: bool) -> Result<()> {
     let c = Container::create_container(config)?;
     defer!{{
         if let Err(e) = c.delete() {
             error!{"Cannot delete container: {}", e; "container" => &c.id}
         }
     }}
-    c.run()
+    c.run(quiet)
 }
 
 pub fn rust_container(config: RustEnv) -> ContainerConfig {
@@ -161,11 +162,11 @@ impl Container {
         Ok(Self { id: out[0].clone() })
     }
 
-    pub fn run(&self) -> Result<()> {
-        run::run("docker", &["start", "-a", &self.id], &[])
+    pub fn run(&self, quiet: bool) -> Result<()> {
+        run::run("docker", &["start", "-a", &self.id], &[], quiet)
     }
 
     pub fn delete(&self) -> Result<()> {
-        run::run("docker", &["rm", "-f", &self.id], &[])
+        run::run("docker", &["rm", "-f", &self.id], &[], false)
     }
 }

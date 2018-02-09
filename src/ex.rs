@@ -457,7 +457,7 @@ fn capture_lockfile(
 ) -> Result<()> {
     let args = &["generate-lockfile", "--manifest-path", "Cargo.toml"];
     toolchain
-        .run_cargo(&ex.name, path, args, CargoState::Unlocked)
+        .run_cargo(&ex.name, path, args, CargoState::Unlocked, false)
         .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
 
     let src_lockfile = &path.join("Cargo.lock");
@@ -507,7 +507,7 @@ fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
 
             let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
             toolchain
-                .run_cargo(&ex.name, path, args, CargoState::Unlocked)
+                .run_cargo(&ex.name, path, args, CargoState::Unlocked, false)
                 .chain_err(|| format!("unable to fetch deps for {}", c))?;
 
             Ok(())

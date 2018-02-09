@@ -513,7 +513,6 @@ HipsterBrown/exercism-rust
 HipsterBrown/minigrep
 HongbinZhou/learn_rust
 Hoonter/GDoH
-Hopman/roest
 Hossein-Noroozpour/vulkust
 Hoverbear/example
 Hoverbear/raft-rs
@@ -1474,7 +1473,6 @@ aepsil0n/carboxyl
 aepsil0n/carboxyl_time
 aeqwa/aeq
 afck/crosswords-rs
-afonso360/td
 afshinm/juggernaut
 afshinm/morq
 agatan/gravel-lang
@@ -1599,7 +1597,6 @@ almindor/termpro
 alokmenghrajani/adventofcode
 alokmenghrajani/random_stuff
 alreece45/amqp-rs
-althea-mesh/guac-light-client
 alvare/imgsort
 alygin/usage
 alyx/stalin
@@ -1665,7 +1662,6 @@ andrewjstone/rabble
 andrewsardone/rust-playground
 andreyrmg/advent-of-code
 andrioni/rust-mpfr
-andriy-kuz/consensus_from_trust
 andy128k/getfavicon
 andydude/rust-sha
 andydude/rust-webclient
@@ -1717,7 +1713,6 @@ anurse/encoding_literals
 anvie/kafi
 anvie/litcrypt.rs
 anvie/sso
-aochagavia/Infi-AOC
 aochagavia/Rust-Sudoku-Solver
 aochagavia/RustCalc
 aochagavia/Rustic-Irc
@@ -1941,7 +1936,6 @@ bbqsrc/libyaml-rs
 bcj/brainstackrs
 bcorrigan/misc
 bdejean/cmd_cache
-beedaddy/print_test
 beefsack/jch-rs
 behos/dataframes
 bekker/hangeul-rs
@@ -2006,7 +2000,6 @@ birkenfeld/advent17
 birkenfeld/charon-rs
 birkenfeld/synacor-rs
 birlscript/birlscript
-bit101/bit-rust-dev
 bitemyapp/simon-speck-rs
 bitex-la/rust-http-stub
 bitshifter/sortrs
@@ -2652,7 +2645,6 @@ danielwippermann/resol-vbus.rs
 danigm/fractal
 danluu/rust-experiments
 dannyfritz/rust-examples
-dannypsnl/qked
 danoctavian/lil_server
 danpersa/rusty-team
 danslapman/rust-mdo-future
@@ -3705,7 +3697,6 @@ huhlig/ferrite
 hukumka/delaunay_rs
 human9/rsif
 humb1t/anduin
-hungweiwu/guessing-game
 huntaub/ajidamal
 huntaub/cs4414-ps3
 hunter-packages/hunter-bot
@@ -4479,7 +4470,6 @@ knpwrs/neon-examples
 knsd/daemonize
 knsd/pickle
 knsd/tokio-ping
-knwabueze/redox
 koenw/resh
 koivunej/derive-into-owned
 koko1000ban/k-shortest-paths
@@ -5028,7 +5018,6 @@ mhallin/swim-rs
 mhallin/vectorclock-rs
 mheese/mhwho
 mheistermann/lightfield_render
-mhsjlw/hardware-accelerated-ducks
 mhusmann/minigrep
 micahjohnston/paws.rs
 michael-robbins/filemerger
@@ -6576,7 +6565,6 @@ shmutalov/monetdb-rust
 shssoichiro/oxipng
 shterrett/tokio-tutorials
 shuhei/colortty
-shunyata/cargo-hello-world
 shyba/rust-learning-examples
 shybyte/exercism-rust
 shybyte/risp
@@ -7527,7 +7515,6 @@ wk-j/rust-up
 wkz/rust-editline
 wlentz/scan_fmt
 wmatyjewicz/rascal
-wmedrano/dx-pi
 wolfwood/go
 wongnai/imagecleanup
 wooferzfg/PuzzleHack

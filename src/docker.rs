@@ -100,6 +100,7 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
         ("USER_ID", format!("{}", user_id())),
         ("CMD", config.args.join(" ")),
         ("CARGO_INCREMENTAL", "0".to_string()),
+        ("RUST_BACKTRACE", "full".to_string()),
     ];
 
     ContainerConfig {

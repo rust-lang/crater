@@ -148,7 +148,6 @@ https://github.com/Henning-K/cargo-authors
 https://github.com/HenryTheCat/RUSThello
 https://github.com/HewlettPackard/shoveller
 https://github.com/HipsterBrown/minigrep
-https://github.com/Hopman/roest
 https://github.com/Hoverbear/rust-rosetta
 https://github.com/HowNetWorks/ama
 https://github.com/HybridEidolon/rustvita
@@ -386,7 +385,6 @@ https://github.com/adinapoli/profiv
 https://github.com/adinapoli/viktor
 https://github.com/adnelson/nix-browse
 https://github.com/aeleos/BoringOS
-https://github.com/afonso360/td
 https://github.com/agatan/squeeze-rs
 https://github.com/agatan/yoin
 https://github.com/agersant/polaris
@@ -421,7 +419,6 @@ https://github.com/alextanhongpin/rust-rocket
 https://github.com/algermissen/web-rust
 https://github.com/algesten/rabbiteer-rs
 https://github.com/allan-simon/sentence-aligner-rust
-https://github.com/althea-mesh/guac-light-client
 https://github.com/amar-laksh/workstation
 https://github.com/amcarthur/hammer
 https://github.com/amrhassan/pazuzu
@@ -439,7 +436,6 @@ https://github.com/andrewcsmith/reconstruction
 https://github.com/andrewdavidmackenzie/libproc-rs
 https://github.com/andrewhickman/lang
 https://github.com/andreyrmg/advent-of-code
-https://github.com/andriy-kuz/consensus_from_trust
 https://github.com/andygrove/tmp102-rs
 https://github.com/angusholder/gba-emulator
 https://github.com/anowell/servur
@@ -451,7 +447,6 @@ https://github.com/antiochp/grin-keybase-wallet
 https://github.com/anton-okolelov/htmlwebinar
 https://github.com/antoyo/titanium
 https://github.com/anvie/litcrypt.rs
-https://github.com/aochagavia/Infi-AOC
 https://github.com/aochagavia/Rust-Sudoku-Solver
 https://github.com/aochagavia/rocket
 https://github.com/aochagavia/rocket_wasm
@@ -517,7 +512,6 @@ https://github.com/bash/coop-rust
 https://github.com/baskerville/fdb
 https://github.com/baskerville/plato
 https://github.com/bbatha/advent2017
-https://github.com/beedaddy/print_test
 https://github.com/bellskinling/rust_big_number
 https://github.com/belst/discord-irc-bridge
 https://github.com/belst/telegram-irc-bridge
@@ -531,7 +525,6 @@ https://github.com/bgluzman/rust-sdl2-template
 https://github.com/bgourlie/rs-nes
 https://github.com/bhamrick/rust_splay
 https://github.com/birdperson-lives/rust-game-of-life
-https://github.com/bit101/bit-rust-dev
 https://github.com/bitsparrow/bitsparrow-derive
 https://github.com/bkoropoff/rust-viewbox
 https://github.com/blakehawkins/pi-status-rs
@@ -691,7 +684,6 @@ https://github.com/danielrenninghoff/yahtzeesolve
 https://github.com/danielschemmel/drsat
 https://github.com/danielwaterworth/qbf-rust
 https://github.com/danielwippermann/resol-vbus.rs
-https://github.com/dannypsnl/qked
 https://github.com/danpersa/rusty-team
 https://github.com/daramos/rustql
 https://github.com/darkstalker/triangles
@@ -965,7 +957,6 @@ https://github.com/hopey-dishwasher/termpix
 https://github.com/hrysd/rust-on-heroku-with-docker
 https://github.com/htmldrum/file-server-rs
 https://github.com/humb1t/anduin
-https://github.com/hungweiwu/guessing-game
 https://github.com/huntaub/ajidamal
 https://github.com/hunterlester/safe_iot
 https://github.com/huonw/multibuilder
@@ -1162,7 +1153,6 @@ https://github.com/klaus-rs/klaus
 https://github.com/klemens/hwpb
 https://github.com/klutzy/garbage
 https://github.com/knipferrc/fl
-https://github.com/knwabueze/redox
 https://github.com/koenw/resh
 https://github.com/kotetuco/Rust-BareMetal-GBA-Sample
 https://github.com/koute/cargo-web
@@ -1299,7 +1289,6 @@ https://github.com/mgattozzi/nightly-rust
 https://github.com/mgax/dedup
 https://github.com/mhallin/loadbalancer-rs
 https://github.com/mheistermann/lightfield_render
-https://github.com/mhsjlw/hardware-accelerated-ducks
 https://github.com/michael-robbins/filemerger
 https://github.com/michael-the-grey/fuzzy_command_search
 https://github.com/michael-younkin/lcc
@@ -1680,7 +1669,6 @@ https://github.com/sejr/core-interpreter
 https://github.com/selfup/oxidizy
 https://github.com/semahawk/hc
 https://github.com/semantic-rs/semantic-rs
-https://github.com/seojangho/cacaotalk
 https://github.com/servo/servo
 https://github.com/servo/webrender
 https://github.com/sethlopezme/strez
@@ -1696,7 +1684,6 @@ https://github.com/shmutalov/LearnRust-abstract_factory
 https://github.com/shmutalov/growingtree-maze
 https://github.com/shssoichiro/oxipng
 https://github.com/shuhei/colortty
-https://github.com/shunyata/cargo-hello-world
 https://github.com/shybyte/risp
 https://github.com/siddhanathan/rsed
 https://github.com/siddontang/mrest
@@ -1909,7 +1896,6 @@ https://github.com/willmurphyscode/calc-repl
 https://github.com/wilsoniya/filterless
 https://github.com/wireapp/coax
 https://github.com/wizh/rusty-8
-https://github.com/wmedrano/dx-pi
 https://github.com/wshatch/lisp_compiler
 https://github.com/wurstscript/wurst-jar-wrapper
 https://github.com/wwared/rgb

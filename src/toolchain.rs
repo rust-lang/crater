@@ -3,7 +3,7 @@ use dl;
 use docker;
 use errors::*;
 use reqwest;
-use run;
+use run::RunCommand;
 use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
 use std::io;
@@ -106,12 +106,10 @@ fn rustup_exists() -> bool {
 }
 
 fn rustup_run(name: &str, args: &[&str]) -> Result<()> {
-    run::run(
-        name,
-        args,
-        &[("CARGO_HOME", &*CARGO_HOME), ("RUSTUP_HOME", &*RUSTUP_HOME)],
-        false,
-    )
+    RunCommand::new(name, args)
+        .env("CARGO_HOME", &*CARGO_HOME)
+        .env("RUSTUP_HOME", &*RUSTUP_HOME)
+        .run()
 }
 
 fn install_rustup() -> Result<()> {

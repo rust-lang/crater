@@ -5,7 +5,7 @@ use ex_run;
 use file;
 use gh_mirrors;
 use lists::{self, Crate, List};
-use run;
+use run::RunCommand;
 use serde_json;
 use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
@@ -194,7 +194,9 @@ fn capture_shas(ex: &Experiment) -> Result<()> {
     for krate in &ex.crates {
         if let Crate::Repo { ref url } = *krate {
             let dir = gh_mirrors::repo_dir(url)?;
-            let r = run::run_capture(Some(&dir), "git", &["log", "-n1", "--pretty=%H"], &[]);
+            let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
+                .cd(&dir)
+                .run_capture();
 
             match r {
                 Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {

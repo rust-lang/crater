@@ -1,5 +1,5 @@
 use errors::*;
-use run;
+use run::RunCommand;
 use std::fs;
 use std::path::Path;
 use util;
@@ -9,12 +9,11 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
 
     if !dir.exists() {
         info!("cloning {} into {}", url, dir.display());
-        let r = run::run(
+        let r = RunCommand::new(
             "git",
             &["clone", "--depth", "1", &url, &dir.to_string_lossy()],
-            &[],
-            false,
-        ).chain_err(|| format!("unable to clone {}", url));
+        ).run()
+            .chain_err(|| format!("unable to clone {}", url));
 
         if r.is_err() && dir.exists() {
             fs::remove_dir_all(dir)?;
@@ -23,7 +22,10 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
         r
     } else {
         info!("pulling existing url {} into {}", url, dir.display());
-        run::cd_run(dir, "git", &["pull"], &[]).chain_err(|| format!("unable to pull {}", url))
+        RunCommand::new("git", &["pull"])
+            .cd(dir)
+            .run()
+            .chain_err(|| format!("unable to pull {}", url))
     }
 }
 
@@ -38,8 +40,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
 
     let exists = || {
         if dir.exists() {
-            let r = run::cd_run(dir, "git", &["log", sha], &[]);
-            r.is_ok()
+            RunCommand::new("git", &["log", sha]).cd(dir).run().is_ok()
         } else {
             false
         }
@@ -51,7 +52,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
 
     for depth in depths {
         util::try_hard(|| {
-            run::run(
+            RunCommand::new(
                 "git",
                 &[
                     "clone",
@@ -60,9 +61,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
                     &url,
                     &dir.to_string_lossy(),
                 ],
-                &[],
-                false,
-            )
+            ).run()
         }).chain_err(|| format!("unable to clone {}", url))?;
 
         if exists() {
@@ -70,7 +69,7 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
         }
     }
 
-    util::try_hard(|| run::run("git", &["clone", &url, &dir.to_string_lossy()], &[], false))
+    util::try_hard(|| RunCommand::new("git", &["clone", &url, &dir.to_string_lossy()]).run())
         .chain_err(|| format!("unable to clone {}", url))?;
 
     if !exists() {
@@ -81,7 +80,9 @@ pub fn shallow_fetch_sha(url: &str, dir: &Path, sha: &str) -> Result<()> {
 }
 
 pub fn reset_to_sha(dir: &Path, sha: &str) -> Result<()> {
-    run::cd_run(dir, "git", &["reset", "--hard", sha], &[])
+    RunCommand::new("git", &["reset", "--hard", sha])
+        .cd(dir)
+        .run()
         .chain_err(|| format!("unable to reset {} to {}", dir.display(), sha))
 }
 

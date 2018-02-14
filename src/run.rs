@@ -15,80 +15,75 @@ use tokio_io::io::lines;
 use tokio_process::CommandExt;
 use tokio_timer;
 
-pub fn run(name: &str, args: &[&str], env: &[(&str, &str)], quiet: bool) -> Result<()> {
-    run_full(None, name, args, env, quiet)?;
-    Ok(())
-}
-
-pub fn cd_run(cd: &Path, name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
-    run_full(Some(cd), name, args, env, false)?;
-    Ok(())
-}
-
-pub fn run_full(
-    cd: Option<&Path>,
-    name: &str,
-    args: &[&str],
-    env: &[(&str, &str)],
+pub struct RunCommand<'a, S: AsRef<OsStr> + 'a> {
+    name: &'a str,
+    args: &'a [S],
+    env: Vec<(&'a str, &'a str)>,
+    cd: Option<&'a Path>,
     quiet: bool,
-) -> Result<()> {
-    let mut cmd = Command::new(name);
-
-    cmd.args(args);
-    for &(k, v) in env {
-        cmd.env(k, v);
-    }
-    let cmdstr = format!{"{:?}", cmd};
-
-    if let Some(cd) = cd {
-        cmd.current_dir(cd);
-    }
-
-    info!("running `{}`", cmdstr);
-    let out = log_command(cmd, quiet).map_err(|e| {
-        info!("error running command: {}", e);
-        e
-    })?;
-
-    if out.status.success() {
-        Ok(())
-    } else {
-        Err(format!("command `{}` failed", cmdstr).into())
-    }
 }
 
-pub fn run_capture<S>(
-    cd: Option<&Path>,
-    name: &str,
-    args: &[S],
-    env: &[(&str, &str)],
-) -> Result<(Vec<String>, Vec<String>)>
-where
-    S: AsRef<OsStr>,
-{
-    let mut cmd = Command::new(name);
-
-    cmd.args(args);
-    for &(k, v) in env {
-        cmd.env(k, v);
+impl<'a, S: AsRef<OsStr>> RunCommand<'a, S> {
+    pub fn new(name: &'a str, args: &'a [S]) -> Self {
+        RunCommand {
+            name,
+            args,
+            env: Vec::new(),
+            cd: None,
+            quiet: false,
+        }
     }
 
-    let cmdstr = format!{"{:?}", cmd};
-
-    if let Some(cd) = cd {
-        cmd.current_dir(cd);
+    pub fn env(mut self, key: &'a str, value: &'a str) -> Self {
+        self.env.push((key, value));
+        self
     }
 
-    info!("running `{}`", cmdstr);
-    let out = log_command_capture(cmd).map_err(|e| {
-        info!("error running command: {}", e);
-        e
-    })?;
+    pub fn cd(mut self, path: &'a Path) -> Self {
+        self.cd = Some(path);
+        self
+    }
 
-    if out.status.success() {
+    pub fn quiet(mut self, quiet: bool) -> Self {
+        self.quiet = quiet;
+        self
+    }
+
+    pub fn run(self) -> Result<()> {
+        self.run_inner(false)?;
+        Ok(())
+    }
+
+    pub fn run_capture(self) -> Result<(Vec<String>, Vec<String>)> {
+        let out = self.run_inner(true)?;
         Ok((out.stdout, out.stderr))
-    } else {
-        Err(format!("command `{}` failed", cmdstr).into())
+    }
+
+    fn run_inner(&self, capture: bool) -> Result<ProcessOutput> {
+        let mut cmd = Command::new(self.name);
+
+        cmd.args(self.args);
+        for &(k, v) in &self.env {
+            cmd.env(k, v);
+        }
+
+        let cmdstr = format!("{:?}", cmd);
+
+        if let Some(cd) = self.cd {
+            cmd.current_dir(cd);
+        }
+
+        info!("running `{}`", cmdstr);
+        let out = log_command(cmd, capture, self.quiet).map_err(|e| {
+            info!("error running command: {}", e);
+            e
+        })?;
+
+        if out.status.success() {
+            Ok(out)
+        } else {
+            Err(format!("command `{}` failed", cmdstr).into())
+        }
     }
 }
 
@@ -98,18 +93,10 @@ struct ProcessOutput {
     stderr: Vec<String>,
 }
 
-fn log_command(cmd: Command, quiet: bool) -> Result<ProcessOutput> {
-    log_command_(cmd, false, quiet)
-}
-
-fn log_command_capture(cmd: Command) -> Result<ProcessOutput> {
-    log_command_(cmd, true, false)
-}
-
 const MAX_TIMEOUT_SECS: u64 = 60 * 15;
 const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 2;
 
-fn log_command_(mut cmd: Command, capture: bool, quiet: bool) -> Result<ProcessOutput> {
+fn log_command(mut cmd: Command, capture: bool, quiet: bool) -> Result<ProcessOutput> {
     let mut core = Core::new().unwrap();
     let timer = tokio_timer::wheel()
         .max_timeout(Duration::from_secs(MAX_TIMEOUT_SECS * 2))

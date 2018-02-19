@@ -7,6 +7,7 @@ Crates with flaky test suites.
 - ai-0.1.0 - flaky ("may fail due to randomness")
 - assert_cli-0.5.4 - runs external programs
 - basiccountminsketch-0.1.0 - flaky
+- basiccountminsketch-0.1.2 - flaky
 - bson-0.1.5 - flaky
 - canteen-0.3.5 - broken test
 - cc-1.0.3 - flaky
@@ -35,6 +36,7 @@ Crates with flaky test suites.
 - namedarg_hack-0.1.* - bad channel detection
 - notify-3.0.1 flaky
 - phant-0.1.5 - flaky
+- poolite-0.7.1 - flaky
 - proxy_config-0.0.2 - flaky https://github.com/mattico/proxy-config/issues/16
 - psutil-1.0.0 - flaky
 - quandl-v3-1.0.0 - network
@@ -46,6 +48,7 @@ Crates with flaky test suites.
 - simple-munin-plugin-0.1.0 - flaky
 - simple-signal-1.1.0 - flaky
 - stringsort-2.0.0 - timing
+- tasque-0.1.4 - flaky
 - tasks-framework-0.1.0 - racy
 - treeflection-0.1.30 - flaky
 - tokio-periodic-0.1.1 - timing-based

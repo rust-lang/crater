@@ -7,6 +7,7 @@ Crates with flaky test suites.
 - ai-0.1.0 - flaky ("may fail due to randomness")
 - assert_cli-0.5.4 - runs external programs
 - basiccountminsketch-0.1.0 - flaky
+- bmp085-0.1.2 - randomness
 - bson-0.1.5 - flaky
 - canteen-0.3.5 - broken test
 - cc-1.0.3 - flaky
@@ -28,6 +29,7 @@ Crates with flaky test suites.
 - lazy-socket-0.2.1 - flaky
 - libfuzzy-sys-0.1.0 - command automake-1.13 not found
 - loaded_dice-0.1.1 - randomness
+- lockless-0.2.0 - threads
 - lodepng - command curl not found
 - lua53-ext-0.1.1 - flaky https://github.com/Jellonator/rust-lua53-ext/issues/1
 - milagro-crypto-0.1.14 - flaky

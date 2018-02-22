@@ -1,3 +1,4 @@
+use config::Config;
 use errors::*;
 use ex;
 use file;
@@ -84,7 +85,7 @@ pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
 
 const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
 
-fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
+fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -> Result<()> {
     let db = FileDB::for_experiment(ex);
     let crates = ex.crates()?;
     let num_crates = crates.len();
@@ -93,6 +94,11 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
         if i % progress_every == 0 {
             info!("wrote logs for {}/{} crates", i, num_crates)
         }
+
+        if config.should_skip(&krate) {
+            continue;
+        }
+
         for tc in &ex.toolchains {
             let writer = db.for_crate(&krate, tc);
             let rel_log = writer.result_path_fragement();
@@ -108,7 +114,7 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W) -> Result<()> {
     Ok(())
 }
 
-pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
+pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
     let res = generate_report(&ex)?;
@@ -135,7 +141,7 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W) -> Result<()> {
     info!("writing html files");
     write_html_files(dest)?;
     info!("writing logs");
-    write_logs(&ex, dest)?;
+    write_logs(&ex, dest, config)?;
 
     Ok(())
 }

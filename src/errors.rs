@@ -8,6 +8,7 @@ error_chain! {
         SerdeJson(::serde_json::Error);
         ReqwestError(::reqwest::Error);
         RustupError(::rustup_dist::Error);
+        TomlDe(::toml::de::Error);
     }
 
     links {

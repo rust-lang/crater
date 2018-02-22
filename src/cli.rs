@@ -9,6 +9,7 @@
 //! application state employs ownership techniques to ensure that
 //! parallel access is consistent and race-free.
 
+use crater::config::Config;
 use crater::docker;
 use crater::errors::*;
 use crater::ex;
@@ -178,6 +179,8 @@ pub enum Crater {
 
 impl Crater {
     pub fn run(&self) -> Result<()> {
+        let config = Config::load()?;
+
         match *self {
             Crater::CreateLists => lists::create_all_lists(true)?,
             Crater::PrepareLocal { ref env } => {
@@ -224,13 +227,13 @@ impl Crater {
                 ref krate,
             } => ex_run::delete_result(&ex.0, tc.as_ref(), krate)?,
             Crater::Run { ref ex } => {
-                ex_run::run_ex_all_tcs(&ex.0)?;
+                ex_run::run_ex_all_tcs(&ex.0, &config)?;
             }
             Crater::RunTc { ref ex, ref tc } => {
-                ex_run::run_ex(&ex.0, tc.clone())?;
+                ex_run::run_ex(&ex.0, tc.clone(), &config)?;
             }
             Crater::GenReport { ref ex, ref dest } => {
-                report::gen(&ex.0, &report::FileWriter::create(dest.0.clone())?)?;
+                report::gen(&ex.0, &report::FileWriter::create(dest.0.clone())?, &config)?;
             }
             Crater::PublishReport {
                 ref ex,
@@ -244,7 +247,7 @@ impl Crater {
                         prefix
                     }
                 };
-                report::gen(&ex.0, &report::S3Writer::create(s3_prefix)?)?;
+                report::gen(&ex.0, &report::S3Writer::create(s3_prefix)?, &config)?;
             }
             Crater::Serve => {
                 server::start(server::Data);

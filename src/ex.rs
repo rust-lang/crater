@@ -5,7 +5,7 @@ use ex_run;
 use file;
 use gh_mirrors;
 use lists::{self, Crate, List};
-use run;
+use run::RunCommand;
 use serde_json;
 use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
@@ -194,7 +194,9 @@ fn capture_shas(ex: &Experiment) -> Result<()> {
     for krate in &ex.crates {
         if let Crate::Repo { ref url } = *krate {
             let dir = gh_mirrors::repo_dir(url)?;
-            let r = run::run_capture(Some(&dir), "git", &["log", "-n1", "--pretty=%H"], &[]);
+            let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
+                .cd(&dir)
+                .run_capture();
 
             match r {
                 Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
@@ -457,7 +459,7 @@ fn capture_lockfile(
 ) -> Result<()> {
     let args = &["generate-lockfile", "--manifest-path", "Cargo.toml"];
     toolchain
-        .run_cargo(&ex.name, path, args, CargoState::Unlocked)
+        .run_cargo(&ex.name, path, args, CargoState::Unlocked, false)
         .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
 
     let src_lockfile = &path.join("Cargo.lock");
@@ -507,7 +509,7 @@ fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
 
             let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
             toolchain
-                .run_cargo(&ex.name, path, args, CargoState::Unlocked)
+                .run_cargo(&ex.name, path, args, CargoState::Unlocked, false)
                 .chain_err(|| format!("unable to fetch deps for {}", c))?;
 
             Ok(())

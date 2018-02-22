@@ -15,74 +15,75 @@ use tokio_io::io::lines;
 use tokio_process::CommandExt;
 use tokio_timer;
 
-pub fn run(name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
-    run_full(None, name, args, env)?;
-    Ok(())
+pub struct RunCommand<'a, S: AsRef<OsStr> + 'a> {
+    name: &'a str,
+    args: &'a [S],
+    env: Vec<(&'a str, &'a str)>,
+    cd: Option<&'a Path>,
+    quiet: bool,
 }
 
-pub fn cd_run(cd: &Path, name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
-    run_full(Some(cd), name, args, env)?;
-    Ok(())
-}
-
-pub fn run_full(cd: Option<&Path>, name: &str, args: &[&str], env: &[(&str, &str)]) -> Result<()> {
-    let mut cmd = Command::new(name);
-
-    cmd.args(args);
-    for &(k, v) in env {
-        cmd.env(k, v);
-    }
-    let cmdstr = format!{"{:?}", cmd};
-
-    if let Some(cd) = cd {
-        cmd.current_dir(cd);
+impl<'a, S: AsRef<OsStr>> RunCommand<'a, S> {
+    pub fn new(name: &'a str, args: &'a [S]) -> Self {
+        RunCommand {
+            name,
+            args,
+            env: Vec::new(),
+            cd: None,
+            quiet: false,
+        }
     }
 
-    info!("running `{}`", cmdstr);
-    let out = log_command(cmd).map_err(|e| {
-        info!("error running command: {}", e);
-        e
-    })?;
+    pub fn env(mut self, key: &'a str, value: &'a str) -> Self {
+        self.env.push((key, value));
+        self
+    }
 
-    if out.status.success() {
+    pub fn cd(mut self, path: &'a Path) -> Self {
+        self.cd = Some(path);
+        self
+    }
+
+    pub fn quiet(mut self, quiet: bool) -> Self {
+        self.quiet = quiet;
+        self
+    }
+
+    pub fn run(self) -> Result<()> {
+        self.run_inner(false)?;
         Ok(())
-    } else {
-        Err(format!("command `{}` failed", cmdstr).into())
-    }
-}
-
-pub fn run_capture<S>(
-    cd: Option<&Path>,
-    name: &str,
-    args: &[S],
-    env: &[(&str, &str)],
-) -> Result<(Vec<String>, Vec<String>)>
-where
-    S: AsRef<OsStr>,
-{
-    let mut cmd = Command::new(name);
-
-    cmd.args(args);
-    for &(k, v) in env {
-        cmd.env(k, v);
     }
 
-    let cmdstr = format!{"{:?}", cmd};
-
-    if let Some(cd) = cd {
-        cmd.current_dir(cd);
-    }
-
-    info!("running `{}`", cmdstr);
-    let out = log_command_capture(cmd).map_err(|e| {
-        info!("error running command: {}", e);
-        e
-    })?;
-
-    if out.status.success() {
+    pub fn run_capture(self) -> Result<(Vec<String>, Vec<String>)> {
+        let out = self.run_inner(true)?;
         Ok((out.stdout, out.stderr))
-    } else {
-        Err(format!("command `{}` failed", cmdstr).into())
+    }
+
+    fn run_inner(&self, capture: bool) -> Result<ProcessOutput> {
+        let mut cmd = Command::new(self.name);
+
+        cmd.args(self.args);
+        for &(k, v) in &self.env {
+            cmd.env(k, v);
+        }
+
+        let cmdstr = format!("{:?}", cmd);
+
+        if let Some(cd) = self.cd {
+            cmd.current_dir(cd);
+        }
+
+        info!("running `{}`", cmdstr);
+        let out = log_command(cmd, capture, self.quiet).map_err(|e| {
+            info!("error running command: {}", e);
+            e
+        })?;
+
+        if out.status.success() {
+            Ok(out)
+        } else {
+            Err(format!("command `{}` failed", cmdstr).into())
+        }
     }
 }
 
@@ -92,18 +93,10 @@ struct ProcessOutput {
     stderr: Vec<String>,
 }
 
-fn log_command(cmd: Command) -> Result<ProcessOutput> {
-    log_command_(cmd, false)
-}
-
-fn log_command_capture(cmd: Command) -> Result<ProcessOutput> {
-    log_command_(cmd, true)
-}
-
 const MAX_TIMEOUT_SECS: u64 = 60 * 15;
 const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 2;
 
-fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
+fn log_command(mut cmd: Command, capture: bool, quiet: bool) -> Result<ProcessOutput> {
     let mut core = Core::new().unwrap();
     let timer = tokio_timer::wheel()
         .max_timeout(Duration::from_secs(MAX_TIMEOUT_SECS * 2))
@@ -118,8 +111,14 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
     // Needed for killing after timeout
     let child_id = child.id();
 
-    let heartbeat_timeout = Duration::from_secs(HEARTBEAT_TIMEOUT_SECS);
     let max_timeout = Duration::from_secs(MAX_TIMEOUT_SECS);
+    let heartbeat_timeout = if quiet {
+        // If the command is known to be slow, the heartbeat timeout is set to the same value as
+        // the max timeout, so it can't be triggered.
+        max_timeout
+    } else {
+        Duration::from_secs(HEARTBEAT_TIMEOUT_SECS)
+    };
 
     let logger = slog_scope::logger();
     let stdout = lines(BufReader::new(stdout)).map({
@@ -145,7 +144,7 @@ fn log_command_(mut cmd: Command, capture: bool) -> Result<ProcessOutput> {
                 kill_process(child_id);
                 Error::from(ErrorKind::Timeout(
                     "not generating output for ",
-                    HEARTBEAT_TIMEOUT_SECS,
+                    heartbeat_timeout.as_secs(),
                 ))
             } else {
                 e.into()

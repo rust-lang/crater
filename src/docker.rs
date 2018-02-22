@@ -1,5 +1,5 @@
 use errors::*;
-use run;
+use run::RunCommand;
 use std::env;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
@@ -12,11 +12,10 @@ static IMAGE_NAME: &'static str = "crater";
 /// to exist in the `docker` directory, at runtime.
 pub fn build_container(docker_env: &str) -> Result<()> {
     let dockerfile = format!("docker/Dockerfile.{}", docker_env);
-    run::run(
+    RunCommand::new(
         "docker",
         &["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"],
-        &[],
-    )
+    ).run()
 }
 
 #[derive(Copy, Clone)]
@@ -60,14 +59,14 @@ pub struct ContainerConfig<'a> {
     pub env: Vec<(&'static str, String)>,
 }
 
-pub fn run(config: &ContainerConfig) -> Result<()> {
+pub fn run(config: &ContainerConfig, quiet: bool) -> Result<()> {
     let c = Container::create_container(config)?;
     defer!{{
         if let Err(e) = c.delete() {
             error!{"Cannot delete container: {}", e; "container" => &c.id}
         }
     }}
-    c.run()
+    c.run(quiet)
 }
 
 pub fn rust_container(config: RustEnv) -> ContainerConfig {
@@ -157,15 +156,17 @@ impl Container {
         }
         args.push(config.image_name.into());
 
-        let (out, _) = run::run_capture(None, "docker", &*args, &[])?;
+        let (out, _) = RunCommand::new("docker", &*args).run_capture()?;
         Ok(Self { id: out[0].clone() })
     }
 
-    pub fn run(&self) -> Result<()> {
-        run::run("docker", &["start", "-a", &self.id], &[])
+    pub fn run(&self, quiet: bool) -> Result<()> {
+        RunCommand::new("docker", &["start", "-a", &self.id])
+            .quiet(quiet)
+            .run()
     }
 
     pub fn delete(&self) -> Result<()> {
-        run::run("docker", &["rm", "-f", &self.id], &[])
+        RunCommand::new("docker", &["rm", "-f", &self.id]).run()
     }
 }

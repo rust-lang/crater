@@ -1,3 +1,4 @@
+use config::Config;
 use errors::*;
 use ex::*;
 use file;
@@ -28,17 +29,17 @@ pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, crate_: &ExCrate) ->
     Ok(())
 }
 
-pub fn run_ex_all_tcs(ex_name: &str) -> Result<()> {
-    let config = &Experiment::load(ex_name)?;
-    run_exts(config, &config.toolchains)
+pub fn run_ex_all_tcs(ex_name: &str, config: &Config) -> Result<()> {
+    let ex = &Experiment::load(ex_name)?;
+    run_exts(ex, &ex.toolchains, config)
 }
 
-pub fn run_ex(ex_name: &str, tc: Toolchain) -> Result<()> {
-    let config = Experiment::load(ex_name)?;
-    run_exts(&config, &[tc])
+pub fn run_ex(ex_name: &str, tc: Toolchain, config: &Config) -> Result<()> {
+    let ex = Experiment::load(ex_name)?;
+    run_exts(&ex, &[tc], config)
 }
 
-fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
+fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
     let db = FileDB::for_experiment(ex);
     verify_toolchains(ex, tcs)?;
 
@@ -57,15 +58,25 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
 
     let start_time = Instant::now();
 
-    let test_fn = match ex.mode {
-        ExMode::BuildAndTest => test_build_and_test,
-        ExMode::BuildOnly => test_build_only,
-        ExMode::CheckOnly => test_check_only,
-        ExMode::UnstableFeatures => test_find_unstable_features,
-    };
-
     info!("running {} tests", total_crates);
     for c in &crates {
+        if config.should_skip(c) {
+            info!("skipping crate {}: blacklisted in config.toml", c);
+
+            skipped_crates += tcs.len();
+            continue;
+        }
+
+        let test_fn = match ex.mode {
+            // Don't execute tests if the crate is blacklisted
+            ExMode::BuildAndTest if config.should_skip_tests(c) => test_build_only,
+            ExMode::BuildAndTest => test_build_and_test,
+
+            ExMode::BuildOnly => test_build_only,
+            ExMode::CheckOnly => test_check_only,
+            ExMode::UnstableFeatures => test_find_unstable_features,
+        };
+
         for tc in tcs {
             let writer = db.for_crate(c, tc);
             let r = {
@@ -91,7 +102,7 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain]) -> Result<()> {
 
                         writer.record_results(|| {
                             info!("testing {} against {} for {}", c, tc.to_string(), ex.name);
-                            test_fn(ex, source_path, tc)
+                            test_fn(ex, source_path, tc, config.is_quiet(c))
                         })
                     })
                 }
@@ -169,13 +180,14 @@ fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     Ok(())
 }
 
-fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain) -> Result<()> {
+fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
     toolchain
         .run_cargo(
             &ex.name,
             source_path,
             &["build", "--frozen"],
             CargoState::Locked,
+            quiet,
         )
         .map(|_| {
             toolchain.run_cargo(
@@ -183,6 +195,7 @@ fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain) -> Result<(
                 source_path,
                 &["test", "--frozen", "--no-run"],
                 CargoState::Locked,
+                quiet,
             )
         })
         .map(|_| ())
@@ -192,14 +205,16 @@ fn test_build_and_test(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
+    quiet: bool,
 ) -> Result<TestResult> {
-    let build_r = build(ex, source_path, toolchain);
+    let build_r = build(ex, source_path, toolchain, quiet);
     let test_r = if build_r.is_ok() {
         Some(toolchain.run_cargo(
             &ex.name,
             source_path,
             &["test", "--frozen"],
             CargoState::Locked,
+            quiet,
         ))
     } else {
         None
@@ -217,8 +232,9 @@ fn test_build_only(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
+    quiet: bool,
 ) -> Result<TestResult> {
-    let r = build(ex, source_path, toolchain);
+    let r = build(ex, source_path, toolchain, quiet);
     if r.is_ok() {
         Ok(TestResult::TestPass)
     } else {
@@ -230,12 +246,14 @@ fn test_check_only(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
+    quiet: bool,
 ) -> Result<TestResult> {
     let r = toolchain.run_cargo(
         &ex.name,
         source_path,
         &["check", "--frozen"],
         CargoState::Locked,
+        quiet,
     );
 
     if r.is_ok() {
@@ -249,6 +267,7 @@ fn test_find_unstable_features(
     _ex: &Experiment,
     source_path: &Path,
     _toolchain: &Toolchain,
+    _quiet: bool,
 ) -> Result<TestResult> {
     use walkdir::*;
 

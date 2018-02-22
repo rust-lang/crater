@@ -1,0 +1,16 @@
+# This file allows to customize how crater treats specific crates/repos
+#
+# The available options for each crate/repo are:
+#  - skip       (bool): ignore this crate/repo
+#  - skip-tests (bool): don't run tests in this crate/repo
+#  - quiet      (bool): don't kill after two minutes without output
+#
+# Please add a comment along with each entry explaining the reasons of the
+# changes, thanks!
+
+
+[crates]
+# crate_name = { option = true }
+
+[github-repos]
+# "org_name/repo_name" = { option = true }

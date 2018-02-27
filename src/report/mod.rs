@@ -33,6 +33,7 @@ struct CrateResult {
 enum Comparison {
     Regressed,
     Fixed,
+    Skipped,
     Unknown,
     SameBuildFail,
     SameTestFail,
@@ -45,7 +46,7 @@ struct BuildTestResult {
     log: String,
 }
 
-pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
+pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResults> {
     let db = FileDB::for_experiment(ex);
     assert_eq!(ex.toolchains.len(), 2);
 
@@ -69,7 +70,7 @@ pub fn generate_report(ex: &ex::Experiment) -> Result<TestResults> {
             let mut crate_results = crate_results.map(|r| r.ok()).collect::<Vec<_>>();
             let crate2 = crate_results.pop().expect("");
             let crate1 = crate_results.pop().expect("");
-            let comp = compare(&crate1, &crate2);
+            let comp = compare(config, &krate, &crate1, &crate2);
 
             CrateResult {
                 name: crate_to_name(&krate),
@@ -117,7 +118,7 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -
 pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
-    let res = generate_report(&ex)?;
+    let res = generate_report(&config, &ex)?;
     let shas = ex.load_shas()?;
 
     info!("writing results to {}", dest);
@@ -174,7 +175,12 @@ fn crate_to_url(c: &ex::ExCrate) -> String {
     }
 }
 
-fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Comparison {
+fn compare(
+    config: &Config,
+    krate: &ex::ExCrate,
+    r1: &Option<BuildTestResult>,
+    r2: &Option<BuildTestResult>,
+) -> Comparison {
     use results::TestResult::*;
     match (r1, r2) {
         (
@@ -191,6 +197,7 @@ fn compare(r1: &Option<BuildTestResult>, r2: &Option<BuildTestResult>) -> Compar
                 Comparison::Regressed
             }
         },
+        _ if config.should_skip(krate) => Comparison::Skipped,
         _ => Comparison::Unknown,
     }
 }

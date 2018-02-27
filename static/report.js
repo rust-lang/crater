@@ -56,6 +56,7 @@ function begin(config, results) {
     let sameBuildFailEl = document.querySelector("#c-same-build-fail .count");
     let sameTestFailEl = document.querySelector("#c-same-test-fail .count");
     let sameTestPassEl = document.querySelector("#c-same-test-pass .count");
+    let skippedEl = document.querySelector("#c-skipped .count");
 
     regressedEl.innerHTML = summary.regressed;
     fixedEl.innerHTML = summary.fixed;
@@ -63,6 +64,7 @@ function begin(config, results) {
     sameBuildFailEl.innerHTML = summary.sameBuildFail;
     sameTestFailEl.innerHTML = summary.sameTestFail;
     sameTestPassEl.innerHTML = summary.sameTestPass;
+    skippedEl.innerHTML = summary.skipped;
 
     // Creating the document will take a second. Lay out the summary first.
     let results_ = results;
@@ -95,6 +97,7 @@ function calcSummary(results) {
     let sameBuildFail = 0;
     let sameTestFail = 0;
     let sameTestPass = 0;
+    let skipped = 0;
 
     for (crate of results.crates) {
 	if (crate.res == "Regressed") {
@@ -109,7 +112,9 @@ function calcSummary(results) {
 	    sameTestFail += 1;
 	} else if (crate.res == "SameTestPass") {
 	    sameTestPass += 1;
-	} else {
+    } else if (crate.res == "Skipped") {
+        skipped += 1;
+    } else {
 	    throw "unknown test status";
 	}
     }
@@ -120,7 +125,8 @@ function calcSummary(results) {
 	unknown: unknown,
 	sameBuildFail: sameBuildFail,
 	sameTestFail: sameTestFail,
-	sameTestPass: sameTestPass
+	sameTestPass: sameTestPass,
+    skipped: skipped,
     };
 }
 
@@ -131,8 +137,8 @@ function insertResults(results) {
         let name = crate.name;
         let url = crate.url;
         let res = jsonCrateResToCss(crate.res);
-        let run1 = parseRunResult(crate.runs[0]);
-        let run2 = parseRunResult(crate.runs[1]);
+        let run1 = parseRunResult(crate.res, crate.runs[0]);
+        let run2 = parseRunResult(crate.res, crate.runs[1]);
 
         function runToHtml(run) {
             if (run.log) {
@@ -163,46 +169,50 @@ function insertResults(results) {
 
 function jsonCrateResToCss(res) {
     if (res == "Regressed") {
-	return "regressed";
+        return "regressed";
     } else if (res == "Fixed") {
-	return "fixed";
+        return "fixed";
     } else if (res == "Unknown") {
-	return "unknown";
+        return "unknown";
     } else if (res == "SameBuildFail") {
-	return "same-build-fail";
+        return "same-build-fail";
     } else if (res == "SameTestFail") {
-	return "same-test-fail";
+        return "same-test-fail";
     } else if (res == "SameTestPass") {
-	return "same-test-pass";
+        return "same-test-pass";
+    } else if (res == "Skipped") {
+        return "skipped";
     } else {
-	throw "unknown test status";
+        throw "unknown test status";
     }
 }
 
-function parseRunResult(res) {
+function parseRunResult(crate_res, res) {
+    let log, result;
     if (res == null) {
-	return {
-	    res: "unknown",
-	    log: null
-	};
+        log = null;
+        if (crate_res == "Skipped") {
+            result = "skipped";
+        } else {
+            result = "unknown";
+        }
     } else {
-	return {
-	    res: jsonRunResToDisplay(res.res),
-	    log: res.log
-	};
+        log = res.log;
+        if (res.res == "BuildFail") {
+            result = "build-fail";
+        } else if (res.res == "TestFail") {
+            result =  "test-fail";
+        } else if (res.res == "TestPass") {
+            result = "test-pass";
+        } else {
+            throw "unknown test status";
+        }
     }
-}
 
-function jsonRunResToDisplay(res) {
-    if (res == "BuildFail") {
-	return "build-fail";
-    } else if (res == "TestFail") {
-	return "test-fail";
-    } else if (res == "TestPass") {
-	return "test-pass";
-    } else {
-	throw "unknown test status";
-    }
+    return {
+        res: result,
+        log: log,
+    };
 }
 
 function setUpButtons() {

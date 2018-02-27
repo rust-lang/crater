@@ -49,6 +49,10 @@ th {
     background-color: #494B4A;
 }
 
+.skipped {
+    background: repeating-linear-gradient(-45deg, #494b4a, #494b4a 15px, #555 15px, #555 30px);
+}
+
 #controls {
     line-height: 3.5em;
     margin-bottom: 2rem;

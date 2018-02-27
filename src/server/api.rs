@@ -47,10 +47,10 @@ pub mod ex_report {
     use server::{Data, Params};
 
     #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-    pub fn handler(_data: &Data, params: Params) -> TestResults {
+    pub fn handler(data: &Data, params: Params) -> TestResults {
         let ex_name = params.find("experiment").unwrap();
         let ex = ex::Experiment::load(ex_name).unwrap();
-        generate_report(&ex).unwrap()
+        generate_report(&data.config, &ex).unwrap()
     }
 }
 

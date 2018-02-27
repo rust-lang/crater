@@ -54,6 +54,7 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
     let mut sum_errors = 0;
     let mut sum_build_fail = 0;
     let mut sum_test_fail = 0;
+    let mut sum_test_skipped = 0;
     let mut sum_test_pass = 0;
 
     let start_time = Instant::now();
@@ -131,6 +132,7 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
                 }
                 Ok(TestResult::BuildFail) => sum_build_fail += 1,
                 Ok(TestResult::TestFail) => sum_test_fail += 1,
+                Ok(TestResult::TestSkipped) => sum_test_skipped += 1,
                 Ok(TestResult::TestPass) => sum_test_pass += 1,
             }
 
@@ -161,8 +163,8 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
                 completed_crates, elapsed, seconds_per_test, remaining_tests, remaining_time_str
             );
             info!(
-                "results: {} build-fail / {} test-fail / {} test-pass / {} errors",
-                sum_build_fail, sum_test_fail, sum_test_pass, sum_errors
+                "results: {} build-fail / {} test-fail / {} test-skipped / {} test-pass / {} errors",
+                sum_build_fail, sum_test_fail, sum_test_skipped, sum_test_pass, sum_errors
             );
         }
     }
@@ -236,7 +238,7 @@ fn test_build_only(
 ) -> Result<TestResult> {
     let r = build(ex, source_path, toolchain, quiet);
     if r.is_ok() {
-        Ok(TestResult::TestPass)
+        Ok(TestResult::TestSkipped)
     } else {
         Ok(TestResult::BuildFail)
     }

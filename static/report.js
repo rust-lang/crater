@@ -55,6 +55,7 @@ function begin(config, results) {
     let unknownEl = document.querySelector("#c-unknown .count");
     let sameBuildFailEl = document.querySelector("#c-same-build-fail .count");
     let sameTestFailEl = document.querySelector("#c-same-test-fail .count");
+    let sameTestSkippedEl = document.querySelector("#c-same-test-skipped .count");
     let sameTestPassEl = document.querySelector("#c-same-test-pass .count");
     let skippedEl = document.querySelector("#c-skipped .count");
 
@@ -63,6 +64,7 @@ function begin(config, results) {
     unknownEl.innerHTML = summary.unknown;
     sameBuildFailEl.innerHTML = summary.sameBuildFail;
     sameTestFailEl.innerHTML = summary.sameTestFail;
+    sameTestSkippedEl.innerHTML = summary.sameTestSkipped;
     sameTestPassEl.innerHTML = summary.sameTestPass;
     skippedEl.innerHTML = summary.skipped;
 
@@ -96,6 +98,7 @@ function calcSummary(results) {
     let unknown = 0;
     let sameBuildFail = 0;
     let sameTestFail = 0;
+    let sameTestSkipped = 0;
     let sameTestPass = 0;
     let skipped = 0;
 
@@ -110,7 +113,9 @@ function calcSummary(results) {
 	    sameBuildFail += 1;
 	} else if (crate.res == "SameTestFail") {
 	    sameTestFail += 1;
-	} else if (crate.res == "SameTestPass") {
+    } else if (crate.res == "SameTestSkipped") {
+        sameTestSkipped += 1;
+    } else if (crate.res == "SameTestPass") {
 	    sameTestPass += 1;
     } else if (crate.res == "Skipped") {
         skipped += 1;
@@ -125,6 +130,7 @@ function calcSummary(results) {
 	unknown: unknown,
 	sameBuildFail: sameBuildFail,
 	sameTestFail: sameTestFail,
+    sameTestSkipped: sameTestSkipped,
 	sameTestPass: sameTestPass,
     skipped: skipped,
     };
@@ -178,6 +184,8 @@ function jsonCrateResToCss(res) {
         return "same-build-fail";
     } else if (res == "SameTestFail") {
         return "same-test-fail";
+    } else if (res == "SameTestSkipped") {
+        return "same-test-skipped";
     } else if (res == "SameTestPass") {
         return "same-test-pass";
     } else if (res == "Skipped") {
@@ -201,7 +209,9 @@ function parseRunResult(crate_res, res) {
         if (res.res == "BuildFail") {
             result = "build-fail";
         } else if (res.res == "TestFail") {
-            result =  "test-fail";
+            result = "test-fail";
+        } else if (res.res == "TestSkipped") {
+            result = "test-skipped";
         } else if (res.res == "TestPass") {
             result = "test-pass";
         } else {

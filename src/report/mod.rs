@@ -37,6 +37,7 @@ enum Comparison {
     Unknown,
     SameBuildFail,
     SameTestFail,
+    SameTestSkipped,
     SameTestPass,
 }
 
@@ -118,7 +119,7 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -
 pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
-    let res = generate_report(&config, &ex)?;
+    let res = generate_report(config, &ex)?;
     let shas = ex.load_shas()?;
 
     info!("writing results to {}", dest);
@@ -189,12 +190,21 @@ fn compare(
         ) => match (res1, res2) {
             (&BuildFail, &BuildFail) => Comparison::SameBuildFail,
             (&TestFail, &TestFail) => Comparison::SameTestFail,
+            (&TestSkipped, &TestSkipped) => Comparison::SameTestSkipped,
             (&TestPass, &TestPass) => Comparison::SameTestPass,
-            (&BuildFail, &TestFail) | (&BuildFail, &TestPass) | (&TestFail, &TestPass) => {
-                Comparison::Fixed
-            }
-            (&TestPass, &TestFail) | (&TestPass, &BuildFail) | (&TestFail, &BuildFail) => {
-                Comparison::Regressed
+            (&BuildFail, &TestFail)
+            | (&BuildFail, &TestSkipped)
+            | (&BuildFail, &TestPass)
+            | (&TestFail, &TestPass) => Comparison::Fixed,
+            (&TestPass, &TestFail)
+            | (&TestPass, &BuildFail)
+            | (&TestSkipped, &BuildFail)
+            | (&TestFail, &BuildFail) => Comparison::Regressed,
+            (&TestFail, &TestSkipped)
+            | (&TestPass, &TestSkipped)
+            | (&TestSkipped, &TestFail)
+            | (&TestSkipped, &TestPass) => {
+                panic!("can't compare {} and {}", res1, res2);
             }
         },
         _ if config.should_skip(krate) => Comparison::Skipped,

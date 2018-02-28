@@ -127,12 +127,12 @@ mod tests {
         assert!(list.is_quiet(&ExCrate::Repo {
             org: "rust-lang".into(),
             name: "rust".into(),
-            sha: "0".into(),
+            sha: None,
         }));
         assert!(!list.is_quiet(&ExCrate::Repo {
             org: "rust-lang".into(),
             name: "cargo".into(),
-            sha: "0".into(),
+            sha: None,
         }));
     }
 }

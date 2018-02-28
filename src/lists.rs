@@ -1,3 +1,4 @@
+use config::Config;
 use dirs::LIST_DIR;
 use errors::*;
 use ex::ExCrate;
@@ -330,19 +331,26 @@ pub enum Crate {
 }
 
 impl Crate {
-    pub fn into_ex_crate(self, shas: &HashMap<String, String>) -> Result<ExCrate> {
+    pub fn into_ex_crate(self, shas: &HashMap<String, String>, config: &Config) -> Result<ExCrate> {
         match self {
             Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
-            Crate::Repo { ref url } => if let Some(sha) = shas.get(url) {
+            Crate::Repo { ref url } => {
                 let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
+
+                let sha = if config.should_skip(&self) {
+                    None
+                } else if let Some(s) = shas.get(url) {
+                    Some(s.clone())
+                } else {
+                    bail!("missing sha for {}", url);
+                };
+
                 Ok(ExCrate::Repo {
                     org: org.to_string(),
                     name: name.to_string(),
-                    sha: sha.to_string(),
+                    sha,
                 })
-            } else {
-                Err(format!("missing sha for {}", url).into())
-            },
+            }
         }
     }
 

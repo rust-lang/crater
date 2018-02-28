@@ -1,3 +1,4 @@
+use config::Config;
 use crates;
 use dirs::{CRATES_DIR, EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
@@ -153,15 +154,16 @@ impl Experiment {
         Ok(serde_json::from_str(&config)?)
     }
 
-    fn repo_crate_urls(&self) -> Vec<String> {
+    fn repo_crate_urls(&self, config: &Config) -> Vec<String> {
         self.crates
             .iter()
+            .filter(|crate_| !config.should_skip(*crate_))
             .filter_map(|crate_| crate_.repo_url().map(|u| u.to_owned()))
             .collect()
     }
 
-    pub fn fetch_repo_crates(&self) -> Result<()> {
-        for url in self.repo_crate_urls() {
+    pub fn fetch_repo_crates(&self, config: &Config) -> Result<()> {
+        for url in self.repo_crate_urls(config) {
             if let Err(e) = gh_mirrors::fetch(&url) {
                 util::report_error(&e);
             }
@@ -169,29 +171,33 @@ impl Experiment {
         Ok(())
     }
 
-    pub fn prepare_shared(&self) -> Result<()> {
-        self.fetch_repo_crates()?;
-        capture_shas(self)?;
-        download_crates(self)?;
-        frob_tomls(self)?;
-        capture_lockfiles(self, &Toolchain::Dist("stable".into()), false)?;
+    pub fn prepare_shared(&self, config: &Config) -> Result<()> {
+        self.fetch_repo_crates(config)?;
+        capture_shas(self, config)?;
+        download_crates(self, config)?;
+        frob_tomls(self, config)?;
+        capture_lockfiles(self, &Toolchain::Dist("stable".into()), false, config)?;
         Ok(())
     }
 
-    pub fn prepare_local(&self) -> Result<()> {
+    pub fn prepare_local(&self, config: &Config) -> Result<()> {
         // Local experiment prep
         delete_all_target_dirs(&self.name)?;
         ex_run::delete_all_results(&self.name)?;
-        fetch_deps(self, &Toolchain::Dist("stable".into()))?;
+        fetch_deps(self, &Toolchain::Dist("stable".into()), config)?;
         prepare_all_toolchains(self)?;
 
         Ok(())
     }
 }
 
-fn capture_shas(ex: &Experiment) -> Result<()> {
+fn capture_shas(ex: &Experiment, config: &Config) -> Result<()> {
     let mut shas: HashMap<String, String> = HashMap::new();
     for krate in &ex.crates {
+        if config.should_skip(krate) {
+            continue;
+        }
+
         if let Crate::Repo { ref url } = *krate {
             let dir = gh_mirrors::repo_dir(url)?;
             let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
@@ -231,12 +237,12 @@ impl Experiment {
         Ok(shas)
     }
 
-    pub fn crates(&self) -> Result<Vec<ExCrate>> {
+    pub fn crates(&self, config: &Config) -> Result<Vec<ExCrate>> {
         let shas = self.load_shas()?;
         let (oks, fails): (Vec<_>, Vec<_>) = self.crates
             .clone()
             .into_iter()
-            .map(|c| c.into_ex_crate(&shas))
+            .map(|c| c.into_ex_crate(&shas, config))
             .partition(Result::is_ok);
         if !fails.is_empty() {
             let fails = fails
@@ -260,7 +266,7 @@ pub enum ExCrate {
     Repo {
         org: String,
         name: String,
-        sha: String,
+        sha: Option<String>,
     },
 }
 
@@ -275,7 +281,11 @@ impl ExCrate {
                 ref org,
                 ref name,
                 ref sha,
-            } => gh_dir().join(format!("{}.{}.{}", org, name, sha)),
+            } => if let Some(ref sha) = *sha {
+                gh_dir().join(format!("{}.{}.{}", org, name, sha))
+            } else {
+                gh_dir().join(format!("{}.{}", org, name))
+            },
         }
     }
 }
@@ -291,7 +301,11 @@ impl Display for ExCrate {
                 ref org,
                 ref name,
                 ref sha,
-            } => format!("https://github.com/{}/{}#{}", org, name, sha),
+            } => if let Some(ref sha) = *sha {
+                format!("https://github.com/{}/{}#{}", org, name, sha)
+            } else {
+                format!("https://github.com/{}/{}", org, name)
+            },
         };
         s.fmt(f)
     }
@@ -309,7 +323,7 @@ impl FromStr for ExCrate {
                 Ok(ExCrate::Repo {
                     org: org.to_string(),
                     name: name.to_string(),
-                    sha: sha.to_string(),
+                    sha: Some(sha.to_string()),
                 })
             } else {
                 Err("no sha for git crate".into())
@@ -327,12 +341,16 @@ impl FromStr for ExCrate {
     }
 }
 
-fn download_crates(ex: &Experiment) -> Result<()> {
-    crates::prepare(&ex.crates()?)
+fn download_crates(ex: &Experiment, config: &Config) -> Result<()> {
+    crates::prepare(&ex.crates(config)?, config)
 }
 
-fn frob_tomls(ex: &Experiment) -> Result<()> {
-    for krate in ex.crates()? {
+fn frob_tomls(ex: &Experiment, config: &Config) -> Result<()> {
+    for krate in ex.crates(config)? {
+        if config.should_skip(&krate) {
+            continue;
+        }
+
         if let ExCrate::Version {
             ref name,
             ref version,
@@ -421,10 +439,15 @@ fn capture_lockfiles(
     ex: &Experiment,
     toolchain: &Toolchain,
     recapture_existing: bool,
+    config: &Config,
 ) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    for c in &ex.crates()? {
+    for c in &ex.crates(config)? {
+        if config.should_skip(c) {
+            continue;
+        }
+
         if c.dir().join("Cargo.lock").exists() {
             info!("crate {} has a lockfile. skipping", c);
             continue;
@@ -501,8 +524,12 @@ pub fn with_captured_lockfile(ex: &Experiment, crate_: &ExCrate, path: &Path) ->
     Ok(())
 }
 
-fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
-    for c in &ex.crates()? {
+fn fetch_deps(ex: &Experiment, toolchain: &Toolchain, config: &Config) -> Result<()> {
+    for c in &ex.crates(config)? {
+        if config.should_skip(c) {
+            continue;
+        }
+
         let r = with_work_crate(ex, toolchain, c, |path| {
             with_frobbed_toml(ex, c, path)?;
             with_captured_lockfile(ex, c, path)?;

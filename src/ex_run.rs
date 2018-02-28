@@ -181,24 +181,21 @@ fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
 }
 
 fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
-    toolchain
-        .run_cargo(
-            &ex.name,
-            source_path,
-            &["build", "--frozen"],
-            CargoState::Locked,
-            quiet,
-        )
-        .map(|_| {
-            toolchain.run_cargo(
-                &ex.name,
-                source_path,
-                &["test", "--frozen", "--no-run"],
-                CargoState::Locked,
-                quiet,
-            )
-        })
-        .map(|_| ())
+    toolchain.run_cargo(
+        &ex.name,
+        source_path,
+        &["build", "--frozen"],
+        CargoState::Locked,
+        quiet,
+    )?;
+    toolchain.run_cargo(
+        &ex.name,
+        source_path,
+        &["test", "--frozen", "--no-run"],
+        CargoState::Locked,
+        quiet,
+    )?;
+    Ok(())
 }
 
 fn test_build_and_test(

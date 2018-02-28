@@ -336,8 +336,8 @@ impl Crate {
             Crate::Repo { ref url } => if let Some(sha) = ex.shas.get(url) {
                 let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
                 Ok(ExCrate::Repo {
-                    org,
-                    name,
+                    org: org.to_string(),
+                    name: name.to_string(),
                     sha: sha.to_string(),
                 })
             } else {

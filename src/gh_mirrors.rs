@@ -8,17 +8,16 @@ pub fn repo_dir(url: &str) -> Result<PathBuf> {
     Ok(GH_MIRRORS_DIR.join(format!("{}.{}", org, name)))
 }
 
-pub fn gh_url_to_org_and_name(url: &str) -> Result<(String, String)> {
+pub fn gh_url_to_org_and_name(url: &str) -> Result<(&str, &str)> {
     let mut components = url.split('/').collect::<Vec<_>>();
     let name = components.pop();
     let org = components.pop();
-    let (org, name) = if let (Some(org), Some(name)) = (org, name) {
-        (org, name)
+
+    if let (Some(org), Some(name)) = (org, name) {
+        Ok((org, name))
     } else {
         bail!("malformed repo url: {}", url);
-    };
-
-    Ok((org.to_string(), name.to_string()))
+    }
 }
 
 pub fn fetch(url: &str) -> Result<()> {

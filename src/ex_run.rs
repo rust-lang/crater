@@ -222,14 +222,14 @@ pub fn run_test<DB: ExperimentResultDB>(
 
 fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
     toolchain.run_cargo(
-        &ex.name,
+        ex,
         source_path,
         &["build", "--frozen"],
         CargoState::Locked,
         quiet,
     )?;
     toolchain.run_cargo(
-        &ex.name,
+        ex,
         source_path,
         &["test", "--frozen", "--no-run"],
         CargoState::Locked,
@@ -240,7 +240,7 @@ fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool
 
 fn test(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
     toolchain.run_cargo(
-        &ex.name,
+        ex,
         source_path,
         &["test", "--frozen"],
         CargoState::Locked,
@@ -290,7 +290,7 @@ pub fn test_check_only(
     quiet: bool,
 ) -> Result<TestResult> {
     let r = toolchain.run_cargo(
-        &ex.name,
+        ex,
         source_path,
         &["check", "--frozen", "--all", "--all-targets"],
         CargoState::Locked,

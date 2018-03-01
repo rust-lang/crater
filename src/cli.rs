@@ -13,7 +13,7 @@ use crater::config::Config;
 use crater::docker;
 use crater::errors::*;
 use crater::ex;
-use crater::ex::{ExCrate, ExCrateSelect, ExMode};
+use crater::ex::{ExCapLints, ExCrate, ExCrateSelect, ExMode};
 use crater::ex_run;
 use crater::lists;
 use crater::report;
@@ -90,6 +90,9 @@ pub enum Crater {
                     default_value_raw = "ExCrateSelect::Demo.to_str()",
                     possible_values_raw = "ExCrateSelect::possible_values()")]
         crates: ExCrateSelect,
+        #[structopt(name = "level", long = "cap-lints", required,
+                    possible_values_raw = "ExCapLints::possible_values()")]
+        cap_lints: ExCapLints,
     },
 
     #[structopt(name = "prepare-ex", about = "prepare shared and local data for experiment")]
@@ -202,6 +205,7 @@ impl Crater {
                 ref tc2,
                 ref mode,
                 ref crates,
+                ref cap_lints,
             } => {
                 ex::define(
                     ex::ExOpts {
@@ -209,6 +213,7 @@ impl Crater {
                         toolchains: vec![tc1.clone(), tc2.clone()],
                         mode: mode.clone(),
                         crates: crates.clone(),
+                        cap_lints: cap_lints.clone(),
                     },
                     &config,
                 )?;

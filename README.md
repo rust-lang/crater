@@ -49,7 +49,7 @@ own rustup installation, crate mirrors, etc.
 
 ```
 cargo run -- prepare-local --docker-env mini
-cargo run -- define-ex --crate-select=demo stable beta
+cargo run -- define-ex --crate-select=demo --cap-lints=forbid stable beta
 cargo run -- prepare-ex
 cargo run -- run
 cargo run -- gen-report work/ex/default/

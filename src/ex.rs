@@ -64,6 +64,13 @@ string_enum!(pub enum ExCrateSelect {
     Top100 => "top-100",
 });
 
+string_enum!(pub enum ExCapLints {
+    Allow => "allow",
+    Warn => "warn",
+    Deny => "deny",
+    Forbid => "forbid",
+});
+
 pub fn ex_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name)
 }
@@ -98,6 +105,7 @@ pub struct SerializableExperiment {
     pub crates: Vec<Crate>,
     pub toolchains: Vec<Toolchain>,
     pub mode: ExMode,
+    pub cap_lints: ExCapLints,
 }
 
 pub struct Experiment {
@@ -106,6 +114,7 @@ pub struct Experiment {
     pub toolchains: Vec<Toolchain>,
     pub shas: Mutex<ShasMap>,
     pub mode: ExMode,
+    pub cap_lints: ExCapLints,
 }
 
 impl Experiment {
@@ -115,6 +124,7 @@ impl Experiment {
             crates: self.crates.clone(),
             toolchains: self.toolchains.clone(),
             mode: self.mode.clone(),
+            cap_lints: self.cap_lints.clone(),
         }
     }
 }
@@ -124,6 +134,7 @@ pub struct ExOpts {
     pub toolchains: Vec<Toolchain>,
     pub mode: ExMode,
     pub crates: ExCrateSelect,
+    pub cap_lints: ExCapLints,
 }
 
 pub fn define(opts: ExOpts, config: &Config) -> Result<()> {
@@ -134,7 +145,13 @@ pub fn define(opts: ExOpts, config: &Config) -> Result<()> {
         ExCrateSelect::SmallRandom => small_random()?,
         ExCrateSelect::Top100 => top_100()?,
     };
-    define_(&opts.name, opts.toolchains, crates, opts.mode)
+    define_(
+        &opts.name,
+        opts.toolchains,
+        crates,
+        opts.mode,
+        opts.cap_lints,
+    )
 }
 
 fn demo_list(config: &Config) -> Result<Vec<Crate>> {
@@ -185,7 +202,13 @@ fn top_100() -> Result<Vec<Crate>> {
     Ok(crates)
 }
 
-pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExMode) -> Result<()> {
+pub fn define_(
+    ex_name: &str,
+    toolchains: Vec<Toolchain>,
+    crates: Vec<Crate>,
+    mode: ExMode,
+    cap_lints: ExCapLints,
+) -> Result<()> {
     info!(
         "defining experiment {} for {} crates",
         ex_name,
@@ -194,9 +217,10 @@ pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExM
     let ex = Experiment {
         name: ex_name.to_string(),
         crates,
-        toolchains: tcs,
         shas: Mutex::new(ShasMap::new(shafile(ex_name))?),
+        toolchains,
         mode,
+        cap_lints,
     };
     fs::create_dir_all(&ex_dir(&ex.name))?;
     let json = serde_json::to_string(&ex.serializable())?;
@@ -324,6 +348,7 @@ impl Experiment {
             crates: data.crates,
             toolchains: data.toolchains,
             mode: data.mode,
+            cap_lints: data.cap_lints,
         })
     }
 
@@ -560,7 +585,7 @@ fn capture_lockfile(
 ) -> Result<()> {
     let args = &["generate-lockfile", "--manifest-path", "Cargo.toml"];
     toolchain
-        .run_cargo(&ex.name, path, args, CargoState::Unlocked, false)
+        .run_cargo(ex, path, args, CargoState::Unlocked, false)
         .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
 
     let src_lockfile = &path.join("Cargo.lock");
@@ -610,7 +635,7 @@ pub fn fetch_deps(ex: &Experiment, crates: &[ExCrate], toolchain: &Toolchain) ->
 
             let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
             toolchain
-                .run_cargo(&ex.name, path, args, CargoState::Unlocked, false)
+                .run_cargo(ex, path, args, CargoState::Unlocked, false)
                 .chain_err(|| format!("unable to fetch deps for {}", c))?;
 
             Ok(())

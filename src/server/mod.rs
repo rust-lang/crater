@@ -1,4 +1,5 @@
 use arc_cell::ArcCell;
+use config::Config;
 use futures::{self, Future, Stream};
 use futures_cpupool::CpuPool;
 use handlebars::Handlebars;
@@ -17,7 +18,9 @@ use std::sync::Arc;
 
 mod api;
 
-pub struct Data;
+pub struct Data {
+    pub config: Config,
+}
 
 type Handler = Box<
     Fn(&Server, Request, Params) -> Box<Future<Item = Response, Error = hyper::Error>>

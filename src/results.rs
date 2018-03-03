@@ -155,6 +155,7 @@ impl<'a> ResultWriter<'a> {
 pub enum TestResult {
     BuildFail,
     TestFail,
+    TestSkipped,
     TestPass,
 }
 impl Display for TestResult {
@@ -170,6 +171,7 @@ impl FromStr for TestResult {
         match s {
             "build-fail" => Ok(TestResult::BuildFail),
             "test-fail" => Ok(TestResult::TestFail),
+            "test-skipped" => Ok(TestResult::TestSkipped),
             "test-pass" => Ok(TestResult::TestPass),
             _ => Err(format!("bogus test result: {}", s).into()),
         }
@@ -181,6 +183,7 @@ impl TestResult {
         match *self {
             TestResult::BuildFail => "build-fail",
             TestResult::TestFail => "test-fail",
+            TestResult::TestSkipped => "test-skipped",
             TestResult::TestPass => "test-pass",
         }.to_string()
     }

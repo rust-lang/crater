@@ -250,7 +250,7 @@ impl Crater {
                 report::gen(&ex.0, &report::S3Writer::create(s3_prefix)?, &config)?;
             }
             Crater::Serve => {
-                server::start(server::Data);
+                server::start(server::Data { config });
             }
         }
 

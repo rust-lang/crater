@@ -41,12 +41,20 @@ th {
     background-color: #788843;
 }
 
+.same-test-skipped {
+    background: repeating-linear-gradient(-45deg, #72A156, #72A156 15px, #80B65F 15px, #80B65F 30px);
+}
+
 .same-test-pass {
     background-color: #72A156;
 }
 
 .unknown {
     background-color: #494B4A;
+}
+
+.skipped {
+    background: repeating-linear-gradient(-45deg, #494b4a, #494b4a 15px, #555 15px, #555 30px);
 }
 
 #controls {

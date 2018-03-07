@@ -84,21 +84,11 @@ pub enum Crater {
         tc2: Toolchain,
         #[structopt(name = "mode", long = "mode",
                     default_value_raw = "ExMode::BuildAndTest.to_str()",
-                    possible_values_raw = "&[
-                ExMode::BuildAndTest.to_str(),
-                ExMode::BuildOnly.to_str(),
-                ExMode::CheckOnly.to_str(),
-                ExMode::UnstableFeatures.to_str(),
-            ]")]
+                    possible_values_raw = "ExMode::possible_values()")]
         mode: ExMode,
         #[structopt(name = "crate-select", long = "crate-select",
                     default_value_raw = "ExCrateSelect::Demo.to_str()",
-                    possible_values_raw = "&[
-                ExCrateSelect::Demo.to_str(),
-                ExCrateSelect::Full.to_str(),
-                ExCrateSelect::SmallRandom.to_str(),
-                ExCrateSelect::Top100.to_str(),
-            ]")]
+                    possible_values_raw = "ExCrateSelect::possible_values()")]
         crates: ExCrateSelect,
     },
 

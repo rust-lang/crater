@@ -18,21 +18,51 @@ use toml_frobber;
 use toolchain::{self, CargoState, Toolchain};
 use util;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ExMode {
-    BuildAndTest,
-    BuildOnly,
-    CheckOnly,
-    UnstableFeatures,
+macro_rules! string_enum {
+    (pub enum $name:ident { $($item:ident => $str:expr,)* }) => {
+        #[derive(Serialize, Deserialize, Debug, Clone)]
+        pub enum $name {
+            $($item,)*
+        }
+
+        impl FromStr for $name {
+            type Err = Error;
+
+            fn from_str(s: &str) -> Result<$name> {
+                Ok(match s {
+                    $($str => $name::$item,)*
+                    s => bail!("invalid {}: {}", stringify!($name), s),
+                })
+            }
+        }
+
+        impl $name {
+            pub fn to_str(&self) -> &'static str {
+                match *self {
+                    $($name::$item => $str,)*
+                }
+            }
+
+            pub fn possible_values() -> &'static [&'static str] {
+                &[$($str,)*]
+            }
+        }
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum ExCrateSelect {
-    Full,
-    Demo,
-    SmallRandom,
-    Top100,
-}
+string_enum!(pub enum ExMode {
+    BuildAndTest => "build-and-test",
+    BuildOnly => "build-only",
+    CheckOnly => "check-only",
+    UnstableFeatures => "unstable-features",
+});
+
+string_enum!(pub enum ExCrateSelect {
+    Full => "full",
+    Demo => "demo",
+    SmallRandom => "small-random",
+    Top100 => "top-100",
+});
 
 pub fn ex_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name)
@@ -632,54 +662,4 @@ pub fn delete(ex_name: &str) -> Result<()> {
     }
 
     Ok(())
-}
-
-impl FromStr for ExMode {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<ExMode> {
-        Ok(match s {
-            "build-and-test" => ExMode::BuildAndTest,
-            "build-only" => ExMode::BuildOnly,
-            "check-only" => ExMode::CheckOnly,
-            "unstable-features" => ExMode::UnstableFeatures,
-            s => bail!("invalid ex-mode: {}", s),
-        })
-    }
-}
-
-impl ExMode {
-    pub fn to_str(&self) -> &'static str {
-        match *self {
-            ExMode::BuildAndTest => "build-and-test",
-            ExMode::BuildOnly => "build-only",
-            ExMode::CheckOnly => "check-only",
-            ExMode::UnstableFeatures => "unstable-features",
-        }
-    }
-}
-
-impl FromStr for ExCrateSelect {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<ExCrateSelect> {
-        Ok(match s {
-            "full" => ExCrateSelect::Full,
-            "demo" => ExCrateSelect::Demo,
-            "small-random" => ExCrateSelect::SmallRandom,
-            "top-100" => ExCrateSelect::Top100,
-            s => bail!("invalid crate-select: {}", s),
-        })
-    }
-}
-
-impl ExCrateSelect {
-    pub fn to_str(&self) -> &'static str {
-        match *self {
-            ExCrateSelect::Full => "full",
-            ExCrateSelect::Demo => "demo",
-            ExCrateSelect::SmallRandom => "small-random",
-            ExCrateSelect::Top100 => "top-100",
-        }
-    }
 }

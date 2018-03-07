@@ -43,7 +43,7 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
     let db = FileDB::for_experiment(ex);
     verify_toolchains(ex, tcs)?;
 
-    let crates = ex.crates()?;
+    let crates = ex.crates(config)?;
 
     // Just for reporting progress
     let total_crates = crates.len() * tcs.len();

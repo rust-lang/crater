@@ -206,8 +206,8 @@ impl Crater {
             }
             Crater::PrepareEx { ref ex } => {
                 let ex = ex::Experiment::load(&ex.0)?;
-                ex.prepare_shared()?;
-                ex.prepare_local()?;
+                ex.prepare_shared(&config)?;
+                ex.prepare_local(&config)?;
             }
             Crater::CopyEx { ref ex1, ref ex2 } => {
                 ex::copy(&ex1.0, &ex2.0)?;

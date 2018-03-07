@@ -51,7 +51,7 @@ pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResul
     let db = FileDB::for_experiment(ex);
     assert_eq!(ex.toolchains.len(), 2);
 
-    let res = ex.crates()?
+    let res = ex.crates(config)?
         .into_iter()
         .map(|krate| {
             // Any errors here will turn into unknown results
@@ -89,7 +89,7 @@ const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
 
 fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -> Result<()> {
     let db = FileDB::for_experiment(ex);
-    let crates = ex.crates()?;
+    let crates = ex.crates(config)?;
     let num_crates = crates.len();
     let progress_every = (num_crates / PROGRESS_FRACTION) + 1;
     for (i, krate) in crates.into_iter().enumerate() {
@@ -158,7 +158,11 @@ fn crate_to_name(c: &ex::ExCrate) -> String {
             ref org,
             ref name,
             ref sha,
-        } => format!("{}.{}.{}", org, name, sha),
+        } => if let Some(ref sha) = *sha {
+            format!("{}.{}.{}", org, name, sha)
+        } else {
+            format!("{}.{}", org, name)
+        },
     }
 }
 
@@ -172,7 +176,11 @@ fn crate_to_url(c: &ex::ExCrate) -> String {
             ref org,
             ref name,
             ref sha,
-        } => format!("https://github.com/{}/{}/tree/{}", org, name, sha),
+        } => if let Some(ref sha) = *sha {
+            format!("https://github.com/{}/{}/tree/{}", org, name, sha)
+        } else {
+            format!("https://github.com/{}/{}", org, name)
+        },
     }
 }
 

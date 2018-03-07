@@ -41,7 +41,11 @@ fn crate_to_dir(c: &ExCrate) -> String {
             ref org,
             ref name,
             ref sha,
-        } => format!("gh/{}.{}.{}", org, name, sha),
+        } => if let Some(ref sha) = *sha {
+            format!("gh/{}.{}.{}", org, name, sha)
+        } else {
+            format!("gh/{}.{}", org, name)
+        },
     }
 }
 

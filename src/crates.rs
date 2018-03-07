@@ -1,3 +1,4 @@
+use config::Config;
 use dl;
 use errors::*;
 use ex::ExCrate;
@@ -13,10 +14,16 @@ use util;
 
 const CRATES_ROOT: &str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
-pub fn prepare(list: &[ExCrate]) -> Result<()> {
+pub fn prepare(list: &[ExCrate], config: &Config) -> Result<()> {
     info!("preparing {} crates", list.len());
     let mut successes = 0;
     for crate_ in list {
+        if config.should_skip(crate_) {
+            info!("skipping crate {} (blacklisted in config.toml)", crate_);
+            successes += 1;
+            continue;
+        }
+
         let dir = crate_.dir();
         match *crate_ {
             ExCrate::Version {
@@ -38,6 +45,12 @@ pub fn prepare(list: &[ExCrate]) -> Result<()> {
                 ref sha,
             } => {
                 let url = format!("https://github.com/{}/{}", org, name);
+                let sha = if let Some(ref sha) = *sha {
+                    sha
+                } else {
+                    bail!("Missing sha for the crate {}", crate_);
+                };
+
                 let r =
                     dl_repo(&url, &dir, sha).chain_err(|| format!("unable to download {}", url));
                 if let Err(e) = r {

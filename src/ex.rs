@@ -247,15 +247,17 @@ impl Experiment {
             }
         }
         Ok(())
-    }
+}
 
     pub fn prepare_shared(&mut self) -> Result<()> {
         self.fetch_repo_crates()?;
         self.shas
             .capture(self.crates.iter().filter_map(|c| c.repo_url()))?;
         download_crates(self)?;
-        frob_tomls(self)?;
-        capture_lockfiles(self, &Toolchain::Dist("stable".into()), false)?;
+
+        let crates = self.crates()?;
+        frob_tomls(self, &crates)?;
+        capture_lockfiles(self, &crates, &Toolchain::Dist("stable".into()), false)?;
         Ok(())
     }
 
@@ -263,7 +265,7 @@ impl Experiment {
         // Local experiment prep
         delete_all_target_dirs(&self.name)?;
         ex_run::delete_all_results(&self.name)?;
-        fetch_deps(self, &Toolchain::Dist("stable".into()))?;
+        fetch_deps(self, &self.crates()?, &Toolchain::Dist("stable".into()))?;
         prepare_all_toolchains(self)?;
 
         Ok(())
@@ -384,9 +386,9 @@ fn download_crates(ex: &Experiment) -> Result<()> {
     crates::prepare(&ex.crates()?)
 }
 
-fn frob_tomls(ex: &Experiment) -> Result<()> {
-    for krate in ex.crates()? {
-        if let ExCrate::Version {
+pub fn frob_tomls(ex: &Experiment, crates: &[ExCrate]) -> Result<()> {
+    for krate in crates {
+        if let &ExCrate::Version {
             ref name,
             ref version,
         } = krate
@@ -470,14 +472,15 @@ where
     r
 }
 
-fn capture_lockfiles(
+pub fn capture_lockfiles(
     ex: &Experiment,
+    crates: &[ExCrate],
     toolchain: &Toolchain,
     recapture_existing: bool,
 ) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    for c in &ex.crates()? {
+    for c in crates {
         if c.dir().join("Cargo.lock").exists() {
             info!("crate {} has a lockfile. skipping", c);
             continue;
@@ -554,8 +557,8 @@ pub fn with_captured_lockfile(ex: &Experiment, crate_: &ExCrate, path: &Path) ->
     Ok(())
 }
 
-fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
-    for c in &ex.crates()? {
+pub fn fetch_deps(ex: &Experiment, crates: &[ExCrate], toolchain: &Toolchain) -> Result<()> {
+    for c in crates {
         let r = with_work_crate(ex, toolchain, c, |path| {
             with_frobbed_toml(ex, c, path)?;
             with_captured_lockfile(ex, c, path)?;
@@ -575,7 +578,7 @@ fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
     Ok(())
 }
 
-fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {
+pub fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {
     for tc in &ex.toolchains {
         tc.prepare()?;
     }

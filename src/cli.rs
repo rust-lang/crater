@@ -204,7 +204,7 @@ impl Crater {
                 })?;
             }
             Crater::PrepareEx { ref ex } => {
-                let ex = ex::Experiment::load(&ex.0)?;
+                let mut ex = ex::Experiment::load(&ex.0)?;
                 ex.prepare_shared()?;
                 ex.prepare_local()?;
             }

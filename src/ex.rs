@@ -44,8 +44,8 @@ fn registry_dir() -> PathBuf {
     CRATES_DIR.join("reg")
 }
 
-fn shafile(ex: &Experiment) -> PathBuf {
-    EXPERIMENT_DIR.join(&ex.name).join("shas.json")
+fn shafile(ex_name: &str) -> PathBuf {
+    EXPERIMENT_DIR.join(ex_name).join("shas.json")
 }
 
 fn config_file(ex_name: &str) -> PathBuf {
@@ -61,11 +61,30 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Experiment {
+pub struct SerializableExperiment {
     pub name: String,
     pub crates: Vec<Crate>,
     pub toolchains: Vec<Toolchain>,
     pub mode: ExMode,
+}
+
+pub struct Experiment {
+    pub name: String,
+    pub crates: Vec<Crate>,
+    pub toolchains: Vec<Toolchain>,
+    pub shas: ShasMap,
+    pub mode: ExMode,
+}
+
+impl Experiment {
+    pub fn serializable(&self) -> SerializableExperiment {
+        SerializableExperiment {
+            name: self.name.clone(),
+            crates: self.crates.clone(),
+            toolchains: self.toolchains.clone(),
+            mode: self.mode.clone(),
+        }
+    }
 }
 
 pub struct ExOpts {
@@ -138,21 +157,82 @@ pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExM
         name: ex_name.to_string(),
         crates,
         toolchains: tcs,
+        shas: ShasMap::new(shafile(ex_name))?,
         mode,
     };
     fs::create_dir_all(&ex_dir(&ex.name))?;
-    let json = serde_json::to_string(&ex)?;
+    let json = serde_json::to_string(&ex.serializable())?;
     info!("writing ex config to {}", config_file(ex_name).display());
     file::write_string(&config_file(ex_name), &json)?;
     Ok(())
 }
 
-impl Experiment {
-    pub fn load(ex_name: &str) -> Result<Self> {
-        let config = file::read_string(&config_file(ex_name))?;
-        Ok(serde_json::from_str(&config)?)
+pub struct ShasMap {
+    shas: HashMap<String, String>,
+    path: PathBuf,
+}
+
+impl ShasMap {
+    pub fn new(path: PathBuf) -> Result<Self> {
+        let shas = if path.exists() {
+            serde_json::from_str(&file::read_string(&path)?)?
+        } else {
+            HashMap::new()
+        };
+
+        Ok(ShasMap { shas, path })
     }
 
+    pub fn capture<'a, I: Iterator<Item = &'a str>>(&mut self, urls: I) -> Result<()> {
+        let mut changed = false;
+
+        for url in urls {
+            let dir = gh_mirrors::repo_dir(url)?;
+            let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
+                .cd(&dir)
+                .run_capture();
+
+            match r {
+                Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
+                    if !shaline.is_empty() {
+                        info!("sha for {}: {}", url, shaline);
+                        self.shas.insert(url.to_string(), shaline.to_string());
+                        changed = true;
+                    } else {
+                        error!("bogus output from git log for {}", dir.display());
+                    }
+                } else {
+                    error!("bogus output from git log for {}", dir.display());
+                },
+                Err(e) => {
+                    error!("unable to capture sha for {}: {}", dir.display(), e);
+                }
+            }
+        }
+
+        if changed {
+            if let Some(parent) = self.path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            let shajson = serde_json::to_string(&self.shas)?;
+            info!("writing shas to {:?}", self.path);
+            file::write_string(&self.path, &shajson)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn get(&self, url: &str) -> Option<&str> {
+        self.shas.get(url).map(|u| u.as_ref())
+    }
+
+    pub fn inner(&self) -> &HashMap<String, String> {
+        &self.shas
+    }
+}
+
+impl Experiment {
     fn repo_crate_urls(&self) -> Vec<String> {
         self.crates
             .iter()
@@ -169,9 +249,10 @@ impl Experiment {
         Ok(())
     }
 
-    pub fn prepare_shared(&self) -> Result<()> {
+    pub fn prepare_shared(&mut self) -> Result<()> {
         self.fetch_repo_crates()?;
-        capture_shas(self)?;
+        self.shas
+            .capture(self.crates.iter().filter_map(|c| c.repo_url()))?;
         download_crates(self)?;
         frob_tomls(self)?;
         capture_lockfiles(self, &Toolchain::Dist("stable".into()), false)?;
@@ -189,54 +270,26 @@ impl Experiment {
     }
 }
 
-fn capture_shas(ex: &Experiment) -> Result<()> {
-    let mut shas: HashMap<String, String> = HashMap::new();
-    for krate in &ex.crates {
-        if let Crate::Repo { ref url } = *krate {
-            let dir = gh_mirrors::repo_dir(url)?;
-            let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
-                .cd(&dir)
-                .run_capture();
-
-            match r {
-                Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
-                    if !shaline.is_empty() {
-                        info!("sha for {}: {}", url, shaline);
-                        shas.insert(url.to_string(), shaline.to_string());
-                    } else {
-                        error!("bogus output from git log for {}", dir.display());
-                    }
-                } else {
-                    error!("bogus output from git log for {}", dir.display());
-                },
-                Err(e) => {
-                    error!("unable to capture sha for {}: {}", dir.display(), e);
-                }
-            }
-        }
-    }
-
-    fs::create_dir_all(&ex_dir(&ex.name))?;
-    let shajson = serde_json::to_string(&shas)?;
-    info!("writing shas to {}", shafile(ex).display());
-    file::write_string(&shafile(ex), &shajson)?;
-
-    Ok(())
-}
-
 impl Experiment {
-    pub fn load_shas(&self) -> Result<HashMap<String, String>> {
-        let shas = file::read_string(&shafile(self))?;
-        let shas = serde_json::from_str(&shas)?;
-        Ok(shas)
+    pub fn load(ex_name: &str) -> Result<Self> {
+        let config = file::read_string(&config_file(ex_name))?;
+        let data: SerializableExperiment = serde_json::from_str(&config)?;
+
+        Ok(Experiment {
+            shas: ShasMap::new(shafile(&data.name))?,
+
+            name: data.name,
+            crates: data.crates,
+            toolchains: data.toolchains,
+            mode: data.mode,
+        })
     }
 
     pub fn crates(&self) -> Result<Vec<ExCrate>> {
-        let shas = self.load_shas()?;
         let (oks, fails): (Vec<_>, Vec<_>) = self.crates
             .clone()
             .into_iter()
-            .map(|c| c.into_ex_crate(&shas))
+            .map(|c| c.into_ex_crate(self))
             .partition(Result::is_ok);
         if !fails.is_empty() {
             let fails = fails

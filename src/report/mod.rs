@@ -120,7 +120,8 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) 
     let ex = ex::Experiment::load(ex_name)?;
 
     let res = generate_report(config, &ex)?;
-    let shas = ex.shas.inner();
+    let shas_map = ex.shas.lock().unwrap();
+    let shas = shas_map.inner();
 
     info!("writing results to {}", dest);
     info!("writing metadata");

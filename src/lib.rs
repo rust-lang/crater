@@ -2,6 +2,7 @@
 extern crate arc_cell;
 extern crate chrono;
 extern crate crates_index;
+extern crate crossbeam;
 #[macro_use]
 extern crate error_chain;
 extern crate flate2;

@@ -1,7 +1,5 @@
 use errors::*;
-use ex::ExCrate;
-use ex::Experiment;
-use ex::ex_dir;
+use ex::{ex_dir, ExCrate, Experiment};
 use file;
 use log;
 use std::fmt::{self, Display, Formatter};

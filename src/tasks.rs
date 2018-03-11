@@ -4,33 +4,28 @@ use ex::{self, Experiment};
 use ex_run;
 use gh_mirrors;
 use lists::Crate;
+use results::ExperimentResultDB;
+use std::fmt;
 use toolchain::Toolchain;
 use util;
-use std::fmt;
 
 pub enum TaskStep {
     Prepare,
-    BuildAndTest { tc: Toolchain, quiet: bool, },
-    BuildOnly { tc: Toolchain, quiet: bool, }
+    BuildAndTest { tc: Toolchain, quiet: bool },
+    BuildOnly { tc: Toolchain, quiet: bool },
 }
 
 impl fmt::Debug for TaskStep {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TaskStep::Prepare => write!(f, "prepare")?,
-            TaskStep::BuildAndTest {
-                ref tc,
-                quiet,
-            } => {
+            TaskStep::BuildAndTest { ref tc, quiet } => {
                 write!(f, "build and test {}", tc.to_string())?;
                 if quiet {
                     write!(f, " (quiet)")?;
                 }
             }
-            TaskStep::BuildOnly {
-                ref tc,
-                quiet,
-            } => {
+            TaskStep::BuildOnly { ref tc, quiet } => {
                 write!(f, "build {}", tc.to_string())?;
                 if quiet {
                     write!(f, " (quiet)")?;
@@ -53,22 +48,22 @@ impl fmt::Debug for Task {
 }
 
 impl Task {
-    pub fn run(&self, ex: &mut Experiment) -> Result<()> {
-        match &self.step {
-            &TaskStep::Prepare => self.run_prepare(ex),
-            &TaskStep::BuildAndTest { ref tc, quiet, } => self.run_build_and_test(ex, tc, quiet),
-            &TaskStep::BuildOnly { ref tc, quiet, } => self.run_build_only(ex, tc, quiet),
+    pub fn run<DB: ExperimentResultDB>(&self, ex: &Experiment, db: &DB) -> Result<()> {
+        match self.step {
+            TaskStep::Prepare => self.run_prepare(ex),
+            TaskStep::BuildAndTest { ref tc, quiet } => self.run_build_and_test(ex, tc, db, quiet),
+            TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(ex, tc, db, quiet),
         }
     }
 
-    fn run_prepare(&self, ex: &mut Experiment) -> Result<()> {
+    fn run_prepare(&self, ex: &Experiment) -> Result<()> {
         // Fetch repository data if it's a git repo
         if let Some(url) = self.krate.repo_url() {
             if let Err(e) = gh_mirrors::fetch(url) {
                 util::report_error(&e);
             }
 
-            ex.shas.capture(::std::iter::once(url))?;
+            ex.shas.lock().unwrap().capture(::std::iter::once(url))?;
         }
 
         let ex_crate = [self.krate.clone().into_ex_crate(ex)?];
@@ -82,13 +77,41 @@ impl Task {
         Ok(())
     }
 
-    fn run_build_and_test(&self, ex: &mut Experiment, tc: &Toolchain, quiet: bool) -> Result<()> {
+    fn run_build_and_test<DB: ExperimentResultDB>(
+        &self,
+        ex: &Experiment,
+        tc: &Toolchain,
+        db: &DB,
+        quiet: bool,
+    ) -> Result<()> {
         let krate = self.krate.clone().into_ex_crate(ex)?;
-        ex_run::run_test("testing", ex, tc, &krate, quiet, ex_run::test_build_and_test).map(|_| ())
+        ex_run::run_test(
+            "testing",
+            ex,
+            tc,
+            &krate,
+            db,
+            quiet,
+            ex_run::test_build_and_test,
+        ).map(|_| ())
     }
 
-    fn run_build_only(&self, ex: &mut Experiment, tc: &Toolchain, quiet: bool) -> Result<()> {
+    fn run_build_only<DB: ExperimentResultDB>(
+        &self,
+        ex: &Experiment,
+        tc: &Toolchain,
+        db: &DB,
+        quiet: bool,
+    ) -> Result<()> {
         let krate = self.krate.clone().into_ex_crate(ex)?;
-        ex_run::run_test("testing", ex, tc, &krate, quiet, ex_run::test_build_only).map(|_| ())
+        ex_run::run_test(
+            "testing",
+            ex,
+            tc,
+            &krate,
+            db,
+            quiet,
+            ex_run::test_build_only,
+        ).map(|_| ())
     }
 }

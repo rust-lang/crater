@@ -333,7 +333,7 @@ impl Crate {
     pub fn into_ex_crate(self, ex: &Experiment) -> Result<ExCrate> {
         match self {
             Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
-            Crate::Repo { ref url } => if let Some(sha) = ex.shas.get(url) {
+            Crate::Repo { ref url } => if let Some(sha) = ex.shas.lock().unwrap().get(url) {
                 let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
                 Ok(ExCrate::Repo {
                     org: org.to_string(),

@@ -158,6 +158,8 @@ pub enum Crater {
     RunGraph {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
+        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
+        threads: usize,
     },
 
     #[structopt(name = "gen-report", about = "generate the experiment report")]
@@ -188,7 +190,7 @@ pub enum Crater {
         dest: PathBuf,
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
-    }
+    },
 }
 
 impl Crater {
@@ -246,8 +248,8 @@ impl Crater {
             Crater::RunTc { ref ex, ref tc } => {
                 ex_run::run_ex(&ex.0, tc.clone(), &config)?;
             }
-            Crater::RunGraph { ref ex } => {
-                run_graph::run_ex(&ex.0, &config)?;
+            Crater::RunGraph { ref ex, threads } => {
+                run_graph::run_ex(&ex.0, threads, &config)?;
             }
             Crater::GenReport { ref ex, ref dest } => {
                 report::gen(&ex.0, &report::FileWriter::create(dest.0.clone())?, &config)?;
@@ -269,10 +271,7 @@ impl Crater {
             Crater::Serve => {
                 server::start(server::Data { config });
             }
-            Crater::DumpTasksGraph {
-                ref dest,
-                ref ex,
-            } => {
+            Crater::DumpTasksGraph { ref dest, ref ex } => {
                 run_graph::dump_dot(&ex.0, &config, dest)?;
             }
         }

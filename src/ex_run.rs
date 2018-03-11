@@ -86,7 +86,10 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
                     error!("error testing crate {}:  {}", c, e);
                     util::report_error(e);
                 }
-                Ok(RunTestResult { ref result, skipped }) => {
+                Ok(RunTestResult {
+                    ref result,
+                    skipped,
+                }) => {
                     // FIXME: Should errors be recorded?
                     info!(
                         "test result! ex: {}, c: {}, tc: {}, r: {}",
@@ -108,11 +111,23 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
                 Err(_) => {
                     sum_errors += 1;
                 }
-                Ok(RunTestResult { skipped: true, .. }) => {},
-                Ok(RunTestResult { result: TestResult::BuildFail, .. }) => sum_build_fail += 1,
-                Ok(RunTestResult { result: TestResult::TestFail, .. }) => sum_test_fail += 1,
-                Ok(RunTestResult { result: TestResult::TestSkipped, .. }) => sum_test_skipped += 1,
-                Ok(RunTestResult { result: TestResult::TestPass, .. }) => sum_test_pass += 1,
+                Ok(RunTestResult { skipped: true, .. }) => {}
+                Ok(RunTestResult {
+                    result: TestResult::BuildFail,
+                    ..
+                }) => sum_build_fail += 1,
+                Ok(RunTestResult {
+                    result: TestResult::TestFail,
+                    ..
+                }) => sum_test_fail += 1,
+                Ok(RunTestResult {
+                    result: TestResult::TestSkipped,
+                    ..
+                }) => sum_test_skipped += 1,
+                Ok(RunTestResult {
+                    result: TestResult::TestPass,
+                    ..
+                }) => sum_test_pass += 1,
             }
 
             let elapsed = Instant::now().duration_since(start_time).as_secs();
@@ -173,7 +188,7 @@ pub fn run_test<DB: ExperimentResultDB>(
     krate: &ExCrate,
     db: &DB,
     quiet: bool,
-    test_fn: fn(&Experiment, &Path, &Toolchain, bool) -> Result<TestResult>
+    test_fn: fn(&Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,
 ) -> Result<RunTestResult> {
     let writer = db.for_crate(krate, tc);
 
@@ -189,19 +204,23 @@ pub fn run_test<DB: ExperimentResultDB>(
             with_captured_lockfile(ex, krate, source_path)?;
 
             writer.record_results(|| {
-                info!("{} {} against {} for {}", action, krate, tc.to_string(), ex.name);
+                info!(
+                    "{} {} against {} for {}",
+                    action,
+                    krate,
+                    tc.to_string(),
+                    ex.name
+                );
                 test_fn(ex, source_path, tc, quiet)
             })
-        }).map(|result| RunTestResult { result, skipped: false, })
+        }).map(|result| RunTestResult {
+            result,
+            skipped: false,
+        })
     }
 }
 
-fn build(
-    ex: &Experiment,
-    source_path: &Path,
-    toolchain: &Toolchain,
-    quiet: bool,
-) -> Result<()> {
+fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
     toolchain.run_cargo(
         &ex.name,
         source_path,
@@ -219,12 +238,7 @@ fn build(
     Ok(())
 }
 
-fn test(
-    ex: &Experiment,
-    source_path: &Path,
-    toolchain: &Toolchain,
-    quiet: bool,
-) -> Result<()> {
+fn test(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
     toolchain.run_cargo(
         &ex.name,
         source_path,

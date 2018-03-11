@@ -1,12 +1,17 @@
 use config::Config;
+use crossbeam;
 use errors::*;
 use ex::{self, Experiment};
 use file;
+use petgraph::Direction;
 use petgraph::dot::Dot;
 use petgraph::graph::{Graph, NodeIndex};
+use petgraph::visit::EdgeRef;
+use results::FileDB;
 use std::fmt;
 use std::mem;
 use std::path::Path;
+use std::sync::Mutex;
 use tasks::{Task, TaskStep};
 
 pub enum Node {
@@ -34,19 +39,23 @@ enum WalkResult {
     NotBlocked,
 }
 
+#[derive(Default)]
 pub struct TasksGraph {
     graph: Graph<Node, ()>,
     root: NodeIndex,
+    completed_root: NodeIndex,
 }
 
 impl TasksGraph {
     pub fn new() -> Self {
         let mut graph = Graph::new();
         let root = graph.add_node(Node::Root);
+        let completed_root = graph.add_node(Node::Root);
 
         TasksGraph {
             graph,
             root,
+            completed_root,
         }
     }
 
@@ -94,8 +103,8 @@ impl TasksGraph {
         }
 
         if dependencies == 0 {
-            match &self.graph[node] {
-                &Node::Task(_) => {
+            match self.graph[node] {
+                Node::Task(_) => {
                     let content = mem::replace(&mut self.graph[node], Node::RunningTask);
                     if let Node::Task(task) = content {
                         WalkResult::Task(node, task)
@@ -103,13 +112,13 @@ impl TasksGraph {
                         unreachable!();
                     }
                 }
-                &Node::RunningTask => WalkResult::Blocked,
-                &Node::CrateCompleted => {
+                Node::RunningTask => WalkResult::Blocked,
+                Node::CrateCompleted => {
                     // All the steps for this crate were completed
-                    self.graph.remove_node(node);
+                    self.mark_as_completed(node);
                     WalkResult::NotBlocked
                 }
-                &Node::Root => WalkResult::NotBlocked,
+                Node::Root => WalkResult::NotBlocked,
             }
         } else {
             WalkResult::Blocked
@@ -117,11 +126,18 @@ impl TasksGraph {
     }
 
     pub fn mark_as_completed(&mut self, node: NodeIndex) {
-        if let Some(Node::RunningTask) = self.graph.remove_node(node) {
-            ()
-        } else {
-            panic!("removing node {:?}, which is not a RunningTask", node);
+        // Remove all the edges from this node, and move the node to the completed root.
+        // The node is not removed because node IDs are not stable, so removing one node changes
+        // the ID of the other ones.
+        let mut edges = self.graph
+            .edges_directed(node, Direction::Incoming)
+            .map(|e| e.id())
+            .collect::<Vec<_>>();
+        for edge in edges.drain(..) {
+            self.graph.remove_edge(edge);
         }
+
+        self.graph.add_edge(self.completed_root, node, ());
     }
 }
 
@@ -133,28 +149,34 @@ fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
             continue;
         }
 
-        let prepare_id = graph.add_task(Task {
-            krate: krate.clone(),
-            step: TaskStep::Prepare,
-        }, &[]);
+        let prepare_id = graph.add_task(
+            Task {
+                krate: krate.clone(),
+                step: TaskStep::Prepare,
+            },
+            &[],
+        );
 
         let quiet = config.is_quiet(krate);
         let mut builds = Vec::new();
         for tc in &ex.toolchains {
-            let build_id = graph.add_task(Task {
-                krate: krate.clone(),
-                step: if config.should_skip_tests(krate) {
-                    TaskStep::BuildOnly {
-                        tc: tc.clone(),
-                        quiet,
-                    }
-                } else{
-                    TaskStep::BuildAndTest {
-                        tc: tc.clone(),
-                        quiet,
-                    }
+            let build_id = graph.add_task(
+                Task {
+                    krate: krate.clone(),
+                    step: if config.should_skip_tests(krate) {
+                        TaskStep::BuildOnly {
+                            tc: tc.clone(),
+                            quiet,
+                        }
+                    } else {
+                        TaskStep::BuildAndTest {
+                            tc: tc.clone(),
+                            quiet,
+                        }
+                    },
                 },
-            }, &[prepare_id]);
+                &[prepare_id],
+            );
 
             builds.push(build_id);
         }
@@ -165,24 +187,52 @@ fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
     graph
 }
 
-pub fn run_ex(ex_name: &str, config: &Config) -> Result<()> {
-    let mut ex = Experiment::load(ex_name)?;
+pub fn run_ex(ex_name: &str, threads_count: usize, config: &Config) -> Result<()> {
+    let ex = Experiment::load(ex_name)?;
+    let db = FileDB::for_experiment(&ex);
 
     info!("computing the tasks graph...");
-    let mut graph = build_graph(&ex, config);
+    let graph = Mutex::new(build_graph(&ex, config));
 
     info!("preparing the execution...");
     ex::prepare_all_toolchains(&ex)?;
 
-    info!("running tasks...");
-    while let Some((id, task)) = graph.next_task() {
-        info!("running task: {:?}", task);
-        task.run(&mut ex)?;
-        graph.mark_as_completed(id);
-    }
+    info!("running tasks in {} threads...", threads_count);
+
+    crossbeam::scope(|scope| -> Result<()> {
+        let mut threads = Vec::new();
+
+        for i in 0..threads_count {
+            let name = format!("worker-{}", i);
+            let join = scope.builder().name(name).spawn(|| -> Result<()> {
+                // This uses a `loop` instead of a `while let` to avoid locking the graph too much
+                loop {
+                    let option_task = graph.lock().unwrap().next_task();
+                    if let Some((id, task)) = option_task {
+                        info!("running task: {:?}", task);
+                        task.run(&ex, &db)?;
+                        graph.lock().unwrap().mark_as_completed(id);
+                    } else {
+                        break;
+                    }
+                }
+
+                Ok(())
+            })?;
+            threads.push(join);
+        }
+
+        for thread in threads.drain(..) {
+            thread.join()?;
+        }
+
+        Ok(())
+    })?;
 
     // Only the root node must be present
-    assert_eq!(graph.graph.node_count(), 1);
+    let mut g = graph.lock().unwrap();
+    assert!(g.next_task().is_none());
+    assert_eq!(g.graph.neighbors(g.root).count(), 0);
 
     Ok(())
 }

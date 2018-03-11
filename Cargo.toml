@@ -10,6 +10,7 @@ opt-level = 0
 arc-cell = "0.1.5"
 chrono = "0.4"
 crates-index = "0.10"
+crossbeam = "0.3"
 dotenv = "0.10.0"
 error-chain = "0.10"
 flate2 = "1"

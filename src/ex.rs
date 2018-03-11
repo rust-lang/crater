@@ -12,6 +12,7 @@ use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Mutex;
 use toml_frobber;
 use toolchain::{self, CargoState, Toolchain};
 use util;
@@ -72,7 +73,7 @@ pub struct Experiment {
     pub name: String,
     pub crates: Vec<Crate>,
     pub toolchains: Vec<Toolchain>,
-    pub shas: ShasMap,
+    pub shas: Mutex<ShasMap>,
     pub mode: ExMode,
 }
 
@@ -157,7 +158,7 @@ pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExM
         name: ex_name.to_string(),
         crates,
         toolchains: tcs,
-        shas: ShasMap::new(shafile(ex_name))?,
+        shas: Mutex::new(ShasMap::new(shafile(ex_name))?),
         mode,
     };
     fs::create_dir_all(&ex_dir(&ex.name))?;
@@ -247,11 +248,13 @@ impl Experiment {
             }
         }
         Ok(())
-}
+    }
 
     pub fn prepare_shared(&mut self) -> Result<()> {
         self.fetch_repo_crates()?;
         self.shas
+            .lock()
+            .unwrap()
             .capture(self.crates.iter().filter_map(|c| c.repo_url()))?;
         download_crates(self)?;
 
@@ -278,7 +281,7 @@ impl Experiment {
         let data: SerializableExperiment = serde_json::from_str(&config)?;
 
         Ok(Experiment {
-            shas: ShasMap::new(shafile(&data.name))?,
+            shas: Mutex::new(ShasMap::new(shafile(&data.name))?),
 
             name: data.name,
             crates: data.crates,
@@ -386,6 +389,7 @@ fn download_crates(ex: &Experiment) -> Result<()> {
     crates::prepare(&ex.crates()?)
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
 pub fn frob_tomls(ex: &Experiment, crates: &[ExCrate]) -> Result<()> {
     for krate in crates {
         if let &ExCrate::Version {
@@ -446,7 +450,11 @@ fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
 }
 
 fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
-    TEST_SOURCE_DIR.join(ex_name).join(toolchain.to_string())
+    let mut dir = TEST_SOURCE_DIR.clone();
+    if let Some(thread) = ::std::thread::current().name() {
+        dir = dir.join(thread);
+    }
+    dir.join(ex_name).join(toolchain.to_string())
 }
 
 pub fn with_work_crate<F, R>(

@@ -1,5 +1,4 @@
 #![deny(unused_extern_crates)]
-extern crate arc_cell;
 extern crate chrono;
 extern crate crates_index;
 extern crate crossbeam;
@@ -9,7 +8,6 @@ extern crate flate2;
 extern crate futures;
 extern crate futures_cpupool;
 extern crate handlebars;
-extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
@@ -18,14 +16,12 @@ extern crate petgraph;
 extern crate rand;
 extern crate ref_slice;
 extern crate reqwest;
-extern crate route_recognizer;
 extern crate rusoto_core;
 extern crate rusoto_s3;
 extern crate rustup_dist;
 #[macro_use]
 extern crate scopeguard;
 extern crate semver;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
@@ -68,5 +64,4 @@ pub mod report;
 pub mod docker;
 pub mod dirs;
 pub mod results;
-pub mod server;
 mod tasks;

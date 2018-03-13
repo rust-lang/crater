@@ -7,7 +7,6 @@ authors = ["Brian Anderson <banderson@mozilla.com>"]
 opt-level = 0
 
 [dependencies]
-arc-cell = "0.1.5"
 chrono = "0.4"
 crates-index = "0.10"
 crossbeam = "0.3"
@@ -25,7 +24,6 @@ petgraph = "0.4.11"
 rand = "0.3"
 ref_slice = "1.1.1"
 reqwest = "0.8"
-route-recognizer = "0.1.12"
 rusoto_core = "0.30.0"
 rusoto_s3 = "0.30.0"
 rustup-dist = { git = "https://github.com/rust-lang-nursery/rustup.rs", tag="1.7.0" }

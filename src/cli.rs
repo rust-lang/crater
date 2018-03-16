@@ -197,12 +197,15 @@ impl Crater {
                 ref mode,
                 ref crates,
             } => {
-                ex::define(ex::ExOpts {
-                    name: ex.0.clone(),
-                    toolchains: vec![tc1.clone(), tc2.clone()],
-                    mode: mode.clone(),
-                    crates: crates.clone(),
-                })?;
+                ex::define(
+                    ex::ExOpts {
+                        name: ex.0.clone(),
+                        toolchains: vec![tc1.clone(), tc2.clone()],
+                        mode: mode.clone(),
+                        crates: crates.clone(),
+                    },
+                    &config,
+                )?;
             }
             Crater::PrepareEx { ref ex } => {
                 let ex = ex::Experiment::load(&ex.0)?;

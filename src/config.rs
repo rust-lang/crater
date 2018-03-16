@@ -23,7 +23,15 @@ fn default_false() -> bool {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub struct DemoCrates {
+    pub crates: Vec<String>,
+    pub github_repos: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Config {
+    demo_crates: DemoCrates,
     crates: HashMap<String, CrateConfig>,
     github_repos: HashMap<String, CrateConfig>,
 }
@@ -59,6 +67,10 @@ impl Config {
     pub fn is_quiet(&self, ex: &ExCrate) -> bool {
         self.crate_config(ex).map(|c| c.quiet).unwrap_or(false)
     }
+
+    pub fn demo_crates(&self) -> &DemoCrates {
+        &self.demo_crates
+    }
 }
 
 #[cfg(test)]
@@ -70,6 +82,9 @@ mod tests {
     fn test_config() {
         // A sample config file loaded from memory
         let config = concat!(
+            "[demo-crates]\n",
+            "crates = []\n",
+            "github-repos = []\n",
             "[crates]\n",
             "lazy_static = { skip = true }\n",
             "\n",

@@ -1,4 +1,12 @@
-# This file allows to customize how crater treats specific crates/repos
+# This section contains the list of tested crates when defining an experiment
+# with `--crate-select demo`.
+
+[demo-crates]
+crates = ["lazy_static"]
+github-repos = ["brson/hello-rs"]
+
+
+# These sections allows to customize how crater treats specific crates/repos
 #
 # The available options for each crate/repo are:
 #  - skip       (bool): ignore this crate/repo
@@ -7,7 +15,6 @@
 #
 # Please add a comment along with each entry explaining the reasons of the
 # changes, thanks!
-
 
 [crates]
 # crate_name = { option = true }

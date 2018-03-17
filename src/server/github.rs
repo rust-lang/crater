@@ -16,19 +16,45 @@ impl GitHubApi {
     }
 
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
-        let mut req = self.client
-            .request(method, &format!("https://api.github.com/{}", url));
+        let url = if !url.starts_with("https://") {
+            format!("https://api.github.com/{}", url)
+        } else {
+            url.to_string()
+        };
+
+        let mut req = self.client.request(method, &url);
         req.header(header::Authorization(format!("token {}", self.token)));
         req
     }
 
     pub fn username(&self) -> Result<String> {
-        #[derive(Deserialize)]
-        struct Response {
-            login: String,
-        }
-
-        let response: Response = self.build_request(Method::Get, "user").send()?.json()?;
+        let response: User = self.build_request(Method::Get, "user").send()?.json()?;
         Ok(response.login)
     }
+
+    pub fn post_comment(&self, issue_url: &str, body: &str) -> Result<()> {
+        self.build_request(Method::Post, &format!("{}/comments", issue_url))
+            .json(&json!({
+                "body": body,
+            }))
+            .send()?;
+        Ok(())
+    }
+}
+
+#[derive(Deserialize)]
+pub struct User {
+    pub login: String,
+}
+
+#[derive(Deserialize)]
+pub struct EventIssueComment {
+    pub comment: Comment,
+    pub sender: User,
+}
+
+#[derive(Deserialize)]
+pub struct Comment {
+    pub body: String,
+    pub issue_url: String,
 }

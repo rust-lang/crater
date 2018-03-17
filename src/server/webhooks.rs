@@ -4,7 +4,9 @@ use futures::prelude::*;
 use hyper::header::ContentLength;
 use hyper::server::{Request, Response};
 use ring;
+use serde_json;
 use server::Data;
+use server::github::EventIssueComment;
 use server::http::{Context, ResponseFuture};
 use std::sync::Arc;
 use util;
@@ -16,7 +18,33 @@ fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> 
 
     match event {
         "ping" => info!("the webhook is configured correctly!"),
+        "issue_comment" => {
+            let p: EventIssueComment = serde_json::from_str(payload)?;
+            process_command(&p.sender.login, &p.comment.body, &p.comment.issue_url, data)?;
+        }
         e => bail!("invalid event received: {}", e),
+    }
+
+    Ok(())
+}
+
+fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Result<()> {
+    let start = format!("@{} ", data.bot_username);
+    for line in body.lines() {
+        if line.starts_with(&start) {
+            let command = line.split(' ').skip(1).collect::<Vec<_>>();
+            if command.is_empty() {
+                continue;
+            }
+
+            info!("user @{} sent command: {}", sender, command.join(" "));
+
+            if command.len() == 1 && command[0] == "ping" {
+                data.github.post_comment(issue_url, ":tennis: *Pong!*")?;
+            }
+
+            break;
+        }
     }
 
     Ok(())

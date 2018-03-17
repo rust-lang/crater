@@ -26,6 +26,7 @@ extern crate scopeguard;
 extern crate semver;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
 extern crate serde_json;
 #[macro_use(slog_o, slog_info, slog_log, slog_error, slog_warn, slog_debug, slog_record,
             slog_record_static, slog_b, slog_kv)]

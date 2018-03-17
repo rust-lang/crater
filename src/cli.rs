@@ -20,6 +20,7 @@ use crater::lists;
 use crater::report;
 use crater::results::FileDB;
 use crater::run_graph;
+use crater::server;
 use crater::toolchain::Toolchain;
 use std::env;
 use std::path::PathBuf;
@@ -175,6 +176,9 @@ pub enum Crater {
         s3_prefix: Option<report::S3Prefix>,
     },
 
+    #[structopt(name = "server")]
+    Server,
+
     #[structopt(name = "dump-tasks-graph", about = "dump the internal tasks graph in .dot format")]
     DumpTasksGraph {
         #[structopt(name = "dest", parse(from_os_str))]
@@ -271,6 +275,9 @@ impl Crater {
                 };
                 let db = FileDB::default();
                 report::gen(&db, &ex.0, &report::S3Writer::create(s3_prefix)?, &config)?;
+            }
+            Crater::Server => {
+                server::run()?;
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
                 run_graph::dump_dot(&ex.0, &config, dest)?;

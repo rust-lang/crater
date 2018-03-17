@@ -9,6 +9,7 @@ error_chain! {
         ReqwestError(::reqwest::Error);
         RustupError(::rustup_dist::Error);
         TomlDe(::toml::de::Error);
+        Hyper(::hyper::Error);
     }
 
     links {

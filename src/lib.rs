@@ -8,6 +8,7 @@ extern crate flate2;
 extern crate futures;
 extern crate futures_cpupool;
 extern crate handlebars;
+extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
@@ -64,4 +65,5 @@ pub mod report;
 pub mod docker;
 pub mod dirs;
 pub mod results;
+pub mod server;
 mod tasks;

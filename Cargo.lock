@@ -213,6 +213,7 @@ dependencies = [
  "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "ref_slice 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_core 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_s3 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustup-dist 1.7.0 (git+https://github.com/rust-lang-nursery/rustup.rs?tag=1.7.0)",

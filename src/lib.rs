@@ -17,6 +17,7 @@ extern crate petgraph;
 extern crate rand;
 extern crate ref_slice;
 extern crate reqwest;
+extern crate ring;
 extern crate rusoto_core;
 extern crate rusoto_s3;
 extern crate rustup_dist;

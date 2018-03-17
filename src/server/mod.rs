@@ -1,7 +1,9 @@
+mod webhooks;
 mod http;
 mod tokens;
 
 use errors::*;
+use hyper::Method;
 use server::http::Server;
 use server::tokens::Tokens;
 
@@ -13,6 +15,7 @@ pub fn run() -> Result<()> {
     let tokens = tokens::Tokens::load()?;
 
     let mut server = Server::new(Data { tokens })?;
+    server.add_route(Method::Post, "/webhooks", webhooks::handle);
     server.run()?;
     Ok(())
 }

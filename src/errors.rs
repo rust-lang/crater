@@ -10,6 +10,8 @@ error_chain! {
         RustupError(::rustup_dist::Error);
         TomlDe(::toml::de::Error);
         Hyper(::hyper::Error);
+        ParseInt(::std::num::ParseIntError);
+        Parse(::std::string::ParseError);
     }
 
     links {

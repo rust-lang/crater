@@ -2,20 +2,26 @@ mod github;
 mod http;
 mod tokens;
 mod webhooks;
+mod experiments;
 
+use config::Config;
 use errors::*;
 use hyper::Method;
+use server::experiments::Experiments;
 use server::github::GitHubApi;
 use server::http::Server;
 use server::tokens::Tokens;
+use std::sync::{Arc, Mutex};
 
 pub struct Data {
     pub bot_username: String,
+    pub config: Config,
     pub github: GitHubApi,
     pub tokens: Tokens,
+    pub experiments: Arc<Mutex<Experiments>>,
 }
 
-pub fn run() -> Result<()> {
+pub fn run(config: Config) -> Result<()> {
     let tokens = tokens::Tokens::load()?;
     let github = GitHubApi::new(&tokens);
     let bot_username = github.username()?;
@@ -24,8 +30,10 @@ pub fn run() -> Result<()> {
 
     let mut server = Server::new(Data {
         bot_username,
+        config,
         github,
         tokens,
+        experiments: Arc::new(Mutex::new(Experiments::new()?)),
     })?;
 
     server.add_route(Method::Post, "/webhooks", webhooks::handle);

@@ -1,3 +1,4 @@
+#![recursion_limit = "128"]
 #![deny(unused_extern_crates)]
 extern crate chrono;
 extern crate crates_index;

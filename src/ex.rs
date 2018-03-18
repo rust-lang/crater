@@ -41,7 +41,7 @@ pub fn ex_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name)
 }
 
-fn config_file(ex_name: &str) -> PathBuf {
+pub fn config_file(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("config.json")
 }
 
@@ -70,18 +70,21 @@ pub struct ExOpts {
     pub cap_lints: ExCapLints,
 }
 
+pub fn get_crates(crates: ExCrateSelect, config: &Config) -> Result<Vec<Crate>> {
+    match crates {
+        ExCrateSelect::Full => lists::read_all_lists(),
+        ExCrateSelect::Demo => demo_list(config),
+        ExCrateSelect::SmallRandom => small_random(),
+        ExCrateSelect::Top100 => top_100(),
+    }
+}
+
 pub fn define(opts: ExOpts, config: &Config) -> Result<()> {
     delete(&opts.name)?;
-    let crates = match opts.crates {
-        ExCrateSelect::Full => lists::read_all_lists()?,
-        ExCrateSelect::Demo => demo_list(config)?,
-        ExCrateSelect::SmallRandom => small_random()?,
-        ExCrateSelect::Top100 => top_100()?,
-    };
     define_(
         &opts.name,
         opts.toolchains,
-        crates,
+        get_crates(opts.crates, config)?,
         opts.mode,
         opts.cap_lints,
     )

@@ -1,4 +1,5 @@
 use errors::*;
+use ex::{self, ExCapLints, ExCrateSelect, ExMode, ExOpts};
 use futures::future;
 use futures::prelude::*;
 use hyper::header::ContentLength;
@@ -9,7 +10,20 @@ use server::Data;
 use server::github::EventIssueComment;
 use server::http::{Context, ResponseFuture};
 use std::sync::Arc;
+use toolchain::Toolchain;
 use util;
+
+#[derive(Debug, Default)]
+struct EditArguments {
+    run: Option<bool>,
+    name: Option<String>,
+    start: Option<Toolchain>,
+    end: Option<Toolchain>,
+    mode: Option<ExMode>,
+    crates: Option<ExCrateSelect>,
+    lints: Option<ExCapLints>,
+    p: Option<i32>,
+}
 
 fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> Result<()> {
     if !verify_signature(&data.tokens.bot.webhooks_secret, payload, signature) {
@@ -20,7 +34,14 @@ fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> 
         "ping" => info!("the webhook is configured correctly!"),
         "issue_comment" => {
             let p: EventIssueComment = serde_json::from_str(payload)?;
-            process_command(&p.sender.login, &p.comment.body, &p.comment.issue_url, data)?;
+            if let Err(e) =
+                process_command(&p.sender.login, &p.comment.body, &p.comment.issue_url, data)
+            {
+                data.github.post_comment(
+                    &p.comment.issue_url,
+                    &format!(":rotating_light: **Error:** {}", e),
+                )?;
+            }
         }
         e => bail!("invalid event received: {}", e),
     }
@@ -40,7 +61,107 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
             info!("user @{} sent command: {}", sender, command.join(" "));
 
             if command.len() == 1 && command[0] == "ping" {
-                data.github.post_comment(issue_url, ":tennis: *Pong!*")?;
+                data.github
+                    .post_comment(issue_url, ":ping_pong: **Pong!**")?;
+                break;
+            }
+
+            let args = parse_edit_arguments(&command)?;
+
+            let name = if let Some(name) = args.name {
+                name
+            } else {
+                bail!("missing experiment name!");
+            };
+
+            let mut experiments = data.experiments.lock().unwrap();
+
+            match args.run {
+                // Create the experiment
+                Some(true) => {
+                    if experiments.exists(&name) {
+                        bail!("an experiment named `{}` already exists!", name);
+                    }
+
+                    let start = args.start.ok_or_else(|| "missing start toolchain")?;
+                    let end = args.end.ok_or_else(|| "missing end toolchain")?;
+                    let mode = args.mode.unwrap_or(ExMode::BuildAndTest);
+                    let crates = args.crates.unwrap_or(ExCrateSelect::Full);
+                    let cap_lints = args.lints.ok_or_else(|| "missing lints option")?;
+                    let priority = args.p.unwrap_or(0);
+
+                    experiments.create(
+                        ExOpts {
+                            name: name.clone(),
+                            toolchains: vec![start, end],
+                            mode,
+                            crates,
+                            cap_lints,
+                        },
+                        &data.config,
+                        priority,
+                    )?;
+
+                    data.github.post_comment(
+                        issue_url,
+                        &format!(":ok_hand: Experiment `{}` created and queued.", name),
+                    )?;
+                }
+                // Delete the experiment
+                Some(false) => {
+                    if !experiments.exists(&name) {
+                        bail!("an experiment named `{}` doesn't exist!", name);
+                    }
+
+                    experiments.delete(&name)?;
+
+                    data.github.post_comment(
+                        issue_url,
+                        &format!(":wastebasket: Experiment `{}` deleted!", name),
+                    )?;
+                }
+                // Edit the experiment
+                None => {
+                    if !experiments.exists(&name) {
+                        bail!("an experiment named `{}` doesn't exist!", name);
+                    }
+
+                    let mut changed = false;
+                    let mut info = experiments.edit_data(&name).unwrap();
+
+                    if let Some(start) = args.start {
+                        info.experiment.toolchains[0] = start;
+                        changed = true;
+                    }
+                    if let Some(end) = args.end {
+                        info.experiment.toolchains[1] = end;
+                        changed = true;
+                    }
+                    if let Some(mode) = args.mode {
+                        info.experiment.mode = mode;
+                        changed = true;
+                    }
+                    if let Some(crates) = args.crates {
+                        info.experiment.crates = ex::get_crates(crates, &data.config)?;
+                        changed = true;
+                    }
+                    if let Some(priority) = args.p {
+                        info.server_data.priority = priority;
+                        changed = true;
+                    }
+
+                    if changed {
+                        info.save()?;
+
+                        data.github.post_comment(
+                            issue_url,
+                            &format!(":memo: Details of the `{}` experiment changed.", name),
+                        )?;
+                    } else {
+                        data.github
+                            .post_comment(issue_url, ":warning: No changes requested.")?;
+                    }
+                }
             }
 
             break;
@@ -48,6 +169,38 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
     }
 
     Ok(())
+}
+
+fn parse_edit_arguments(args: &[&str]) -> Result<EditArguments> {
+    macro_rules! parse_edit_arguments {
+        ($args:expr, bools: [$($bool:ident),*], args: [$($arg:ident),*]) => {{
+            let mut result = EditArguments::default();
+
+            for arg in args {
+                if false {}
+                $(
+                    else if arg == &stringify!($bool) {
+                        result.$bool = Some(true);
+                    }
+                    else if arg == &concat!(stringify!($bool), "-") {
+                        result.$bool = Some(false);
+                    }
+                )*
+                $(
+                    else if arg.starts_with(concat!(stringify!($arg), "=")) {
+                        result.$arg = Some(arg.splitn(2, '=').skip(1).next().unwrap().parse()?);
+                    }
+                )*
+                else {
+                    bail!("unknown argument: {}", arg);
+                }
+            }
+
+            Ok(result)
+        }}
+    }
+
+    parse_edit_arguments!(args, bools: [run], args: [name, start, end, mode, crates, lints, p])
 }
 
 fn verify_signature(secret: &str, payload: &str, raw_signature: &str) -> bool {

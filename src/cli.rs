@@ -277,7 +277,7 @@ impl Crater {
                 report::gen(&db, &ex.0, &report::S3Writer::create(s3_prefix)?, &config)?;
             }
             Crater::Server => {
-                server::run()?;
+                server::run(config)?;
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
                 run_graph::dump_dot(&ex.0, &config, dest)?;

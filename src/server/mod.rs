@@ -1,3 +1,4 @@
+mod auth;
 mod github;
 mod http;
 mod tokens;

@@ -1,5 +1,6 @@
 use errors::*;
 use file;
+use std::collections::HashMap;
 use std::path::Path;
 
 static TOKENS_PATH: &'static str = "tokens.toml";
@@ -14,6 +15,7 @@ pub struct BotTokens {
 #[derive(Debug, Deserialize)]
 pub struct Tokens {
     pub bot: BotTokens,
+    pub agents: HashMap<String, String>,
 }
 
 impl Tokens {

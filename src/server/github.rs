@@ -1,5 +1,6 @@
 use errors::*;
 use reqwest::{header, Client, Method, RequestBuilder};
+use server::auth::Token;
 use server::tokens::Tokens;
 
 pub struct GitHubApi {
@@ -23,7 +24,9 @@ impl GitHubApi {
         };
 
         let mut req = self.client.request(method, &url);
-        req.header(header::Authorization(format!("token {}", self.token)));
+        req.header(header::Authorization(Token {
+            token: self.token.clone(),
+        }));
         req
     }
 

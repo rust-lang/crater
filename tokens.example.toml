@@ -1,3 +1,6 @@
 [bot]
 webhooks-secret = ""
 api-token = ""
+
+[agents]
+# "TOKEN" = "agent-name"

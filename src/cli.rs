@@ -70,7 +70,8 @@ pub enum Crater {
         env: DockerEnv,
     },
 
-    #[structopt(name = "create-lists", about = "create all the lists of crates")] CreateLists,
+    #[structopt(name = "create-lists", about = "create all the lists of crates")]
+    CreateLists,
 
     #[structopt(name = "define-ex", about = "define an experiment")]
     DefineEx {
@@ -107,10 +108,7 @@ pub enum Crater {
     },
 
     #[structopt(name = "copy-ex", about = "copy all data from one experiment to another")]
-    CopyEx {
-        ex1: Ex,
-        ex2: Ex,
-    },
+    CopyEx { ex1: Ex, ex2: Ex },
 
     #[structopt(name = "delete-ex", about = "delete shared data for experiment")]
     DeleteEx {
@@ -174,7 +172,8 @@ pub enum Crater {
         s3_prefix: Option<report::S3Prefix>,
     },
 
-    #[structopt(name = "serve-report", about = "serve report")] Serve,
+    #[structopt(name = "serve-report", about = "serve report")]
+    Serve,
 }
 
 impl Crater {

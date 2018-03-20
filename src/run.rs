@@ -212,9 +212,9 @@ fn log_command(mut cmd: Command, capture: bool, quiet: bool) -> Result<ProcessOu
     }))?;
 
     Ok(ProcessOutput {
-        status: status,
-        stdout: stdout,
-        stderr: stderr,
+        status,
+        stdout,
+        stderr,
     })
 }
 

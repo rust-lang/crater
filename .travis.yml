@@ -8,6 +8,7 @@ rust:
 
 env:
   global:
+    - RUSTFLAGS=-Dwarnings
     # Versions known to work with pinned nightly.
     - CLIPPY_VERSION=0.0.180
     - RUSTFMT_VERSION=0.3.6
@@ -26,10 +27,8 @@ before_script:
         cargo install-update -i "rustfmt-nightly:$RUSTFMT_VERSION"
     fi
 script:
+  - cargo build && cargo test
   - |
-    RUSTFLAGS=-Dwarnings cargo build &&
-    cargo test
+    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || cargo fmt -- --write-mode diff
   - |
-    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || RUSTFLAGS=-Dwarnings cargo fmt -- --write-mode diff
-  - |
-    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || RUSTFLAGS=-Dwarnings cargo clippy
+    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || cargo clippy

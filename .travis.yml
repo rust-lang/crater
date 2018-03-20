@@ -11,7 +11,6 @@ env:
     - RUSTFLAGS=-Dwarnings
     # Versions known to work with pinned nightly.
     - CLIPPY_VERSION=0.0.180
-    - RUSTFMT_VERSION=0.3.6
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
@@ -23,12 +22,12 @@ before_script:
     fi
   - |
     if [[  $TRAVIS_RUST_VERSION =~ nightly-* ]]; then
+        rustup component add rustfmt-preview
         cargo install-update -i "clippy:$CLIPPY_VERSION"
-        cargo install-update -i "rustfmt-nightly:$RUSTFMT_VERSION"
     fi
 script:
-  - cargo build && cargo test
   - |
     [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || cargo fmt -- --write-mode diff
+  - cargo build && cargo test
   - |
     [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || cargo clippy

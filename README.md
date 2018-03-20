@@ -229,18 +229,6 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
  - Running
    - Log onto appropriate box and connect to multiplexer.
    - Switch to the `master` multiplexer window.
-   - Run `docker ps`. If any container has been running for more than 30min (may
-     need to follow these steps more than once):
-     - Take solace in us someday fixing this for good with docker limits.
-       TODO: actually fix. Seems to only be a problem on prod with pleingres,
-       our existing limits should catch it.
-     - Run `docker top CONTAINER_ID`.
-     - If there's no mention of pleingres, raise an issue with the output of
-       the previous `docker top` command.
-     - The process at the bottom of the list is the lowest in the process tree,
-       and should have a value in the `TIME` column of >30min. Find the value in
-       the `PID` column and run `kill PID`.
-     - Wait a few seconds, then check the container has now exited.
    - If the run is ongoing in either the `tc1` or `tc2` multiplexer
      windows, go to next run.
    - Switch to the `master` multiplexer window.
@@ -267,11 +255,9 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
    - Change status to 'Complete' and add the results link,
      `http://cargobomb-reports.s3.amazonaws.com/EX_NAME/index.html`.
    - Update either the PR or the person requesting the beta run. Template is:
-     ```
-     Crater results: <url>. 'Blacklisted' crates (spurious failures etc) can be found
-     [here](https://github.com/rust-lang-nursery/crater/blob/master/blacklist.md).
-     If you see any spurious failures not on the list, please make a PR against that file.
-     ```
+     > Hi X (crater requester), Y (PR reviewer)! Crater results are at: \<url>. 'Blacklisted' crates (spurious failures etc) can be found \[here\](https://github.com/rust-lang-nursery/crater/blob/master/config.toml). If you see any spurious failures not on the list, please make a PR against that file.
+     >
+     > (interested observers: Crater is a tool for testing the impact of changes on the crates.io ecosystem. You can find out more at the \[repo\](https://github.com/rust-lang-nursery/crater/) if you're curious)
    - Give yourself a pat on the back! Good job!
    - Go to next run.
 

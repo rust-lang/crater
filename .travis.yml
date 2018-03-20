@@ -29,24 +29,22 @@ matrix:
   allow_failures:
     - rust: nightly
 
-before_script:
-  - export PATH=$HOME/.cargo/bin:$PATH
-  - |
-    if [[ $TASK = "lint" ]]; then
-        if ! type -p cargo-install-update; then
-            cargo install --force cargo-update
-        else
-            cargo install-update -i cargo-update
-        fi
+before_script: |
+  if [[ $TASK = "lint" ]]; then
+      if ! type -p cargo-install-update; then
+          cargo install --force cargo-update
+      else
+          cargo install-update -i cargo-update
+      fi
 
-        rustup component add rustfmt-preview
-        cargo install-update -i "clippy:$CLIPPY_VERSION"
-    fi
-script:
-  - |
-    if [[ $TASK = "lint" ]]; then
-        cargo fmt -- --write-mode diff
-        cargo clippy
-    elif [[ $TASK = "test" ]]; then
-        cargo build && cargo test
-    fi
+      rustup component add rustfmt-preview
+      cargo install-update -i "clippy:$CLIPPY_VERSION"
+  fi
+
+script: |
+  if [[ $TASK = "lint" ]]; then
+      cargo fmt -- --write-mode diff
+      cargo clippy
+  elif [[ $TASK = "test" ]]; then
+      cargo build && cargo test
+  fi

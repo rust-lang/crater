@@ -120,6 +120,7 @@ asn1 = { skip = true } #automatic
 assert_ng = { skip = true } #automatic
 ast_debug = { skip = true } #automatic
 aster = { skip = true } #automatic
+astrup = { slow = true } # build time close to 2 minutes
 asycfilt-sys = { skip = true } #automatic
 async = { skip = true } #automatic
 async-dnssd = { skip = true } #automatic
@@ -139,6 +140,7 @@ aurum-winbase = { skip = true } #automatic
 austenite = { skip = true } #automatic
 authy = { skip-tests = true } #automatic
 authz-sys = { skip = true } #automatic
+autograd = { skip-tests = true } # may fail due to randomness
 autoit = { skip = true } #automatic
 autollvm = { skip = true } #automatic
 automaton = { skip = true } #automatic
@@ -388,6 +390,7 @@ codegenta = { skip = true } #automatic
 codesign = { skip = true } #automatic
 cogs = { skip-tests = true } #automatic
 cohle = { skip = true } #automatic
+coinnect = { skip-tests = true } # flaky test
 colerr = { skip = true } #automatic
 collect = { skip = true } #automatic
 collectd-plugin = { skip = true } #automatic
@@ -485,6 +488,7 @@ cscapi-sys = { skip = true } #automatic
 cscdll-sys = { skip = true } #automatic
 cson = { skip = true } #automatic
 cssselect = { skip = true } #automatic
+csv = { skip-tests = true } # flaky test
 cttw = { skip = true } #automatic
 ctypes = { skip = true } #automatic
 cuda_dnn = { skip = true } #automatic
@@ -817,6 +821,7 @@ fcgi = { skip = true } #automatic
 fe = { skip = true } #automatic
 feaders = { skip = true } #automatic
 feclient-sys = { skip = true } #automatic
+feed = { skip-tests = true } # flaky test
 feed-rs = { skip-tests = true } #automatic
 feedly-notifier = { skip = true } #automatic
 feedreader = { skip = true } #automatic
@@ -974,6 +979,7 @@ github-rs = { skip-tests = true } #automatic
 gitignore = { skip-tests = true } #automatic
 gitostat = { skip = true } #automatic
 gitx = { skip = true } #automatic
+glib = { slow = true } # tests slow to run
 glide = { skip = true } #automatic
 glm = { skip-tests = true } #automatic
 glmf32-sys = { skip = true } #automatic
@@ -1237,6 +1243,7 @@ ioctl-gen = { skip-tests = true } #automatic
 iomrascalai = { skip = true } #automatic
 iota-editor = { skip = true } #automatic
 iota-rs = { skip = true } #automatic
+ipc-channel = { slow = true } # tests slow to run
 iphlpapi-sys = { skip = true } #automatic
 ipify = { skip = true } #automatic
 ipp = { skip-tests = true } #automatic
@@ -1478,6 +1485,7 @@ llvm-alt-sys = { skip = true } #automatic
 llvm_link = { skip = true } #automatic
 lmdb-zero = { skip-tests = true } #automatic
 load = { skip = true } #automatic
+loadconf = { skip-tests = true } # flaky test
 loadperf-sys = { skip = true } #automatic
 lobby = { skip = true } #automatic
 local-encoding = { skip-tests = true } #automatic
@@ -1586,6 +1594,7 @@ mi-sys = { skip = true } #automatic
 microsalt = { skip-tests = true } #automatic
 microservice = { skip = true } #automatic
 might-be-minified = { skip-tests = true } #automatic
+milagro-crypto = { skip-tests = true } # flaky test (segfaults)
 millefeuille = { skip = true } #automatic
 min_max_macros = { skip-tests = true } #automatic
 mincore-sys = { skip = true } #automatic
@@ -1631,6 +1640,7 @@ monkeys = { skip = true } #automatic
 monotone = { skip = true } #automatic
 monotone-cli = { skip = true } #automatic
 monzo = { skip-tests = true } #automatic
+moonlander-gp = { skip-tests = true } # may fail due to randomness
 morph = { skip = true } #automatic
 morphism = { skip-tests = true } #automatic
 mosquitto = { skip = true } #automatic
@@ -1792,6 +1802,7 @@ nphysics = { skip = true } #automatic
 npy = { skip-tests = true } #automatic
 nrf52dk-sys = { skip = true } #automatic
 nss-hyper = { skip = true } #automatic
+nss-sys = { skip-tests = true } # flaky test (sefaults)
 nss-webpki = { skip = true } #automatic
 nt-sys = { skip = true } #automatic
 ntdll-sys = { skip = true } #automatic
@@ -2516,6 +2527,7 @@ simavr-sys = { skip = true } #automatic
 simdop = { skip = true } #automatic
 simple = { skip = true } #automatic
 simple-cgi = { skip = true } #automatic
+simple-munin-plugin = { skip-tests = true } # flaky test
 simple_ecs = { skip = true } #automatic
 simple_nats_client = { skip-tests = true } #automatic
 simple_parallel = { skip = true } #automatic
@@ -2805,6 +2817,7 @@ treap = { skip = true } #automatic
 tree = { skip = true } #automatic
 tree-rs = { skip-tests = true } #automatic
 tree_magic = { skip-tests = true } #automatic
+treeflection = { skip-tests = true } # flaky test
 trek = { skip-tests = true } #automatic
 tremor = { skip = true } #automatic
 tri = { skip = true } #automatic

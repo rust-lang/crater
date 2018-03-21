@@ -24,10 +24,14 @@ pub struct ExperimentData {
 impl ExperimentData {
     fn load(name: &str) -> Result<Self> {
         let path = server_data_file(name);
-        Ok(ExperimentData {
-            server_data: serde_json::from_str(&file::read_string(&path)?)?,
-            experiment: Experiment::load(name)?,
-        })
+        if path.is_file() {
+            Ok(ExperimentData {
+                server_data: serde_json::from_str(&file::read_string(&path)?)?,
+                experiment: Experiment::load(name)?,
+            })
+        } else {
+            bail!("not managed by the server");
+        }
     }
 
     pub fn save(&self) -> Result<()> {
@@ -60,9 +64,15 @@ impl Experiments {
                 .to_string_lossy()
                 .to_string();
             if config_file(&name).exists() {
-                info!("loading existing experiment {}...", name);
-                let ex = ExperimentData::load(&name)?;
-                data.insert(name, ex);
+                match ExperimentData::load(&name) {
+                    Ok(ex) => {
+                        info!("loaded existing experiment {}", name);
+                        data.insert(name, ex);
+                    }
+                    Err(err) => {
+                        warn!("failed to load experiment {}: {}", name, err);
+                    }
+                }
             }
         }
 

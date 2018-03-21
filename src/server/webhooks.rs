@@ -2,13 +2,13 @@ use errors::*;
 use ex::{self, ExCapLints, ExCrateSelect, ExMode, ExOpts};
 use futures::future;
 use futures::prelude::*;
-use hyper::header::ContentLength;
+use hyper::StatusCode;
 use hyper::server::{Request, Response};
 use ring;
 use serde_json;
 use server::Data;
 use server::github::EventIssueComment;
-use server::http::{Context, ResponseFuture};
+use server::http::{Context, ResponseExt, ResponseFuture};
 use std::sync::Arc;
 use toolchain::Toolchain;
 use util;
@@ -254,13 +254,9 @@ macro_rules! headers {
             } else {
                 error!("missing header in the webhook: {}", $name);
 
-                let msg = format!("Error: missing header: {}\n", $name);
-                return Box::new(future::ok(
-                    Response::new()
-                        .with_header(ContentLength(msg.len() as u64))
-                        .with_body(msg)
-                        .with_status(::hyper::StatusCode::BadRequest)
-                ));
+                return Response::json(&json!({
+                    "error": format!("missing header: {}", $name),
+                })).unwrap().with_status(StatusCode::BadRequest).as_future();
             };
         )*
     }
@@ -283,11 +279,6 @@ pub fn handle(req: Request, data: Arc<Data>, ctx: Arc<Context>) -> ResponseFutur
             future::ok(())
         }));
 
-        let message = "OK\n";
-        future::ok(
-            Response::new()
-                .with_header(ContentLength(message.len() as u64))
-                .with_body(message),
-        )
+        Response::text("OK\n").as_future()
     }))
 }

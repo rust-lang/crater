@@ -3,9 +3,11 @@ use futures::future::{self, Future};
 use futures::prelude::*;
 use futures_cpupool::CpuPool;
 use hyper::{Method, StatusCode};
-use hyper::header::ContentLength;
+use hyper::header::{ContentLength, ContentType};
 use hyper::server::{Http, Request, Response, Service};
+use serde::Serialize;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::sync::Arc;
 use tokio_core::reactor::{Core, Handle};
 
@@ -95,14 +97,39 @@ impl<D: 'static> Service for Server<D> {
         {
             handler.handle(req, self.data.clone(), self.context.clone())
         } else {
-            let message = "404: Not Found\n";
-
-            Box::new(future::ok(
-                Response::new()
-                    .with_header(ContentLength(message.len() as u64))
-                    .with_body(message)
-                    .with_status(StatusCode::NotFound),
-            ))
+            Response::text("404: Not Found")
+                .with_status(StatusCode::NotFound)
+                .as_future()
         }
+    }
+}
+
+pub trait ResponseExt {
+    fn text<S: Display>(text: S) -> Response;
+    fn json<S: Serialize>(data: &S) -> Result<Response>;
+    fn as_future(self) -> ResponseFuture;
+}
+
+impl ResponseExt for Response {
+    fn text<S: Display>(text: S) -> Response {
+        let text = text.to_string();
+
+        Response::new()
+            .with_header(ContentLength(text.len() as u64))
+            .with_header(ContentType::plaintext())
+            .with_body(text)
+    }
+
+    fn json<S: Serialize>(data: &S) -> Result<Response> {
+        let text = ::serde_json::to_string(data)?;
+
+        Ok(Response::new()
+            .with_header(ContentLength(text.len() as u64))
+            .with_header(ContentType::json())
+            .with_body(text))
+    }
+
+    fn as_future(self) -> ResponseFuture {
+        Box::new(future::ok(self))
     }
 }

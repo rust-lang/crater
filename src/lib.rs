@@ -25,6 +25,7 @@ extern crate rustup_dist;
 #[macro_use]
 extern crate scopeguard;
 extern crate semver;
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]

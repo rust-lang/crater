@@ -1,35 +1,51 @@
 sudo: false
 dist: trusty
+
 language: rust
 cache: cargo
-rust:
-  - stable
-  - nightly-2018-01-20
 
 env:
   global:
-    # Versions known to work with pinned nightly.
-    - CLIPPY_VERSION=0.0.180
-    - RUSTFMT_VERSION=0.3.6
+    - RUSTFLAGS=-Dwarnings
 
-before_script:
-  - export PATH=$HOME/.cargo/bin:$PATH
-  - |
-    if ! type -p cargo-install-update; then
-        cargo install --force cargo-update
-    else
-        cargo install-update -i cargo-update
-    fi
-  - |
-    if [[  $TRAVIS_RUST_VERSION =~ nightly-* ]]; then
-        cargo install-update -i "clippy:$CLIPPY_VERSION"
-        cargo install-update -i "rustfmt-nightly:$RUSTFMT_VERSION"
-    fi
-script:
-  - |
-    RUSTFLAGS=-Dwarnings cargo build &&
-    cargo test
-  - |
-    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || RUSTFLAGS=-Dwarnings cargo fmt -- --write-mode diff
-  - |
-    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || RUSTFLAGS=-Dwarnings cargo clippy
+    # Versions known to work with pinned nightly for lints.
+    - CLIPPY_VERSION=0.0.187
+
+matrix:
+  include:
+    # Tests on all the channels
+    - env: TASK=test
+      rust: stable
+    - env: TASK=test
+      rust: beta
+    - env: TASK=test
+      rust: nightly
+
+    # Execute lints with the pinned nightly we know works.
+    - env: TASK=lint
+      rust: nightly-2018-03-07
+
+  # Don't block CI if a nightly is faulty
+  fast_finish: true
+  allow_failures:
+    - rust: nightly
+
+before_script: |
+  if [[ $TASK = "lint" ]]; then
+      if ! type -p cargo-install-update; then
+          cargo install --force cargo-update
+      else
+          cargo install-update -i cargo-update
+      fi
+
+      rustup component add rustfmt-preview
+      cargo install-update -i "clippy:$CLIPPY_VERSION"
+  fi
+
+script: |
+  if [[ $TASK = "lint" ]]; then
+      cargo fmt -- --write-mode diff
+      cargo clippy
+  elif [[ $TASK = "test" ]]; then
+      cargo build && cargo test
+  fi

@@ -136,9 +136,9 @@ pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExM
     );
     let ex = Experiment {
         name: ex_name.to_string(),
-        crates: crates,
+        crates,
         toolchains: tcs,
-        mode: mode,
+        mode,
     };
     fs::create_dir_all(&ex_dir(&ex.name))?;
     let json = serde_json::to_string(&ex)?;

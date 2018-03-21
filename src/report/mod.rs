@@ -63,7 +63,7 @@ pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResul
                 let rel_log = writer.result_path_fragement();
 
                 Ok(BuildTestResult {
-                    res: res,
+                    res,
                     log: format!("{}", rel_log.display()),
                 })
             });

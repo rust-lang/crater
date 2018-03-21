@@ -104,8 +104,8 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
 
     ContainerConfig {
         image_name: IMAGE_NAME,
-        mounts: mounts,
-        env: env,
+        mounts,
+        env,
     }
 }
 

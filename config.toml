@@ -28,6 +28,7 @@ acid-state = { skip-tests = true } #automatic
 aclui-sys = { skip = true } #automatic
 act = { skip-tests = true } #automatic
 activeds-sys = { skip = true } #automatic
+actix = { skip-tests = true } # flaky test
 adamantium = { skip = true } #automatic
 adapton-lab = { skip = true } #automatic
 admin_bot = { skip = true } #automatic
@@ -120,6 +121,7 @@ asn1 = { skip = true } #automatic
 assert_ng = { skip = true } #automatic
 ast_debug = { skip = true } #automatic
 aster = { skip = true } #automatic
+astrup = { slow = true } # build time close to 2 minutes
 asycfilt-sys = { skip = true } #automatic
 async = { skip = true } #automatic
 async-dnssd = { skip = true } #automatic
@@ -139,6 +141,7 @@ aurum-winbase = { skip = true } #automatic
 austenite = { skip = true } #automatic
 authy = { skip-tests = true } #automatic
 authz-sys = { skip = true } #automatic
+autograd = { skip-tests = true } # may fail due to randomness
 autoit = { skip = true } #automatic
 autollvm = { skip = true } #automatic
 automaton = { skip = true } #automatic
@@ -271,6 +274,7 @@ caca-sys = { skip = true } #automatic
 cachedir = { skip-tests = true } #automatic
 cachy = { skip = true } #automatic
 caesar = { skip-tests = true } #automatic
+caesarlib = { skip-tests = true } # flaky test
 caffe = { skip = true } #automatic
 cafs = { skip = true } #automatic
 cage = { skip-tests = true } #automatic
@@ -388,6 +392,7 @@ codegenta = { skip = true } #automatic
 codesign = { skip = true } #automatic
 cogs = { skip-tests = true } #automatic
 cohle = { skip = true } #automatic
+coinnect = { skip-tests = true } # flaky test
 colerr = { skip = true } #automatic
 collect = { skip = true } #automatic
 collectd-plugin = { skip = true } #automatic
@@ -485,6 +490,7 @@ cscapi-sys = { skip = true } #automatic
 cscdll-sys = { skip = true } #automatic
 cson = { skip = true } #automatic
 cssselect = { skip = true } #automatic
+csv = { skip-tests = true } # flaky test
 cttw = { skip = true } #automatic
 ctypes = { skip = true } #automatic
 cuda_dnn = { skip = true } #automatic
@@ -593,6 +599,7 @@ discotech = { skip = true } #automatic
 discotech_zookeeper = { skip = true } #automatic
 disk_utils = { skip-tests = true } #automatic
 diskarbitration-sys = { skip = true } #automatic
+diskvec = { skip-tests = true } # flaky test
 disqrust = { skip-tests = true } #automatic
 disque = { skip-tests = true } #automatic
 disque-cli = { skip-tests = true } #automatic
@@ -815,8 +822,10 @@ fatfs = { skip-tests = true } #automatic
 faultrep-sys = { skip = true } #automatic
 fcgi = { skip = true } #automatic
 fe = { skip = true } #automatic
+fe_session = { skip-tests = true } # flaky test
 feaders = { skip = true } #automatic
 feclient-sys = { skip = true } #automatic
+feed = { skip-tests = true } # flaky test
 feed-rs = { skip-tests = true } #automatic
 feedly-notifier = { skip = true } #automatic
 feedreader = { skip = true } #automatic
@@ -832,6 +841,7 @@ ff-find = { skip = true } #automatic
 ffcnt = { skip = true } #automatic
 ffigen = { skip = true } #automatic
 ffmpeg = { skip = true } #automatic
+fftw = { slow = true } # build time close to 2 minutes
 fftw3 = { skip = true } #automatic
 fftw3-src = { skip = true } #automatic
 fftw3-sys = { skip = true } #automatic
@@ -935,11 +945,13 @@ gc_plugin = { skip = true } #automatic
 gcast = { skip = true } #automatic
 gcast-protocol = { skip = true } #automatic
 gcast-wire = { skip = true } #automatic
+gcc = { skip-tests = true } # flaky test
 gcj-helper = { skip = true } #automatic
 gcnctrlusb = { skip = true } #automatic
 gcrypt = { skip = true } #automatic
 gdax-client = { skip = true } #automatic
 gdiplus-sys = { skip = true } #automatic
+gear = { skip = true } # flaky build
 gears-cli = { skip = true } #automatic
 generic-dns-update = { skip = true } #automatic
 genetic = { skip = true } #automatic
@@ -974,7 +986,9 @@ github-rs = { skip-tests = true } #automatic
 gitignore = { skip-tests = true } #automatic
 gitostat = { skip = true } #automatic
 gitx = { skip = true } #automatic
+glib = { slow = true } # tests slow to run
 glide = { skip = true } #automatic
+glium = { slow = true } # tests build time close to 2 minutes
 glm = { skip-tests = true } #automatic
 glmf32-sys = { skip = true } #automatic
 glop = { skip = true } #automatic
@@ -1107,6 +1121,7 @@ hacl-sys = { skip = true } #automatic
 hadean-std = { skip = true } #automatic
 hal-ml = { skip = true } #automatic
 hal-rs = { skip = true } #automatic
+hashconsing = { skip-tests = true } # flaky test
 hashicorp_vault = { skip-tests = true } #automatic
 hashids = { skip = true } #automatic
 hashids-rs = { skip = true } #automatic
@@ -1174,6 +1189,7 @@ hyper-native-tls = { skip-tests = true } #automatic
 hyper-socks = { skip-tests = true } #automatic
 hyper-staticfile = { skip = true } #automatic
 hyper-sync-rustls = { skip-tests = true } #automatic
+hyperdav = { skip-tests = true } # relies on an external service
 hyperdex = { skip = true } #automatic
 hyperscan = { skip = true } #automatic
 hypervisor = { skip = true } #automatic
@@ -1237,6 +1253,7 @@ ioctl-gen = { skip-tests = true } #automatic
 iomrascalai = { skip = true } #automatic
 iota-editor = { skip = true } #automatic
 iota-rs = { skip = true } #automatic
+ipc-channel = { slow = true } # tests slow to run
 iphlpapi-sys = { skip = true } #automatic
 ipify = { skip = true } #automatic
 ipp = { skip-tests = true } #automatic
@@ -1390,6 +1407,7 @@ libfabric = { skip = true } #automatic
 libflo_cmdline_host = { skip-tests = true } #automatic
 libflo_func = { skip-tests = true } #automatic
 libftdi1-sys = { skip = true } #automatic
+libfuzzy-sys = { skip = true } # flaky build
 libgcrypt-sys = { skip = true } #automatic
 libgerrit = { skip-tests = true } #automatic
 libgitbox = { skip = true } #automatic
@@ -1478,6 +1496,7 @@ llvm-alt-sys = { skip = true } #automatic
 llvm_link = { skip = true } #automatic
 lmdb-zero = { skip-tests = true } #automatic
 load = { skip = true } #automatic
+loadconf = { skip-tests = true } # flaky test
 loadperf-sys = { skip = true } #automatic
 lobby = { skip = true } #automatic
 local-encoding = { skip-tests = true } #automatic
@@ -1586,6 +1605,7 @@ mi-sys = { skip = true } #automatic
 microsalt = { skip-tests = true } #automatic
 microservice = { skip = true } #automatic
 might-be-minified = { skip-tests = true } #automatic
+milagro-crypto = { skip-tests = true } # flaky test (segfaults)
 millefeuille = { skip = true } #automatic
 min_max_macros = { skip-tests = true } #automatic
 mincore-sys = { skip = true } #automatic
@@ -1631,6 +1651,7 @@ monkeys = { skip = true } #automatic
 monotone = { skip = true } #automatic
 monotone-cli = { skip = true } #automatic
 monzo = { skip-tests = true } #automatic
+moonlander-gp = { skip-tests = true } # may fail due to randomness
 morph = { skip = true } #automatic
 morphism = { skip-tests = true } #automatic
 mosquitto = { skip = true } #automatic
@@ -1706,6 +1727,7 @@ namedarg_rustc_macro = { skip = true } #automatic
 nannou = { skip = true } #automatic
 nanny = { skip = true } #automatic
 nano_time = { skip = true } #automatic
+nanopow-rs = { slow = true } # tests slow to run
 nanovg = { skip = true } #automatic
 nasm = { skip = true } #automatic
 nat_traversal = { skip = true } #automatic
@@ -1792,6 +1814,7 @@ nphysics = { skip = true } #automatic
 npy = { skip-tests = true } #automatic
 nrf52dk-sys = { skip = true } #automatic
 nss-hyper = { skip = true } #automatic
+nss-sys = { skip-tests = true } # flaky test (sefaults)
 nss-webpki = { skip = true } #automatic
 nt-sys = { skip = true } #automatic
 ntdll-sys = { skip = true } #automatic
@@ -2516,6 +2539,7 @@ simavr-sys = { skip = true } #automatic
 simdop = { skip = true } #automatic
 simple = { skip = true } #automatic
 simple-cgi = { skip = true } #automatic
+simple-munin-plugin = { skip-tests = true } # flaky test
 simple_ecs = { skip = true } #automatic
 simple_nats_client = { skip-tests = true } #automatic
 simple_parallel = { skip = true } #automatic
@@ -2805,6 +2829,7 @@ treap = { skip = true } #automatic
 tree = { skip = true } #automatic
 tree-rs = { skip-tests = true } #automatic
 tree_magic = { skip-tests = true } #automatic
+treeflection = { skip-tests = true } # flaky test
 trek = { skip-tests = true } #automatic
 tremor = { skip = true } #automatic
 tri = { skip = true } #automatic
@@ -2889,6 +2914,7 @@ unsafe_ls = { skip = true } #automatic
 unwind = { skip = true } #automatic
 unwind-sys = { skip = true } #automatic
 uptime = { skip = true } #automatic
+urdf-viz = { skip = true } # flaky build
 urlmon-sys = { skip = true } #automatic
 username = { skip-tests = true } #automatic
 users_native = { skip-tests = true } #automatic
@@ -2921,6 +2947,7 @@ vgmdb-rust = { skip = true } #automatic
 vgrs = { skip = true } #automatic
 vibrant = { skip = true } #automatic
 vice = { skip = true } #automatic
+vidar = { skip-tests = true } # flaky test
 video-metadata = { skip = true } #automatic
 virtdisk-sys = { skip = true } #automatic
 virtio = { skip = true } #automatic
@@ -2953,6 +2980,7 @@ washed_up = { skip = true } #automatic
 wasm-nm = { skip-tests = true } #automatic
 wasm-snip = { skip-tests = true } #automatic
 wavefile = { skip-tests = true } #automatic
+waveform_space = { skip-tests = true } # may fail due to randomness
 way-cooler = { skip = true } #automatic
 wayland = { skip = true } #automatic
 wbemuuid-sys = { skip = true } #automatic

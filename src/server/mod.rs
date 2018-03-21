@@ -1,3 +1,4 @@
+mod agent;
 mod auth;
 mod github;
 mod http;
@@ -8,6 +9,7 @@ mod experiments;
 use config::Config;
 use errors::*;
 use hyper::Method;
+use server::auth::auth_agent;
 use server::experiments::Experiments;
 use server::github::GitHubApi;
 use server::http::Server;
@@ -36,6 +38,8 @@ pub fn run(config: Config) -> Result<()> {
         tokens,
         experiments: Arc::new(Mutex::new(Experiments::new()?)),
     })?;
+
+    server.add_route(Method::Get, "/agent-api/config", auth_agent(agent::config));
 
     server.add_route(Method::Post, "/webhooks", webhooks::handle);
 

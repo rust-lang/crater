@@ -9,6 +9,7 @@
 //! application state employs ownership techniques to ensure that
 //! parallel access is consistent and race-free.
 
+use crater::agent;
 use crater::config::Config;
 use crater::crates::Crate;
 use crater::docker;
@@ -179,6 +180,14 @@ pub enum Crater {
     #[structopt(name = "server")]
     Server,
 
+    #[structopt(name = "agent")]
+    Agent {
+        #[structopt(name = "url")]
+        url: String,
+        #[structopt(name = "token")]
+        token: String,
+    },
+
     #[structopt(name = "dump-tasks-graph", about = "dump the internal tasks graph in .dot format")]
     DumpTasksGraph {
         #[structopt(name = "dest", parse(from_os_str))]
@@ -278,6 +287,9 @@ impl Crater {
             }
             Crater::Server => {
                 server::run(config)?;
+            }
+            Crater::Agent { ref url, ref token } => {
+                agent::run(url, token)?;
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
                 run_graph::dump_dot(&ex.0, &config, dest)?;

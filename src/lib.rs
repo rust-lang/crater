@@ -45,6 +45,7 @@ extern crate toml;
 extern crate url;
 extern crate walkdir;
 
+pub mod agent;
 #[macro_use]
 pub mod log;
 #[macro_use]

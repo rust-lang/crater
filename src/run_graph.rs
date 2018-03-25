@@ -1,7 +1,7 @@
 use config::Config;
 use crossbeam;
 use errors::*;
-use ex::{self, Experiment};
+use ex::{self, ExMode, Experiment};
 use file;
 use petgraph::Direction;
 use petgraph::dot::Dot;
@@ -163,16 +163,24 @@ fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
             let build_id = graph.add_task(
                 Task {
                     krate: krate.clone(),
-                    step: if config.should_skip_tests(krate) {
-                        TaskStep::BuildOnly {
+                    step: match ex.mode {
+                        ExMode::BuildOnly => TaskStep::BuildOnly {
                             tc: tc.clone(),
                             quiet,
-                        }
-                    } else {
-                        TaskStep::BuildAndTest {
+                        },
+                        ExMode::BuildAndTest if config.should_skip(krate) => TaskStep::BuildOnly {
                             tc: tc.clone(),
                             quiet,
-                        }
+                        },
+                        ExMode::BuildAndTest => TaskStep::BuildAndTest {
+                            tc: tc.clone(),
+                            quiet,
+                        },
+                        ExMode::CheckOnly => TaskStep::CheckOnly {
+                            tc: tc.clone(),
+                            quiet,
+                        },
+                        ExMode::UnstableFeatures => TaskStep::UnstableFeatures { tc: tc.clone() },
                     },
                 },
                 &[prepare_id],

@@ -13,6 +13,8 @@ pub enum TaskStep {
     Prepare,
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
+    CheckOnly { tc: Toolchain, quiet: bool },
+    UnstableFeatures { tc: Toolchain },
 }
 
 impl fmt::Debug for TaskStep {
@@ -30,6 +32,15 @@ impl fmt::Debug for TaskStep {
                 if quiet {
                     write!(f, " (quiet)")?;
                 }
+            }
+            TaskStep::CheckOnly { ref tc, quiet } => {
+                write!(f, "check {}", tc.to_string())?;
+                if quiet {
+                    write!(f, " (quiet)")?;
+                }
+            }
+            TaskStep::UnstableFeatures { ref tc } => {
+                write!(f, "find unstable features on {}", tc.to_string())?;
             }
         }
         Ok(())
@@ -53,6 +64,8 @@ impl Task {
             TaskStep::Prepare => self.run_prepare(ex),
             TaskStep::BuildAndTest { ref tc, quiet } => self.run_build_and_test(ex, tc, db, quiet),
             TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(ex, tc, db, quiet),
+            TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(ex, tc, db, quiet),
+            TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(ex, db, tc),
         }
     }
 
@@ -112,6 +125,43 @@ impl Task {
             db,
             quiet,
             ex_run::test_build_only,
+        ).map(|_| ())
+    }
+
+    fn run_check_only<DB: ExperimentResultDB>(
+        &self,
+        ex: &Experiment,
+        tc: &Toolchain,
+        db: &DB,
+        quiet: bool,
+    ) -> Result<()> {
+        let krate = self.krate.clone().into_ex_crate(ex)?;
+        ex_run::run_test(
+            "checking",
+            ex,
+            tc,
+            &krate,
+            db,
+            quiet,
+            ex_run::test_check_only,
+        ).map(|_| ())
+    }
+
+    fn run_unstable_features<DB: ExperimentResultDB>(
+        &self,
+        ex: &Experiment,
+        db: &DB,
+        tc: &Toolchain,
+    ) -> Result<()> {
+        let krate = self.krate.clone().into_ex_crate(ex)?;
+        ex_run::run_test(
+            "checking",
+            ex,
+            tc,
+            &krate,
+            db,
+            false,
+            ex_run::test_find_unstable_features,
         ).map(|_| ())
     }
 }

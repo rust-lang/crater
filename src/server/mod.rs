@@ -40,6 +40,16 @@ pub fn run(config: Config) -> Result<()> {
     })?;
 
     server.add_route(Method::Get, "/agent-api/config", auth_agent(agent::config));
+    server.add_route(
+        Method::Get,
+        "/agent-api/next-experiment",
+        auth_agent(agent::next_ex),
+    );
+    server.add_route(
+        Method::Post,
+        "/agent-api/complete-experiment",
+        auth_agent(agent::complete_ex),
+    );
 
     server.add_route(Method::Post, "/webhooks", webhooks::handle);
 

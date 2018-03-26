@@ -99,6 +99,7 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
                             cap_lints,
                         },
                         &data.config,
+                        issue_url,
                         priority,
                     )?;
 

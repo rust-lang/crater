@@ -186,6 +186,8 @@ pub enum Crater {
         url: String,
         #[structopt(name = "token")]
         token: String,
+        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
+        threads: usize,
     },
 
     #[structopt(name = "dump-tasks-graph", about = "dump the internal tasks graph in .dot format")]
@@ -288,8 +290,12 @@ impl Crater {
             Crater::Server => {
                 server::run(config)?;
             }
-            Crater::Agent { ref url, ref token } => {
-                agent::run(url, token)?;
+            Crater::Agent {
+                ref url,
+                ref token,
+                threads,
+            } => {
+                agent::run(url, token, &config, threads)?;
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
                 run_graph::dump_dot(&ex.0, &config, dest)?;

@@ -1,9 +1,12 @@
 use errors::*;
+use ex::Experiment;
 use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
+
+const RETRY_AFTER: u64 = 5;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct Config {
+pub struct AgentConfig {
     pub agent_name: String,
 }
 
@@ -41,7 +44,7 @@ impl AgentApi {
                             .unwrap_or(false)
                         {
                             warn!("connection to the server failed. retrying in a few seconds...");
-                            ::std::thread::sleep(::std::time::Duration::from_secs(10));
+                            ::std::thread::sleep(::std::time::Duration::from_secs(RETRY_AFTER));
                             continue;
                         }
                     }
@@ -51,7 +54,7 @@ impl AgentApi {
         }
     }
 
-    pub fn config(&self) -> Result<Config> {
+    pub fn config(&self) -> Result<AgentConfig> {
         self.retry(|this| {
             let mut resp = this.build_request(Method::Get, "config").send()?;
             match resp.status() {
@@ -59,6 +62,28 @@ impl AgentApi {
                 StatusCode::Unauthorized => bail!("invalid authorization token!"),
                 s => bail!("received {} status code from the crater server", s),
             }
+        })
+    }
+
+    pub fn next_experiment(&self) -> Result<Experiment> {
+        self.retry(|this| loop {
+            let resp: Option<_> = this.build_request(Method::Get, "next-experiment")
+                .send()?
+                .json()?;
+
+            if let Some(experiment) = resp {
+                return Ok(experiment);
+            }
+
+            ::std::thread::sleep(::std::time::Duration::from_secs(RETRY_AFTER));
+        })
+    }
+
+    pub fn complete_experiment(&self) -> Result<()> {
+        self.retry(|this| {
+            this.build_request(Method::Post, "complete-experiment")
+                .send()?;
+            Ok(())
         })
     }
 }

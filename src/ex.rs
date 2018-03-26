@@ -53,7 +53,7 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
     froml_dir(ex_name).join(format!("{}-{}.Cargo.toml", name, vers))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Experiment {
     pub name: String,
     pub crates: Vec<Crate>,

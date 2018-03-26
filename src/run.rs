@@ -94,7 +94,7 @@ struct ProcessOutput {
 }
 
 const MAX_TIMEOUT_SECS: u64 = 60 * 15;
-const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 2;
+const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 5;
 
 fn log_command(mut cmd: Command, capture: bool, quiet: bool) -> Result<ProcessOutput> {
     let mut core = Core::new().unwrap();

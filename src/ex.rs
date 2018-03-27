@@ -1,3 +1,4 @@
+use config::Config;
 use crates;
 use dirs::{CRATES_DIR, EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
@@ -7,7 +8,7 @@ use gh_mirrors;
 use lists::{self, Crate, List};
 use run::RunCommand;
 use serde_json;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -75,36 +76,42 @@ pub struct ExOpts {
     pub crates: ExCrateSelect,
 }
 
-pub fn define(opts: ExOpts) -> Result<()> {
+pub fn define(opts: ExOpts, config: &Config) -> Result<()> {
     delete(&opts.name)?;
     let crates = match opts.crates {
         ExCrateSelect::Full => lists::read_all_lists()?,
-        ExCrateSelect::Demo => demo_list()?,
+        ExCrateSelect::Demo => demo_list(config)?,
         ExCrateSelect::SmallRandom => small_random()?,
         ExCrateSelect::Top100 => top_100()?,
     };
     define_(&opts.name, opts.toolchains, crates, opts.mode)
 }
 
-fn demo_list() -> Result<Vec<Crate>> {
-    let demo_crate = "lazy_static";
-    let demo_gh_app = "brson/hello-rs";
-    let mut found_demo_crate = false;
-    let crates = lists::read_all_lists()?
+fn demo_list(config: &Config) -> Result<Vec<Crate>> {
+    let mut crates = config.demo_crates().crates.iter().collect::<HashSet<_>>();
+    let repos = &config.demo_crates().github_repos;
+    let expected_len = crates.len() + repos.len();
+
+    let result = lists::read_all_lists()?
         .into_iter()
         .filter(|c| match *c {
-            Crate::Version { ref name, .. } => if name == demo_crate && !found_demo_crate {
-                found_demo_crate = true;
-                true
-            } else {
-                false
-            },
-            Crate::Repo { ref url } => url.contains(demo_gh_app),
+            Crate::Version { ref name, .. } => crates.remove(name),
+            Crate::Repo { ref url } => {
+                let mut found = false;
+                for repo in repos {
+                    if url.ends_with(repo) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                found
+            }
         })
         .collect::<Vec<_>>();
-    assert_eq!(crates.len(), 2);
 
-    Ok(crates)
+    assert_eq!(result.len(), expected_len);
+    Ok(result)
 }
 
 fn small_random() -> Result<Vec<Crate>> {

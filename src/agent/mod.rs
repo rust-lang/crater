@@ -1,4 +1,5 @@
 mod api;
+mod results;
 
 use agent::api::AgentApi;
 use config::Config;
@@ -51,10 +52,11 @@ impl Agent {
 
 pub fn run(url: &str, token: &str, config: &Config, threads_count: usize) -> Result<()> {
     let agent = Agent::new(url, token)?;
+    let db = results::ResultsUploader::new(&agent.api);
 
     loop {
         let ex = agent.experiment()?;
-        run_graph::run_ex(&ex.name, threads_count, config)?;
+        run_graph::run_ex(&ex, &db, threads_count, config)?;
         agent.api.complete_experiment()?;
     }
 }

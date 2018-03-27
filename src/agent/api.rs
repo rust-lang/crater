@@ -1,6 +1,9 @@
+use crates::{Crate, GitHubRepo};
 use errors::*;
 use ex::Experiment;
 use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
+use results::TestResult;
+use toolchain::Toolchain;
 
 const RETRY_AFTER: u64 = 5;
 
@@ -76,6 +79,28 @@ impl AgentApi {
             }
 
             ::std::thread::sleep(::std::time::Duration::from_secs(RETRY_AFTER));
+        })
+    }
+
+    pub fn record_result(
+        &self,
+        krate: &Crate,
+        toolchain: &Toolchain,
+        log: &str,
+        result: TestResult,
+        shas: &[(GitHubRepo, String)],
+    ) -> Result<()> {
+        self.retry(|this| {
+            this.build_request(Method::Post, "record-result")
+                .json(&json!({
+                    "crate": krate,
+                    "toolchain": toolchain,
+                    "result": result,
+                    "log": log,
+                    "shas": shas,
+                }))
+                .send()?;
+            Ok(())
         })
     }
 

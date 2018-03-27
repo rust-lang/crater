@@ -2,6 +2,7 @@ mod agent;
 mod auth;
 mod github;
 mod http;
+mod results;
 mod tokens;
 mod webhooks;
 mod experiments;
@@ -49,6 +50,11 @@ pub fn run(config: Config) -> Result<()> {
         Method::Post,
         "/agent-api/complete-experiment",
         auth_agent(agent::complete_ex),
+    );
+    server.add_route(
+        Method::Post,
+        "/agent-api/record-result",
+        auth_agent(agent::record_result),
     );
 
     server.add_route(Method::Post, "/webhooks", webhooks::handle);

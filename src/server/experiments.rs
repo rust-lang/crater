@@ -156,6 +156,10 @@ impl Experiments {
         Ok(())
     }
 
+    pub fn get(&self, name: &str) -> Option<&ExperimentData> {
+        self.data.get(name)
+    }
+
     pub fn edit_data(&mut self, name: &str) -> Option<&mut ExperimentData> {
         self.data.get_mut(name)
     }

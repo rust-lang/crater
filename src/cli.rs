@@ -15,7 +15,7 @@ use crater::crates::Crate;
 use crater::docker;
 use crater::errors::*;
 use crater::ex;
-use crater::ex::{ExCapLints, ExCrateSelect, ExMode};
+use crater::ex::{ExCapLints, ExCrateSelect, ExMode, Experiment};
 use crater::ex_run;
 use crater::lists;
 use crater::report;
@@ -261,7 +261,9 @@ impl Crater {
                 ex_run::run_ex(&ex.0, tc.clone(), &config)?;
             }
             Crater::RunGraph { ref ex, threads } => {
-                run_graph::run_ex(&ex.0, threads, &config)?;
+                let experiment = Experiment::load(&ex.0)?;
+                let db = FileDB::default();
+                run_graph::run_ex(&experiment, &db, threads, &config)?;
             }
             Crater::GenReport { ref ex, ref dest } => {
                 let db = FileDB::default();

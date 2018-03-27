@@ -61,7 +61,7 @@ impl FileDB {
         ex_dir(&ex.name).join("res").join("shas.json")
     }
 
-    fn result_dir(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> PathBuf {
+    pub fn result_dir(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> PathBuf {
         let crate_path = match *krate {
             Crate::Registry(ref details) => format!("reg/{}-{}", details.name, details.version),
             Crate::GitHub(ref repo) => format!("gh/{}.{}", repo.org, repo.name),

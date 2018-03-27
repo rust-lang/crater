@@ -1,13 +1,14 @@
 use errors::*;
 use ex::Experiment;
-use futures::Future;
-use futures::future;
+use futures::{future, Future, Stream};
 use hyper::StatusCode;
 use hyper::server::{Request, Response};
+use serde_json;
 use server::Data;
 use server::auth::AuthDetails;
 use server::experiments::Status;
 use server::http::{Context, ResponseExt, ResponseFuture};
+use server::results::{self, TaskResult};
 use std::sync::Arc;
 
 #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
@@ -106,4 +107,50 @@ pub fn complete_ex(
                     .as_future()
             }),
     )
+}
+
+fn save_result(body: &str, data: &Data, auth: &AuthDetails) -> Result<()> {
+    let experiments = data.experiments.lock().unwrap();
+    let result: TaskResult = serde_json::from_str(body)?;
+
+    let name = experiments
+        .run_by_agent(&auth.name)
+        .ok_or("no experiment run by this agent")?
+        .to_string();
+    let experiment = experiments.get(&name).unwrap();
+
+    info!(
+        "receiving a result from agent {} (ex: {}, tc: {}, crate: {})",
+        auth.name,
+        name,
+        result.toolchain.to_string(),
+        result.krate
+    );
+
+    results::store(&experiment.experiment, &result)?;
+
+    Ok(())
+}
+
+pub fn record_result(
+    req: Request,
+    data: Arc<Data>,
+    ctx: Arc<Context>,
+    auth: AuthDetails,
+) -> ResponseFuture {
+    Box::new(req.body().concat2().and_then(move |body| {
+        let body = String::from_utf8_lossy(&body.iter().cloned().collect::<Vec<u8>>()).to_string();
+
+        ctx.pool
+            .spawn_fn(move || future::done(save_result(&body, &data, &auth)))
+            .and_then(|_| future::ok(Response::text("OK\n")))
+            .or_else(|err| {
+                error!("internal error: {}", err);
+                Response::json(&json!({
+                    "error": err.to_string(),
+                })).unwrap()
+                    .with_status(StatusCode::InternalServerError)
+                    .as_future()
+            })
+    }))
 }

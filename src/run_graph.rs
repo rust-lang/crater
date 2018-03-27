@@ -7,7 +7,7 @@ use petgraph::Direction;
 use petgraph::dot::Dot;
 use petgraph::graph::{Graph, NodeIndex};
 use petgraph::visit::EdgeRef;
-use results::FileDB;
+use results::WriteResults;
 use std::fmt;
 use std::mem;
 use std::path::Path;
@@ -195,15 +195,17 @@ fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
     graph
 }
 
-pub fn run_ex(ex_name: &str, threads_count: usize, config: &Config) -> Result<()> {
-    let ex = Experiment::load(ex_name)?;
-    let db = FileDB::default();
-
+pub fn run_ex<DB: WriteResults + Sync>(
+    ex: &Experiment,
+    db: &DB,
+    threads_count: usize,
+    config: &Config,
+) -> Result<()> {
     info!("computing the tasks graph...");
-    let graph = Mutex::new(build_graph(&ex, config));
+    let graph = Mutex::new(build_graph(ex, config));
 
     info!("preparing the execution...");
-    ex::prepare_all_toolchains(&ex)?;
+    ex::prepare_all_toolchains(ex)?;
 
     info!("running tasks in {} threads...", threads_count);
 
@@ -218,7 +220,7 @@ pub fn run_ex(ex_name: &str, threads_count: usize, config: &Config) -> Result<()
                     let option_task = graph.lock().unwrap().next_task();
                     if let Some((id, task)) = option_task {
                         info!("running task: {:?}", task);
-                        task.run(&ex, &db)?;
+                        task.run(ex, db)?;
                         graph.lock().unwrap().mark_as_completed(id);
                     } else {
                         break;

@@ -1,8 +1,10 @@
 use errors::*;
-use ex::Experiment;
+use ex::{self, Experiment};
 use futures::{future, Future, Stream};
 use hyper::StatusCode;
 use hyper::server::{Request, Response};
+use report;
+use results::FileDB;
 use serde_json;
 use server::Data;
 use server::auth::AuthDetails;
@@ -69,19 +71,34 @@ pub fn next_ex(
 }
 
 fn complete_experiment(data: &Data, auth: &AuthDetails) -> Result<()> {
-    let mut experiments = data.experiments.lock().unwrap();
+    let (name, github_issue) = {
+        let mut experiments = data.experiments.lock().unwrap();
+        let name = experiments
+            .run_by_agent(&auth.name)
+            .ok_or("no experiment run by this agent")?
+            .to_string();
+        let ex = experiments.edit_data(&name).unwrap();
+        ex.server_data.status = Status::Completed;
+        ex.save()?;
 
-    let name = experiments
-        .run_by_agent(&auth.name)
-        .ok_or("no experiment run by this agent")?
-        .to_string();
-    let ex = experiments.edit_data(&name).unwrap();
-    ex.server_data.status = Status::Completed;
-    ex.save()?;
+        (name, ex.server_data.github_issue.to_string())
+    };
+
+    info!("experiment {} completed, generating report...", name);
+    report::gen(
+        &FileDB::default(),
+        &name,
+        &report::FileWriter::create(ex::ex_dir(&name))?,
+        &data.config,
+    )?;
+    info!("report for the experiment {} generated successfully!", name);
 
     data.github.post_comment(
-        &ex.server_data.github_issue,
-        &format!(":tada: Experiment **`{}`** completed!", name),
+        &github_issue,
+        &format!(
+            ":tada: Experiment **`{}`** completed!\nA report was generated.",
+            name
+        ),
     )?;
 
     Ok(())

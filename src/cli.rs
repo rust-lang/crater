@@ -287,7 +287,13 @@ impl Crater {
                     }
                 };
                 let db = FileDB::default();
-                report::gen(&db, &ex.0, &report::S3Writer::create(s3_prefix)?, &config)?;
+                let client = report::get_client_for_bucket(&s3_prefix.bucket)?;
+                report::gen(
+                    &db,
+                    &ex.0,
+                    &report::S3Writer::create(client, s3_prefix)?,
+                    &config,
+                )?;
             }
             Crater::Server => {
                 server::run(config)?;

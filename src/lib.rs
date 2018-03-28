@@ -2,6 +2,7 @@
 extern crate arc_cell;
 extern crate chrono;
 extern crate crates_index;
+extern crate crossbeam;
 #[macro_use]
 extern crate error_chain;
 extern crate flate2;
@@ -13,6 +14,7 @@ extern crate hyper;
 extern crate lazy_static;
 extern crate libc;
 extern crate mime;
+extern crate petgraph;
 extern crate rand;
 extern crate ref_slice;
 extern crate reqwest;
@@ -55,6 +57,7 @@ mod dl;
 mod gh;
 pub mod util;
 mod run;
+pub mod run_graph;
 mod crates;
 mod git;
 pub mod ex;
@@ -67,3 +70,4 @@ pub mod docker;
 pub mod dirs;
 mod results;
 pub mod server;
+mod tasks;

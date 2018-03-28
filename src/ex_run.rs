@@ -79,50 +79,31 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
         };
 
         for tc in tcs {
-            let writer = db.for_crate(c, tc);
-            let r = {
-                let existing_result = writer.load_test_result()?;
-                if let Some(r) = existing_result {
-                    skipped_crates += 1;
-
-                    info!("skipping crate {}. existing result: {}", c, r);
-                    info!(
-                        "delete result file to rerun test: \
-                         \"crater delete-result {} --toolchain {} {}\"",
-                        ex.name,
-                        tc.to_string(),
-                        c
-                    );
-                    Ok(r)
-                } else {
-                    completed_crates += 1;
-
-                    with_work_crate(ex, tc, c, |source_path| {
-                        with_frobbed_toml(ex, c, source_path)?;
-                        with_captured_lockfile(ex, c, source_path)?;
-
-                        writer.record_results(|| {
-                            info!("testing {} against {} for {}", c, tc.to_string(), ex.name);
-                            test_fn(ex, source_path, tc, config.is_quiet(c))
-                        })
-                    })
-                }
-            };
+            let r = run_test("testing", ex, tc, c, &db, config.is_quiet(c), test_fn);
 
             match r {
                 Err(ref e) => {
                     error!("error testing crate {}:  {}", c, e);
                     util::report_error(e);
                 }
-                Ok(ref r) => {
+                Ok(RunTestResult {
+                    ref result,
+                    skipped,
+                }) => {
                     // FIXME: Should errors be recorded?
                     info!(
                         "test result! ex: {}, c: {}, tc: {}, r: {}",
                         ex.name,
                         c,
                         tc.to_string(),
-                        r
+                        result,
                     );
+
+                    if skipped {
+                        skipped_crates += 1;
+                    } else {
+                        completed_crates += 1;
+                    }
                 }
             }
 
@@ -130,10 +111,23 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
                 Err(_) => {
                     sum_errors += 1;
                 }
-                Ok(TestResult::BuildFail) => sum_build_fail += 1,
-                Ok(TestResult::TestFail) => sum_test_fail += 1,
-                Ok(TestResult::TestSkipped) => sum_test_skipped += 1,
-                Ok(TestResult::TestPass) => sum_test_pass += 1,
+                Ok(RunTestResult { skipped: true, .. }) => {}
+                Ok(RunTestResult {
+                    result: TestResult::BuildFail,
+                    ..
+                }) => sum_build_fail += 1,
+                Ok(RunTestResult {
+                    result: TestResult::TestFail,
+                    ..
+                }) => sum_test_fail += 1,
+                Ok(RunTestResult {
+                    result: TestResult::TestSkipped,
+                    ..
+                }) => sum_test_skipped += 1,
+                Ok(RunTestResult {
+                    result: TestResult::TestPass,
+                    ..
+                }) => sum_test_pass += 1,
             }
 
             let elapsed = Instant::now().duration_since(start_time).as_secs();
@@ -182,6 +176,50 @@ fn verify_toolchains(config: &Experiment, tcs: &[Toolchain]) -> Result<()> {
     Ok(())
 }
 
+pub struct RunTestResult {
+    pub result: TestResult,
+    pub skipped: bool,
+}
+
+pub fn run_test<DB: ExperimentResultDB>(
+    action: &str,
+    ex: &Experiment,
+    tc: &Toolchain,
+    krate: &ExCrate,
+    db: &DB,
+    quiet: bool,
+    test_fn: fn(&Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,
+) -> Result<RunTestResult> {
+    let writer = db.for_crate(krate, tc);
+
+    if let Some(res) = writer.load_test_result()? {
+        info!("skipping crate {}. existing result: {}", krate, res);
+        Ok(RunTestResult {
+            result: res,
+            skipped: true,
+        })
+    } else {
+        with_work_crate(ex, tc, krate, |source_path| {
+            with_frobbed_toml(ex, krate, source_path)?;
+            with_captured_lockfile(ex, krate, source_path)?;
+
+            writer.record_results(|| {
+                info!(
+                    "{} {} against {} for {}",
+                    action,
+                    krate,
+                    tc.to_string(),
+                    ex.name
+                );
+                test_fn(ex, source_path, tc, quiet)
+            })
+        }).map(|result| RunTestResult {
+            result,
+            skipped: false,
+        })
+    }
+}
+
 fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
     toolchain.run_cargo(
         &ex.name,
@@ -200,7 +238,17 @@ fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool
     Ok(())
 }
 
-fn test_build_and_test(
+fn test(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
+    toolchain.run_cargo(
+        &ex.name,
+        source_path,
+        &["test", "--frozen"],
+        CargoState::Locked,
+        quiet,
+    )
+}
+
+pub fn test_build_and_test(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
@@ -208,13 +256,7 @@ fn test_build_and_test(
 ) -> Result<TestResult> {
     let build_r = build(ex, source_path, toolchain, quiet);
     let test_r = if build_r.is_ok() {
-        Some(toolchain.run_cargo(
-            &ex.name,
-            source_path,
-            &["test", "--frozen"],
-            CargoState::Locked,
-            quiet,
-        ))
+        Some(test(ex, source_path, toolchain, quiet))
     } else {
         None
     };
@@ -227,7 +269,7 @@ fn test_build_and_test(
     })
 }
 
-fn test_build_only(
+pub fn test_build_only(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
@@ -241,7 +283,7 @@ fn test_build_only(
     }
 }
 
-fn test_check_only(
+pub fn test_check_only(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
@@ -262,7 +304,7 @@ fn test_check_only(
     }
 }
 
-fn test_find_unstable_features(
+pub fn test_find_unstable_features(
     _ex: &Experiment,
     source_path: &Path,
     _toolchain: &Toolchain,

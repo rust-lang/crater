@@ -1,6 +1,6 @@
 use dirs::LIST_DIR;
 use errors::*;
-use ex::ExCrate;
+use ex::{ExCrate, Experiment};
 use file;
 use gh;
 use gh_mirrors;
@@ -330,14 +330,14 @@ pub enum Crate {
 }
 
 impl Crate {
-    pub fn into_ex_crate(self, shas: &HashMap<String, String>) -> Result<ExCrate> {
+    pub fn into_ex_crate(self, ex: &Experiment) -> Result<ExCrate> {
         match self {
             Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
-            Crate::Repo { ref url } => if let Some(sha) = shas.get(url) {
+            Crate::Repo { ref url } => if let Some(sha) = ex.shas.lock().unwrap().get(url) {
                 let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
                 Ok(ExCrate::Repo {
-                    org,
-                    name,
+                    org: org.to_string(),
+                    name: name.to_string(),
                     sha: sha.to_string(),
                 })
             } else {

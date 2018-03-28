@@ -17,6 +17,7 @@ use crater::ex::{ExCrate, ExCrateSelect, ExMode};
 use crater::ex_run;
 use crater::lists;
 use crater::report;
+use crater::run_graph;
 use crater::server;
 use crater::toolchain::Toolchain;
 use std::env;
@@ -153,6 +154,14 @@ pub enum Crater {
         tc: Toolchain,
     },
 
+    #[structopt(name = "run-graph", about = "run a parallelized experiment")]
+    RunGraph {
+        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        ex: Ex,
+        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
+        threads: usize,
+    },
+
     #[structopt(name = "gen-report", about = "generate the experiment report")]
     GenReport {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
@@ -174,6 +183,14 @@ pub enum Crater {
 
     #[structopt(name = "serve-report", about = "serve report")]
     Serve,
+
+    #[structopt(name = "dump-tasks-graph", about = "dump the internal tasks graph in .dot format")]
+    DumpTasksGraph {
+        #[structopt(name = "dest", parse(from_os_str))]
+        dest: PathBuf,
+        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        ex: Ex,
+    },
 }
 
 impl Crater {
@@ -207,7 +224,7 @@ impl Crater {
                 )?;
             }
             Crater::PrepareEx { ref ex } => {
-                let ex = ex::Experiment::load(&ex.0)?;
+                let mut ex = ex::Experiment::load(&ex.0)?;
                 ex.prepare_shared()?;
                 ex.prepare_local()?;
             }
@@ -234,6 +251,9 @@ impl Crater {
             Crater::RunTc { ref ex, ref tc } => {
                 ex_run::run_ex(&ex.0, tc.clone(), &config)?;
             }
+            Crater::RunGraph { ref ex, threads } => {
+                run_graph::run_ex(&ex.0, threads, &config)?;
+            }
             Crater::GenReport { ref ex, ref dest } => {
                 report::gen(&ex.0, &report::FileWriter::create(dest.0.clone())?, &config)?;
             }
@@ -253,6 +273,9 @@ impl Crater {
             }
             Crater::Serve => {
                 server::start(server::Data { config });
+            }
+            Crater::DumpTasksGraph { ref dest, ref ex } => {
+                run_graph::dump_dot(&ex.0, &config, dest)?;
             }
         }
 

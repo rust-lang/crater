@@ -59,9 +59,9 @@ pub mod ex_config {
     use server::{Data, Params};
 
     #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-    pub fn handler(_data: &Data, params: Params) -> ex::Experiment {
+    pub fn handler(_data: &Data, params: Params) -> ex::SerializableExperiment {
         let ex_name = params.find("experiment").unwrap();
-        ex::Experiment::load(ex_name).unwrap()
+        ex::Experiment::load(ex_name).unwrap().serializable()
     }
 }
 

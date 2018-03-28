@@ -13,6 +13,7 @@ use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Mutex;
 use toml_frobber;
 use toolchain::{self, CargoState, Toolchain};
 use util;
@@ -45,8 +46,8 @@ fn registry_dir() -> PathBuf {
     CRATES_DIR.join("reg")
 }
 
-fn shafile(ex: &Experiment) -> PathBuf {
-    EXPERIMENT_DIR.join(&ex.name).join("shas.json")
+fn shafile(ex_name: &str) -> PathBuf {
+    EXPERIMENT_DIR.join(ex_name).join("shas.json")
 }
 
 fn config_file(ex_name: &str) -> PathBuf {
@@ -62,11 +63,30 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Experiment {
+pub struct SerializableExperiment {
     pub name: String,
     pub crates: Vec<Crate>,
     pub toolchains: Vec<Toolchain>,
     pub mode: ExMode,
+}
+
+pub struct Experiment {
+    pub name: String,
+    pub crates: Vec<Crate>,
+    pub toolchains: Vec<Toolchain>,
+    pub shas: Mutex<ShasMap>,
+    pub mode: ExMode,
+}
+
+impl Experiment {
+    pub fn serializable(&self) -> SerializableExperiment {
+        SerializableExperiment {
+            name: self.name.clone(),
+            crates: self.crates.clone(),
+            toolchains: self.toolchains.clone(),
+            mode: self.mode.clone(),
+        }
+    }
 }
 
 pub struct ExOpts {
@@ -145,21 +165,82 @@ pub fn define_(ex_name: &str, tcs: Vec<Toolchain>, crates: Vec<Crate>, mode: ExM
         name: ex_name.to_string(),
         crates,
         toolchains: tcs,
+        shas: Mutex::new(ShasMap::new(shafile(ex_name))?),
         mode,
     };
     fs::create_dir_all(&ex_dir(&ex.name))?;
-    let json = serde_json::to_string(&ex)?;
+    let json = serde_json::to_string(&ex.serializable())?;
     info!("writing ex config to {}", config_file(ex_name).display());
     file::write_string(&config_file(ex_name), &json)?;
     Ok(())
 }
 
-impl Experiment {
-    pub fn load(ex_name: &str) -> Result<Self> {
-        let config = file::read_string(&config_file(ex_name))?;
-        Ok(serde_json::from_str(&config)?)
+pub struct ShasMap {
+    shas: HashMap<String, String>,
+    path: PathBuf,
+}
+
+impl ShasMap {
+    pub fn new(path: PathBuf) -> Result<Self> {
+        let shas = if path.exists() {
+            serde_json::from_str(&file::read_string(&path)?)?
+        } else {
+            HashMap::new()
+        };
+
+        Ok(ShasMap { shas, path })
     }
 
+    pub fn capture<'a, I: Iterator<Item = &'a str>>(&mut self, urls: I) -> Result<()> {
+        let mut changed = false;
+
+        for url in urls {
+            let dir = gh_mirrors::repo_dir(url)?;
+            let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
+                .cd(&dir)
+                .run_capture();
+
+            match r {
+                Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
+                    if !shaline.is_empty() {
+                        info!("sha for {}: {}", url, shaline);
+                        self.shas.insert(url.to_string(), shaline.to_string());
+                        changed = true;
+                    } else {
+                        error!("bogus output from git log for {}", dir.display());
+                    }
+                } else {
+                    error!("bogus output from git log for {}", dir.display());
+                },
+                Err(e) => {
+                    error!("unable to capture sha for {}: {}", dir.display(), e);
+                }
+            }
+        }
+
+        if changed {
+            if let Some(parent) = self.path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            let shajson = serde_json::to_string(&self.shas)?;
+            info!("writing shas to {:?}", self.path);
+            file::write_string(&self.path, &shajson)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn get(&self, url: &str) -> Option<&str> {
+        self.shas.get(url).map(|u| u.as_ref())
+    }
+
+    pub fn inner(&self) -> &HashMap<String, String> {
+        &self.shas
+    }
+}
+
+impl Experiment {
     fn repo_crate_urls(&self) -> Vec<String> {
         self.crates
             .iter()
@@ -176,12 +257,17 @@ impl Experiment {
         Ok(())
     }
 
-    pub fn prepare_shared(&self) -> Result<()> {
+    pub fn prepare_shared(&mut self) -> Result<()> {
         self.fetch_repo_crates()?;
-        capture_shas(self)?;
+        self.shas
+            .lock()
+            .unwrap()
+            .capture(self.crates.iter().filter_map(|c| c.repo_url()))?;
         download_crates(self)?;
-        frob_tomls(self)?;
-        capture_lockfiles(self, &Toolchain::Dist("stable".into()), false)?;
+
+        let crates = self.crates()?;
+        frob_tomls(self, &crates)?;
+        capture_lockfiles(self, &crates, &Toolchain::Dist("stable".into()), false)?;
         Ok(())
     }
 
@@ -189,61 +275,33 @@ impl Experiment {
         // Local experiment prep
         delete_all_target_dirs(&self.name)?;
         ex_run::delete_all_results(&self.name)?;
-        fetch_deps(self, &Toolchain::Dist("stable".into()))?;
+        fetch_deps(self, &self.crates()?, &Toolchain::Dist("stable".into()))?;
         prepare_all_toolchains(self)?;
 
         Ok(())
     }
 }
 
-fn capture_shas(ex: &Experiment) -> Result<()> {
-    let mut shas: HashMap<String, String> = HashMap::new();
-    for krate in &ex.crates {
-        if let Crate::Repo { ref url } = *krate {
-            let dir = gh_mirrors::repo_dir(url)?;
-            let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
-                .cd(&dir)
-                .run_capture();
-
-            match r {
-                Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
-                    if !shaline.is_empty() {
-                        info!("sha for {}: {}", url, shaline);
-                        shas.insert(url.to_string(), shaline.to_string());
-                    } else {
-                        error!("bogus output from git log for {}", dir.display());
-                    }
-                } else {
-                    error!("bogus output from git log for {}", dir.display());
-                },
-                Err(e) => {
-                    error!("unable to capture sha for {}: {}", dir.display(), e);
-                }
-            }
-        }
-    }
-
-    fs::create_dir_all(&ex_dir(&ex.name))?;
-    let shajson = serde_json::to_string(&shas)?;
-    info!("writing shas to {}", shafile(ex).display());
-    file::write_string(&shafile(ex), &shajson)?;
-
-    Ok(())
-}
-
 impl Experiment {
-    pub fn load_shas(&self) -> Result<HashMap<String, String>> {
-        let shas = file::read_string(&shafile(self))?;
-        let shas = serde_json::from_str(&shas)?;
-        Ok(shas)
+    pub fn load(ex_name: &str) -> Result<Self> {
+        let config = file::read_string(&config_file(ex_name))?;
+        let data: SerializableExperiment = serde_json::from_str(&config)?;
+
+        Ok(Experiment {
+            shas: Mutex::new(ShasMap::new(shafile(&data.name))?),
+
+            name: data.name,
+            crates: data.crates,
+            toolchains: data.toolchains,
+            mode: data.mode,
+        })
     }
 
     pub fn crates(&self) -> Result<Vec<ExCrate>> {
-        let shas = self.load_shas()?;
         let (oks, fails): (Vec<_>, Vec<_>) = self.crates
             .clone()
             .into_iter()
-            .map(|c| c.into_ex_crate(&shas))
+            .map(|c| c.into_ex_crate(self))
             .partition(Result::is_ok);
         if !fails.is_empty() {
             let fails = fails
@@ -314,8 +372,8 @@ impl FromStr for ExCrate {
                 let sha = &s[hash_idx + 1..];
                 let (org, name) = gh_mirrors::gh_url_to_org_and_name(repo)?;
                 Ok(ExCrate::Repo {
-                    org,
-                    name,
+                    org: org.to_string(),
+                    name: name.to_string(),
                     sha: sha.to_string(),
                 })
             } else {
@@ -338,9 +396,10 @@ fn download_crates(ex: &Experiment) -> Result<()> {
     crates::prepare(&ex.crates()?)
 }
 
-fn frob_tomls(ex: &Experiment) -> Result<()> {
-    for krate in ex.crates()? {
-        if let ExCrate::Version {
+#[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
+pub fn frob_tomls(ex: &Experiment, crates: &[ExCrate]) -> Result<()> {
+    for krate in crates {
+        if let &ExCrate::Version {
             ref name,
             ref version,
         } = krate
@@ -398,7 +457,11 @@ fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
 }
 
 fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
-    TEST_SOURCE_DIR.join(ex_name).join(toolchain.to_string())
+    let mut dir = TEST_SOURCE_DIR.clone();
+    if let Some(thread) = ::std::thread::current().name() {
+        dir = dir.join(thread);
+    }
+    dir.join(ex_name).join(toolchain.to_string())
 }
 
 pub fn with_work_crate<F, R>(
@@ -424,14 +487,15 @@ where
     r
 }
 
-fn capture_lockfiles(
+pub fn capture_lockfiles(
     ex: &Experiment,
+    crates: &[ExCrate],
     toolchain: &Toolchain,
     recapture_existing: bool,
 ) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    for c in &ex.crates()? {
+    for c in crates {
         if c.dir().join("Cargo.lock").exists() {
             info!("crate {} has a lockfile. skipping", c);
             continue;
@@ -508,8 +572,8 @@ pub fn with_captured_lockfile(ex: &Experiment, crate_: &ExCrate, path: &Path) ->
     Ok(())
 }
 
-fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
-    for c in &ex.crates()? {
+pub fn fetch_deps(ex: &Experiment, crates: &[ExCrate], toolchain: &Toolchain) -> Result<()> {
+    for c in crates {
         let r = with_work_crate(ex, toolchain, c, |path| {
             with_frobbed_toml(ex, c, path)?;
             with_captured_lockfile(ex, c, path)?;
@@ -529,7 +593,7 @@ fn fetch_deps(ex: &Experiment, toolchain: &Toolchain) -> Result<()> {
     Ok(())
 }
 
-fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {
+pub fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {
     for tc in &ex.toolchains {
         tc.prepare()?;
     }

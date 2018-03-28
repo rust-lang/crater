@@ -1,5 +1,7 @@
 use errors::*;
 use ex::ExCrate;
+use gh_mirrors;
+use lists::Crate;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -19,6 +21,41 @@ pub struct CrateConfig {
 
 fn default_false() -> bool {
     false
+}
+
+pub enum CrateDetails<'a> {
+    Version(&'a str),
+    GitHubRepo(&'a str, &'a str),
+}
+
+pub trait GetDetails {
+    fn get_details(&self) -> Option<CrateDetails>;
+}
+
+impl GetDetails for ExCrate {
+    fn get_details(&self) -> Option<CrateDetails> {
+        match *self {
+            ExCrate::Version { ref name, .. } => Some(CrateDetails::Version(name)),
+            ExCrate::Repo {
+                ref org, ref name, ..
+            } => Some(CrateDetails::GitHubRepo(org, name)),
+        }
+    }
+}
+
+impl GetDetails for Crate {
+    fn get_details(&self) -> Option<CrateDetails> {
+        match *self {
+            Crate::Version { ref name, .. } => Some(CrateDetails::Version(name)),
+            Crate::Repo { ref url } => {
+                if let Ok((org, name)) = gh_mirrors::gh_url_to_org_and_name(url) {
+                    Some(CrateDetails::GitHubRepo(org, name))
+                } else {
+                    None
+                }
+            }
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -44,28 +81,27 @@ impl Config {
         Ok(::toml::from_str(&buffer)?)
     }
 
-    fn crate_config(&self, ex: &ExCrate) -> Option<&CrateConfig> {
-        match *ex {
-            ExCrate::Version { ref name, .. } => self.crates.get(name),
-            ExCrate::Repo {
-                ref org, ref name, ..
-            } => {
+    fn crate_config<C: GetDetails>(&self, c: &C) -> Option<&CrateConfig> {
+        match c.get_details() {
+            Some(CrateDetails::Version(name)) => self.crates.get(name),
+            Some(CrateDetails::GitHubRepo(org, name)) => {
                 let repo_name = format!("{}/{}", org, name);
                 self.github_repos.get(&repo_name)
             }
+            None => None,
         }
     }
 
-    pub fn should_skip(&self, ex: &ExCrate) -> bool {
-        self.crate_config(ex).map(|c| c.skip).unwrap_or(false)
+    pub fn should_skip<C: GetDetails>(&self, c: &C) -> bool {
+        self.crate_config(c).map(|c| c.skip).unwrap_or(false)
     }
 
-    pub fn should_skip_tests(&self, ex: &ExCrate) -> bool {
-        self.crate_config(ex).map(|c| c.skip_tests).unwrap_or(false)
+    pub fn should_skip_tests<C: GetDetails>(&self, c: &C) -> bool {
+        self.crate_config(c).map(|c| c.skip_tests).unwrap_or(false)
     }
 
-    pub fn is_quiet(&self, ex: &ExCrate) -> bool {
-        self.crate_config(ex).map(|c| c.quiet).unwrap_or(false)
+    pub fn is_quiet<C: GetDetails>(&self, c: &C) -> bool {
+        self.crate_config(c).map(|c| c.quiet).unwrap_or(false)
     }
 
     pub fn demo_crates(&self) -> &DemoCrates {

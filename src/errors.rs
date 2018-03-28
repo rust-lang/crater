@@ -12,6 +12,7 @@ error_chain! {
         Hyper(::hyper::Error);
         ParseInt(::std::num::ParseIntError);
         Parse(::std::string::ParseError);
+        RusotoTls(::rusoto_core::TlsError);
     }
 
     links {

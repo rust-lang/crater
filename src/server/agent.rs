@@ -1,10 +1,8 @@
 use errors::*;
-use ex::{self, Experiment};
+use ex::Experiment;
 use futures::{future, Future, Stream};
 use hyper::StatusCode;
 use hyper::server::{Request, Response};
-use report;
-use results::FileDB;
 use serde_json;
 use server::Data;
 use server::auth::AuthDetails;
@@ -85,19 +83,14 @@ fn complete_experiment(data: &Data, auth: &AuthDetails) -> Result<()> {
     };
 
     info!("experiment {} completed, generating report...", name);
-    report::gen(
-        &FileDB::default(),
-        &name,
-        &report::FileWriter::create(ex::ex_dir(&name))?,
-        &data.config,
-    )?;
+    let report_url = results::generate_report(&name, &data.config, &data.tokens)?;
     info!("report for the experiment {} generated successfully!", name);
 
     data.github.post_comment(
         &github_issue,
         &format!(
-            ":tada: Experiment **`{}`** completed!\nA report was generated.",
-            name
+            ":tada: Experiment **`{}`** completed!\n[The report is available here]({})",
+            name, report_url,
         ),
     )?;
 

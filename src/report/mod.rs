@@ -16,7 +16,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 mod s3;
-pub use self::s3::{S3Prefix, S3Writer};
+pub use self::s3::{get_client_for_bucket, S3Prefix, S3Writer};
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {

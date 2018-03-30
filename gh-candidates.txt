@@ -31,7 +31,6 @@
 46bit/comms
 7thSigil/css-color-parser-rs
 887/fluffy-system
-887/mass-file-renamer
 907th/timus-rust
 A-Beck/cs4414-ps2
 A-Beck/cs4414-ps4
@@ -356,7 +355,6 @@ DoumanAsh/lazy-socket.rs
 DoumanAsh/rusty-eushully
 Dr-Emann/rust-cache-2q
 DrGoldfire/advent2017
-DrKwint/bayes
 DrPandemic/AOC17
 Drakulix/fireplace
 Drogglbecher/thinline
@@ -1408,8 +1406,6 @@ aatxe/dnd
 aatxe/irc
 aatxe/irc-services
 aatxe/life-sim
-aatxe/mcaas
-aatxe/rustlike
 abhi18av/my_dylib
 abhijeetbhagat/genmei
 abhishek6262/calculator
@@ -3781,7 +3777,6 @@ imazen/imageflow
 imbaczek/rust-lightsout
 imjacobclark/Herd
 imnotbad/adventofcode
-imnotbad/permutation_test
 imp/libcratesio-rs
 imrehg/bmpow-rust
 imrehg/rust-freegeoip
@@ -4596,7 +4591,6 @@ lenage/wechat
 lenary/cs4414-project
 lenary/cs4414-ps4
 lengstrom/json-cli
-lennyferguson/computer_girraffix
 leod/catch-rs
 leokhachatorians/rustStuff
 leonardohn/project-church
@@ -4831,7 +4825,6 @@ marco-c/grcov
 marco-mania/tax
 marcusklaas/backbonzo
 marcusklaas/lisp-interpreter
-marcusrafael/rust
 mardiros/bearer
 marianoguerra/hkwm
 mario-s/rust-cv
@@ -5887,7 +5880,6 @@ pzread/furakus
 qmonnet/rbpf
 qmx/rust-zbase32
 qnighy/yasna.rs
-qoh/fortune
 qorost/rust_macro_plugin
 qrlpx/ioc
 qrush/rustlike
@@ -6718,7 +6710,6 @@ solson/miri
 solson/nixrs
 solson/shroom
 sombr/rust-tasks
-someonesapien/MangaDownloader
 sometoby/theobot
 sommoyogurt/rb
 sonald/sos2

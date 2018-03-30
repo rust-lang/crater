@@ -13,7 +13,6 @@ https://github.com/3Hren/logdrop
 https://github.com/3Hren/zenlog
 https://github.com/46bit/comms
 https://github.com/887/fluffy-system
-https://github.com/887/mass-file-renamer
 https://github.com/AGhost-7/schedule-m8
 https://github.com/APTy/kvlite
 https://github.com/AaronFriel/grapple
@@ -101,7 +100,6 @@ https://github.com/DominoTree/ipfix-elasticsearch
 https://github.com/Don42/pixelflut-rs
 https://github.com/DougNoGit/side-scroller-rust
 https://github.com/DrGoldfire/advent2017
-https://github.com/DrKwint/bayes
 https://github.com/Drakulix/fireplace
 https://github.com/DsXack/rust_philosopher_dinner
 https://github.com/EEVV/haxlel
@@ -369,8 +367,6 @@ https://github.com/aag/eagle-eye
 https://github.com/aatxe/alectro
 https://github.com/aatxe/dnd
 https://github.com/aatxe/irc-services
-https://github.com/aatxe/mcaas
-https://github.com/aatxe/rustlike
 https://github.com/abhi18av/my_dylib
 https://github.com/abhishek6262/calculator
 https://github.com/abtv/sloc
@@ -977,7 +973,6 @@ https://github.com/imazen/imageflow
 https://github.com/imbaczek/rust-lightsout
 https://github.com/imjacobclark/Herd
 https://github.com/imnotbad/adventofcode
-https://github.com/imnotbad/permutation_test
 https://github.com/indefini/server
 https://github.com/indeyets/rust-nquads
 https://github.com/indiv0/colonize
@@ -1176,7 +1171,6 @@ https://github.com/lazau/rust-irc-server
 https://github.com/lazear/rust-kmeans
 https://github.com/ldev-r3-t4/analytics
 https://github.com/leifwalsh/tea
-https://github.com/lennyferguson/computer_girraffix
 https://github.com/leoschwarz/idol
 https://github.com/leshow/rust-filter-map-reduce-bench
 https://github.com/lhernandezcruz/hit_n_run
@@ -1233,7 +1227,6 @@ https://github.com/marchelzo/ircnvim-rs
 https://github.com/marcianx/data-structures-rs
 https://github.com/marco-c/grcov
 https://github.com/marcusklaas/lisp-interpreter
-https://github.com/marcusrafael/rust
 https://github.com/mardiros/bearer
 https://github.com/mariosangiorgio/rulox
 https://github.com/markjansnl/markfs
@@ -1519,7 +1512,6 @@ https://github.com/pvginkel/strtod
 https://github.com/pwoolcoc/cargo-template
 https://github.com/pyk/peg-generator
 https://github.com/pyk/rust-perceptron
-https://github.com/qoh/fortune
 https://github.com/qorost/rust_macro_plugin
 https://github.com/qrush/rustlike
 https://github.com/quadrupleslap/lich
@@ -1720,7 +1712,6 @@ https://github.com/soderstroff/defunct
 https://github.com/softprops/cargo-thanks
 https://github.com/solson/miri
 https://github.com/solson/shroom
-https://github.com/someonesapien/MangaDownloader
 https://github.com/sometoby/theobot
 https://github.com/sonald/sos2
 https://github.com/sorpaas/etclient

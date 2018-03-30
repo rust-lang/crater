@@ -292,7 +292,7 @@ pub fn test_check_only(
     let r = toolchain.run_cargo(
         &ex.name,
         source_path,
-        &["check", "--frozen"],
+        &["check", "--frozen", "--all", "--all-targets"],
         CargoState::Locked,
         quiet,
     );

@@ -201,8 +201,6 @@ pub enum Crater {
 
 impl Crater {
     pub fn run(&self) -> Result<()> {
-        let config = Config::load()?;
-
         match *self {
             Crater::CreateLists => lists::create_all_lists(true)?,
             Crater::PrepareLocal { ref env } => {
@@ -220,6 +218,8 @@ impl Crater {
                 ref crates,
                 ref cap_lints,
             } => {
+                let config = Config::load()?;
+
                 ex::define(
                     ex::ExOpts {
                         name: ex.0.clone(),
@@ -255,17 +255,21 @@ impl Crater {
                 ref krate,
             } => ex_run::delete_result(&ex.0, tc.as_ref(), krate)?,
             Crater::Run { ref ex } => {
+                let config = Config::load()?;
                 ex_run::run_ex_all_tcs(&ex.0, &config)?;
             }
             Crater::RunTc { ref ex, ref tc } => {
+                let config = Config::load()?;
                 ex_run::run_ex(&ex.0, tc.clone(), &config)?;
             }
             Crater::RunGraph { ref ex, threads } => {
+                let config = Config::load()?;
                 let experiment = Experiment::load(&ex.0)?;
                 let db = FileDB::default();
                 run_graph::run_ex(&experiment, &db, threads, &config)?;
             }
             Crater::GenReport { ref ex, ref dest } => {
+                let config = Config::load()?;
                 let db = FileDB::default();
                 report::gen(
                     &db,
@@ -278,6 +282,7 @@ impl Crater {
                 ref ex,
                 ref s3_prefix,
             } => {
+                let config = Config::load()?;
                 let s3_prefix = match *s3_prefix {
                     Some(ref prefix) => prefix.clone(),
                     None => {
@@ -296,6 +301,7 @@ impl Crater {
                 )?;
             }
             Crater::Server => {
+                let config = Config::load()?;
                 server::run(config)?;
             }
             Crater::Agent {
@@ -303,9 +309,10 @@ impl Crater {
                 ref token,
                 threads,
             } => {
-                agent::run(url, token, &config, threads)?;
+                agent::run(url, token, threads)?;
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
+                let config = Config::load()?;
                 run_graph::dump_dot(&ex.0, &config, dest)?;
             }
         }

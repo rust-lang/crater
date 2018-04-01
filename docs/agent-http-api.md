@@ -31,10 +31,12 @@ and the response is tied to the API token.
 Response fields:
 
 * `agent-name`: the name assigned by the crater server to this agent
+* `crater-config`: the JSON serialized content of the server's `config.toml`
 
 ```json
 {
-    "agent-name": "crater-1"
+    "agent-name": "crater-1",
+    "crater-config": {...}
 }
 ```
 

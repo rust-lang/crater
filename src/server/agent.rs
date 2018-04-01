@@ -14,12 +14,13 @@ use std::sync::Arc;
 #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 pub fn config(
     _req: Request,
-    _data: Arc<Data>,
+    data: Arc<Data>,
     _ctx: Arc<Context>,
     auth: AuthDetails,
 ) -> ResponseFuture {
     Response::json(&json!({
         "agent-name": auth.name,
+        "crater-config": data.config,
     })).unwrap()
         .as_future()
 }

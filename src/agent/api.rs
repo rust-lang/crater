@@ -1,3 +1,4 @@
+use config::Config;
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use ex::Experiment;
@@ -11,6 +12,7 @@ const RETRY_AFTER: u64 = 5;
 #[serde(rename_all = "kebab-case")]
 pub struct AgentConfig {
     pub agent_name: String,
+    pub crater_config: Config,
 }
 
 pub struct AgentApi {

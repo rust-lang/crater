@@ -12,6 +12,7 @@ use std::fs;
 
 struct Agent {
     api: AgentApi,
+    config: Config,
 }
 
 impl Agent {
@@ -24,7 +25,10 @@ impl Agent {
         info!("connected to the crater server!");
         info!("assigned agent name: {}", config.agent_name);
 
-        Ok(Agent { api })
+        Ok(Agent {
+            api,
+            config: config.crater_config,
+        })
     }
 
     fn experiment(&self) -> Result<Experiment> {
@@ -50,13 +54,13 @@ impl Agent {
     }
 }
 
-pub fn run(url: &str, token: &str, config: &Config, threads_count: usize) -> Result<()> {
+pub fn run(url: &str, token: &str, threads_count: usize) -> Result<()> {
     let agent = Agent::new(url, token)?;
     let db = results::ResultsUploader::new(&agent.api);
 
     loop {
         let ex = agent.experiment()?;
-        run_graph::run_ex(&ex, &db, threads_count, config)?;
+        run_graph::run_ex(&ex, &db, threads_count, &agent.config)?;
         agent.api.complete_experiment()?;
     }
 }

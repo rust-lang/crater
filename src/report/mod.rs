@@ -120,8 +120,6 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) 
     let ex = ex::Experiment::load(ex_name)?;
 
     let res = generate_report(config, &ex)?;
-    let shas_map = ex.shas.lock().unwrap();
-    let shas = shas_map.inner();
 
     info!("writing results to {}", dest);
     info!("writing metadata");
@@ -137,7 +135,7 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) 
     )?;
     dest.write_string(
         "shas.json",
-        serde_json::to_string(&shas)?.into(),
+        serde_json::to_string(&ex.shas.lock().unwrap().inner())?.into(),
         &mime::APPLICATION_JSON,
     )?;
 

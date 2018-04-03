@@ -446,14 +446,16 @@ fn lockfile_dir(ex_name: &str) -> PathBuf {
 }
 
 fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
-    let (crate_name, crate_vers) = match *crate_ {
+    let name = match *crate_ {
         ExCrate::Version {
             ref name,
             ref version,
-        } => (name.to_string(), version.to_string()),
-        _ => bail!("unimplemented crate type in `lockfile`"),
+        } => format!("registry-{}-{}.lock", name, version),
+        ExCrate::Repo {
+            ref org, ref name, ..
+        } => format!("repo-{}.{}.lock", org, name),
     };
-    Ok(lockfile_dir(ex_name).join(format!("{}-{}.lock", crate_name, crate_vers)))
+    Ok(lockfile_dir(ex_name).join(name))
 }
 
 fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {

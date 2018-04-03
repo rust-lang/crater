@@ -1,13 +1,11 @@
+use crates::{Crate, RegistryCrate};
 use dirs::LIST_DIR;
 use errors::*;
-use ex::{ExCrate, Experiment};
 use file;
 use gh;
-use gh_mirrors;
 use registry;
 use semver::{Version, VersionReq};
 use std::collections::{HashMap, HashSet};
-use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -81,7 +79,7 @@ fn split_crate_lines(lines: &[String]) -> Result<Vec<Crate>> {
             line.find(':')
                 .map(|i| (line[..i].to_string(), line[i + 1..].to_string()))
         })
-        .map(|(name, version)| Crate::Version { name, version })
+        .map(|(name, version)| Crate::Registry(RegistryCrate { name, version }))
         .collect())
 }
 
@@ -238,8 +236,8 @@ impl List for GitHubCandidateList {
         Ok(file::read_lines(&Self::path())
             .chain_err(|| "unable to read gh-candidates list. run `crater create-lists`?")?
             .into_iter()
-            .map(|line| Crate::Repo { url: line })
-            .collect())
+            .map(|line| line.parse().map(Crate::GitHub))
+            .collect::<Result<Vec<Crate>>>()?)
     }
 
     fn path() -> PathBuf {
@@ -278,13 +276,13 @@ impl List for GitHubAppList {
 
         // Look for Cargo.lock files in the Rust repos we're aware of
         let mut apps = Vec::new();
-        for crate_ in crates {
-            let repo_url = match crate_ {
-                Crate::Repo { url } => url,
-                Crate::Version { .. } => unreachable!(),
+        for krate in crates {
+            let repo = match krate {
+                Crate::GitHub(ref repo) => repo,
+                Crate::Registry(_) => unreachable!(),
             };
-            if gh::is_rust_app(&repo_url)? {
-                apps.push(format!("https://github.com/{}", repo_url));
+            if gh::is_rust_app(&repo.slug())? {
+                apps.push(repo.url());
             }
             thread::sleep(Duration::from_millis(delay as u64));
         }
@@ -298,8 +296,8 @@ impl List for GitHubAppList {
         Ok(file::read_lines(&GitHubAppList::path())
             .chain_err(|| "unable to read gh-app list. run `crater create-lists`?")?
             .into_iter()
-            .map(|line| Crate::Repo { url: line })
-            .collect())
+            .map(|line| line.parse().map(Crate::GitHub))
+            .collect::<Result<Vec<Crate>>>()?)
     }
 
     fn path() -> PathBuf {
@@ -321,51 +319,6 @@ fn create_gh_app_list_from_cache() -> Result<()> {
     );
     fs::copy(&gh_app_cache_path(), &GitHubAppList::path())?;
     Ok(())
-}
-
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
-pub enum Crate {
-    Version { name: String, version: String },
-    Repo { url: String },
-}
-
-impl Crate {
-    pub fn into_ex_crate(self, ex: &Experiment) -> Result<ExCrate> {
-        match self {
-            Crate::Version { name, version } => Ok(ExCrate::Version { name, version }),
-            Crate::Repo { ref url } => if let Some(sha) = ex.shas.lock().unwrap().get(url) {
-                let (org, name) = gh_mirrors::gh_url_to_org_and_name(url)?;
-                Ok(ExCrate::Repo {
-                    org: org.to_string(),
-                    name: name.to_string(),
-                    sha: sha.to_string(),
-                })
-            } else {
-                Err(format!("missing sha for {}", url).into())
-            },
-        }
-    }
-
-    pub fn repo_url(&self) -> Option<&str> {
-        if let Crate::Repo { ref url } = *self {
-            Some(url)
-        } else {
-            None
-        }
-    }
-}
-
-impl Display for Crate {
-    fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
-        let s = match *self {
-            Crate::Version {
-                ref name,
-                ref version,
-            } => format!("{}-{}", name, version),
-            Crate::Repo { ref url } => url.to_string(),
-        };
-        s.fmt(f)
-    }
 }
 
 pub fn read_all_lists() -> Result<Vec<Crate>> {

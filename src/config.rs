@@ -1,7 +1,6 @@
+use crates::Crate;
 use errors::*;
 use ex::ExCrate;
-use gh_mirrors;
-use lists::Crate;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -29,31 +28,25 @@ pub enum CrateDetails<'a> {
 }
 
 pub trait GetDetails {
-    fn get_details(&self) -> Option<CrateDetails>;
+    fn get_details(&self) -> CrateDetails;
 }
 
 impl GetDetails for ExCrate {
-    fn get_details(&self) -> Option<CrateDetails> {
+    fn get_details(&self) -> CrateDetails {
         match *self {
-            ExCrate::Version { ref name, .. } => Some(CrateDetails::Version(name)),
+            ExCrate::Version { ref name, .. } => CrateDetails::Version(name),
             ExCrate::Repo {
                 ref org, ref name, ..
-            } => Some(CrateDetails::GitHubRepo(org, name)),
+            } => CrateDetails::GitHubRepo(org, name),
         }
     }
 }
 
 impl GetDetails for Crate {
-    fn get_details(&self) -> Option<CrateDetails> {
+    fn get_details(&self) -> CrateDetails {
         match *self {
-            Crate::Version { ref name, .. } => Some(CrateDetails::Version(name)),
-            Crate::Repo { ref url } => {
-                if let Ok((org, name)) = gh_mirrors::gh_url_to_org_and_name(url) {
-                    Some(CrateDetails::GitHubRepo(org, name))
-                } else {
-                    None
-                }
-            }
+            Crate::Registry(ref krate) => CrateDetails::Version(&krate.name),
+            Crate::GitHub(ref repo) => CrateDetails::GitHubRepo(&repo.org, &repo.name),
         }
     }
 }
@@ -83,12 +76,11 @@ impl Config {
 
     fn crate_config<C: GetDetails>(&self, c: &C) -> Option<&CrateConfig> {
         match c.get_details() {
-            Some(CrateDetails::Version(name)) => self.crates.get(name),
-            Some(CrateDetails::GitHubRepo(org, name)) => {
+            CrateDetails::Version(name) => self.crates.get(name),
+            CrateDetails::GitHubRepo(org, name) => {
                 let repo_name = format!("{}/{}", org, name);
                 self.github_repos.get(&repo_name)
             }
-            None => None,
         }
     }
 

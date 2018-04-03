@@ -1,9 +1,8 @@
-use crates;
+use crates::{self, Crate};
 use errors::*;
 use ex::{self, Experiment};
 use ex_run;
 use gh_mirrors;
-use lists::Crate;
 use results::ExperimentResultDB;
 use std::fmt;
 use toolchain::Toolchain;
@@ -71,12 +70,15 @@ impl Task {
 
     fn run_prepare(&self, ex: &Experiment) -> Result<()> {
         // Fetch repository data if it's a git repo
-        if let Some(url) = self.krate.repo_url() {
-            if let Err(e) = gh_mirrors::fetch(url) {
+        if let Some(url) = self.krate.github().map(|repo| repo.url()) {
+            if let Err(e) = gh_mirrors::fetch(&url) {
                 util::report_error(&e);
             }
 
-            ex.shas.lock().unwrap().capture(::std::iter::once(url))?;
+            ex.shas
+                .lock()
+                .unwrap()
+                .capture(::std::iter::once(url.as_str()))?;
         }
 
         let ex_crate = [self.krate.clone().into_ex_crate(ex)?];

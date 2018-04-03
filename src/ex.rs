@@ -1,11 +1,11 @@
 use config::Config;
-use crates;
+use crates::{self, Crate, RegistryCrate};
 use dirs::{CRATES_DIR, EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
 use ex_run;
 use file;
 use gh_mirrors;
-use lists::{self, Crate, List};
+use lists::{self, List};
 use run::RunCommand;
 use serde_json;
 use std::collections::{HashMap, HashSet};
@@ -162,8 +162,10 @@ fn demo_list(config: &Config) -> Result<Vec<Crate>> {
     let result = lists::read_all_lists()?
         .into_iter()
         .filter(|c| match *c {
-            Crate::Version { ref name, .. } => crates.remove(name),
-            Crate::Repo { ref url } => {
+            Crate::Registry(RegistryCrate { ref name, .. }) => crates.remove(name),
+            Crate::GitHub(ref repo) => {
+                let url = repo.url();
+
                 let mut found = false;
                 for repo in repos {
                     if url.ends_with(repo) {
@@ -298,7 +300,7 @@ impl Experiment {
     fn repo_crate_urls(&self) -> Vec<String> {
         self.crates
             .iter()
-            .filter_map(|crate_| crate_.repo_url().map(|u| u.to_owned()))
+            .filter_map(|krate| krate.github().map(|repo| repo.url()))
             .collect()
     }
 
@@ -316,7 +318,7 @@ impl Experiment {
         self.shas
             .lock()
             .unwrap()
-            .capture(self.crates.iter().filter_map(|c| c.repo_url()))?;
+            .capture(self.repo_crate_urls().iter().map(|s| s.as_str()))?;
         download_crates(self)?;
 
         let crates = self.crates()?;

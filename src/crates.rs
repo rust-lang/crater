@@ -3,15 +3,113 @@ use errors::*;
 use ex::ExCrate;
 use flate2::read::GzDecoder;
 use gh_mirrors;
+use std::fmt;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
+use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 use tar::Archive;
 use util;
 
 const CRATES_ROOT: &str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
+pub struct GitHubRepo {
+    pub org: String,
+    pub name: String,
+}
+
+impl GitHubRepo {
+    pub fn slug(&self) -> String {
+        format!("{}/{}", self.org, self.name)
+    }
+
+    pub fn url(&self) -> String {
+        format!("https://github.com/{}/{}", self.org, self.name)
+    }
+}
+
+impl FromStr for GitHubRepo {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self> {
+        let mut components = input.split('/').collect::<Vec<_>>();
+        let name = components.pop();
+        let org = components.pop();
+
+        if let (Some(org), Some(name)) = (org, name) {
+            Ok(GitHubRepo {
+                org: org.to_string(),
+                name: name.to_string(),
+            })
+        } else {
+            bail!("malformed repo url: {}", input);
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
+pub struct RegistryCrate {
+    pub name: String,
+    pub version: String,
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
+pub enum Crate {
+    Registry(RegistryCrate),
+    GitHub(GitHubRepo),
+}
+
+impl Crate {
+    pub fn registry(&self) -> Option<&RegistryCrate> {
+        if let Crate::Registry(ref krate) = *self {
+            Some(krate)
+        } else {
+            None
+        }
+    }
+
+    pub fn github(&self) -> Option<&GitHubRepo> {
+        if let Crate::GitHub(ref repo) = *self {
+            Some(repo)
+        } else {
+            None
+        }
+    }
+
+    pub fn into_ex_crate(self, ex: &::ex::Experiment) -> Result<::ex::ExCrate> {
+        match self {
+            Crate::Registry(krate) => Ok(::ex::ExCrate::Version {
+                name: krate.name,
+                version: krate.version,
+            }),
+            Crate::GitHub(repo) => if let Some(sha) = ex.shas.lock().unwrap().get(&repo.url()) {
+                Ok(::ex::ExCrate::Repo {
+                    org: repo.org,
+                    name: repo.name,
+                    sha: sha.to_string(),
+                })
+            } else {
+                bail!("missing sha for GitHub repo {}", repo.slug());
+            },
+        }
+    }
+}
+
+impl fmt::Display for Crate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match *self {
+                Crate::Registry(ref krate) => format!("{}-{}", krate.name, krate.version),
+                Crate::GitHub(ref repo) => repo.slug(),
+            }
+        )
+    }
+}
 
 pub fn prepare(list: &[ExCrate]) -> Result<()> {
     info!("preparing {} crates", list.len());

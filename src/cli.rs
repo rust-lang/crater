@@ -10,10 +10,11 @@
 //! parallel access is consistent and race-free.
 
 use crater::config::Config;
+use crater::crates::Crate;
 use crater::docker;
 use crater::errors::*;
 use crater::ex;
-use crater::ex::{ExCapLints, ExCrate, ExCrateSelect, ExMode};
+use crater::ex::{ExCapLints, ExCrateSelect, ExMode};
 use crater::ex_run;
 use crater::lists;
 use crater::report;
@@ -130,7 +131,7 @@ pub enum Crater {
         #[structopt(name = "toolchain", long = "toolchain", short = "t")]
         tc: Option<Toolchain>,
         #[structopt(name = "crate")]
-        krate: ExCrate,
+        krate: Crate,
     },
 
     #[structopt(name = "run", about = "run an experiment, with all toolchains")]

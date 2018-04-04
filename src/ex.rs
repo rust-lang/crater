@@ -1,6 +1,6 @@
 use config::Config;
 use crates::{self, Crate, RegistryCrate};
-use dirs::{CRATES_DIR, EXPERIMENT_DIR, TEST_SOURCE_DIR};
+use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
 use ex_run;
 use file;
@@ -9,7 +9,6 @@ use lists::{self, List};
 use run::RunCommand;
 use serde_json;
 use std::collections::{HashMap, HashSet};
-use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -73,14 +72,6 @@ string_enum!(pub enum ExCapLints {
 
 pub fn ex_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name)
-}
-
-fn gh_dir() -> PathBuf {
-    CRATES_DIR.join("gh")
-}
-
-fn registry_dir() -> PathBuf {
-    CRATES_DIR.join("reg")
 }
 
 fn shafile(ex_name: &str) -> PathBuf {
@@ -321,9 +312,8 @@ impl Experiment {
             .capture(self.repo_crate_urls().iter().map(|s| s.as_str()))?;
         download_crates(self)?;
 
-        let crates = self.crates()?;
-        frob_tomls(self, &crates)?;
-        capture_lockfiles(self, &crates, &Toolchain::Dist("stable".into()), false)?;
+        frob_tomls(self, &self.crates)?;
+        capture_lockfiles(self, &self.crates, &Toolchain::Dist("stable".into()), false)?;
         Ok(())
     }
 
@@ -331,7 +321,7 @@ impl Experiment {
         // Local experiment prep
         delete_all_target_dirs(&self.name)?;
         ex_run::delete_all_results(&self.name)?;
-        fetch_deps(self, &self.crates()?, &Toolchain::Dist("stable".into()))?;
+        fetch_deps(self, &self.crates, &Toolchain::Dist("stable".into()))?;
         prepare_all_toolchains(self)?;
 
         Ok(())
@@ -353,117 +343,19 @@ impl Experiment {
             cap_lints: data.cap_lints,
         })
     }
-
-    pub fn crates(&self) -> Result<Vec<ExCrate>> {
-        let (oks, fails): (Vec<_>, Vec<_>) = self.crates
-            .clone()
-            .into_iter()
-            .map(|c| c.into_ex_crate(self))
-            .partition(Result::is_ok);
-        if !fails.is_empty() {
-            let fails = fails
-                .into_iter()
-                .map(Result::unwrap_err)
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>();
-            Err(fails.join(", ").into())
-        } else {
-            oks.into_iter().collect()
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
-pub enum ExCrate {
-    Version {
-        name: String,
-        version: String,
-    },
-    Repo {
-        org: String,
-        name: String,
-        sha: String,
-    },
-}
-
-impl ExCrate {
-    pub fn dir(&self) -> PathBuf {
-        match *self {
-            ExCrate::Version {
-                ref name,
-                ref version,
-            } => registry_dir().join(format!("{}-{}", name, version)),
-            ExCrate::Repo {
-                ref org,
-                ref name,
-                ref sha,
-            } => gh_dir().join(format!("{}.{}.{}", org, name, sha)),
-        }
-    }
-}
-
-impl Display for ExCrate {
-    fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), fmt::Error> {
-        let s = match *self {
-            ExCrate::Version {
-                ref name,
-                ref version,
-            } => format!("{}-{}", name, version),
-            ExCrate::Repo {
-                ref org,
-                ref name,
-                ref sha,
-            } => format!("https://github.com/{}/{}#{}", org, name, sha),
-        };
-        s.fmt(f)
-    }
-}
-
-impl FromStr for ExCrate {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        if s.starts_with("https://") {
-            if let Some(hash_idx) = s.find('#') {
-                let repo = &s[..hash_idx];
-                let sha = &s[hash_idx + 1..];
-                let (org, name) = gh_mirrors::gh_url_to_org_and_name(repo)?;
-                Ok(ExCrate::Repo {
-                    org: org.to_string(),
-                    name: name.to_string(),
-                    sha: sha.to_string(),
-                })
-            } else {
-                Err("no sha for git crate".into())
-            }
-        } else if let Some(dash_idx) = s.rfind('-') {
-            let name = &s[..dash_idx];
-            let version = &s[dash_idx + 1..];
-            Ok(ExCrate::Version {
-                name: name.to_string(),
-                version: version.to_string(),
-            })
-        } else {
-            Err("no version for crate".into())
-        }
-    }
 }
 
 fn download_crates(ex: &Experiment) -> Result<()> {
-    crates::prepare(&ex.crates()?)
+    crates::prepare(&ex.crates, &ex.shas)
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
-pub fn frob_tomls(ex: &Experiment, crates: &[ExCrate]) -> Result<()> {
+pub fn frob_tomls(ex: &Experiment, crates: &[Crate]) -> Result<()> {
     for krate in crates {
-        if let &ExCrate::Version {
-            ref name,
-            ref version,
-        } = krate
-        {
+        if let Crate::Registry(ref details) = *krate {
             fs::create_dir_all(&froml_dir(&ex.name))?;
-            let out = froml_path(&ex.name, name, version);
-            let r = toml_frobber::frob_toml(&krate.dir(), name, version, &out);
+            let out = froml_path(&ex.name, &details.name, &details.version);
+            let r = toml_frobber::frob_toml(&krate.dir(), &details.name, &details.version, &out);
             if let Err(e) = r {
                 info!("couldn't frob: {}", e);
                 util::report_error(&e);
@@ -474,12 +366,9 @@ pub fn frob_tomls(ex: &Experiment, crates: &[ExCrate]) -> Result<()> {
     Ok(())
 }
 
-pub fn with_frobbed_toml(ex: &Experiment, crate_: &ExCrate, path: &Path) -> Result<()> {
-    let (crate_name, crate_vers) = match *crate_ {
-        ExCrate::Version {
-            ref name,
-            ref version,
-        } => (name.to_string(), version.to_string()),
+pub fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> Result<()> {
+    let (crate_name, crate_vers) = match *krate {
+        Crate::Registry(ref details) => (details.name.clone(), details.version.clone()),
         _ => return Ok(()),
     };
     let src_froml = &froml_path(&ex.name, &crate_name, &crate_vers);
@@ -502,15 +391,10 @@ fn lockfile_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("lockfiles")
 }
 
-fn lockfile(ex_name: &str, crate_: &ExCrate) -> Result<PathBuf> {
-    let name = match *crate_ {
-        ExCrate::Version {
-            ref name,
-            ref version,
-        } => format!("registry-{}-{}.lock", name, version),
-        ExCrate::Repo {
-            ref org, ref name, ..
-        } => format!("repo-{}.{}.lock", org, name),
+fn lockfile(ex_name: &str, krate: &Crate) -> Result<PathBuf> {
+    let name = match *krate {
+        Crate::Registry(ref details) => format!("reg-{}-{}.lock", details.name, details.version),
+        Crate::GitHub(ref repo) => format!("reg-{}-{}.lock", repo.org, repo.name),
     };
     Ok(lockfile_dir(ex_name).join(name))
 }
@@ -526,17 +410,17 @@ fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
 pub fn with_work_crate<F, R>(
     ex: &Experiment,
     toolchain: &Toolchain,
-    crate_: &ExCrate,
+    krate: &Crate,
     f: F,
 ) -> Result<R>
 where
     F: Fn(&Path) -> Result<R>,
 {
-    let src_dir = crate_.dir();
+    let src_dir = krate.dir();
     let dest_dir = crate_work_dir(&ex.name, toolchain);
     info!(
         "creating temporary build dir for {} in {}",
-        crate_,
+        krate,
         dest_dir.display()
     );
 
@@ -548,7 +432,7 @@ where
 
 pub fn capture_lockfiles(
     ex: &Experiment,
-    crates: &[ExCrate],
+    crates: &[Crate],
     toolchain: &Toolchain,
     recapture_existing: bool,
 ) -> Result<()> {
@@ -583,17 +467,17 @@ pub fn capture_lockfiles(
 
 fn capture_lockfile(
     ex: &Experiment,
-    crate_: &ExCrate,
+    krate: &Crate,
     path: &Path,
     toolchain: &Toolchain,
 ) -> Result<()> {
     let args = &["generate-lockfile", "--manifest-path", "Cargo.toml"];
     toolchain
         .run_cargo(ex, path, args, CargoState::Unlocked, false)
-        .chain_err(|| format!("unable to generate lockfile for {}", crate_))?;
+        .chain_err(|| format!("unable to generate lockfile for {}", krate))?;
 
     let src_lockfile = &path.join("Cargo.lock");
-    let dst_lockfile = &lockfile(&ex.name, crate_)?;
+    let dst_lockfile = &lockfile(&ex.name, krate)?;
     fs::copy(src_lockfile, dst_lockfile).chain_err(|| {
         format!(
             "unable to copy lockfile from {} to {}",
@@ -604,19 +488,19 @@ fn capture_lockfile(
 
     info!(
         "generated lockfile for {} at {}",
-        crate_,
+        krate,
         dst_lockfile.display()
     );
 
     Ok(())
 }
 
-pub fn with_captured_lockfile(ex: &Experiment, crate_: &ExCrate, path: &Path) -> Result<()> {
+pub fn with_captured_lockfile(ex: &Experiment, krate: &Crate, path: &Path) -> Result<()> {
     let dst_lockfile = &path.join("Cargo.lock");
     if dst_lockfile.exists() {
         return Ok(());
     }
-    let src_lockfile = &lockfile(&ex.name, crate_)?;
+    let src_lockfile = &lockfile(&ex.name, krate)?;
     if src_lockfile.exists() {
         info!("using lockfile {}", src_lockfile.display());
         fs::copy(src_lockfile, dst_lockfile).chain_err(|| {
@@ -631,7 +515,7 @@ pub fn with_captured_lockfile(ex: &Experiment, crate_: &ExCrate, path: &Path) ->
     Ok(())
 }
 
-pub fn fetch_deps(ex: &Experiment, crates: &[ExCrate], toolchain: &Toolchain) -> Result<()> {
+pub fn fetch_deps(ex: &Experiment, crates: &[Crate], toolchain: &Toolchain) -> Result<()> {
     for c in crates {
         let r = with_work_crate(ex, toolchain, c, |path| {
             with_frobbed_toml(ex, c, path)?;

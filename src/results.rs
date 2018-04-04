@@ -1,5 +1,6 @@
+use crates::Crate;
 use errors::*;
-use ex::{ex_dir, ExCrate, Experiment};
+use ex::{ex_dir, Experiment};
 use file;
 use log;
 use std::fmt::{self, Display, Formatter};
@@ -11,7 +12,7 @@ use util;
 
 pub trait ExperimentResultDB {
     type CrateWriter: CrateResultWriter;
-    fn for_crate(&self, crate_: &ExCrate, toolchain: &Toolchain) -> Self::CrateWriter;
+    fn for_crate(&self, krate: &Crate, toolchain: &Toolchain) -> Self::CrateWriter;
 
     fn delete_all_results(&self) -> Result<()>;
 }
@@ -29,17 +30,10 @@ pub trait CrateResultWriter {
     fn delete_result(&self) -> Result<()>;
 }
 
-fn crate_to_dir(c: &ExCrate) -> String {
+fn crate_to_dir(c: &Crate) -> String {
     match *c {
-        ExCrate::Version {
-            ref name,
-            ref version,
-        } => format!("reg/{}-{}", name, version),
-        ExCrate::Repo {
-            ref org,
-            ref name,
-            ref sha,
-        } => format!("gh/{}.{}.{}", org, name, sha),
+        Crate::Registry(ref details) => format!("reg/{}-{}", details.name, details.version),
+        Crate::GitHub(ref repo) => format!("gh/{}.{}", repo.org, repo.name),
     }
 }
 
@@ -56,10 +50,10 @@ impl<'a> FileDB<'a> {
 
 impl<'a> ExperimentResultDB for FileDB<'a> {
     type CrateWriter = ResultWriter<'a>;
-    fn for_crate(&self, crate_: &ExCrate, toolchain: &Toolchain) -> Self::CrateWriter {
+    fn for_crate(&self, krate: &Crate, toolchain: &Toolchain) -> Self::CrateWriter {
         ResultWriter {
             db: self.clone(),
-            crate_: crate_.clone(),
+            krate: krate.clone(),
             toolchain: toolchain.clone(),
         }
     }
@@ -76,7 +70,7 @@ impl<'a> ExperimentResultDB for FileDB<'a> {
 
 pub struct ResultWriter<'a> {
     db: FileDB<'a>,
-    crate_: ExCrate,
+    krate: Crate,
     toolchain: Toolchain,
 }
 
@@ -93,7 +87,7 @@ impl<'a> CrateResultWriter for ResultWriter<'a> {
     /// toolchain.
     fn result_path_fragement(&self) -> PathBuf {
         let tc = self.toolchain.rustup_name();
-        PathBuf::from(tc).join(crate_to_dir(&self.crate_))
+        PathBuf::from(tc).join(crate_to_dir(&self.krate))
     }
 
     fn read_log(&self) -> Result<fs::File> {

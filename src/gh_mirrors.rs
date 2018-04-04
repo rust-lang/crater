@@ -8,7 +8,7 @@ pub fn repo_dir(url: &str) -> Result<PathBuf> {
     Ok(GH_MIRRORS_DIR.join(format!("{}.{}", org, name)))
 }
 
-pub fn gh_url_to_org_and_name(url: &str) -> Result<(&str, &str)> {
+fn gh_url_to_org_and_name(url: &str) -> Result<(&str, &str)> {
     let mut components = url.split('/').collect::<Vec<_>>();
     let name = components.pop();
     let org = components.pop();

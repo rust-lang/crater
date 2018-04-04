@@ -1,13 +1,16 @@
+use dirs::CRATES_DIR;
 use dl;
 use errors::*;
-use ex::ExCrate;
+use ex::ShasMap;
 use flate2::read::GzDecoder;
 use gh_mirrors;
 use std::fmt;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
+use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 use tar::Archive;
@@ -79,21 +82,14 @@ impl Crate {
         }
     }
 
-    pub fn into_ex_crate(self, ex: &::ex::Experiment) -> Result<::ex::ExCrate> {
-        match self {
-            Crate::Registry(krate) => Ok(::ex::ExCrate::Version {
-                name: krate.name,
-                version: krate.version,
-            }),
-            Crate::GitHub(repo) => if let Some(sha) = ex.shas.lock().unwrap().get(&repo.url()) {
-                Ok(::ex::ExCrate::Repo {
-                    org: repo.org,
-                    name: repo.name,
-                    sha: sha.to_string(),
-                })
-            } else {
-                bail!("missing sha for GitHub repo {}", repo.slug());
-            },
+    pub fn dir(&self) -> PathBuf {
+        match *self {
+            Crate::Registry(ref details) => CRATES_DIR
+                .join("reg")
+                .join(format!("{}-{}", details.name, details.version)),
+            Crate::GitHub(ref repo) => CRATES_DIR
+                .join("gh")
+                .join(format!("{}.{}", repo.org, repo.name)),
         }
     }
 }
@@ -111,18 +107,34 @@ impl fmt::Display for Crate {
     }
 }
 
-pub fn prepare(list: &[ExCrate]) -> Result<()> {
+impl FromStr for Crate {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        if s.starts_with("https://github.com/") {
+            Ok(Crate::GitHub(s.parse()?))
+        } else if let Some(dash_idx) = s.rfind('-') {
+            let name = &s[..dash_idx];
+            let version = &s[dash_idx + 1..];
+            Ok(Crate::Registry(RegistryCrate {
+                name: name.to_string(),
+                version: version.to_string(),
+            }))
+        } else {
+            bail!("no version for crate");
+        }
+    }
+}
+
+pub fn prepare(list: &[Crate], shas: &Mutex<ShasMap>) -> Result<()> {
     info!("preparing {} crates", list.len());
     let mut successes = 0;
-    for crate_ in list {
-        let dir = crate_.dir();
-        match *crate_ {
-            ExCrate::Version {
-                ref name,
-                ref version,
-            } => {
-                let r = dl_registry(name, &version.to_string(), &dir)
-                    .chain_err(|| format!("unable to download {}-{}", name, version));
+    for krate in list {
+        let dir = krate.dir();
+        match *krate {
+            Crate::Registry(ref details) => {
+                let r = dl_registry(&details.name, &details.version, &dir)
+                    .chain_err(|| format!("unable to download {}", krate));
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {
@@ -130,14 +142,15 @@ pub fn prepare(list: &[ExCrate]) -> Result<()> {
                 }
                 // crates.io doesn't rate limit. Go fast
             }
-            ExCrate::Repo {
-                ref org,
-                ref name,
-                ref sha,
-            } => {
-                let url = format!("https://github.com/{}/{}", org, name);
+            Crate::GitHub(ref repo) => {
+                let url = repo.url();
+                let sha = shas.lock()
+                    .unwrap()
+                    .get(&url)
+                    .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
+                    .to_string();
                 let r =
-                    dl_repo(&url, &dir, sha).chain_err(|| format!("unable to download {}", url));
+                    dl_repo(&url, &dir, &sha).chain_err(|| format!("unable to download {}", url));
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {

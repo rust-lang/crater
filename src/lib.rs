@@ -58,7 +58,7 @@ mod gh;
 pub mod util;
 mod run;
 pub mod run_graph;
-mod crates;
+pub mod crates;
 mod git;
 pub mod ex;
 pub mod ex_run;

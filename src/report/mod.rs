@@ -1,4 +1,5 @@
 use config::Config;
+use crates::Crate;
 use errors::*;
 use ex;
 use file;
@@ -12,6 +13,7 @@ use std::convert::AsRef;
 use std::fmt::{self, Display};
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 mod s3;
 pub use self::s3::{S3Prefix, S3Writer};
@@ -51,7 +53,8 @@ pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResul
     let db = FileDB::for_experiment(ex);
     assert_eq!(ex.toolchains.len(), 2);
 
-    let res = ex.crates()?
+    let res = ex.crates
+        .clone()
         .into_iter()
         .map(|krate| {
             // Any errors here will turn into unknown results
@@ -73,14 +76,14 @@ pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResul
             let crate1 = crate_results.pop().expect("");
             let comp = compare(config, &krate, &crate1, &crate2);
 
-            CrateResult {
-                name: crate_to_name(&krate),
-                url: crate_to_url(&krate),
+            Ok(CrateResult {
+                name: crate_to_name(&krate, &ex.shas)?,
+                url: crate_to_url(&krate, &ex.shas)?,
                 res: comp,
                 runs: [crate1, crate2],
-            }
+            })
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>>>()?;
 
     Ok(TestResults { crates: res })
 }
@@ -89,20 +92,19 @@ const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
 
 fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -> Result<()> {
     let db = FileDB::for_experiment(ex);
-    let crates = ex.crates()?;
-    let num_crates = crates.len();
+    let num_crates = ex.crates.len();
     let progress_every = (num_crates / PROGRESS_FRACTION) + 1;
-    for (i, krate) in crates.into_iter().enumerate() {
+    for (i, krate) in ex.crates.iter().enumerate() {
         if i % progress_every == 0 {
             info!("wrote logs for {}/{} crates", i, num_crates)
         }
 
-        if config.should_skip(&krate) {
+        if config.should_skip(krate) {
             continue;
         }
 
         for tc in &ex.toolchains {
-            let writer = db.for_crate(&krate, tc);
+            let writer = db.for_crate(krate, tc);
             let rel_log = writer.result_path_fragement();
 
             match writer.read_log() {
@@ -147,37 +149,40 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) 
     Ok(())
 }
 
-fn crate_to_name(c: &ex::ExCrate) -> String {
-    match *c {
-        ex::ExCrate::Version {
-            ref name,
-            ref version,
-        } => format!("{}-{}", name, version),
-        ex::ExCrate::Repo {
-            ref org,
-            ref name,
-            ref sha,
-        } => format!("{}.{}.{}", org, name, sha),
-    }
+fn crate_to_name(c: &Crate, shas: &Mutex<ex::ShasMap>) -> Result<String> {
+    Ok(match *c {
+        Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
+        Crate::GitHub(ref repo) => {
+            let sha = shas.lock()
+                .unwrap()
+                .get(&repo.url())
+                .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
+                .to_string();
+            format!("{}.{}.{}", repo.org, repo.name, sha)
+        }
+    })
 }
 
-fn crate_to_url(c: &ex::ExCrate) -> String {
-    match *c {
-        ex::ExCrate::Version {
-            ref name,
-            ref version,
-        } => format!("https://crates.io/crates/{}/{}", name, version),
-        ex::ExCrate::Repo {
-            ref org,
-            ref name,
-            ref sha,
-        } => format!("https://github.com/{}/{}/tree/{}", org, name, sha),
-    }
+fn crate_to_url(c: &Crate, shas: &Mutex<ex::ShasMap>) -> Result<String> {
+    Ok(match *c {
+        Crate::Registry(ref details) => format!(
+            "https://crates.io/crates/{}/{}",
+            details.name, details.version
+        ),
+        Crate::GitHub(ref repo) => {
+            let sha = shas.lock()
+                .unwrap()
+                .get(&repo.url())
+                .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
+                .to_string();
+            format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)
+        }
+    })
 }
 
 fn compare(
     config: &Config,
-    krate: &ex::ExCrate,
+    krate: &Crate,
     r1: &Option<BuildTestResult>,
     r2: &Option<BuildTestResult>,
 ) -> Comparison {

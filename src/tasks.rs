@@ -81,13 +81,13 @@ impl Task {
                 .capture(::std::iter::once(url.as_str()))?;
         }
 
-        let ex_crate = [self.krate.clone().into_ex_crate(ex)?];
+        let krate = [self.krate.clone()];
         let stable = Toolchain::Dist("stable".into());
 
-        crates::prepare(&ex_crate)?;
-        ex::frob_tomls(ex, &ex_crate)?;
-        ex::capture_lockfiles(ex, &ex_crate, &stable, false)?;
-        ex::fetch_deps(ex, &ex_crate, &stable)?;
+        crates::prepare(&krate, &ex.shas)?;
+        ex::frob_tomls(ex, &krate)?;
+        ex::capture_lockfiles(ex, &krate, &stable, false)?;
+        ex::fetch_deps(ex, &krate, &stable)?;
 
         Ok(())
     }
@@ -99,12 +99,11 @@ impl Task {
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
-        let krate = self.krate.clone().into_ex_crate(ex)?;
         ex_run::run_test(
             "testing",
             ex,
             tc,
-            &krate,
+            &self.krate,
             db,
             quiet,
             ex_run::test_build_and_test,
@@ -118,12 +117,11 @@ impl Task {
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
-        let krate = self.krate.clone().into_ex_crate(ex)?;
         ex_run::run_test(
             "testing",
             ex,
             tc,
-            &krate,
+            &self.krate,
             db,
             quiet,
             ex_run::test_build_only,
@@ -137,12 +135,11 @@ impl Task {
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
-        let krate = self.krate.clone().into_ex_crate(ex)?;
         ex_run::run_test(
             "checking",
             ex,
             tc,
-            &krate,
+            &self.krate,
             db,
             quiet,
             ex_run::test_check_only,
@@ -155,12 +152,11 @@ impl Task {
         db: &DB,
         tc: &Toolchain,
     ) -> Result<()> {
-        let krate = self.krate.clone().into_ex_crate(ex)?;
         ex_run::run_test(
             "checking",
             ex,
             tc,
-            &krate,
+            &self.krate,
             db,
             false,
             ex_run::test_find_unstable_features,

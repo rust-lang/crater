@@ -18,6 +18,7 @@ use crater::ex::{ExCapLints, ExCrateSelect, ExMode};
 use crater::ex_run;
 use crater::lists;
 use crater::report;
+use crater::results::FileDB;
 use crater::run_graph;
 use crater::server;
 use crater::toolchain::Toolchain;
@@ -220,8 +221,9 @@ impl Crater {
                 )?;
             }
             Crater::PrepareEx { ref ex } => {
-                let mut ex = ex::Experiment::load(&ex.0)?;
-                ex.prepare_shared()?;
+                let ex = ex::Experiment::load(&ex.0)?;
+                let db = FileDB::for_experiment(&ex);
+                ex.prepare_shared(&db)?;
                 ex.prepare_local()?;
             }
             Crater::CopyEx { ref ex1, ref ex2 } => {

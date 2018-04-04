@@ -60,7 +60,7 @@ impl fmt::Debug for Task {
 impl Task {
     pub fn run<DB: ExperimentResultDB>(&self, ex: &Experiment, db: &DB) -> Result<()> {
         match self.step {
-            TaskStep::Prepare => self.run_prepare(ex),
+            TaskStep::Prepare => self.run_prepare(ex, db),
             TaskStep::BuildAndTest { ref tc, quiet } => self.run_build_and_test(ex, tc, db, quiet),
             TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(ex, tc, db, quiet),
             TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(ex, tc, db, quiet),
@@ -68,21 +68,18 @@ impl Task {
         }
     }
 
-    fn run_prepare(&self, ex: &Experiment) -> Result<()> {
+    fn run_prepare<DB: ExperimentResultDB>(&self, ex: &Experiment, db: &DB) -> Result<()> {
+        let krate = [self.krate.clone()];
+        let stable = Toolchain::Dist("stable".into());
+
         // Fetch repository data if it's a git repo
         if let Some(url) = self.krate.github().map(|repo| repo.url()) {
             if let Err(e) = gh_mirrors::fetch(&url) {
                 util::report_error(&e);
             }
 
-            ex.shas
-                .lock()
-                .unwrap()
-                .capture(::std::iter::once(url.as_str()))?;
+            ex::capture_shas(&krate, db)?;
         }
-
-        let krate = [self.krate.clone()];
-        let stable = Toolchain::Dist("stable".into());
 
         crates::prepare(&krate)?;
         ex::frob_tomls(ex, &krate)?;

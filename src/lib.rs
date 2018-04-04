@@ -68,6 +68,6 @@ mod gh_mirrors;
 pub mod report;
 pub mod docker;
 pub mod dirs;
-mod results;
+pub mod results;
 pub mod server;
 mod tasks;

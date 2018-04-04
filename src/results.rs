@@ -1,12 +1,15 @@
-use crates::Crate;
+use crates::{Crate, GitHubRepo};
 use errors::*;
 use ex::{ex_dir, Experiment};
 use file;
 use log;
+use serde_json;
+use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 use toolchain::Toolchain;
 use util;
 
@@ -14,6 +17,8 @@ pub trait ExperimentResultDB {
     type CrateWriter: CrateResultWriter;
     fn for_crate(&self, krate: &Crate, toolchain: &Toolchain) -> Self::CrateWriter;
 
+    fn record_sha(&self, repo: &GitHubRepo, sha: &str) -> Result<()>;
+    fn load_all_shas(&self) -> Result<HashMap<GitHubRepo, String>>;
     fn delete_all_results(&self) -> Result<()>;
 }
 
@@ -40,11 +45,19 @@ fn crate_to_dir(c: &Crate) -> String {
 #[derive(Clone)]
 pub struct FileDB<'a> {
     ex: &'a Experiment,
+    shafile_lock: Arc<Mutex<()>>,
 }
 
 impl<'a> FileDB<'a> {
     pub fn for_experiment(ex: &'a Experiment) -> Self {
-        FileDB { ex }
+        FileDB {
+            ex,
+            shafile_lock: Arc::new(Mutex::new(())),
+        }
+    }
+
+    fn shafile_path(&self) -> PathBuf {
+        ex_dir(&self.ex.name).join("res").join("shas.json")
     }
 }
 
@@ -65,6 +78,35 @@ impl<'a> ExperimentResultDB for FileDB<'a> {
         }
 
         Ok(())
+    }
+
+    fn record_sha(&self, repo: &GitHubRepo, sha: &str) -> Result<()> {
+        // This avoids two threads writing on the same file together
+        let _lock = self.shafile_lock.lock().unwrap();
+
+        let mut existing = self.load_all_shas()?;
+        existing.insert(repo.clone(), sha.to_string());
+
+        let path = self.shafile_path();
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        // A Vec is used here instead of an HashMap because JSON doesn't allow non-string keys
+        let serializable: Vec<(GitHubRepo, String)> = existing.into_iter().collect();
+        file::write_string(&path, &serde_json::to_string(&serializable)?)?;
+
+        Ok(())
+    }
+
+    fn load_all_shas(&self) -> Result<HashMap<GitHubRepo, String>> {
+        let path = self.shafile_path();
+        if !path.exists() {
+            return Ok(HashMap::new());
+        }
+
+        let data: Vec<(GitHubRepo, String)> = serde_json::from_str(&file::read_string(&path)?)?;
+        Ok(data.into_iter().collect())
     }
 }
 

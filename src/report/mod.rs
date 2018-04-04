@@ -1,5 +1,5 @@
 use config::Config;
-use crates::Crate;
+use crates::{Crate, GitHubRepo};
 use errors::*;
 use ex;
 use file;
@@ -9,11 +9,11 @@ use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
 use serde_json;
 use std::{fs, io};
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt::{self, Display};
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 
 mod s3;
 pub use self::s3::{S3Prefix, S3Writer};
@@ -49,8 +49,12 @@ struct BuildTestResult {
     log: String,
 }
 
-pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResults> {
+pub fn generate_report(
+    config: &Config,
+    ex: &ex::Experiment,
+) -> Result<(TestResults, HashMap<GitHubRepo, String>)> {
     let db = FileDB::for_experiment(ex);
+    let shas = db.load_all_shas()?;
     assert_eq!(ex.toolchains.len(), 2);
 
     let res = ex.crates
@@ -77,15 +81,15 @@ pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResul
             let comp = compare(config, &krate, &crate1, &crate2);
 
             Ok(CrateResult {
-                name: crate_to_name(&krate, &ex.shas)?,
-                url: crate_to_url(&krate, &ex.shas)?,
+                name: crate_to_name(&krate, &shas)?,
+                url: crate_to_url(&krate, &shas)?,
                 res: comp,
                 runs: [crate1, crate2],
             })
         })
         .collect::<Result<Vec<_>>>()?;
 
-    Ok(TestResults { crates: res })
+    Ok((TestResults { crates: res }, shas))
 }
 
 const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
@@ -121,7 +125,7 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -
 pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
-    let res = generate_report(config, &ex)?;
+    let (res, shas) = generate_report(config, &ex)?;
 
     info!("writing results to {}", dest);
     info!("writing metadata");
@@ -132,12 +136,14 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) 
     )?;
     dest.write_string(
         "config.json",
-        serde_json::to_string(&ex.serializable())?.into(),
+        serde_json::to_string(&ex)?.into(),
         &mime::APPLICATION_JSON,
     )?;
+
+    let shas: HashMap<_, _> = shas.into_iter().map(|(r, s)| (r.url(), s)).collect();
     dest.write_string(
         "shas.json",
-        serde_json::to_string(&ex.shas.lock().unwrap().inner())?.into(),
+        serde_json::to_string(&shas)?.into(),
         &mime::APPLICATION_JSON,
     )?;
 
@@ -149,32 +155,28 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) 
     Ok(())
 }
 
-fn crate_to_name(c: &Crate, shas: &Mutex<ex::ShasMap>) -> Result<String> {
+fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String> {
     Ok(match *c {
         Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
         Crate::GitHub(ref repo) => {
-            let sha = shas.lock()
-                .unwrap()
-                .get(&repo.url())
+            let sha = shas.get(repo)
                 .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
-                .to_string();
+                .as_str();
             format!("{}.{}.{}", repo.org, repo.name, sha)
         }
     })
 }
 
-fn crate_to_url(c: &Crate, shas: &Mutex<ex::ShasMap>) -> Result<String> {
+fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String> {
     Ok(match *c {
         Crate::Registry(ref details) => format!(
             "https://crates.io/crates/{}/{}",
             details.name, details.version
         ),
         Crate::GitHub(ref repo) => {
-            let sha = shas.lock()
-                .unwrap()
-                .get(&repo.url())
+            let sha = shas.get(repo)
                 .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
-                .to_string();
+                .as_str();
             format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)
         }
     })

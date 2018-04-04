@@ -6,13 +6,13 @@ use ex_run;
 use file;
 use gh_mirrors;
 use lists::{self, List};
+use results::ExperimentResultDB;
 use run::RunCommand;
 use serde_json;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Mutex;
 use toml_frobber;
 use toolchain::{self, CargoState, Toolchain};
 use util;
@@ -74,10 +74,6 @@ pub fn ex_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name)
 }
 
-fn shafile(ex_name: &str) -> PathBuf {
-    EXPERIMENT_DIR.join(ex_name).join("shas.json")
-}
-
 fn config_file(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("config.json")
 }
@@ -91,33 +87,12 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct SerializableExperiment {
-    pub name: String,
-    pub crates: Vec<Crate>,
-    pub toolchains: Vec<Toolchain>,
-    pub mode: ExMode,
-    pub cap_lints: ExCapLints,
-}
-
 pub struct Experiment {
     pub name: String,
     pub crates: Vec<Crate>,
     pub toolchains: Vec<Toolchain>,
-    pub shas: Mutex<ShasMap>,
     pub mode: ExMode,
     pub cap_lints: ExCapLints,
-}
-
-impl Experiment {
-    pub fn serializable(&self) -> SerializableExperiment {
-        SerializableExperiment {
-            name: self.name.clone(),
-            crates: self.crates.clone(),
-            toolchains: self.toolchains.clone(),
-            mode: self.mode.clone(),
-            cap_lints: self.cap_lints.clone(),
-        }
-    }
 }
 
 pub struct ExOpts {
@@ -210,106 +185,30 @@ pub fn define_(
     let ex = Experiment {
         name: ex_name.to_string(),
         crates,
-        shas: Mutex::new(ShasMap::new(shafile(ex_name))?),
         toolchains,
         mode,
         cap_lints,
     };
     fs::create_dir_all(&ex_dir(&ex.name))?;
-    let json = serde_json::to_string(&ex.serializable())?;
+    let json = serde_json::to_string(&ex)?;
     info!("writing ex config to {}", config_file(ex_name).display());
     file::write_string(&config_file(ex_name), &json)?;
     Ok(())
 }
 
-pub struct ShasMap {
-    shas: HashMap<String, String>,
-    path: PathBuf,
-}
-
-impl ShasMap {
-    pub fn new(path: PathBuf) -> Result<Self> {
-        let shas = if path.exists() {
-            serde_json::from_str(&file::read_string(&path)?)?
-        } else {
-            HashMap::new()
-        };
-
-        Ok(ShasMap { shas, path })
-    }
-
-    pub fn capture<'a, I: Iterator<Item = &'a str>>(&mut self, urls: I) -> Result<()> {
-        let mut changed = false;
-
-        for url in urls {
-            let dir = gh_mirrors::repo_dir(url)?;
-            let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
-                .cd(&dir)
-                .run_capture();
-
-            match r {
-                Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
-                    if !shaline.is_empty() {
-                        info!("sha for {}: {}", url, shaline);
-                        self.shas.insert(url.to_string(), shaline.to_string());
-                        changed = true;
-                    } else {
-                        error!("bogus output from git log for {}", dir.display());
-                    }
-                } else {
-                    error!("bogus output from git log for {}", dir.display());
-                },
-                Err(e) => {
-                    error!("unable to capture sha for {}: {}", dir.display(), e);
-                }
-            }
-        }
-
-        if changed {
-            if let Some(parent) = self.path.parent() {
-                fs::create_dir_all(parent)?;
-            }
-
-            let shajson = serde_json::to_string(&self.shas)?;
-            info!("writing shas to {:?}", self.path);
-            file::write_string(&self.path, &shajson)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn get(&self, url: &str) -> Option<&str> {
-        self.shas.get(url).map(|u| u.as_ref())
-    }
-
-    pub fn inner(&self) -> &HashMap<String, String> {
-        &self.shas
-    }
-}
-
 impl Experiment {
-    fn repo_crate_urls(&self) -> Vec<String> {
-        self.crates
-            .iter()
-            .filter_map(|krate| krate.github().map(|repo| repo.url()))
-            .collect()
-    }
-
     pub fn fetch_repo_crates(&self) -> Result<()> {
-        for url in self.repo_crate_urls() {
-            if let Err(e) = gh_mirrors::fetch(&url) {
+        for repo in self.crates.iter().filter_map(|krate| krate.github()) {
+            if let Err(e) = gh_mirrors::fetch(&repo.url()) {
                 util::report_error(&e);
             }
         }
         Ok(())
     }
 
-    pub fn prepare_shared(&mut self) -> Result<()> {
+    pub fn prepare_shared<DB: ExperimentResultDB>(&self, db: &DB) -> Result<()> {
         self.fetch_repo_crates()?;
-        self.shas
-            .lock()
-            .unwrap()
-            .capture(self.repo_crate_urls().iter().map(|s| s.as_str()))?;
+        capture_shas(&self.crates, db)?;
         crates::prepare(&self.crates)?;
 
         frob_tomls(self, &self.crates)?;
@@ -331,17 +230,7 @@ impl Experiment {
 impl Experiment {
     pub fn load(ex_name: &str) -> Result<Self> {
         let config = file::read_string(&config_file(ex_name))?;
-        let data: SerializableExperiment = serde_json::from_str(&config)?;
-
-        Ok(Experiment {
-            shas: Mutex::new(ShasMap::new(shafile(&data.name))?),
-
-            name: data.name,
-            crates: data.crates,
-            toolchains: data.toolchains,
-            mode: data.mode,
-            cap_lints: data.cap_lints,
-        })
+        Ok(serde_json::from_str(&config)?)
     }
 }
 
@@ -356,6 +245,39 @@ pub fn frob_tomls(ex: &Experiment, crates: &[Crate]) -> Result<()> {
                 info!("couldn't frob: {}", e);
                 util::report_error(&e);
             }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn capture_shas<DB: ExperimentResultDB>(crates: &[Crate], db: &DB) -> Result<()> {
+    for krate in crates {
+        if let Crate::GitHub(ref repo) = *krate {
+            let url = repo.url();
+            let dir = gh_mirrors::repo_dir(&url)?;
+            let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
+                .cd(&dir)
+                .run_capture();
+
+            let sha = match r {
+                Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
+                    if !shaline.is_empty() {
+                        info!("sha for {}: {}", url, shaline);
+                        shaline.to_string()
+                    } else {
+                        bail!("bogus output from git log for {}", dir.display());
+                    }
+                } else {
+                    bail!("bogus output from git log for {}", dir.display());
+                },
+                Err(e) => {
+                    bail!("unable to capture sha for {}: {}", dir.display(), e);
+                }
+            };
+
+            db.record_sha(repo, &sha)
+                .chain_err(|| format!("failed to record the sha of GitHub repo {}", repo.slug()))?;
         }
     }
 

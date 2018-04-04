@@ -84,7 +84,7 @@ impl Task {
         let krate = [self.krate.clone()];
         let stable = Toolchain::Dist("stable".into());
 
-        crates::prepare(&krate, &ex.shas)?;
+        crates::prepare(&krate)?;
         ex::frob_tomls(ex, &krate)?;
         ex::capture_lockfiles(ex, &krate, &stable, false)?;
         ex::fetch_deps(ex, &krate, &stable)?;

@@ -1,7 +1,6 @@
 use dirs::CRATES_DIR;
 use dl;
 use errors::*;
-use ex::ShasMap;
 use flate2::read::GzDecoder;
 use gh_mirrors;
 use std::fmt;
@@ -10,7 +9,6 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 use tar::Archive;
@@ -126,7 +124,7 @@ impl FromStr for Crate {
     }
 }
 
-pub fn prepare(list: &[Crate], shas: &Mutex<ShasMap>) -> Result<()> {
+pub fn prepare(list: &[Crate]) -> Result<()> {
     info!("preparing {} crates", list.len());
     let mut successes = 0;
     for krate in list {
@@ -144,13 +142,7 @@ pub fn prepare(list: &[Crate], shas: &Mutex<ShasMap>) -> Result<()> {
             }
             Crate::GitHub(ref repo) => {
                 let url = repo.url();
-                let sha = shas.lock()
-                    .unwrap()
-                    .get(&url)
-                    .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
-                    .to_string();
-                let r =
-                    dl_repo(&url, &dir, &sha).chain_err(|| format!("unable to download {}", url));
+                let r = dl_repo(&url, &dir).chain_err(|| format!("unable to download {}", url));
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {
@@ -195,9 +187,8 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     r
 }
 
-fn dl_repo(url: &str, dir: &Path, sha: &str) -> Result<()> {
-    info!("downloading repo {} to {}", url, dir.display());
-    gh_mirrors::reset_to_sha(url, sha)?;
+fn dl_repo(url: &str, dir: &Path) -> Result<()> {
+    info!("copying repo {} to {}", url, dir.display());
     let src_dir = gh_mirrors::repo_dir(url)?;
     util::copy_dir(&src_dir, dir)
 }

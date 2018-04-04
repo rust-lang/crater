@@ -310,7 +310,7 @@ impl Experiment {
             .lock()
             .unwrap()
             .capture(self.repo_crate_urls().iter().map(|s| s.as_str()))?;
-        download_crates(self)?;
+        crates::prepare(&self.crates)?;
 
         frob_tomls(self, &self.crates)?;
         capture_lockfiles(self, &self.crates, &Toolchain::Dist("stable".into()), false)?;
@@ -343,10 +343,6 @@ impl Experiment {
             cap_lints: data.cap_lints,
         })
     }
-}
-
-fn download_crates(ex: &Experiment) -> Result<()> {
-    crates::prepare(&ex.crates, &ex.shas)
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]

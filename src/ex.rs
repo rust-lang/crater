@@ -255,7 +255,7 @@ pub fn capture_shas<DB: ExperimentResultDB>(crates: &[Crate], db: &DB) -> Result
     for krate in crates {
         if let Crate::GitHub(ref repo) = *krate {
             let dir = repo.mirror_dir();
-            let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
+            let r = RunCommand::new("git", &["rev-parse", "HEAD"])
                 .cd(&dir)
                 .run_capture();
 

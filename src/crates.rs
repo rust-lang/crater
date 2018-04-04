@@ -1,16 +1,13 @@
-use dirs::CRATES_DIR;
+use dirs::{CRATES_DIR, GH_MIRRORS_DIR};
 use dl;
 use errors::*;
 use flate2::read::GzDecoder;
-use gh_mirrors;
 use std::fmt;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::thread;
-use std::time::Duration;
 use tar::Archive;
 use util;
 
@@ -29,6 +26,10 @@ impl GitHubRepo {
 
     pub fn url(&self) -> String {
         format!("https://github.com/{}/{}", self.org, self.name)
+    }
+
+    pub fn mirror_dir(&self) -> PathBuf {
+        GH_MIRRORS_DIR.join(format!("{}.{}", self.org, self.name))
     }
 }
 
@@ -141,15 +142,16 @@ pub fn prepare(list: &[Crate]) -> Result<()> {
                 // crates.io doesn't rate limit. Go fast
             }
             Crate::GitHub(ref repo) => {
-                let url = repo.url();
-                let r = dl_repo(&url, &dir).chain_err(|| format!("unable to download {}", url));
-                if let Err(e) = r {
+                info!(
+                    "cloning GitHub repo {} to {}...",
+                    repo.slug(),
+                    dir.display()
+                );
+                if let Err(e) = util::copy_dir(&repo.mirror_dir(), &dir) {
                     util::report_error(&e);
                 } else {
                     successes += 1;
                 }
-                // delay to be nice to github
-                thread::sleep(Duration::from_millis(100));
             }
         }
     }
@@ -185,12 +187,6 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     }
 
     r
-}
-
-fn dl_repo(url: &str, dir: &Path) -> Result<()> {
-    info!("copying repo {} to {}", url, dir.display());
-    let src_dir = gh_mirrors::repo_dir(url)?;
-    util::copy_dir(&src_dir, dir)
 }
 
 fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> Result<()> {

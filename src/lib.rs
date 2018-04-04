@@ -64,7 +64,6 @@ pub mod ex;
 pub mod ex_run;
 pub mod config;
 mod toml_frobber;
-mod gh_mirrors;
 pub mod report;
 pub mod docker;
 pub mod dirs;

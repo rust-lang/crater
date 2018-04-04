@@ -4,7 +4,7 @@ use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
 use ex_run;
 use file;
-use gh_mirrors;
+use git;
 use lists::{self, List};
 use results::ExperimentResultDB;
 use run::RunCommand;
@@ -199,7 +199,7 @@ pub fn define_(
 impl Experiment {
     pub fn fetch_repo_crates(&self) -> Result<()> {
         for repo in self.crates.iter().filter_map(|krate| krate.github()) {
-            if let Err(e) = gh_mirrors::fetch(&repo.url()) {
+            if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
                 util::report_error(&e);
             }
         }
@@ -254,8 +254,7 @@ pub fn frob_tomls(ex: &Experiment, crates: &[Crate]) -> Result<()> {
 pub fn capture_shas<DB: ExperimentResultDB>(crates: &[Crate], db: &DB) -> Result<()> {
     for krate in crates {
         if let Crate::GitHub(ref repo) = *krate {
-            let url = repo.url();
-            let dir = gh_mirrors::repo_dir(&url)?;
+            let dir = repo.mirror_dir();
             let r = RunCommand::new("git", &["log", "-n1", "--pretty=%H"])
                 .cd(&dir)
                 .run_capture();
@@ -263,7 +262,7 @@ pub fn capture_shas<DB: ExperimentResultDB>(crates: &[Crate], db: &DB) -> Result
             let sha = match r {
                 Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
                     if !shaline.is_empty() {
-                        info!("sha for {}: {}", url, shaline);
+                        info!("sha for GitHub repo {}: {}", repo.slug(), shaline);
                         shaline.to_string()
                     } else {
                         bail!("bogus output from git log for {}", dir.display());

@@ -2,7 +2,7 @@ use crates::{self, Crate};
 use errors::*;
 use ex::{self, Experiment};
 use ex_run;
-use gh_mirrors;
+use git;
 use results::ExperimentResultDB;
 use std::fmt;
 use toolchain::Toolchain;
@@ -73,8 +73,8 @@ impl Task {
         let stable = Toolchain::Dist("stable".into());
 
         // Fetch repository data if it's a git repo
-        if let Some(url) = self.krate.github().map(|repo| repo.url()) {
-            if let Err(e) = gh_mirrors::fetch(&url) {
+        if let Some(repo) = self.krate.github() {
+            if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
                 util::report_error(&e);
             }
 

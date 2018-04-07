@@ -1,9 +1,8 @@
-use futures::future;
-use hyper::StatusCode;
-use hyper::header::{Authorization, ContentLength, Scheme};
+use hyper::header::{Authorization, Scheme};
 use hyper::server::{Request, Response};
 use server::Data;
-use server::http::{Context, Handler, ResponseFuture};
+use server::api_types::ApiResponse;
+use server::http::{Context, Handler, ResponseExt, ResponseFuture};
 use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -72,13 +71,8 @@ where
         if let Some(name) = authorized_as {
             (self.func)(req, data, ctx, AuthDetails { name: name.clone() })
         } else {
-            let message = "403: Unauthorized\n";
-            Box::new(future::ok(
-                Response::new()
-                    .with_header(ContentLength(message.len() as u64))
-                    .with_status(StatusCode::Unauthorized)
-                    .with_body(message),
-            ))
+            let resp: ApiResponse<bool> = ApiResponse::Unauthorized;
+            Response::api(resp).unwrap().as_future()
         }
     }
 }

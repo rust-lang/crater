@@ -1,19 +1,33 @@
-use config::Config;
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use ex::Experiment;
 use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
 use results::TestResult;
+use serde::de::DeserializeOwned;
+use server::api_types::{AgentConfig, ApiResponse};
 use toolchain::Toolchain;
 
-const RETRY_AFTER: u64 = 5;
-
-#[derive(Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct AgentConfig {
-    pub agent_name: String,
-    pub crater_config: Config,
+trait ResponseExt {
+    fn to_api_response<T: DeserializeOwned>(self) -> Result<T>;
 }
+
+impl ResponseExt for ::reqwest::Response {
+    fn to_api_response<T: DeserializeOwned>(mut self) -> Result<T> {
+        // 404 responses are not JSON, so avoid parsing them
+        if self.status() == StatusCode::NotFound {
+            bail!("invalid API enpoint called");
+        }
+
+        let result: ApiResponse<T> = self.json().chain_err(|| "failed to parse API response")?;
+        match result {
+            ApiResponse::Success { result } => Ok(result),
+            ApiResponse::InternalError { error } => bail!("internal server error: {}", error),
+            ApiResponse::Unauthorized => bail!("invalid authorization token provided"),
+        }
+    }
+}
+
+const RETRY_AFTER: u64 = 5;
 
 pub struct AgentApi {
     client: Client,
@@ -61,12 +75,9 @@ impl AgentApi {
 
     pub fn config(&self) -> Result<AgentConfig> {
         self.retry(|this| {
-            let mut resp = this.build_request(Method::Get, "config").send()?;
-            match resp.status() {
-                StatusCode::Ok => Ok(resp.json()?),
-                StatusCode::Unauthorized => bail!("invalid authorization token!"),
-                s => bail!("received {} status code from the crater server", s),
-            }
+            this.build_request(Method::Get, "config")
+                .send()?
+                .to_api_response()
         })
     }
 
@@ -74,7 +85,7 @@ impl AgentApi {
         self.retry(|this| loop {
             let resp: Option<_> = this.build_request(Method::Get, "next-experiment")
                 .send()?
-                .json()?;
+                .to_api_response()?;
 
             if let Some(experiment) = resp {
                 return Ok(experiment);
@@ -93,7 +104,7 @@ impl AgentApi {
         shas: &[(GitHubRepo, String)],
     ) -> Result<()> {
         self.retry(|this| {
-            this.build_request(Method::Post, "record-result")
+            let _: bool = this.build_request(Method::Post, "record-result")
                 .json(&json!({
                     "crate": krate,
                     "toolchain": toolchain,
@@ -101,15 +112,17 @@ impl AgentApi {
                     "log": log,
                     "shas": shas,
                 }))
-                .send()?;
+                .send()?
+                .to_api_response()?;
             Ok(())
         })
     }
 
     pub fn complete_experiment(&self) -> Result<()> {
         self.retry(|this| {
-            this.build_request(Method::Post, "complete-experiment")
-                .send()?;
+            let _: bool = this.build_request(Method::Post, "complete-experiment")
+                .send()?
+                .to_api_response()?;
             Ok(())
         })
     }

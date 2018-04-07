@@ -1,31 +1,26 @@
 use errors::*;
 use ex::Experiment;
 use futures::{future, Future, Stream};
-use hyper::StatusCode;
 use hyper::server::{Request, Response};
 use serde_json;
 use server::Data;
+use server::api_types::{AgentConfig, ApiResponse};
 use server::auth::AuthDetails;
 use server::experiments::Status;
 use server::http::{Context, ResponseExt, ResponseFuture};
 use server::results::{self, TaskResult};
 use std::sync::Arc;
 
-#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-pub fn config(
-    _req: Request,
-    data: Arc<Data>,
-    _ctx: Arc<Context>,
-    auth: AuthDetails,
-) -> ResponseFuture {
-    Response::json(&json!({
-        "agent-name": auth.name,
-        "crater-config": data.config,
-    })).unwrap()
-        .as_future()
-}
+api_endpoint!(config: |_body, data, auth: AuthDetails| -> AgentConfig {
+    Ok(ApiResponse::Success {
+        result: AgentConfig {
+            agent_name: auth.name,
+            crater_config: data.config.clone(),
+        },
+    })
+}, config_inner);
 
-fn get_next_experiment(data: &Data, auth: &AuthDetails) -> Result<Option<Experiment>> {
+api_endpoint!(next_ex: |_body, data, auth: AuthDetails| -> Option<Experiment> {
     let mut experiments = data.experiments.lock().unwrap();
 
     let next = experiments.next(&auth.name)?;
@@ -41,35 +36,13 @@ fn get_next_experiment(data: &Data, auth: &AuthDetails) -> Result<Option<Experim
             )?;
         }
 
-        Ok(Some(ex.experiment.clone()))
+        Ok(ApiResponse::Success { result: Some(ex.experiment.clone()) })
     } else {
-        Ok(None)
+        Ok(ApiResponse::Success { result: None })
     }
-}
+}, next_ex_inner);
 
-#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-pub fn next_ex(
-    _req: Request,
-    data: Arc<Data>,
-    ctx: Arc<Context>,
-    auth: AuthDetails,
-) -> ResponseFuture {
-    Box::new(
-        ctx.pool
-            .spawn_fn(move || future::done(get_next_experiment(&data, &auth)))
-            .and_then(|data| future::ok(Response::json(&data).unwrap()))
-            .or_else(|err| {
-                error!("internal error: {}", err);
-                Response::json(&json!({
-                    "error": err.to_string(),
-                })).unwrap()
-                    .with_status(StatusCode::InternalServerError)
-                    .as_future()
-            }),
-    )
-}
-
-fn complete_experiment(data: &Data, auth: &AuthDetails) -> Result<()> {
+api_endpoint!(complete_ex: |_body, data, auth: AuthDetails| -> bool {
     let (name, github_issue) = {
         let mut experiments = data.experiments.lock().unwrap();
         let name = experiments
@@ -95,34 +68,12 @@ fn complete_experiment(data: &Data, auth: &AuthDetails) -> Result<()> {
         ),
     )?;
 
-    Ok(())
-}
+    Ok(ApiResponse::Success { result: true })
+}, complete_ex_inner);
 
-#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-pub fn complete_ex(
-    _req: Request,
-    data: Arc<Data>,
-    ctx: Arc<Context>,
-    auth: AuthDetails,
-) -> ResponseFuture {
-    Box::new(
-        ctx.pool
-            .spawn_fn(move || future::done(complete_experiment(&data, &auth)))
-            .and_then(|_| future::ok(Response::text("OK\n")))
-            .or_else(|err| {
-                error!("internal error: {}", err);
-                Response::json(&json!({
-                    "error": err.to_string(),
-                })).unwrap()
-                    .with_status(StatusCode::InternalServerError)
-                    .as_future()
-            }),
-    )
-}
-
-fn save_result(body: &str, data: &Data, auth: &AuthDetails) -> Result<()> {
+api_endpoint!(record_result: |body, data, auth: AuthDetails| -> bool {
     let experiments = data.experiments.lock().unwrap();
-    let result: TaskResult = serde_json::from_str(body)?;
+    let result: TaskResult = serde_json::from_str(&body)?;
 
     let name = experiments
         .run_by_agent(&auth.name)
@@ -140,28 +91,5 @@ fn save_result(body: &str, data: &Data, auth: &AuthDetails) -> Result<()> {
 
     results::store(&experiment.experiment, &result)?;
 
-    Ok(())
-}
-
-pub fn record_result(
-    req: Request,
-    data: Arc<Data>,
-    ctx: Arc<Context>,
-    auth: AuthDetails,
-) -> ResponseFuture {
-    Box::new(req.body().concat2().and_then(move |body| {
-        let body = String::from_utf8_lossy(&body.iter().cloned().collect::<Vec<u8>>()).to_string();
-
-        ctx.pool
-            .spawn_fn(move || future::done(save_result(&body, &data, &auth)))
-            .and_then(|_| future::ok(Response::text("OK\n")))
-            .or_else(|err| {
-                error!("internal error: {}", err);
-                Response::json(&json!({
-                    "error": err.to_string(),
-                })).unwrap()
-                    .with_status(StatusCode::InternalServerError)
-                    .as_future()
-            })
-    }))
-}
+    Ok(ApiResponse::Success { result: true })
+}, record_result_inner);

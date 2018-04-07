@@ -1,11 +1,14 @@
-mod agent;
-mod auth;
-mod github;
+#[macro_use]
 mod http;
+
+mod agent;
+pub mod api_types;
+mod auth;
+mod experiments;
+mod github;
 mod results;
 mod tokens;
 mod webhooks;
-mod experiments;
 
 use config::Config;
 use errors::*;

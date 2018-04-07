@@ -6,6 +6,7 @@ use hyper::{Method, StatusCode};
 use hyper::header::{ContentLength, ContentType};
 use hyper::server::{Http, Request, Response, Service};
 use serde::Serialize;
+use server::api_types::ApiResponse;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -107,6 +108,7 @@ impl<D: 'static> Service for Server<D> {
 pub trait ResponseExt {
     fn text<S: Display>(text: S) -> Response;
     fn json<S: Serialize>(data: &S) -> Result<Response>;
+    fn api<T: Serialize>(resp: ApiResponse<T>) -> Result<Response>;
     fn as_future(self) -> ResponseFuture;
 }
 
@@ -129,7 +131,50 @@ impl ResponseExt for Response {
             .with_body(text))
     }
 
+    fn api<T: Serialize>(resp: ApiResponse<T>) -> Result<Response> {
+        Ok(Response::json(&resp)?.with_status(resp.status_code()))
+    }
+
     fn as_future(self) -> ResponseFuture {
         Box::new(future::ok(self))
+    }
+}
+
+#[macro_export]
+macro_rules! api_endpoint {
+    ($name:ident: |
+        $body_name:ident,
+        $data_name:ident,
+        $($other_name:ident: $other_type:ty),*
+    | -> $result:ty $code:block, $inner:ident) => {
+        fn $inner(
+            $body_name: String,
+            $data_name: Arc<Data>,
+            $($other_name: $other_type)*,
+        ) -> Result<ApiResponse<$result>> $code
+
+        pub fn $name(
+            req: Request,
+            data: Arc<Data>,
+            ctx: Arc<Context>,
+            $($other_name: $other_type),*
+        ) -> ResponseFuture {
+            Box::new(req.body().concat2().and_then(move |body| {
+                let body = String::from_utf8_lossy(
+                    &body.iter().cloned().collect::<Vec<u8>>(),
+                ).to_string();
+
+                ctx.pool
+                    .spawn_fn(move || future::done($inner(body, data, $($other_name),*)))
+                    .and_then(|resp| future::ok(Response::api(resp).unwrap()))
+                    .or_else(|err| {
+                        error!("internal error while processing request: {}", err);
+                        let resp: ApiResponse<bool> = ApiResponse::InternalError {
+                            error: err.to_string(),
+                        };
+                        future::ok(Response::api(resp).unwrap())
+                    })
+            }))
+        }
     }
 }

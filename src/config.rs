@@ -6,7 +6,7 @@ use std::io::Read;
 
 static CONFIG_FILE: &'static str = "config.toml";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CrateConfig {
     #[serde(default = "default_false")]
@@ -21,14 +21,14 @@ fn default_false() -> bool {
     false
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DemoCrates {
     pub crates: Vec<String>,
     pub github_repos: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Config {
     demo_crates: DemoCrates,

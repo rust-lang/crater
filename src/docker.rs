@@ -1,4 +1,5 @@
 use errors::*;
+use ex::ExCapLints;
 use run::RunCommand;
 use std::env;
 use std::fmt::{self, Display, Formatter};
@@ -30,6 +31,7 @@ pub struct RustEnv<'a> {
     pub cargo_home: (PathBuf, Perm),
     pub rustup_home: (PathBuf, Perm),
     pub target_dir: (PathBuf, Perm),
+    pub cap_lints: &'a ExCapLints,
 }
 
 pub struct MountConfig<'a> {
@@ -100,6 +102,10 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
         ("CMD", config.args.join(" ")),
         ("CARGO_INCREMENTAL", "0".to_string()),
         ("RUST_BACKTRACE", "full".to_string()),
+        (
+            "RUSTFLAGS",
+            format!("--cap-lints={}", config.cap_lints.to_str()),
+        ),
     ];
 
     ContainerConfig {

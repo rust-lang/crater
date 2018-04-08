@@ -1,7 +1,3 @@
-# next
-
-- RUSTFLAGS="--cap-lints=warn"
-
 # not next
 
 - custom toolchain support via rust-lang-ci

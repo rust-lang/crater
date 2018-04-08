@@ -2,6 +2,7 @@ use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR, TOOLCHAIN_DIR};
 use dl;
 use docker;
 use errors::*;
+use ex::Experiment;
 use reqwest;
 use run::RunCommand;
 use std::env::consts::EXE_SUFFIX;
@@ -239,14 +240,14 @@ impl Toolchain {
 
     pub fn run_cargo(
         &self,
-        ex_name: &str,
+        ex: &Experiment,
         source_dir: &Path,
         args: &[&str],
         cargo_state: CargoState,
         quiet: bool,
     ) -> Result<()> {
         let toolchain_name = self.rustup_name();
-        let ex_target_dir = self.target_dir(ex_name);
+        let ex_target_dir = self.target_dir(&ex.name);
 
         fs::create_dir_all(&ex_target_dir)?;
 
@@ -266,6 +267,7 @@ impl Toolchain {
             rustup_home: (Path::new(&*RUSTUP_HOME).into(), docker::Perm::ReadOnly),
             // This is configured as CARGO_TARGET_DIR by the docker container itself
             target_dir: (ex_target_dir, docker::Perm::ReadWrite),
+            cap_lints: &ex.cap_lints,
         };
         docker::run(&docker::rust_container(rust_env), quiet)
     }

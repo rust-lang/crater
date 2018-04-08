@@ -13,7 +13,7 @@ use crater::config::Config;
 use crater::docker;
 use crater::errors::*;
 use crater::ex;
-use crater::ex::{ExCrate, ExCrateSelect, ExMode};
+use crater::ex::{ExCapLints, ExCrate, ExCrateSelect, ExMode};
 use crater::ex_run;
 use crater::lists;
 use crater::report;
@@ -84,22 +84,15 @@ pub enum Crater {
         tc2: Toolchain,
         #[structopt(name = "mode", long = "mode",
                     default_value_raw = "ExMode::BuildAndTest.to_str()",
-                    possible_values_raw = "&[
-                ExMode::BuildAndTest.to_str(),
-                ExMode::BuildOnly.to_str(),
-                ExMode::CheckOnly.to_str(),
-                ExMode::UnstableFeatures.to_str(),
-            ]")]
+                    possible_values_raw = "ExMode::possible_values()")]
         mode: ExMode,
         #[structopt(name = "crate-select", long = "crate-select",
                     default_value_raw = "ExCrateSelect::Demo.to_str()",
-                    possible_values_raw = "&[
-                ExCrateSelect::Demo.to_str(),
-                ExCrateSelect::Full.to_str(),
-                ExCrateSelect::SmallRandom.to_str(),
-                ExCrateSelect::Top100.to_str(),
-            ]")]
+                    possible_values_raw = "ExCrateSelect::possible_values()")]
         crates: ExCrateSelect,
+        #[structopt(name = "level", long = "cap-lints", required,
+                    possible_values_raw = "ExCapLints::possible_values()")]
+        cap_lints: ExCapLints,
     },
 
     #[structopt(name = "prepare-ex", about = "prepare shared and local data for experiment")]
@@ -212,6 +205,7 @@ impl Crater {
                 ref tc2,
                 ref mode,
                 ref crates,
+                ref cap_lints,
             } => {
                 ex::define(
                     ex::ExOpts {
@@ -219,6 +213,7 @@ impl Crater {
                         toolchains: vec![tc1.clone(), tc2.clone()],
                         mode: mode.clone(),
                         crates: crates.clone(),
+                        cap_lints: cap_lints.clone(),
                     },
                     &config,
                 )?;

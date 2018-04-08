@@ -49,10 +49,7 @@ struct BuildTestResult {
     log: String,
 }
 
-pub fn generate_report(
-    config: &Config,
-    ex: &ex::Experiment,
-) -> Result<(TestResults, HashMap<GitHubRepo, String>)> {
+pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResults> {
     let db = FileDB::for_experiment(ex);
     let shas = db.load_all_shas()?;
     assert_eq!(ex.toolchains.len(), 2);
@@ -89,7 +86,7 @@ pub fn generate_report(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    Ok((TestResults { crates: res }, shas))
+    Ok(TestResults { crates: res })
 }
 
 const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
@@ -125,7 +122,7 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -
 pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
-    let (res, shas) = generate_report(config, &ex)?;
+    let res = generate_report(config, &ex)?;
 
     info!("writing results to {}", dest);
     info!("writing metadata");
@@ -137,13 +134,6 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) 
     dest.write_string(
         "config.json",
         serde_json::to_string(&ex)?.into(),
-        &mime::APPLICATION_JSON,
-    )?;
-
-    let shas: HashMap<_, _> = shas.into_iter().map(|(r, s)| (r.url(), s)).collect();
-    dest.write_string(
-        "shas.json",
-        serde_json::to_string(&shas)?.into(),
         &mime::APPLICATION_JSON,
     )?;
 

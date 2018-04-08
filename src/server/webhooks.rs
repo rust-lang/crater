@@ -9,6 +9,7 @@ use serde_json;
 use server::Data;
 use server::github::EventIssueComment;
 use server::http::{Context, ResponseExt, ResponseFuture};
+use server::messages::{Label, Message};
 use std::sync::Arc;
 use toolchain::Toolchain;
 use util;
@@ -37,10 +38,13 @@ fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> 
             if let Err(e) =
                 process_command(&p.sender.login, &p.comment.body, &p.comment.issue_url, data)
             {
-                data.github.post_comment(
-                    &p.comment.issue_url,
-                    &format!(":rotating_light: **Error:** {}", e),
-                )?;
+                Message::new()
+                    .line("rotating_light", format!("**Error:** {}", e))
+                    .note(
+                        "sos",
+                        "If you have any trouble with Crater please ping **`@rust-lang/infra`**!",
+                    )
+                    .send(&p.comment.issue_url, data)?;
             }
         }
         e => bail!("invalid event received: {}", e),
@@ -61,8 +65,9 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
             info!("user @{} sent command: {}", sender, command.join(" "));
 
             if command.len() == 1 && command[0] == "ping" {
-                data.github
-                    .post_comment(issue_url, ":ping_pong: **Pong!**")?;
+                Message::new()
+                    .line("ping_pong", "**Pong!**")
+                    .send(issue_url, data)?;
                 break;
             }
 
@@ -80,7 +85,7 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
                 // Create the experiment
                 Some(true) => {
                     if experiments.exists(&name) {
-                        bail!("an experiment named `{}` already exists!", name);
+                        bail!("an experiment named **`{}`** already exists!", name);
                     }
 
                     let start = args.start.ok_or_else(|| "missing start toolchain")?;
@@ -103,28 +108,31 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
                         priority,
                     )?;
 
-                    data.github.post_comment(
-                        issue_url,
-                        &format!(":ok_hand: Experiment `{}` created and queued.", name),
-                    )?;
+                    Message::new()
+                        .line(
+                            "ok_hand",
+                            format!("Experiment **`{}`** created and queued.", name),
+                        )
+                        .set_label(Label::ExperimentQueued)
+                        .send(issue_url, data)?;
                 }
                 // Delete the experiment
                 Some(false) => {
                     if !experiments.exists(&name) {
-                        bail!("an experiment named `{}` doesn't exist!", name);
+                        bail!("an experiment named **`{}`** doesn't exist!", name);
                     }
 
                     experiments.delete(&name)?;
 
-                    data.github.post_comment(
-                        issue_url,
-                        &format!(":wastebasket: Experiment `{}` deleted!", name),
-                    )?;
+                    Message::new()
+                        .line("wastebasket", format!("Experiment **`{}`** deleted!", name))
+                        .set_label(Label::ExperimentCompleted)
+                        .send(issue_url, data)?;
                 }
                 // Edit the experiment
                 None => {
                     if !experiments.exists(&name) {
-                        bail!("an experiment named `{}` doesn't exist!", name);
+                        bail!("an experiment named **`{}`** doesn't exist!", name);
                     }
 
                     let mut changed = false;
@@ -154,13 +162,16 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
                     if changed {
                         info.save()?;
 
-                        data.github.post_comment(
-                            issue_url,
-                            &format!(":memo: Details of the `{}` experiment changed.", name),
-                        )?;
+                        Message::new()
+                            .line(
+                                "memo",
+                                format!("Configuration of the **`{}`** experiment changed.", name),
+                            )
+                            .send(issue_url, data)?;
                     } else {
-                        data.github
-                            .post_comment(issue_url, ":warning: No changes requested.")?;
+                        Message::new()
+                            .line("warning", "No changes requested.")
+                            .send(issue_url, data)?;
                     }
                 }
             }

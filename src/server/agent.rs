@@ -8,6 +8,7 @@ use server::api_types::{AgentConfig, ApiResponse};
 use server::auth::AuthDetails;
 use server::experiments::Status;
 use server::http::{Context, ResponseExt, ResponseFuture};
+use server::messages::{Label, Message};
 use server::results::{self, TaskResult};
 use std::sync::Arc;
 
@@ -26,14 +27,16 @@ api_endpoint!(next_ex: |_body, data, auth: AuthDetails| -> Option<Experiment> {
     let next = experiments.next(&auth.name)?;
     if let Some((new, ex)) = next {
         if new {
-            data.github.post_comment(
-                &ex.server_data.github_issue,
-                &format!(
-                    ":construction: Experiment **`{}`** is now **running** \
-                     on agent `{}` :construction:",
-                    ex.experiment.name, auth.name,
-                ),
-            )?;
+            Message::new()
+                .line(
+                    "construction",
+                    format!(
+                        "Experiment **`{}`** is now **running** on agent `{}`.",
+                        ex.experiment.name,
+                        auth.name,
+                    ),
+                )
+                .send(&ex.server_data.github_issue, &data)?;
         }
 
         Ok(ApiResponse::Success { result: Some(ex.experiment.clone()) })
@@ -60,13 +63,16 @@ api_endpoint!(complete_ex: |_body, data, auth: AuthDetails| -> bool {
     let report_url = results::generate_report(&name, &data.config, &data.tokens)?;
     info!("report for the experiment {} generated successfully!", name);
 
-    data.github.post_comment(
-        &github_issue,
-        &format!(
-            ":tada: Experiment **`{}`** completed!\n[The report is available here]({})",
-            name, report_url,
-        ),
-    )?;
+    Message::new()
+        .line("tada", format!("Experiment **`{}`** is completed!", name))
+        .line("newspaper", format!("[Open the full report]({}).", report_url))
+        .note(
+            "warning",
+            "If you notice any spurious failure [please add them to the \
+            blacklist](https://github.com/rust-lang-nursery/crater/blob/master/config.toml)!",
+        )
+        .set_label(Label::ExperimentCompleted)
+        .send(&github_issue, &data)?;
 
     Ok(ApiResponse::Success { result: true })
 }, complete_ex_inner);

@@ -6,6 +6,7 @@ pub mod api_types;
 mod auth;
 mod experiments;
 mod github;
+mod messages;
 mod results;
 mod tokens;
 mod webhooks;

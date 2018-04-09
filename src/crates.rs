@@ -1,30 +1,139 @@
+use dirs::{CRATES_DIR, GH_MIRRORS_DIR};
 use dl;
 use errors::*;
-use ex::ExCrate;
 use flate2::read::GzDecoder;
-use gh_mirrors;
+use std::fmt;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
-use std::thread;
-use std::time::Duration;
+use std::path::PathBuf;
+use std::str::FromStr;
 use tar::Archive;
 use util;
 
 const CRATES_ROOT: &str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
-pub fn prepare(list: &[ExCrate]) -> Result<()> {
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
+pub struct GitHubRepo {
+    pub org: String,
+    pub name: String,
+}
+
+impl GitHubRepo {
+    pub fn slug(&self) -> String {
+        format!("{}/{}", self.org, self.name)
+    }
+
+    pub fn url(&self) -> String {
+        format!("https://github.com/{}/{}", self.org, self.name)
+    }
+
+    pub fn mirror_dir(&self) -> PathBuf {
+        GH_MIRRORS_DIR.join(format!("{}.{}", self.org, self.name))
+    }
+}
+
+impl FromStr for GitHubRepo {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self> {
+        let mut components = input.split('/').collect::<Vec<_>>();
+        let name = components.pop();
+        let org = components.pop();
+
+        if let (Some(org), Some(name)) = (org, name) {
+            Ok(GitHubRepo {
+                org: org.to_string(),
+                name: name.to_string(),
+            })
+        } else {
+            bail!("malformed repo url: {}", input);
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
+pub struct RegistryCrate {
+    pub name: String,
+    pub version: String,
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
+pub enum Crate {
+    Registry(RegistryCrate),
+    GitHub(GitHubRepo),
+}
+
+impl Crate {
+    pub fn registry(&self) -> Option<&RegistryCrate> {
+        if let Crate::Registry(ref krate) = *self {
+            Some(krate)
+        } else {
+            None
+        }
+    }
+
+    pub fn github(&self) -> Option<&GitHubRepo> {
+        if let Crate::GitHub(ref repo) = *self {
+            Some(repo)
+        } else {
+            None
+        }
+    }
+
+    pub fn dir(&self) -> PathBuf {
+        match *self {
+            Crate::Registry(ref details) => CRATES_DIR
+                .join("reg")
+                .join(format!("{}-{}", details.name, details.version)),
+            Crate::GitHub(ref repo) => CRATES_DIR
+                .join("gh")
+                .join(format!("{}.{}", repo.org, repo.name)),
+        }
+    }
+}
+
+impl fmt::Display for Crate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match *self {
+                Crate::Registry(ref krate) => format!("{}-{}", krate.name, krate.version),
+                Crate::GitHub(ref repo) => repo.slug(),
+            }
+        )
+    }
+}
+
+impl FromStr for Crate {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        if s.starts_with("https://github.com/") {
+            Ok(Crate::GitHub(s.parse()?))
+        } else if let Some(dash_idx) = s.rfind('-') {
+            let name = &s[..dash_idx];
+            let version = &s[dash_idx + 1..];
+            Ok(Crate::Registry(RegistryCrate {
+                name: name.to_string(),
+                version: version.to_string(),
+            }))
+        } else {
+            bail!("no version for crate");
+        }
+    }
+}
+
+pub fn prepare(list: &[Crate]) -> Result<()> {
     info!("preparing {} crates", list.len());
     let mut successes = 0;
-    for crate_ in list {
-        let dir = crate_.dir();
-        match *crate_ {
-            ExCrate::Version {
-                ref name,
-                ref version,
-            } => {
-                let r = dl_registry(name, &version.to_string(), &dir)
-                    .chain_err(|| format!("unable to download {}-{}", name, version));
+    for krate in list {
+        let dir = krate.dir();
+        match *krate {
+            Crate::Registry(ref details) => {
+                let r = dl_registry(&details.name, &details.version, &dir)
+                    .chain_err(|| format!("unable to download {}", krate));
                 if let Err(e) = r {
                     util::report_error(&e);
                 } else {
@@ -32,21 +141,17 @@ pub fn prepare(list: &[ExCrate]) -> Result<()> {
                 }
                 // crates.io doesn't rate limit. Go fast
             }
-            ExCrate::Repo {
-                ref org,
-                ref name,
-                ref sha,
-            } => {
-                let url = format!("https://github.com/{}/{}", org, name);
-                let r =
-                    dl_repo(&url, &dir, sha).chain_err(|| format!("unable to download {}", url));
-                if let Err(e) = r {
+            Crate::GitHub(ref repo) => {
+                info!(
+                    "cloning GitHub repo {} to {}...",
+                    repo.slug(),
+                    dir.display()
+                );
+                if let Err(e) = util::copy_dir(&repo.mirror_dir(), &dir) {
                     util::report_error(&e);
                 } else {
                     successes += 1;
                 }
-                // delay to be nice to github
-                thread::sleep(Duration::from_millis(100));
             }
         }
     }
@@ -82,13 +187,6 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     }
 
     r
-}
-
-fn dl_repo(url: &str, dir: &Path, sha: &str) -> Result<()> {
-    info!("downloading repo {} to {}", url, dir.display());
-    gh_mirrors::reset_to_sha(url, sha)?;
-    let src_dir = gh_mirrors::repo_dir(url)?;
-    util::copy_dir(&src_dir, dir)
 }
 
 fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> Result<()> {

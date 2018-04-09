@@ -10,13 +10,15 @@
 //! parallel access is consistent and race-free.
 
 use crater::config::Config;
+use crater::crates::Crate;
 use crater::docker;
 use crater::errors::*;
 use crater::ex;
-use crater::ex::{ExCapLints, ExCrate, ExCrateSelect, ExMode};
+use crater::ex::{ExCapLints, ExCrateSelect, ExMode};
 use crater::ex_run;
 use crater::lists;
 use crater::report;
+use crater::results::FileDB;
 use crater::run_graph;
 use crater::server;
 use crater::toolchain::Toolchain;
@@ -130,7 +132,7 @@ pub enum Crater {
         #[structopt(name = "toolchain", long = "toolchain", short = "t")]
         tc: Option<Toolchain>,
         #[structopt(name = "crate")]
-        krate: ExCrate,
+        krate: Crate,
     },
 
     #[structopt(name = "run", about = "run an experiment, with all toolchains")]
@@ -219,8 +221,9 @@ impl Crater {
                 )?;
             }
             Crater::PrepareEx { ref ex } => {
-                let mut ex = ex::Experiment::load(&ex.0)?;
-                ex.prepare_shared()?;
+                let ex = ex::Experiment::load(&ex.0)?;
+                let db = FileDB::for_experiment(&ex);
+                ex.prepare_shared(&db)?;
                 ex.prepare_local()?;
             }
             Crater::CopyEx { ref ex1, ref ex2 } => {

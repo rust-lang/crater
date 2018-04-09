@@ -1,7 +1,5 @@
+use crates::Crate;
 use errors::*;
-use ex::ExCrate;
-use gh_mirrors;
-use lists::Crate;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -21,41 +19,6 @@ pub struct CrateConfig {
 
 fn default_false() -> bool {
     false
-}
-
-pub enum CrateDetails<'a> {
-    Version(&'a str),
-    GitHubRepo(&'a str, &'a str),
-}
-
-pub trait GetDetails {
-    fn get_details(&self) -> Option<CrateDetails>;
-}
-
-impl GetDetails for ExCrate {
-    fn get_details(&self) -> Option<CrateDetails> {
-        match *self {
-            ExCrate::Version { ref name, .. } => Some(CrateDetails::Version(name)),
-            ExCrate::Repo {
-                ref org, ref name, ..
-            } => Some(CrateDetails::GitHubRepo(org, name)),
-        }
-    }
-}
-
-impl GetDetails for Crate {
-    fn get_details(&self) -> Option<CrateDetails> {
-        match *self {
-            Crate::Version { ref name, .. } => Some(CrateDetails::Version(name)),
-            Crate::Repo { ref url } => {
-                if let Ok((org, name)) = gh_mirrors::gh_url_to_org_and_name(url) {
-                    Some(CrateDetails::GitHubRepo(org, name))
-                } else {
-                    None
-                }
-            }
-        }
-    }
 }
 
 #[derive(Deserialize)]
@@ -81,26 +44,22 @@ impl Config {
         Ok(::toml::from_str(&buffer)?)
     }
 
-    fn crate_config<C: GetDetails>(&self, c: &C) -> Option<&CrateConfig> {
-        match c.get_details() {
-            Some(CrateDetails::Version(name)) => self.crates.get(name),
-            Some(CrateDetails::GitHubRepo(org, name)) => {
-                let repo_name = format!("{}/{}", org, name);
-                self.github_repos.get(&repo_name)
-            }
-            None => None,
+    fn crate_config(&self, c: &Crate) -> Option<&CrateConfig> {
+        match *c {
+            Crate::Registry(ref details) => self.crates.get(&details.name),
+            Crate::GitHub(ref repo) => self.github_repos.get(&repo.slug()),
         }
     }
 
-    pub fn should_skip<C: GetDetails>(&self, c: &C) -> bool {
+    pub fn should_skip(&self, c: &Crate) -> bool {
         self.crate_config(c).map(|c| c.skip).unwrap_or(false)
     }
 
-    pub fn should_skip_tests<C: GetDetails>(&self, c: &C) -> bool {
+    pub fn should_skip_tests(&self, c: &Crate) -> bool {
         self.crate_config(c).map(|c| c.skip_tests).unwrap_or(false)
     }
 
-    pub fn is_quiet<C: GetDetails>(&self, c: &C) -> bool {
+    pub fn is_quiet(&self, c: &Crate) -> bool {
         self.crate_config(c).map(|c| c.quiet).unwrap_or(false)
     }
 
@@ -112,7 +71,7 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::Config;
-    use ex::ExCrate;
+    use crates::{Crate, GitHubRepo, RegistryCrate};
 
     #[test]
     fn test_config() {
@@ -130,24 +89,22 @@ mod tests {
 
         let list: Config = ::toml::from_str(&config).unwrap();
 
-        assert!(list.should_skip(&ExCrate::Version {
+        assert!(list.should_skip(&Crate::Registry(RegistryCrate {
             name: "lazy_static".into(),
             version: "42".into(),
-        }));
-        assert!(!list.should_skip(&ExCrate::Version {
+        })));
+        assert!(!list.should_skip(&Crate::Registry(RegistryCrate {
             name: "rand".into(),
             version: "42".into(),
-        }));
+        })));
 
-        assert!(list.is_quiet(&ExCrate::Repo {
+        assert!(list.is_quiet(&Crate::GitHub(GitHubRepo {
             org: "rust-lang".into(),
             name: "rust".into(),
-            sha: "0".into(),
-        }));
-        assert!(!list.is_quiet(&ExCrate::Repo {
+        })));
+        assert!(!list.is_quiet(&Crate::GitHub(GitHubRepo {
             org: "rust-lang".into(),
             name: "cargo".into(),
-            sha: "0".into(),
-        }));
+        })));
     }
 }

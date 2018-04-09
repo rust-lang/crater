@@ -1,4 +1,5 @@
 use config::Config;
+use crates::Crate;
 use errors::*;
 use ex::*;
 use file;
@@ -16,13 +17,13 @@ pub fn delete_all_results(ex_name: &str) -> Result<()> {
     db.delete_all_results()
 }
 
-pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, crate_: &ExCrate) -> Result<()> {
+pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, krate: &Crate) -> Result<()> {
     let ex = &Experiment::load(ex_name)?;
     let db = FileDB::for_experiment(ex);
 
     let tcs = tc.map(ref_slice).unwrap_or(&ex.toolchains);
     for tc in tcs {
-        let writer = db.for_crate(crate_, tc);
+        let writer = db.for_crate(krate, tc);
         writer.delete_result()?;
     }
 
@@ -43,10 +44,8 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
     let db = FileDB::for_experiment(ex);
     verify_toolchains(ex, tcs)?;
 
-    let crates = ex.crates()?;
-
     // Just for reporting progress
-    let total_crates = crates.len() * tcs.len();
+    let total_crates = ex.crates.len() * tcs.len();
     let mut skipped_crates = 0;
     let mut completed_crates = 0;
 
@@ -60,7 +59,7 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
     let start_time = Instant::now();
 
     info!("running {} tests", total_crates);
-    for c in &crates {
+    for c in &ex.crates {
         if config.should_skip(c) {
             info!("skipping crate {}: blacklisted in config.toml", c);
 
@@ -185,7 +184,7 @@ pub fn run_test<DB: ExperimentResultDB>(
     action: &str,
     ex: &Experiment,
     tc: &Toolchain,
-    krate: &ExCrate,
+    krate: &Crate,
     db: &DB,
     quiet: bool,
     test_fn: fn(&Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,

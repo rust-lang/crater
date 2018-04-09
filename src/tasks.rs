@@ -1,9 +1,8 @@
-use crates;
+use crates::{self, Crate};
 use errors::*;
 use ex::{self, Experiment};
 use ex_run;
-use gh_mirrors;
-use lists::Crate;
+use git;
 use results::ExperimentResultDB;
 use std::fmt;
 use toolchain::Toolchain;
@@ -61,7 +60,7 @@ impl fmt::Debug for Task {
 impl Task {
     pub fn run<DB: ExperimentResultDB>(&self, ex: &Experiment, db: &DB) -> Result<()> {
         match self.step {
-            TaskStep::Prepare => self.run_prepare(ex),
+            TaskStep::Prepare => self.run_prepare(ex, db),
             TaskStep::BuildAndTest { ref tc, quiet } => self.run_build_and_test(ex, tc, db, quiet),
             TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(ex, tc, db, quiet),
             TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(ex, tc, db, quiet),
@@ -69,23 +68,23 @@ impl Task {
         }
     }
 
-    fn run_prepare(&self, ex: &Experiment) -> Result<()> {
+    fn run_prepare<DB: ExperimentResultDB>(&self, ex: &Experiment, db: &DB) -> Result<()> {
+        let krate = [self.krate.clone()];
+        let stable = Toolchain::Dist("stable".into());
+
         // Fetch repository data if it's a git repo
-        if let Some(url) = self.krate.repo_url() {
-            if let Err(e) = gh_mirrors::fetch(url) {
+        if let Some(repo) = self.krate.github() {
+            if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
                 util::report_error(&e);
             }
 
-            ex.shas.lock().unwrap().capture(::std::iter::once(url))?;
+            ex::capture_shas(&krate, db)?;
         }
 
-        let ex_crate = [self.krate.clone().into_ex_crate(ex)?];
-        let stable = Toolchain::Dist("stable".into());
-
-        crates::prepare(&ex_crate)?;
-        ex::frob_tomls(ex, &ex_crate)?;
-        ex::capture_lockfiles(ex, &ex_crate, &stable, false)?;
-        ex::fetch_deps(ex, &ex_crate, &stable)?;
+        crates::prepare(&krate)?;
+        ex::frob_tomls(ex, &krate)?;
+        ex::capture_lockfiles(ex, &krate, &stable, false)?;
+        ex::fetch_deps(ex, &krate, &stable)?;
 
         Ok(())
     }
@@ -97,12 +96,11 @@ impl Task {
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
-        let krate = self.krate.clone().into_ex_crate(ex)?;
         ex_run::run_test(
             "testing",
             ex,
             tc,
-            &krate,
+            &self.krate,
             db,
             quiet,
             ex_run::test_build_and_test,
@@ -116,12 +114,11 @@ impl Task {
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
-        let krate = self.krate.clone().into_ex_crate(ex)?;
         ex_run::run_test(
             "testing",
             ex,
             tc,
-            &krate,
+            &self.krate,
             db,
             quiet,
             ex_run::test_build_only,
@@ -135,12 +132,11 @@ impl Task {
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
-        let krate = self.krate.clone().into_ex_crate(ex)?;
         ex_run::run_test(
             "checking",
             ex,
             tc,
-            &krate,
+            &self.krate,
             db,
             quiet,
             ex_run::test_check_only,
@@ -153,12 +149,11 @@ impl Task {
         db: &DB,
         tc: &Toolchain,
     ) -> Result<()> {
-        let krate = self.krate.clone().into_ex_crate(ex)?;
         ex_run::run_test(
             "checking",
             ex,
             tc,
-            &krate,
+            &self.krate,
             db,
             false,
             ex_run::test_find_unstable_features,

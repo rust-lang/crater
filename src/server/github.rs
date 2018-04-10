@@ -1,5 +1,5 @@
 use errors::*;
-use reqwest::{header, Client, Method, RequestBuilder};
+use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
 use server::auth::Token;
 use server::tokens::Tokens;
 
@@ -43,6 +43,66 @@ impl GitHubApi {
             .send()?;
         Ok(())
     }
+
+    pub fn list_labels(&self, issue_url: &str) -> Result<Vec<Label>> {
+        let mut response = self.build_request(Method::Get, &format!("{}/labels", issue_url))
+            .send()?;
+
+        if response.status() == StatusCode::Ok {
+            Ok(response.json()?)
+        } else {
+            let error: Error = response.json()?;
+            bail!(
+                "failed to list labels of issue {} (status code {}): {}",
+                issue_url,
+                response.status(),
+                error.message
+            );
+        }
+    }
+
+    pub fn add_label(&self, issue_url: &str, label: &str) -> Result<()> {
+        let mut response = self.build_request(Method::Post, &format!("{}/labels", issue_url))
+            .json(&json!([label]))
+            .send()?;
+
+        if response.status() == StatusCode::Ok {
+            Ok(())
+        } else {
+            let error: Error = response.json()?;
+            bail!(
+                "failed to add label {} to issue {} (status code {}): {}",
+                label,
+                issue_url,
+                response.status(),
+                error.message
+            );
+        }
+    }
+
+    pub fn remove_label(&self, issue_url: &str, label: &str) -> Result<()> {
+        let mut response =
+            self.build_request(Method::Delete, &format!("{}/labels/{}", issue_url, label))
+                .send()?;
+
+        if response.status() == StatusCode::Ok {
+            Ok(())
+        } else {
+            let error: Error = response.json()?;
+            bail!(
+                "failed to remove label {} from issue {} (status code {}): {}",
+                label,
+                issue_url,
+                response.status(),
+                error.message
+            );
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct Error {
+    pub message: String,
 }
 
 #[derive(Deserialize)]
@@ -52,8 +112,19 @@ pub struct User {
 
 #[derive(Deserialize)]
 pub struct EventIssueComment {
+    pub issue: Issue,
     pub comment: Comment,
     pub sender: User,
+}
+
+#[derive(Deserialize)]
+pub struct Issue {
+    pub labels: Vec<Label>,
+}
+
+#[derive(Deserialize)]
+pub struct Label {
+    pub name: String,
 }
 
 #[derive(Deserialize)]

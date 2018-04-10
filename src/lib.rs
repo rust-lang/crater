@@ -17,6 +17,7 @@ extern crate mime;
 extern crate petgraph;
 extern crate rand;
 extern crate ref_slice;
+extern crate regex;
 extern crate reqwest;
 extern crate ring;
 extern crate rusoto_core;
@@ -30,6 +31,7 @@ extern crate serde;
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
+extern crate serde_regex;
 #[macro_use(slog_o, slog_info, slog_log, slog_error, slog_warn, slog_debug, slog_record,
             slog_record_static, slog_b, slog_kv)]
 extern crate slog;

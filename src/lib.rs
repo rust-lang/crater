@@ -42,7 +42,6 @@ extern crate tokio_io;
 extern crate tokio_process;
 extern crate tokio_timer;
 extern crate toml;
-extern crate uri;
 extern crate url;
 extern crate walkdir;
 

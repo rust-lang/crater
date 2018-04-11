@@ -2,7 +2,7 @@ use crates::Crate;
 use errors::*;
 use regex::Regex;
 use serde_regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 
@@ -24,7 +24,9 @@ fn default_false() -> bool {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct ServerConfig {
+    pub bot_acl: HashSet<String>,
     pub labels: ServerLabels,
 }
 
@@ -94,6 +96,8 @@ mod tests {
     fn test_config() {
         // A sample config file loaded from memory
         let config = concat!(
+            "[server]\n",
+            "bot-acl = []\n",
             "[server.labels]\n",
             "remove = \"\"\n",
             "experiment-queued = \"\"\n",

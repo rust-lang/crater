@@ -3,7 +3,7 @@ use errors::*;
 use ex::{self, Experiment};
 use ex_run;
 use git;
-use results::ExperimentResultDB;
+use results::WriteResults;
 use std::fmt;
 use toolchain::Toolchain;
 use util;
@@ -58,7 +58,7 @@ impl fmt::Debug for Task {
 }
 
 impl Task {
-    pub fn run<DB: ExperimentResultDB>(&self, ex: &Experiment, db: &DB) -> Result<()> {
+    pub fn run<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> Result<()> {
         match self.step {
             TaskStep::Prepare => self.run_prepare(ex, db),
             TaskStep::BuildAndTest { ref tc, quiet } => self.run_build_and_test(ex, tc, db, quiet),
@@ -68,7 +68,7 @@ impl Task {
         }
     }
 
-    fn run_prepare<DB: ExperimentResultDB>(&self, ex: &Experiment, db: &DB) -> Result<()> {
+    fn run_prepare<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> Result<()> {
         let krate = [self.krate.clone()];
         let stable = Toolchain::Dist("stable".into());
 
@@ -78,7 +78,7 @@ impl Task {
                 util::report_error(&e);
             }
 
-            ex::capture_shas(&krate, db)?;
+            ex::capture_shas(ex, &krate, db)?;
         }
 
         crates::prepare(&krate)?;
@@ -89,7 +89,7 @@ impl Task {
         Ok(())
     }
 
-    fn run_build_and_test<DB: ExperimentResultDB>(
+    fn run_build_and_test<DB: WriteResults>(
         &self,
         ex: &Experiment,
         tc: &Toolchain,
@@ -107,7 +107,7 @@ impl Task {
         ).map(|_| ())
     }
 
-    fn run_build_only<DB: ExperimentResultDB>(
+    fn run_build_only<DB: WriteResults>(
         &self,
         ex: &Experiment,
         tc: &Toolchain,
@@ -125,7 +125,7 @@ impl Task {
         ).map(|_| ())
     }
 
-    fn run_check_only<DB: ExperimentResultDB>(
+    fn run_check_only<DB: WriteResults>(
         &self,
         ex: &Experiment,
         tc: &Toolchain,
@@ -143,7 +143,7 @@ impl Task {
         ).map(|_| ())
     }
 
-    fn run_unstable_features<DB: ExperimentResultDB>(
+    fn run_unstable_features<DB: WriteResults>(
         &self,
         ex: &Experiment,
         db: &DB,

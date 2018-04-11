@@ -197,7 +197,7 @@ fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
 
 pub fn run_ex(ex_name: &str, threads_count: usize, config: &Config) -> Result<()> {
     let ex = Experiment::load(ex_name)?;
-    let db = FileDB::for_experiment(&ex);
+    let db = FileDB::default();
 
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(&ex, config));

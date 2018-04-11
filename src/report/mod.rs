@@ -5,7 +5,7 @@ use ex;
 use file;
 use handlebars::Handlebars;
 use mime::{self, Mime};
-use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
+use results::{FileDB, ReadResults, TestResult};
 use serde_json;
 use std::{fs, io};
 use std::borrow::Cow;
@@ -49,9 +49,20 @@ struct BuildTestResult {
     log: String,
 }
 
+fn crate_to_path_fragment(krate: &Crate) -> PathBuf {
+    match *krate {
+        Crate::Registry(ref details) => PathBuf::new()
+            .join("reg")
+            .join(format!("{}-{}", details.name, details.version)),
+        Crate::GitHub(ref repo) => PathBuf::new()
+            .join("gh")
+            .join(format!("{}.{}", repo.org, repo.name)),
+    }
+}
+
 pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResults> {
-    let db = FileDB::for_experiment(ex);
-    let shas = db.load_all_shas()?;
+    let db = FileDB::default();
+    let shas = db.load_all_shas(ex)?;
     assert_eq!(ex.toolchains.len(), 2);
 
     let res = ex.crates
@@ -60,15 +71,12 @@ pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResul
         .map(|krate| {
             // Any errors here will turn into unknown results
             let crate_results = ex.toolchains.iter().map(|tc| -> Result<BuildTestResult> {
-                let writer = db.for_crate(&krate, tc);
-                let res = writer.load_test_result()?;
-                // If there was no test result return an error
-                let res = res.ok_or_else(|| Error::from("no result"))?;
-                let rel_log = writer.result_path_fragement();
+                let res = db.load_test_result(ex, tc, &krate)?
+                    .ok_or_else(|| "no result")?;
 
                 Ok(BuildTestResult {
                     res,
-                    log: format!("{}", rel_log.display()),
+                    log: crate_to_path_fragment(&krate).to_str().unwrap().to_string(),
                 })
             });
             // Convert errors to Nones
@@ -92,7 +100,7 @@ pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResul
 const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
 
 fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -> Result<()> {
-    let db = FileDB::for_experiment(ex);
+    let db = FileDB::default();
     let num_crates = ex.crates.len();
     let progress_every = (num_crates / PROGRESS_FRACTION) + 1;
     for (i, krate) in ex.crates.iter().enumerate() {
@@ -105,15 +113,11 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -
         }
 
         for tc in &ex.toolchains {
-            let writer = db.for_crate(krate, tc);
-            let rel_log = writer.result_path_fragement();
-
-            match writer.read_log() {
-                Ok(ref mut result_log) => {
-                    dest.copy(result_log, rel_log.join("log.txt"), &mime::TEXT_PLAIN_UTF_8)?
-                }
-                Err(e) => error!{"Could not read log for {} {}: {}", krate, tc.to_string(), e},
-            }
+            let log_path = crate_to_path_fragment(krate).join("log.txt");
+            let content = db.load_log(ex, tc, krate)
+                .and_then(|c| c.ok_or_else(|| "missing logs".into()))
+                .chain_err(|| format!("failed to read log of {} on {}", krate, tc.to_string()))?;
+            dest.write_string(log_path, content.into(), &mime::TEXT_PLAIN_UTF_8)?;
         }
     }
     Ok(())

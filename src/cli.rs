@@ -222,7 +222,7 @@ impl Crater {
             }
             Crater::PrepareEx { ref ex } => {
                 let ex = ex::Experiment::load(&ex.0)?;
-                let db = FileDB::for_experiment(&ex);
+                let db = FileDB::default();
                 ex.prepare_shared(&db)?;
                 ex.prepare_local()?;
             }

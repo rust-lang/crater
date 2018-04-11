@@ -6,7 +6,7 @@ use ex_run;
 use file;
 use git;
 use lists::{self, List};
-use results::ExperimentResultDB;
+use results::WriteResults;
 use run::RunCommand;
 use serde_json;
 use std::collections::HashSet;
@@ -206,9 +206,9 @@ impl Experiment {
         Ok(())
     }
 
-    pub fn prepare_shared<DB: ExperimentResultDB>(&self, db: &DB) -> Result<()> {
+    pub fn prepare_shared<DB: WriteResults>(&self, db: &DB) -> Result<()> {
         self.fetch_repo_crates()?;
-        capture_shas(&self.crates, db)?;
+        capture_shas(self, &self.crates, db)?;
         crates::prepare(&self.crates)?;
 
         frob_tomls(self, &self.crates)?;
@@ -251,7 +251,7 @@ pub fn frob_tomls(ex: &Experiment, crates: &[Crate]) -> Result<()> {
     Ok(())
 }
 
-pub fn capture_shas<DB: ExperimentResultDB>(crates: &[Crate], db: &DB) -> Result<()> {
+pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB) -> Result<()> {
     for krate in crates {
         if let Crate::GitHub(ref repo) = *krate {
             let dir = repo.mirror_dir();
@@ -275,7 +275,7 @@ pub fn capture_shas<DB: ExperimentResultDB>(crates: &[Crate], db: &DB) -> Result
                 }
             };
 
-            db.record_sha(repo, &sha)
+            db.record_sha(ex, repo, &sha)
                 .chain_err(|| format!("failed to record the sha of GitHub repo {}", repo.slug()))?;
         }
     }

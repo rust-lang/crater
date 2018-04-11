@@ -1,3 +1,10 @@
+[server]
+# The list of GitHub users allowed to interact with the GitHub bot
+bot-acl = [
+    "pietroalbini",
+    "aidanhs",
+]
+
 [server.labels]
 # Remove all labels matching this regex when applying new labels
 remove = "^S-"

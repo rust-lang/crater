@@ -62,6 +62,22 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
                 continue;
             }
 
+            if !data.config.server.bot_acl.contains(sender) {
+                Message::new()
+                    .line(
+                        "lock",
+                        "**Error:** you're not allowed to interact with this bot.",
+                    )
+                    .note(
+                        "key",
+                        "If you are a member of the Rust team and need access, [add yourself to \
+                         the whitelist](\
+                         https://github.com/rust-lang-nursery/crater/blob/master/config.toml).",
+                    )
+                    .send(issue_url, data)?;
+                return Ok(());
+            }
+
             info!("user @{} sent command: {}", sender, command.join(" "));
 
             if command.len() == 1 && command[0] == "ping" {

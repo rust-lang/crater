@@ -253,7 +253,13 @@ impl Crater {
                 run_graph::run_ex(&ex.0, threads, &config)?;
             }
             Crater::GenReport { ref ex, ref dest } => {
-                report::gen(&ex.0, &report::FileWriter::create(dest.0.clone())?, &config)?;
+                let db = FileDB::default();
+                report::gen(
+                    &db,
+                    &ex.0,
+                    &report::FileWriter::create(dest.0.clone())?,
+                    &config,
+                )?;
             }
             Crater::PublishReport {
                 ref ex,
@@ -267,7 +273,8 @@ impl Crater {
                         prefix
                     }
                 };
-                report::gen(&ex.0, &report::S3Writer::create(s3_prefix)?, &config)?;
+                let db = FileDB::default();
+                report::gen(&db, &ex.0, &report::S3Writer::create(s3_prefix)?, &config)?;
             }
             Crater::Serve => {
                 server::start(server::Data { config });

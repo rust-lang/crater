@@ -5,7 +5,7 @@ use ex;
 use file;
 use handlebars::Handlebars;
 use mime::{self, Mime};
-use results::{FileDB, ReadResults, TestResult};
+use results::{ReadResults, TestResult};
 use serde_json;
 use std::{fs, io};
 use std::borrow::Cow;
@@ -60,8 +60,11 @@ fn crate_to_path_fragment(krate: &Crate) -> PathBuf {
     }
 }
 
-pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResults> {
-    let db = FileDB::default();
+pub fn generate_report<DB: ReadResults>(
+    db: &DB,
+    config: &Config,
+    ex: &ex::Experiment,
+) -> Result<TestResults> {
     let shas = db.load_all_shas(ex)?;
     assert_eq!(ex.toolchains.len(), 2);
 
@@ -99,8 +102,12 @@ pub fn generate_report(config: &Config, ex: &ex::Experiment) -> Result<TestResul
 
 const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
 
-fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -> Result<()> {
-    let db = FileDB::default();
+fn write_logs<DB: ReadResults, W: ReportWriter>(
+    db: &DB,
+    ex: &ex::Experiment,
+    dest: &W,
+    config: &Config,
+) -> Result<()> {
     let num_crates = ex.crates.len();
     let progress_every = (num_crates / PROGRESS_FRACTION) + 1;
     for (i, krate) in ex.crates.iter().enumerate() {
@@ -123,10 +130,15 @@ fn write_logs<W: ReportWriter>(ex: &ex::Experiment, dest: &W, config: &Config) -
     Ok(())
 }
 
-pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) -> Result<()> {
+pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
+    db: &DB,
+    ex_name: &str,
+    dest: &W,
+    config: &Config,
+) -> Result<()> {
     let ex = ex::Experiment::load(ex_name)?;
 
-    let res = generate_report(config, &ex)?;
+    let res = generate_report(db, config, &ex)?;
 
     info!("writing results to {}", dest);
     info!("writing metadata");
@@ -144,7 +156,7 @@ pub fn gen<W: ReportWriter + Display>(ex_name: &str, dest: &W, config: &Config) 
     info!("writing html files");
     write_html_files(dest)?;
     info!("writing logs");
-    write_logs(&ex, dest, config)?;
+    write_logs(db, &ex, dest, config)?;
 
     Ok(())
 }

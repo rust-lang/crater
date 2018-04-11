@@ -5,10 +5,8 @@ use file;
 use log;
 use serde_json;
 use std::collections::HashMap;
-use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use toolchain::Toolchain;
 use util;
@@ -199,40 +197,9 @@ impl DeleteResults for FileDB {
     }
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub enum TestResult {
-    BuildFail,
-    TestFail,
-    TestSkipped,
-    TestPass,
-}
-impl Display for TestResult {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.to_string().fmt(f)
-    }
-}
-
-impl FromStr for TestResult {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<TestResult> {
-        match s {
-            "build-fail" => Ok(TestResult::BuildFail),
-            "test-fail" => Ok(TestResult::TestFail),
-            "test-skipped" => Ok(TestResult::TestSkipped),
-            "test-pass" => Ok(TestResult::TestPass),
-            _ => Err(format!("bogus test result: {}", s).into()),
-        }
-    }
-}
-
-impl TestResult {
-    fn to_string(&self) -> String {
-        match *self {
-            TestResult::BuildFail => "build-fail",
-            TestResult::TestFail => "test-fail",
-            TestResult::TestSkipped => "test-skipped",
-            TestResult::TestPass => "test-pass",
-        }.to_string()
-    }
-}
+string_enum!(pub enum TestResult {
+    BuildFail => "build-fail",
+    TestFail => "test-fail",
+    TestSkipped => "test-skipped",
+    TestPass => "test-pass",
+});

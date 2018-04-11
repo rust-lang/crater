@@ -213,9 +213,9 @@ impl Crater {
                     ex::ExOpts {
                         name: ex.0.clone(),
                         toolchains: vec![tc1.clone(), tc2.clone()],
-                        mode: mode.clone(),
-                        crates: crates.clone(),
-                        cap_lints: cap_lints.clone(),
+                        mode: *mode,
+                        crates: *crates,
+                        cap_lints: *cap_lints,
                     },
                     &config,
                 )?;

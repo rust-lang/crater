@@ -12,42 +12,9 @@ use serde_json;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use toml_frobber;
 use toolchain::{self, CargoState, Toolchain};
 use util;
-
-macro_rules! string_enum {
-    (pub enum $name:ident { $($item:ident => $str:expr,)* }) => {
-        #[derive(Serialize, Deserialize, Debug, Clone)]
-        pub enum $name {
-            $($item,)*
-        }
-
-        impl FromStr for $name {
-            type Err = Error;
-
-            fn from_str(s: &str) -> Result<$name> {
-                Ok(match s {
-                    $($str => $name::$item,)*
-                    s => bail!("invalid {}: {}", stringify!($name), s),
-                })
-            }
-        }
-
-        impl $name {
-            pub fn to_str(&self) -> &'static str {
-                match *self {
-                    $($name::$item => $str,)*
-                }
-            }
-
-            pub fn possible_values() -> &'static [&'static str] {
-                &[$($str,)*]
-            }
-        }
-    }
-}
 
 string_enum!(pub enum ExMode {
     BuildAndTest => "build-and-test",

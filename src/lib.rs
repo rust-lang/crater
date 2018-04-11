@@ -47,6 +47,8 @@ extern crate walkdir;
 
 #[macro_use]
 pub mod log;
+#[macro_use]
+pub mod util;
 pub mod errors;
 pub mod toolchain;
 mod registry;
@@ -54,7 +56,6 @@ pub mod lists;
 mod file;
 mod dl;
 mod gh;
-pub mod util;
 mod run;
 pub mod run_graph;
 pub mod crates;

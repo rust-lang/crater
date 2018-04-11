@@ -5,6 +5,45 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
+#[macro_use]
+macro_rules! string_enum {
+    (pub enum $name:ident { $($item:ident => $str:expr,)* }) => {
+        #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+        pub enum $name {
+            $($item,)*
+        }
+
+        impl ::std::str::FromStr for $name {
+            type Err = ::errors::Error;
+
+            fn from_str(s: &str) -> ::errors::Result<$name> {
+                Ok(match s {
+                    $($str => $name::$item,)*
+                    s => bail!("invalid {}: {}", stringify!($name), s),
+                })
+            }
+        }
+
+        impl ::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                write!(f, "{}", self.to_str())
+            }
+        }
+
+        impl $name {
+            pub fn to_str(&self) -> &'static str {
+                match *self {
+                    $($name::$item => $str,)*
+                }
+            }
+
+            pub fn possible_values() -> &'static [&'static str] {
+                &[$($str,)*]
+            }
+        }
+    }
+}
+
 pub fn try_hard<F, R>(f: F) -> Result<R>
 where
     F: Fn() -> Result<R>,

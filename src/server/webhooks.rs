@@ -7,7 +7,7 @@ use hyper::server::{Request, Response};
 use ring;
 use serde_json;
 use server::Data;
-use server::github::EventIssueComment;
+use server::github::{EventIssueComment, Issue};
 use server::http::{Context, ResponseExt, ResponseFuture};
 use server::messages::{Label, Message};
 use std::sync::Arc;
@@ -35,9 +35,13 @@ fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> 
         "ping" => info!("the webhook is configured correctly!"),
         "issue_comment" => {
             let p: EventIssueComment = serde_json::from_str(payload)?;
-            if let Err(e) =
-                process_command(&p.sender.login, &p.comment.body, &p.comment.issue_url, data)
-            {
+            if let Err(e) = process_command(
+                &p.sender.login,
+                &p.comment.body,
+                &p.comment.issue_url,
+                &p.issue,
+                data,
+            ) {
                 Message::new()
                     .line("rotating_light", format!("**Error:** {}", e))
                     .note(
@@ -53,7 +57,13 @@ fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> 
     Ok(())
 }
 
-fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Result<()> {
+fn process_command(
+    sender: &str,
+    body: &str,
+    issue_url: &str,
+    issue: &Issue,
+    data: &Data,
+) -> Result<()> {
     let start = format!("@{} ", data.bot_username);
     for line in body.lines() {
         if line.starts_with(&start) {
@@ -91,6 +101,8 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
 
             let name = if let Some(name) = args.name {
                 name
+            } else if let Some(default) = default_experiment_name(issue) {
+                default
             } else {
                 bail!("missing experiment name!");
             };
@@ -197,6 +209,14 @@ fn process_command(sender: &str, body: &str, issue_url: &str, data: &Data) -> Re
     }
 
     Ok(())
+}
+
+fn default_experiment_name(issue: &Issue) -> Option<String> {
+    if issue.pull_request.is_some() {
+        Some(format!("pr-{}", issue.number))
+    } else {
+        None
+    }
 }
 
 fn parse_edit_arguments(args: &[&str]) -> Result<EditArguments> {
@@ -309,4 +329,31 @@ pub fn handle(req: Request, data: Arc<Data>, ctx: Arc<Context>) -> ResponseFutur
 
         Response::text("OK\n").as_future()
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::default_experiment_name;
+    use server::github;
+
+    #[test]
+    fn test_default_experiment_name() {
+        // With simple issues no default should be used
+        let issue = github::Issue {
+            number: 1,
+            labels: Vec::new(),
+            pull_request: None,
+        };
+        assert!(default_experiment_name(&issue).is_none());
+
+        // With pull requests pr-{number} should be used
+        let pr = github::Issue {
+            number: 2,
+            labels: Vec::new(),
+            pull_request: Some(github::PullRequest {
+                html_url: String::new(),
+            }),
+        };
+        assert_eq!(default_experiment_name(&pr).unwrap().as_str(), "pr-2");
+    }
 }

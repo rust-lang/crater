@@ -1,5 +1,5 @@
 use errors::*;
-use ex::{self, ExCapLints, ExCrateSelect, ExMode, ExOpts};
+use ex::{self, ExCapLints, ExCrateSelect, ExMode};
 use futures::future;
 use futures::prelude::*;
 use hyper::StatusCode;
@@ -107,12 +107,10 @@ fn process_command(
                 bail!("missing experiment name!");
             };
 
-            let mut experiments = data.experiments.lock().unwrap();
-
             match args.run {
                 // Create the experiment
                 Some(true) => {
-                    if experiments.exists(&name) {
+                    if data.experiments.exists(&name)? {
                         bail!("an experiment named **`{}`** already exists!", name);
                     }
 
@@ -123,14 +121,13 @@ fn process_command(
                     let cap_lints = args.lints.ok_or_else(|| "missing lints option")?;
                     let priority = args.p.unwrap_or(0);
 
-                    experiments.create(
-                        ExOpts {
-                            name: name.clone(),
-                            toolchains: vec![start, end],
-                            mode,
-                            crates,
-                            cap_lints,
-                        },
+                    data.experiments.create(
+                        &name,
+                        &start,
+                        &end,
+                        mode,
+                        crates,
+                        cap_lints,
                         &data.config,
                         issue_url,
                         priority,
@@ -146,11 +143,11 @@ fn process_command(
                 }
                 // Delete the experiment
                 Some(false) => {
-                    if !experiments.exists(&name) {
+                    if !data.experiments.exists(&name)? {
                         bail!("an experiment named **`{}`** doesn't exist!", name);
                     }
 
-                    experiments.delete(&name)?;
+                    data.experiments.delete(&name)?;
 
                     Message::new()
                         .line("wastebasket", format!("Experiment **`{}`** deleted!", name))
@@ -159,47 +156,52 @@ fn process_command(
                 }
                 // Edit the experiment
                 None => {
-                    if !experiments.exists(&name) {
-                        bail!("an experiment named **`{}`** doesn't exist!", name);
-                    }
+                    if let Some(mut experiment) = data.experiments.get(&name)? {
+                        let mut changed = false;
 
-                    let mut changed = false;
-                    let mut info = experiments.edit_data(&name).unwrap();
+                        if let Some(start) = args.start {
+                            experiment.set_start_toolchain(&data.db, start)?;
+                            changed = true;
+                        }
+                        if let Some(end) = args.end {
+                            experiment.set_end_toolchain(&data.db, end)?;
+                            changed = true;
+                        }
+                        if let Some(mode) = args.mode {
+                            experiment.set_mode(&data.db, mode)?;
+                            changed = true;
+                        }
+                        if let Some(cap_lints) = args.lints {
+                            experiment.set_cap_lints(&data.db, cap_lints)?;
+                            changed = true;
+                        }
+                        if let Some(crates) = args.crates {
+                            let crates = ex::get_crates(crates, &data.config)?;
+                            experiment.set_crates(&data.db, crates)?;
+                            changed = true;
+                        }
+                        if let Some(priority) = args.p {
+                            experiment.set_priority(&data.db, priority)?;
+                            changed = true;
+                        }
 
-                    if let Some(start) = args.start {
-                        info.experiment.toolchains[0] = start;
-                        changed = true;
-                    }
-                    if let Some(end) = args.end {
-                        info.experiment.toolchains[1] = end;
-                        changed = true;
-                    }
-                    if let Some(mode) = args.mode {
-                        info.experiment.mode = mode;
-                        changed = true;
-                    }
-                    if let Some(crates) = args.crates {
-                        info.experiment.crates = ex::get_crates(crates, &data.config)?;
-                        changed = true;
-                    }
-                    if let Some(priority) = args.p {
-                        info.server_data.priority = priority;
-                        changed = true;
-                    }
-
-                    if changed {
-                        info.save()?;
-
-                        Message::new()
-                            .line(
-                                "memo",
-                                format!("Configuration of the **`{}`** experiment changed.", name),
-                            )
-                            .send(issue_url, data)?;
+                        if changed {
+                            Message::new()
+                                .line(
+                                    "memo",
+                                    format!(
+                                        "Configuration of the **`{}`** experiment changed.",
+                                        name
+                                    ),
+                                )
+                                .send(issue_url, data)?;
+                        } else {
+                            Message::new()
+                                .line("warning", "No changes requested.")
+                                .send(issue_url, data)?;
+                        }
                     } else {
-                        Message::new()
-                            .line("warning", "No changes requested.")
-                            .send(issue_url, data)?;
+                        bail!("an experiment named **`{}`** doesn't exist!", name);
                     }
                 }
             }

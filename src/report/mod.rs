@@ -151,13 +151,11 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
 
 pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     db: &DB,
-    ex_name: &str,
+    ex: &ex::Experiment,
     dest: &W,
     config: &Config,
 ) -> Result<()> {
-    let ex = ex::Experiment::load(ex_name)?;
-
-    let res = generate_report(db, config, &ex)?;
+    let res = generate_report(db, config, ex)?;
 
     info!("writing results to {}", dest);
     info!("writing metadata");
@@ -175,7 +173,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     info!("writing html files");
     write_html_files(dest)?;
     info!("writing logs");
-    write_logs(db, &ex, dest, config)?;
+    write_logs(db, ex, dest, config)?;
 
     Ok(())
 }

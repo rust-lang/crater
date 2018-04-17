@@ -88,6 +88,28 @@ impl Config {
 }
 
 #[cfg(test)]
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            demo_crates: DemoCrates {
+                crates: vec!["lazy_static".into()],
+                github_repos: vec!["brson/hello-rs".into()],
+            },
+            crates: HashMap::new(),
+            github_repos: HashMap::new(),
+            server: ServerConfig {
+                bot_acl: HashSet::new(),
+                labels: ServerLabels {
+                    remove: Regex::new("^$").unwrap(),
+                    experiment_queued: "".into(),
+                    experiment_completed: "".into(),
+                },
+            },
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::Config;
     use crates::{Crate, GitHubRepo, RegistryCrate};

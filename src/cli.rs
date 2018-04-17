@@ -271,9 +271,10 @@ impl Crater {
             Crater::GenReport { ref ex, ref dest } => {
                 let config = Config::load()?;
                 let db = FileDB::default();
+                let ex = ex::Experiment::load(&ex.0)?;
                 report::gen(
                     &db,
-                    &ex.0,
+                    &ex,
                     &report::FileWriter::create(dest.0.clone())?,
                     &config,
                 )?;
@@ -292,10 +293,11 @@ impl Crater {
                     }
                 };
                 let db = FileDB::default();
+                let ex = ex::Experiment::load(&ex.0)?;
                 let client = report::get_client_for_bucket(&s3_prefix.bucket)?;
                 report::gen(
                     &db,
-                    &ex.0,
+                    &ex,
                     &report::S3Writer::create(client, s3_prefix)?,
                     &config,
                 )?;

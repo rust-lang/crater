@@ -15,6 +15,8 @@ extern crate lazy_static;
 extern crate libc;
 extern crate mime;
 extern crate petgraph;
+extern crate r2d2;
+extern crate r2d2_sqlite;
 extern crate rand;
 extern crate ref_slice;
 extern crate regex;
@@ -22,6 +24,7 @@ extern crate reqwest;
 extern crate ring;
 extern crate rusoto_core;
 extern crate rusoto_s3;
+extern crate rusqlite;
 extern crate rustup_dist;
 #[macro_use]
 extern crate scopeguard;

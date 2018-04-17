@@ -90,7 +90,7 @@ pub fn define(opts: ExOpts, config: &Config) -> Result<()> {
     )
 }
 
-fn demo_list(config: &Config) -> Result<Vec<Crate>> {
+pub fn demo_list(config: &Config) -> Result<Vec<Crate>> {
     let mut crates = config.demo_crates().crates.iter().collect::<HashSet<_>>();
     let repos = &config.demo_crates().github_repos;
     let expected_len = crates.len() + repos.len();

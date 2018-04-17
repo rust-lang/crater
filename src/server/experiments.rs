@@ -1,24 +1,18 @@
 use chrono::{DateTime, Utc};
 use config::Config;
-use dirs::EXPERIMENT_DIR;
+use crates::Crate;
 use errors::*;
-use ex::{self, config_file, ExOpts, Experiment};
-use file;
+use ex::{self, ExCapLints, ExCrateSelect, ExMode, Experiment};
+use rusqlite::Row;
 use serde_json;
-use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
-use std::collections::HashMap;
-use std::path::PathBuf;
+use server::db::{Database, QueryUtils};
+use toolchain::Toolchain;
 
-fn server_data_file(name: &str) -> PathBuf {
-    EXPERIMENT_DIR.join(name).join("server_data.json")
-}
-
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
-pub enum Status {
-    Queued,
-    RunningOn(String),
-    Completed,
-}
+string_enum!(pub enum Status {
+    Queued => "queued",
+    Running => "running",
+    Completed => "completed",
+});
 
 #[derive(Serialize, Deserialize)]
 pub struct ServerData {
@@ -26,6 +20,7 @@ pub struct ServerData {
     pub created_at: DateTime<Utc>,
     pub github_issue: String,
     pub status: Status,
+    pub assigned_to: Option<String>,
 }
 
 pub struct ExperimentData {
@@ -33,176 +28,361 @@ pub struct ExperimentData {
     pub experiment: Experiment,
 }
 
-impl Ord for ExperimentData {
-    fn cmp(&self, other: &ExperimentData) -> Ordering {
-        self.server_data
-            .priority
-            .cmp(&other.server_data.priority)
-            .then(
-                self.server_data
-                    .created_at
-                    .cmp(&other.server_data.created_at)
-                    .reverse(),
-            )
-    }
-}
-
-impl PartialOrd for ExperimentData {
-    fn partial_cmp(&self, other: &ExperimentData) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Eq for ExperimentData {}
-
-impl PartialEq for ExperimentData {
-    fn eq(&self, other: &ExperimentData) -> bool {
-        self.experiment.name == other.experiment.name
-    }
-}
-
 impl ExperimentData {
-    fn load(name: &str) -> Result<Self> {
-        let path = server_data_file(name);
-        if path.is_file() {
-            Ok(ExperimentData {
-                server_data: serde_json::from_str(&file::read_string(&path)?)?,
-                experiment: Experiment::load(name)?,
-            })
-        } else {
-            bail!("not managed by the server");
+    pub fn set_status(&mut self, db: &Database, status: Status) -> Result<()> {
+        db.execute(
+            "UPDATE experiments SET status = ?1 WHERE name = ?2;",
+            &[&status.to_str(), &self.experiment.name.as_str()],
+        )?;
+        self.server_data.status = status;
+        Ok(())
+    }
+
+    pub fn set_assigned_to(&mut self, db: &Database, assigned_to: Option<String>) -> Result<()> {
+        db.execute(
+            "UPDATE experiments SET assigned_to = ?1 WHERE name = ?2;",
+            &[&assigned_to, &self.experiment.name.as_str()],
+        )?;
+        self.server_data.assigned_to = assigned_to;
+        Ok(())
+    }
+
+    pub fn set_mode(&mut self, db: &Database, mode: ExMode) -> Result<()> {
+        db.execute(
+            "UPDATE experiments SET mode = ?1 WHERE name = ?2;",
+            &[&mode.to_str(), &self.experiment.name.as_str()],
+        )?;
+        self.experiment.mode = mode;
+        Ok(())
+    }
+
+    pub fn set_cap_lints(&mut self, db: &Database, cap_lints: ExCapLints) -> Result<()> {
+        db.execute(
+            "UPDATE experiments SET cap_lints = ?1 WHERE name = ?2;",
+            &[&cap_lints.to_str(), &self.experiment.name.as_str()],
+        )?;
+        self.experiment.cap_lints = cap_lints;
+        Ok(())
+    }
+
+    pub fn set_priority(&mut self, db: &Database, priority: i32) -> Result<()> {
+        db.execute(
+            "UPDATE experiments SET priority = ?1 WHERE name = ?2;",
+            &[&priority, &self.experiment.name.as_str()],
+        )?;
+        self.server_data.priority = priority;
+        Ok(())
+    }
+
+    pub fn set_crates(&mut self, db: &Database, crates: Vec<Crate>) -> Result<()> {
+        db.transaction(|transaction| {
+            transaction.execute(
+                "DELETE FROM experiment_crates WHERE experiment = ?1;",
+                &[&self.experiment.name.as_str()],
+            )?;
+
+            for krate in &crates {
+                transaction.execute(
+                    "INSERT INTO experiment_crates (experiment, crate) VALUES (?1, ?2);",
+                    &[
+                        &self.experiment.name.as_str(),
+                        &serde_json::to_string(&krate)?,
+                    ],
+                )?;
+            }
+
+            Ok(())
+        })?;
+        self.experiment.crates = crates;
+        Ok(())
+    }
+
+    pub fn set_start_toolchain(&mut self, db: &Database, start: Toolchain) -> Result<()> {
+        db.execute(
+            "UPDATE experiments SET toolchain_start = ?1 WHERE name = ?2;",
+            &[
+                &serde_json::to_string(&start)?,
+                &self.experiment.name.as_str(),
+            ],
+        )?;
+        self.experiment.toolchains[0] = start;
+        Ok(())
+    }
+
+    pub fn set_end_toolchain(&mut self, db: &Database, end: Toolchain) -> Result<()> {
+        db.execute(
+            "UPDATE experiments SET toolchain_end = ?1 WHERE name = ?2;",
+            &[
+                &serde_json::to_string(&end)?,
+                &self.experiment.name.as_str(),
+            ],
+        )?;
+        self.experiment.toolchains[1] = end;
+        Ok(())
+    }
+}
+
+struct ExperimentDBRecord {
+    name: String,
+    mode: String,
+    cap_lints: String,
+    toolchain_start: String,
+    toolchain_end: String,
+    priority: i32,
+    created_at: DateTime<Utc>,
+    github_issue: String,
+    status: String,
+    assigned_to: Option<String>,
+}
+
+impl ExperimentDBRecord {
+    fn from_row(row: &Row) -> Self {
+        ExperimentDBRecord {
+            name: row.get("name"),
+            mode: row.get("mode"),
+            cap_lints: row.get("cap_lints"),
+            toolchain_start: row.get("toolchain_start"),
+            toolchain_end: row.get("toolchain_end"),
+            priority: row.get("priority"),
+            created_at: row.get("created_at"),
+            status: row.get("status"),
+            github_issue: row.get("github_issue"),
+            assigned_to: row.get("assigned_to"),
         }
     }
 
-    pub fn save(&self) -> Result<()> {
-        let server_data_path = server_data_file(&self.experiment.name);
-        let config_path = config_file(&self.experiment.name);
+    fn into_experiment_data(self, db: &Database) -> Result<ExperimentData> {
+        let crates = db.query(
+            "SELECT crate FROM experiment_crates WHERE experiment = ?1",
+            &[&self.name],
+            |r| {
+                let value: String = r.get("crate");
+                Ok(serde_json::from_str(&value)?)
+            },
+        )?
+            .into_iter()
+            .collect::<Result<Vec<Crate>>>()?;
 
-        file::write_string(
-            &server_data_path,
-            &serde_json::to_string(&self.server_data)?,
-        )?;
-        file::write_string(&config_path, &serde_json::to_string(&self.experiment)?)?;
-
-        Ok(())
+        Ok(ExperimentData {
+            experiment: Experiment {
+                name: self.name,
+                crates,
+                toolchains: vec![
+                    serde_json::from_str(&self.toolchain_start)?,
+                    serde_json::from_str(&self.toolchain_end)?,
+                ],
+                cap_lints: self.cap_lints.parse()?,
+                mode: self.mode.parse()?,
+            },
+            server_data: ServerData {
+                priority: self.priority,
+                created_at: self.created_at,
+                github_issue: self.github_issue,
+                assigned_to: self.assigned_to,
+                status: self.status.parse()?,
+            },
+        })
     }
 }
 
 pub struct Experiments {
-    data: HashMap<String, ExperimentData>,
+    db: Database,
 }
 
 impl Experiments {
-    pub fn new() -> Result<Self> {
-        let mut data = HashMap::new();
-        let base = EXPERIMENT_DIR.clone();
-
-        for dir in ::std::fs::read_dir(&base)? {
-            let name = dir?.path()
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string();
-            if config_file(&name).exists() {
-                match ExperimentData::load(&name) {
-                    Ok(ex) => {
-                        info!("loaded existing experiment {}", name);
-                        data.insert(name, ex);
-                    }
-                    Err(err) => {
-                        warn!("failed to load experiment {}: {}", name, err);
-                    }
-                }
-            }
-        }
-
-        Ok(Experiments { data })
+    pub fn new(db: Database) -> Self {
+        Experiments { db }
     }
 
-    pub fn exists(&self, name: &str) -> bool {
-        self.data.contains_key(name)
+    pub fn exists(&self, name: &str) -> Result<bool> {
+        self.db
+            .exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
     pub fn create(
-        &mut self,
-        opts: ExOpts,
+        &self,
+        name: &str,
+        toolchain_start: &Toolchain,
+        toolchain_end: &Toolchain,
+        mode: ExMode,
+        crates: ExCrateSelect,
+        cap_lints: ExCapLints,
         config: &Config,
         github_issue: &str,
         priority: i32,
     ) -> Result<()> {
-        let name = opts.name.clone();
+        self.db.transaction(|transaction| {
+            let crates = ex::get_crates(crates, config)?;
 
-        ex::define(opts, config)?;
+            transaction.execute(
+                "INSERT INTO experiments \
+                 (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
+                 status, github_issue) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9);",
+                &[
+                    &name,
+                    &mode.to_str(),
+                    &cap_lints.to_str(),
+                    &serde_json::to_string(&toolchain_start)?,
+                    &serde_json::to_string(&toolchain_end)?,
+                    &priority,
+                    &Utc::now(),
+                    &"queued",
+                    &github_issue,
+                ],
+            )?;
 
-        let data = ExperimentData {
-            experiment: Experiment::load(&name)?,
-            server_data: ServerData {
-                priority,
-                created_at: Utc::now(),
-                github_issue: github_issue.to_string(),
-                status: Status::Queued,
-            },
-        };
-        data.save()?;
-
-        self.data.insert(name, data);
-        Ok(())
-    }
-
-    pub fn delete(&mut self, name: &str) -> Result<()> {
-        ex::delete(name)?;
-
-        self.data.remove(name);
-        Ok(())
-    }
-
-    pub fn get(&self, name: &str) -> Option<&ExperimentData> {
-        self.data.get(name)
-    }
-
-    pub fn edit_data(&mut self, name: &str) -> Option<&mut ExperimentData> {
-        self.data.get_mut(name)
-    }
-
-    pub fn run_by_agent(&self, agent_name: &str) -> Option<&str> {
-        for (name, data) in &self.data {
-            if let Status::RunningOn(ref running_on) = data.server_data.status {
-                if running_on == agent_name {
-                    return Some(name);
-                }
-            }
-        }
-
-        None
-    }
-
-    pub fn next(&mut self, agent_name: &str) -> Result<Option<(bool, &ExperimentData)>> {
-        let mut candidate: Option<&mut ExperimentData> = None;
-
-        for ex in self.data.values_mut() {
-            // If an agent is already running an experiment don't assign a new one
-            match ex.server_data.status {
-                Status::Queued => {}
-                Status::RunningOn(ref agent) if agent == agent_name => return Ok(Some((false, ex))),
-                _ => continue,
+            for krate in &crates {
+                transaction.execute(
+                    "INSERT INTO experiment_crates (experiment, crate) VALUES (?1, ?2);",
+                    &[&name, &serde_json::to_string(&krate)?],
+                )?;
             }
 
-            if let Some(ref mut c) = candidate {
-                if ex > c {
-                    *c = ex;
-                }
-            } else {
-                candidate = Some(ex)
-            }
-        }
-
-        Ok(if let Some(c) = candidate {
-            c.server_data.status = Status::RunningOn(agent_name.to_string());
-            c.save()?;
-
-            Some((true, c))
-        } else {
-            None
+            Ok(())
         })
+    }
+
+    pub fn delete(&self, name: &str) -> Result<()> {
+        // This will also delete all the data related to this experiment
+        self.db
+            .execute("DELETE FROM experiments WHERE name = ?1;", &[&name])
+    }
+
+    pub fn get(&self, name: &str) -> Result<Option<ExperimentData>> {
+        let record = self.db.get_row(
+            "SELECT * FROM experiments WHERE name = ?1;",
+            &[&name],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+
+        if let Some(record) = record {
+            Ok(Some(record.into_experiment_data(&self.db)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn run_by_agent(&self, agent: &str) -> Result<Option<ExperimentData>> {
+        let record = self.db.get_row(
+            "SELECT * FROM experiments \
+             WHERE status = \"running\" AND assigned_to = ?1;",
+            &[&agent],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+
+        if let Some(record) = record {
+            Ok(Some(record.into_experiment_data(&self.db)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn next(&self, agent: &str) -> Result<Option<(bool, ExperimentData)>> {
+        // Avoid assigning two experiments to the same agent
+        if let Some(experiment) = self.run_by_agent(agent)? {
+            return Ok(Some((false, experiment)));
+        }
+
+        let record = self.db.get_row(
+            "SELECT * FROM experiments \
+             WHERE status = \"queued\" \
+             ORDER BY created_at;",
+            &[],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+
+        if let Some(record) = record {
+            let mut experiment = record.into_experiment_data(&self.db)?;
+            experiment.set_status(&self.db, Status::Running)?;
+            experiment.set_assigned_to(&self.db, Some(agent.into()))?;
+            Ok(Some((true, experiment)))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Experiments, Status};
+    use config::Config;
+    use ex::{ExCapLints, ExCrateSelect, ExMode};
+    use server::db::Database;
+    use toolchain::Toolchain;
+
+    #[test]
+    fn test_experiment_creation() {
+        let db = Database::temp().unwrap();
+        let experiments = Experiments::new(db.clone());
+
+        let config = Config::default();
+        experiments
+            .create(
+                "test".into(),
+                &Toolchain::Dist("stable".into()),
+                &Toolchain::Dist("beta".into()),
+                ExMode::BuildAndTest,
+                ExCrateSelect::Demo,
+                ExCapLints::Forbid,
+                &config,
+                "https://github.com",
+                5,
+            )
+            .unwrap();
+
+        // Ensure all the data inserted for the experiment is correct
+        let ex = experiments.get("test").unwrap().unwrap();
+        assert_eq!(ex.experiment.name.as_str(), "test");
+        assert_eq!(
+            ex.experiment.toolchains,
+            vec![
+                Toolchain::Dist("stable".into()),
+                Toolchain::Dist("beta".into()),
+            ]
+        );
+        assert_eq!(ex.experiment.mode, ExMode::BuildAndTest);
+        assert_eq!(ex.experiment.crates, ::ex::demo_list(&config).unwrap());
+        assert_eq!(ex.experiment.cap_lints, ExCapLints::Forbid);
+        assert_eq!(ex.server_data.github_issue.as_str(), "https://github.com");
+        assert_eq!(ex.server_data.priority, 5);
+        assert_eq!(ex.server_data.status, Status::Queued);
+        assert!(ex.server_data.assigned_to.is_none());
+    }
+
+    #[test]
+    fn test_assigning_experiment() {
+        let db = Database::temp().unwrap();
+        let experiments = Experiments::new(db.clone());
+
+        let config = Config::default();
+        experiments
+            .create(
+                "test".into(),
+                &Toolchain::Dist("stable".into()),
+                &Toolchain::Dist("beta".into()),
+                ExMode::BuildAndTest,
+                ExCrateSelect::Demo,
+                ExCapLints::Forbid,
+                &config,
+                "https://github.com",
+                5,
+            )
+            .unwrap();
+
+        // Test the experiment is correctly assigned
+        let (new, ex) = experiments.next("foo-agent").unwrap().unwrap();
+        assert!(new);
+        assert_eq!(ex.experiment.name.as_str(), "test");
+        assert_eq!(ex.server_data.status, Status::Running);
+        assert_eq!(ex.server_data.assigned_to.unwrap().as_str(), "foo-agent");
+
+        // Test the same experiment is returned to the agent
+        let (new, ex) = experiments.next("foo-agent").unwrap().unwrap();
+        assert!(!new);
+        assert_eq!(ex.experiment.name.as_str(), "test");
+
+        // Test no other experiment is available for the other agents
+        assert!(experiments.next("bar-agent").unwrap().is_none());
     }
 }

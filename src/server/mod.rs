@@ -2,14 +2,15 @@
 mod http;
 
 mod agent;
-pub mod api_types;
 mod auth;
+mod db;
 mod experiments;
 mod github;
 mod messages;
 mod results;
 mod tokens;
 mod webhooks;
+pub mod api_types;
 
 use config::Config;
 use errors::*;
@@ -19,17 +20,18 @@ use server::experiments::Experiments;
 use server::github::GitHubApi;
 use server::http::Server;
 use server::tokens::Tokens;
-use std::sync::{Arc, Mutex};
 
 pub struct Data {
     pub bot_username: String,
     pub config: Config,
     pub github: GitHubApi,
     pub tokens: Tokens,
-    pub experiments: Arc<Mutex<Experiments>>,
+    pub experiments: Experiments,
+    pub db: db::Database,
 }
 
 pub fn run(config: Config) -> Result<()> {
+    let db = db::Database::open()?;
     let tokens = tokens::Tokens::load()?;
     let github = GitHubApi::new(&tokens);
     let bot_username = github.username()?;
@@ -41,7 +43,8 @@ pub fn run(config: Config) -> Result<()> {
         config,
         github,
         tokens,
-        experiments: Arc::new(Mutex::new(Experiments::new()?)),
+        experiments: Experiments::new(db.clone()),
+        db: db.clone(),
     })?;
 
     server.add_route(Method::Get, "/agent-api/config", auth_agent(agent::config));

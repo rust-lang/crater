@@ -13,6 +13,8 @@ error_chain! {
         ParseInt(::std::num::ParseIntError);
         Parse(::std::string::ParseError);
         RusotoTls(::rusoto_core::TlsError);
+        Rusqlite(::rusqlite::Error);
+        R2D2(::r2d2::Error);
     }
 
     links {

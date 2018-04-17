@@ -167,14 +167,11 @@ Next, you should follow the steps below for eachrequested run on
 the sheet that does not have a status of 'Complete' or 'Failed'.
 
  - Pending
-   - Is try or prod available? (prioritise beta runs to go on prod, no
-     matter how far down the pending list they are) If not, go to next run.
-   - Log onto appropriate box and connect to multiplexer.
-   - Double check each multiplexer window to make sure nothing is
-     running.
+   - Log onto appropriate box and connect to multiplexer by running `byobu`.
+   - Double check each multiplexer window to make sure nothing is running.
    - Switch to the `master` multiplexer window.
    - Run `docker ps` to make sure no containers are running.
-   - Run `df -h /home/ec2-user/cargobomb/work`, disk usage should be
+   - Run `df -h /home/ec2-user/crater/work`, disk usage should be
      <250GB of the 1TB disk (a full run may consume 600GB)
      - If disk usage is greater, there are probably target directories
        left over from a previous run. Run `du -sh work/local/target-dirs/*`,
@@ -233,12 +230,9 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
      windows, go to next run.
    - Switch to the `master` multiplexer window.
    - Run `du -sh work/ex/EX_NAME`, output should be <2GB. If not:
-     - Run `find work/ex/EX_NAME -type f -size +100M | xargs du -sh`,
-       there will likely only be a couple of files listed and they
-       should be in the `res` directory (TODO: blacklist pleingres
-       as the main culprit here once it's possible, and update
-       these instructions to suggest adding things to the blacklist).
-     - For each file found, run `truncate --size='<100M' FILE`.
+     - Run `find work/ex/EX_NAME -type f -size +100M | xargs --no-run-if-empty du -sh`,
+       there will likely only be a couple of files listed and they should be in the `res` directory.
+     - Run ` find work/ex/EX_NAME -type f -size +100M | xargs truncate --size='<100M'`.
      - Check `du -sh work/ex/EX_NAME` is now an appropriate size.
    - Run `cargo run --release -- publish-report --ex EX_NAME s3://cargobomb-reports/EX_NAME`.
    - Change status to 'Uploading'.

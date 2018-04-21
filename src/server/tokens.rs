@@ -48,6 +48,26 @@ pub struct Tokens {
     pub agents: HashMap<String, String>,
 }
 
+#[cfg(test)]
+impl Default for Tokens {
+    fn default() -> Self {
+        Tokens {
+            bot: BotTokens {
+                webhooks_secret: String::new(),
+                api_token: String::new(),
+            },
+            reports_bucket: ReportsBucket {
+                region: "us-east-1".parse().unwrap(),
+                bucket: "crater-reports".into(),
+                public_url: String::new(),
+                access_key: String::new(),
+                secret_key: String::new(),
+            },
+            agents: HashMap::new(),
+        }
+    }
+}
+
 impl Tokens {
     pub fn load() -> Result<Tokens> {
         let content = file::read_string(Path::new(TOKENS_PATH))?;

@@ -126,4 +126,13 @@ impl AgentApi {
             Ok(())
         })
     }
+
+    pub fn heartbeat(&self) -> Result<()> {
+        self.retry(|this| {
+            let _: bool = this.build_request(Method::Post, "heartbeat")
+                .send()?
+                .to_api_response()?;
+            Ok(())
+        })
+    }
 }

@@ -92,3 +92,8 @@ api_endpoint!(record_result: |body, data, auth: AuthDetails| -> bool {
 
     Ok(ApiResponse::Success { result: true })
 }, record_result_inner);
+
+api_endpoint!(heartbeat: |_body, data, auth: AuthDetails| -> bool {
+    data.agents.record_heartbeat(&auth.name)?;
+    Ok(ApiResponse::Success { result: true })
+}, heartbeat_inner);

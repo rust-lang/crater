@@ -9,12 +9,14 @@ mod github;
 mod messages;
 mod results;
 mod tokens;
+mod agents;
 mod webhooks;
 pub mod api_types;
 
 use config::Config;
 use errors::*;
 use hyper::Method;
+use server::agents::Agents;
 use server::auth::auth_agent;
 use server::experiments::Experiments;
 use server::github::GitHubApi;
@@ -26,6 +28,7 @@ pub struct Data {
     pub config: Config,
     pub github: GitHubApi,
     pub tokens: Tokens,
+    pub agents: Agents,
     pub experiments: Experiments,
     pub db: db::Database,
 }
@@ -34,6 +37,7 @@ pub fn run(config: Config) -> Result<()> {
     let db = db::Database::open()?;
     let tokens = tokens::Tokens::load()?;
     let github = GitHubApi::new(&tokens);
+    let agents = Agents::new(db.clone(), &tokens)?;
     let bot_username = github.username()?;
 
     info!("bot username: {}", bot_username);
@@ -43,6 +47,7 @@ pub fn run(config: Config) -> Result<()> {
         config,
         github,
         tokens,
+        agents,
         experiments: Experiments::new(db.clone()),
         db: db.clone(),
     })?;
@@ -62,6 +67,11 @@ pub fn run(config: Config) -> Result<()> {
         Method::Post,
         "/agent-api/record-result",
         auth_agent(agent::record_result),
+    );
+    server.add_route(
+        Method::Post,
+        "/agent-api/heartbeat",
+        auth_agent(agent::heartbeat),
     );
 
     server.add_route(Method::Post, "/webhooks", webhooks::handle);

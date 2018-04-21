@@ -1,11 +1,11 @@
 use errors::*;
 use rusqlite::Connection;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-fn migrations() -> HashMap<&'static str, &'static str> {
-    let mut result = HashMap::new();
+fn migrations() -> Vec<(&'static str, &'static str)> {
+    let mut result = Vec::new();
 
-    result.insert(
+    result.push((
         "initial",
         "
         CREATE TABLE experiments (
@@ -49,7 +49,15 @@ fn migrations() -> HashMap<&'static str, &'static str> {
             FOREIGN KEY (experiment) REFERENCES experiments(name) ON DELETE CASCADE
         );
         ",
-    );
+    ));
+
+    result.push((
+        "add_extra_github_info",
+        "
+        ALTER TABLE experiments ADD COLUMN github_issue_url TEXT;
+        ALTER TABLE experiments ADD COLUMN github_issue_number INTEGER;
+        ",
+    ));
 
     result
 }
@@ -72,12 +80,12 @@ pub fn execute(db: &mut Connection) -> Result<()> {
         result
     };
 
-    for (name, sql) in &migrations() {
+    for &(name, sql) in &migrations() {
         if !executed_migrations.contains(&name.to_string()) {
             let t = db.transaction()?;
             t.execute_batch(sql)
                 .chain_err(|| format!("error running migration: {}", name))?;
-            t.execute("INSERT INTO migrations (name) VALUES (?1)", &[name])?;
+            t.execute("INSERT INTO migrations (name) VALUES (?1)", &[&name])?;
             t.commit()?;
 
             info!("executed migration: {}", name);

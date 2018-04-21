@@ -14,11 +14,16 @@ string_enum!(pub enum Status {
     Completed => "completed",
 });
 
-#[derive(Serialize, Deserialize)]
+pub struct GitHubIssue {
+    pub api_url: String,
+    pub html_url: String,
+    pub number: i32,
+}
+
 pub struct ServerData {
     pub priority: i32,
     pub created_at: DateTime<Utc>,
-    pub github_issue: String,
+    pub github_issue: Option<GitHubIssue>,
     pub status: Status,
     pub assigned_to: Option<String>,
 }
@@ -130,7 +135,9 @@ struct ExperimentDBRecord {
     toolchain_end: String,
     priority: i32,
     created_at: DateTime<Utc>,
-    github_issue: String,
+    github_issue: Option<String>,
+    github_issue_url: Option<String>,
+    github_issue_number: Option<i32>,
     status: String,
     assigned_to: Option<String>,
 }
@@ -147,6 +154,8 @@ impl ExperimentDBRecord {
             created_at: row.get("created_at"),
             status: row.get("status"),
             github_issue: row.get("github_issue"),
+            github_issue_url: row.get("github_issue_url"),
+            github_issue_number: row.get("github_issue_number"),
             assigned_to: row.get("assigned_to"),
         }
     }
@@ -177,7 +186,19 @@ impl ExperimentDBRecord {
             server_data: ServerData {
                 priority: self.priority,
                 created_at: self.created_at,
-                github_issue: self.github_issue,
+                github_issue: if let (Some(api_url), Some(html_url), Some(number)) = (
+                    self.github_issue,
+                    self.github_issue_url,
+                    self.github_issue_number,
+                ) {
+                    Some(GitHubIssue {
+                        api_url,
+                        html_url,
+                        number,
+                    })
+                } else {
+                    None
+                },
                 assigned_to: self.assigned_to,
                 status: self.status.parse()?,
             },
@@ -209,7 +230,9 @@ impl Experiments {
         crates: ExCrateSelect,
         cap_lints: ExCapLints,
         config: &Config,
-        github_issue: &str,
+        github_issue: Option<&str>,
+        github_issue_url: Option<&str>,
+        github_issue_number: Option<i32>,
         priority: i32,
     ) -> Result<()> {
         self.db.transaction(|transaction| {
@@ -218,7 +241,8 @@ impl Experiments {
             transaction.execute(
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
-                 status, github_issue) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9);",
+                 status, github_issue, github_issue_url, github_issue_number) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
                 &[
                     &name,
                     &mode.to_str(),
@@ -229,6 +253,8 @@ impl Experiments {
                     &Utc::now(),
                     &"queued",
                     &github_issue,
+                    &github_issue_url,
+                    &github_issue_number,
                 ],
             )?;
 
@@ -316,6 +342,9 @@ mod tests {
         let db = Database::temp().unwrap();
         let experiments = Experiments::new(db.clone());
 
+        let api_url = "https://api.github.com/repos/example/example/issues/10";
+        let html_url = "https://github.com/example/example/issue/10";
+
         let config = Config::default();
         experiments
             .create(
@@ -326,7 +355,9 @@ mod tests {
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
                 &config,
-                "https://github.com",
+                Some(api_url),
+                Some(html_url),
+                Some(10),
                 5,
             )
             .unwrap();
@@ -344,7 +375,25 @@ mod tests {
         assert_eq!(ex.experiment.mode, ExMode::BuildAndTest);
         assert_eq!(ex.experiment.crates, ::ex::demo_list(&config).unwrap());
         assert_eq!(ex.experiment.cap_lints, ExCapLints::Forbid);
-        assert_eq!(ex.server_data.github_issue.as_str(), "https://github.com");
+        assert_eq!(
+            ex.server_data
+                .github_issue
+                .as_ref()
+                .unwrap()
+                .api_url
+                .as_str(),
+            api_url
+        );
+        assert_eq!(
+            ex.server_data
+                .github_issue
+                .as_ref()
+                .unwrap()
+                .html_url
+                .as_str(),
+            html_url
+        );
+        assert_eq!(ex.server_data.github_issue.as_ref().unwrap().number, 10);
         assert_eq!(ex.server_data.priority, 5);
         assert_eq!(ex.server_data.status, Status::Queued);
         assert!(ex.server_data.assigned_to.is_none());
@@ -365,7 +414,9 @@ mod tests {
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
                 &config,
-                "https://github.com",
+                None,
+                None,
+                None,
                 0,
             )
             .unwrap();
@@ -378,7 +429,9 @@ mod tests {
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
                 &config,
-                "https://github.com",
+                None,
+                None,
+                None,
                 10,
             )
             .unwrap();

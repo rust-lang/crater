@@ -119,7 +119,9 @@ pub struct EventIssueComment {
 
 #[derive(Deserialize)]
 pub struct Issue {
-    pub number: usize,
+    pub number: i32,
+    pub url: String,
+    pub html_url: String,
     pub labels: Vec<Label>,
     pub pull_request: Option<PullRequest>,
 }
@@ -137,5 +139,4 @@ pub struct Label {
 #[derive(Deserialize)]
 pub struct Comment {
     pub body: String,
-    pub issue_url: String,
 }

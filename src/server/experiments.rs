@@ -287,7 +287,7 @@ impl Experiments {
         let record = self.db.get_row(
             "SELECT * FROM experiments \
              WHERE status = \"queued\" \
-             ORDER BY created_at;",
+             ORDER BY priority DESC, created_at;",
             &[],
             |r| ExperimentDBRecord::from_row(r),
         )?;
@@ -366,23 +366,43 @@ mod tests {
                 ExCapLints::Forbid,
                 &config,
                 "https://github.com",
-                5,
+                0,
+            )
+            .unwrap();
+        experiments
+            .create(
+                "important".into(),
+                &Toolchain::Dist("stable".into()),
+                &Toolchain::Dist("beta".into()),
+                ExMode::BuildAndTest,
+                ExCrateSelect::Demo,
+                ExCapLints::Forbid,
+                &config,
+                "https://github.com",
+                10,
             )
             .unwrap();
 
-        // Test the experiment is correctly assigned
-        let (new, ex) = experiments.next("foo-agent").unwrap().unwrap();
+        // Test the important experiment is correctly assigned
+        let (new, ex) = experiments.next("agent-1").unwrap().unwrap();
+        assert!(new);
+        assert_eq!(ex.experiment.name.as_str(), "important");
+        assert_eq!(ex.server_data.status, Status::Running);
+        assert_eq!(ex.server_data.assigned_to.unwrap().as_str(), "agent-1");
+
+        // Test the same experiment is returned to the agent
+        let (new, ex) = experiments.next("agent-1").unwrap().unwrap();
+        assert!(!new);
+        assert_eq!(ex.experiment.name.as_str(), "important");
+
+        // Test the less important experiment is assigned to the next agent
+        let (new, ex) = experiments.next("agent-2").unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.experiment.name.as_str(), "test");
         assert_eq!(ex.server_data.status, Status::Running);
-        assert_eq!(ex.server_data.assigned_to.unwrap().as_str(), "foo-agent");
-
-        // Test the same experiment is returned to the agent
-        let (new, ex) = experiments.next("foo-agent").unwrap().unwrap();
-        assert!(!new);
-        assert_eq!(ex.experiment.name.as_str(), "test");
+        assert_eq!(ex.server_data.assigned_to.unwrap().as_str(), "agent-2");
 
         // Test no other experiment is available for the other agents
-        assert!(experiments.next("bar-agent").unwrap().is_none());
+        assert!(experiments.next("agent-3").unwrap().is_none());
     }
 }

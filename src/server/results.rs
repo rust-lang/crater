@@ -181,7 +181,9 @@ mod tests {
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
                 &Config::default(),
-                "",
+                None,
+                None,
+                None,
                 0,
             )
             .unwrap();

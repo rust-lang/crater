@@ -35,20 +35,14 @@ fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> 
         "ping" => info!("the webhook is configured correctly!"),
         "issue_comment" => {
             let p: EventIssueComment = serde_json::from_str(payload)?;
-            if let Err(e) = process_command(
-                &p.sender.login,
-                &p.comment.body,
-                &p.comment.issue_url,
-                &p.issue,
-                data,
-            ) {
+            if let Err(e) = process_command(&p.sender.login, &p.comment.body, &p.issue, data) {
                 Message::new()
                     .line("rotating_light", format!("**Error:** {}", e))
                     .note(
                         "sos",
                         "If you have any trouble with Crater please ping **`@rust-lang/infra`**!",
                     )
-                    .send(&p.comment.issue_url, data)?;
+                    .send(&p.issue.url, data)?;
             }
         }
         e => bail!("invalid event received: {}", e),
@@ -57,13 +51,7 @@ fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> 
     Ok(())
 }
 
-fn process_command(
-    sender: &str,
-    body: &str,
-    issue_url: &str,
-    issue: &Issue,
-    data: &Data,
-) -> Result<()> {
+fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Result<()> {
     let start = format!("@{} ", data.bot_username);
     for line in body.lines() {
         if line.starts_with(&start) {
@@ -84,7 +72,7 @@ fn process_command(
                          the whitelist](\
                          https://github.com/rust-lang-nursery/crater/blob/master/config.toml).",
                     )
-                    .send(issue_url, data)?;
+                    .send(&issue.url, data)?;
                 return Ok(());
             }
 
@@ -93,7 +81,7 @@ fn process_command(
             if command.len() == 1 && command[0] == "ping" {
                 Message::new()
                     .line("ping_pong", "**Pong!**")
-                    .send(issue_url, data)?;
+                    .send(&issue.url, data)?;
                 break;
             }
 
@@ -129,7 +117,9 @@ fn process_command(
                         crates,
                         cap_lints,
                         &data.config,
-                        issue_url,
+                        Some(&issue.url),
+                        Some(&issue.html_url),
+                        Some(issue.number),
                         priority,
                     )?;
 
@@ -139,7 +129,7 @@ fn process_command(
                             format!("Experiment **`{}`** created and queued.", name),
                         )
                         .set_label(Label::ExperimentQueued)
-                        .send(issue_url, data)?;
+                        .send(&issue.url, data)?;
                 }
                 // Delete the experiment
                 Some(false) => {
@@ -152,7 +142,7 @@ fn process_command(
                     Message::new()
                         .line("wastebasket", format!("Experiment **`{}`** deleted!", name))
                         .set_label(Label::ExperimentCompleted)
-                        .send(issue_url, data)?;
+                        .send(&issue.url, data)?;
                 }
                 // Edit the experiment
                 None => {
@@ -194,11 +184,11 @@ fn process_command(
                                         name
                                     ),
                                 )
-                                .send(issue_url, data)?;
+                                .send(&issue.url, data)?;
                         } else {
                             Message::new()
                                 .line("warning", "No changes requested.")
-                                .send(issue_url, data)?;
+                                .send(&issue.url, data)?;
                         }
                     } else {
                         bail!("an experiment named **`{}`** doesn't exist!", name);
@@ -343,6 +333,8 @@ mod tests {
         // With simple issues no default should be used
         let issue = github::Issue {
             number: 1,
+            url: String::new(),
+            html_url: String::new(),
             labels: Vec::new(),
             pull_request: None,
         };
@@ -351,6 +343,8 @@ mod tests {
         // With pull requests pr-{number} should be used
         let pr = github::Issue {
             number: 2,
+            url: String::new(),
+            html_url: String::new(),
             labels: Vec::new(),
             pull_request: Some(github::PullRequest {
                 html_url: String::new(),

@@ -59,6 +59,16 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
         ",
     ));
 
+    result.push((
+        "add_agents_table",
+        "
+        CREATE TABLE agents (
+            name TEXT PRIMARY KEY,
+            last_heartbeat DATETIME
+        );
+        ",
+    ));
+
     result
 }
 

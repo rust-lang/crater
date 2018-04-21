@@ -8,7 +8,9 @@ use ex::{self, Experiment};
 use file;
 use run_graph;
 use serde_json;
-use std::fs;
+use std::{fs, thread};
+use std::time::Duration;
+use util;
 
 struct Agent {
     api: AgentApi,
@@ -54,9 +56,22 @@ impl Agent {
     }
 }
 
+fn run_heartbeat(url: &str, token: &str) {
+    let api = AgentApi::new(url, token);
+
+    thread::spawn(move || loop {
+        if let Err(e) = api.heartbeat().chain_err(|| "failed to send heartbeat") {
+            util::report_error(&e);
+        }
+        thread::sleep(Duration::from_secs(60));
+    });
+}
+
 pub fn run(url: &str, token: &str, threads_count: usize) -> Result<()> {
     let agent = Agent::new(url, token)?;
     let db = results::ResultsUploader::new(&agent.api);
+
+    run_heartbeat(url, token);
 
     loop {
         let ex = agent.experiment()?;

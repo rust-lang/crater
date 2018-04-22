@@ -1,7 +1,7 @@
 #[macro_use]
 mod http;
 
-mod agent;
+mod routes;
 mod auth;
 mod db;
 mod experiments;
@@ -10,7 +10,6 @@ mod messages;
 mod results;
 mod tokens;
 mod agents;
-mod webhooks;
 pub mod api_types;
 
 use config::Config;
@@ -52,29 +51,33 @@ pub fn run(config: Config) -> Result<()> {
         db: db.clone(),
     })?;
 
-    server.add_route(Method::Get, "/agent-api/config", auth_agent(agent::config));
+    server.add_route(
+        Method::Get,
+        "/agent-api/config",
+        auth_agent(routes::agent::config),
+    );
     server.add_route(
         Method::Get,
         "/agent-api/next-experiment",
-        auth_agent(agent::next_ex),
+        auth_agent(routes::agent::next_ex),
     );
     server.add_route(
         Method::Post,
         "/agent-api/complete-experiment",
-        auth_agent(agent::complete_ex),
+        auth_agent(routes::agent::complete_ex),
     );
     server.add_route(
         Method::Post,
         "/agent-api/record-result",
-        auth_agent(agent::record_result),
+        auth_agent(routes::agent::record_result),
     );
     server.add_route(
         Method::Post,
         "/agent-api/heartbeat",
-        auth_agent(agent::heartbeat),
+        auth_agent(routes::agent::heartbeat),
     );
 
-    server.add_route(Method::Post, "/webhooks", webhooks::handle);
+    server.add_route(Method::Post, "/webhooks", routes::webhooks::handle);
 
     info!("running server...");
     server.run()?;

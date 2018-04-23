@@ -6,48 +6,15 @@ use ex_run;
 use file;
 use git;
 use lists::{self, List};
-use results::ExperimentResultDB;
+use results::WriteResults;
 use run::RunCommand;
 use serde_json;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use toml_frobber;
 use toolchain::{self, CargoState, Toolchain};
 use util;
-
-macro_rules! string_enum {
-    (pub enum $name:ident { $($item:ident => $str:expr,)* }) => {
-        #[derive(Serialize, Deserialize, Debug, Clone)]
-        pub enum $name {
-            $($item,)*
-        }
-
-        impl FromStr for $name {
-            type Err = Error;
-
-            fn from_str(s: &str) -> Result<$name> {
-                Ok(match s {
-                    $($str => $name::$item,)*
-                    s => bail!("invalid {}: {}", stringify!($name), s),
-                })
-            }
-        }
-
-        impl $name {
-            pub fn to_str(&self) -> &'static str {
-                match *self {
-                    $($name::$item => $str,)*
-                }
-            }
-
-            pub fn possible_values() -> &'static [&'static str] {
-                &[$($str,)*]
-            }
-        }
-    }
-}
 
 string_enum!(pub enum ExMode {
     BuildAndTest => "build-and-test",
@@ -206,9 +173,9 @@ impl Experiment {
         Ok(())
     }
 
-    pub fn prepare_shared<DB: ExperimentResultDB>(&self, db: &DB) -> Result<()> {
+    pub fn prepare_shared<DB: WriteResults>(&self, db: &DB) -> Result<()> {
         self.fetch_repo_crates()?;
-        capture_shas(&self.crates, db)?;
+        capture_shas(self, &self.crates, db)?;
         crates::prepare(&self.crates)?;
 
         frob_tomls(self, &self.crates)?;
@@ -251,7 +218,7 @@ pub fn frob_tomls(ex: &Experiment, crates: &[Crate]) -> Result<()> {
     Ok(())
 }
 
-pub fn capture_shas<DB: ExperimentResultDB>(crates: &[Crate], db: &DB) -> Result<()> {
+pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB) -> Result<()> {
     for krate in crates {
         if let Crate::GitHub(ref repo) = *krate {
             let dir = repo.mirror_dir();
@@ -275,7 +242,7 @@ pub fn capture_shas<DB: ExperimentResultDB>(crates: &[Crate], db: &DB) -> Result
                 }
             };
 
-            db.record_sha(repo, &sha)
+            db.record_sha(ex, repo, &sha)
                 .chain_err(|| format!("failed to record the sha of GitHub repo {}", repo.slug()))?;
         }
     }

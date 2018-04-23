@@ -4,7 +4,7 @@ use errors::*;
 use ex::*;
 use file;
 use ref_slice::ref_slice;
-use results::{CrateResultWriter, ExperimentResultDB, FileDB, TestResult};
+use results::{DeleteResults, FileDB, TestResult, WriteResults};
 use std::collections::HashSet;
 use std::path::Path;
 use std::time::Instant;
@@ -13,18 +13,17 @@ use util;
 
 pub fn delete_all_results(ex_name: &str) -> Result<()> {
     let ex = &Experiment::load(ex_name)?;
-    let db = FileDB::for_experiment(ex);
-    db.delete_all_results()
+    let db = FileDB::default();
+    db.delete_all_results(ex)
 }
 
 pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, krate: &Crate) -> Result<()> {
     let ex = &Experiment::load(ex_name)?;
-    let db = FileDB::for_experiment(ex);
+    let db = FileDB::default();
 
     let tcs = tc.map(ref_slice).unwrap_or(&ex.toolchains);
     for tc in tcs {
-        let writer = db.for_crate(krate, tc);
-        writer.delete_result()?;
+        db.delete_result(ex, tc, krate)?;
     }
 
     Ok(())
@@ -41,7 +40,7 @@ pub fn run_ex(ex_name: &str, tc: Toolchain, config: &Config) -> Result<()> {
 }
 
 fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
-    let db = FileDB::for_experiment(ex);
+    let db = FileDB::default();
     verify_toolchains(ex, tcs)?;
 
     // Just for reporting progress
@@ -180,7 +179,7 @@ pub struct RunTestResult {
     pub skipped: bool,
 }
 
-pub fn run_test<DB: ExperimentResultDB>(
+pub fn run_test<DB: WriteResults>(
     action: &str,
     ex: &Experiment,
     tc: &Toolchain,
@@ -189,9 +188,7 @@ pub fn run_test<DB: ExperimentResultDB>(
     quiet: bool,
     test_fn: fn(&Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,
 ) -> Result<RunTestResult> {
-    let writer = db.for_crate(krate, tc);
-
-    if let Some(res) = writer.load_test_result()? {
+    if let Some(res) = db.already_executed(ex, tc, krate)? {
         info!("skipping crate {}. existing result: {}", krate, res);
         Ok(RunTestResult {
             result: res,
@@ -202,7 +199,7 @@ pub fn run_test<DB: ExperimentResultDB>(
             with_frobbed_toml(ex, krate, source_path)?;
             with_captured_lockfile(ex, krate, source_path)?;
 
-            writer.record_results(|| {
+            db.record_result(ex, tc, krate, || {
                 info!(
                     "{} {} against {} for {}",
                     action,

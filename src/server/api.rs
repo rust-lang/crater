@@ -44,13 +44,15 @@ pub mod post {
 pub mod ex_report {
     use ex;
     use report::{generate_report, TestResults};
+    use results::FileDB;
     use server::{Data, Params};
 
     #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     pub fn handler(data: &Data, params: Params) -> TestResults {
         let ex_name = params.find("experiment").unwrap();
         let ex = ex::Experiment::load(ex_name).unwrap();
-        generate_report(&data.config, &ex).unwrap()
+        let db = FileDB::default();
+        generate_report(&db, &data.config, &ex).unwrap()
     }
 }
 

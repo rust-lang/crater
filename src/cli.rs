@@ -213,16 +213,16 @@ impl Crater {
                     ex::ExOpts {
                         name: ex.0.clone(),
                         toolchains: vec![tc1.clone(), tc2.clone()],
-                        mode: mode.clone(),
-                        crates: crates.clone(),
-                        cap_lints: cap_lints.clone(),
+                        mode: *mode,
+                        crates: *crates,
+                        cap_lints: *cap_lints,
                     },
                     &config,
                 )?;
             }
             Crater::PrepareEx { ref ex } => {
                 let ex = ex::Experiment::load(&ex.0)?;
-                let db = FileDB::for_experiment(&ex);
+                let db = FileDB::default();
                 ex.prepare_shared(&db)?;
                 ex.prepare_local()?;
             }
@@ -253,7 +253,13 @@ impl Crater {
                 run_graph::run_ex(&ex.0, threads, &config)?;
             }
             Crater::GenReport { ref ex, ref dest } => {
-                report::gen(&ex.0, &report::FileWriter::create(dest.0.clone())?, &config)?;
+                let db = FileDB::default();
+                report::gen(
+                    &db,
+                    &ex.0,
+                    &report::FileWriter::create(dest.0.clone())?,
+                    &config,
+                )?;
             }
             Crater::PublishReport {
                 ref ex,
@@ -267,7 +273,8 @@ impl Crater {
                         prefix
                     }
                 };
-                report::gen(&ex.0, &report::S3Writer::create(s3_prefix)?, &config)?;
+                let db = FileDB::default();
+                report::gen(&db, &ex.0, &report::S3Writer::create(s3_prefix)?, &config)?;
             }
             Crater::Serve => {
                 server::start(server::Data { config });

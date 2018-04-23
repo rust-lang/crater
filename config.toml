@@ -338,6 +338,7 @@ catfs = { skip = true } #automatic
 catt-core = { skip = true } #automatic
 cattlerustler = { skip = true } #automatic
 cavity = { skip-tests = true } #automatic
+cc = { skip-tests = true } # flaky test
 cconst = { skip-tests = true } #automatic
 ccv = { skip = true } #automatic
 cdb = { skip-tests = true } #automatic
@@ -2222,6 +2223,7 @@ rerast_macros = { skip-tests = true } #automatic
 reru = { skip-tests = true } #automatic
 resources_package = { skip = true } #automatic
 rest_easy = { skip = true } #automatic
+restson = { skip-tests = true } # uses HTTP requests
 resutils-sys = { skip = true } #automatic
 resvg-qt = { skip = true } #automatic
 rethinkdb = { skip = true } #automatic
@@ -2428,6 +2430,7 @@ s3-vault = { skip = true } #automatic
 s32k144evb = { skip = true } #automatic
 s32k144evb-quickstart = { skip = true } #automatic
 s4 = { skip-tests = true } #automatic
+sacn = { skip-tests = true } # "Tests just fail if RUST_TEST_THREADS > 1" -author
 safe_app = { skip = true } #automatic
 safe_client = { skip = true } #automatic
 safe_launcher = { skip = true } #automatic

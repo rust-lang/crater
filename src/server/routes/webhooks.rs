@@ -54,150 +54,149 @@ fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> 
 fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Result<()> {
     let start = format!("@{} ", data.bot_username);
     for line in body.lines() {
-        if line.starts_with(&start) {
-            let command = line.split(' ').skip(1).collect::<Vec<_>>();
-            if command.is_empty() {
-                continue;
-            }
+        if !line.starts_with(&start) {
+            continue;
+        }
 
-            if !data.config.server.bot_acl.contains(sender) {
-                Message::new()
-                    .line(
-                        "lock",
-                        "**Error:** you're not allowed to interact with this bot.",
-                    )
-                    .note(
-                        "key",
-                        "If you are a member of the Rust team and need access, [add yourself to \
-                         the whitelist](\
-                         https://github.com/rust-lang-nursery/crater/blob/master/config.toml).",
-                    )
-                    .send(&issue.url, data)?;
-                return Ok(());
-            }
+        let command = line.split(' ').skip(1).collect::<Vec<_>>();
+        if command.is_empty() {
+            continue;
+        }
 
-            info!("user @{} sent command: {}", sender, command.join(" "));
+        if !data.config.server.bot_acl.contains(sender) {
+            Message::new()
+                .line(
+                    "lock",
+                    "**Error:** you're not allowed to interact with this bot.",
+                )
+                .note(
+                    "key",
+                    "If you are a member of the Rust team and need access, [add yourself to \
+                     the whitelist](\
+                     https://github.com/rust-lang-nursery/crater/blob/master/config.toml).",
+                )
+                .send(&issue.url, data)?;
+            return Ok(());
+        }
 
-            if command.len() == 1 && command[0] == "ping" {
-                Message::new()
-                    .line("ping_pong", "**Pong!**")
-                    .send(&issue.url, data)?;
-                break;
-            }
+        info!("user @{} sent command: {}", sender, command.join(" "));
 
-            let args = parse_edit_arguments(&command)?;
-
-            let name = if let Some(name) = args.name {
-                name
-            } else if let Some(default) = default_experiment_name(issue) {
-                default
-            } else {
-                bail!("missing experiment name!");
-            };
-
-            match args.run {
-                // Create the experiment
-                Some(true) => {
-                    if data.experiments.exists(&name)? {
-                        bail!("an experiment named **`{}`** already exists!", name);
-                    }
-
-                    let start = args.start.ok_or_else(|| "missing start toolchain")?;
-                    let end = args.end.ok_or_else(|| "missing end toolchain")?;
-                    let mode = args.mode.unwrap_or(ExMode::BuildAndTest);
-                    let crates = args.crates.unwrap_or(ExCrateSelect::Full);
-                    let cap_lints = args.lints.ok_or_else(|| "missing lints option")?;
-                    let priority = args.p.unwrap_or(0);
-
-                    data.experiments.create(
-                        &name,
-                        &start,
-                        &end,
-                        mode,
-                        crates,
-                        cap_lints,
-                        &data.config,
-                        Some(&issue.url),
-                        Some(&issue.html_url),
-                        Some(issue.number),
-                        priority,
-                    )?;
-
-                    Message::new()
-                        .line(
-                            "ok_hand",
-                            format!("Experiment **`{}`** created and queued.", name),
-                        )
-                        .set_label(Label::ExperimentQueued)
-                        .send(&issue.url, data)?;
-                }
-                // Delete the experiment
-                Some(false) => {
-                    if !data.experiments.exists(&name)? {
-                        bail!("an experiment named **`{}`** doesn't exist!", name);
-                    }
-
-                    data.experiments.delete(&name)?;
-
-                    Message::new()
-                        .line("wastebasket", format!("Experiment **`{}`** deleted!", name))
-                        .set_label(Label::ExperimentCompleted)
-                        .send(&issue.url, data)?;
-                }
-                // Edit the experiment
-                None => {
-                    if let Some(mut experiment) = data.experiments.get(&name)? {
-                        let mut changed = false;
-
-                        if let Some(start) = args.start {
-                            experiment.set_start_toolchain(&data.db, start)?;
-                            changed = true;
-                        }
-                        if let Some(end) = args.end {
-                            experiment.set_end_toolchain(&data.db, end)?;
-                            changed = true;
-                        }
-                        if let Some(mode) = args.mode {
-                            experiment.set_mode(&data.db, mode)?;
-                            changed = true;
-                        }
-                        if let Some(cap_lints) = args.lints {
-                            experiment.set_cap_lints(&data.db, cap_lints)?;
-                            changed = true;
-                        }
-                        if let Some(crates) = args.crates {
-                            let crates = ex::get_crates(crates, &data.config)?;
-                            experiment.set_crates(&data.db, crates)?;
-                            changed = true;
-                        }
-                        if let Some(priority) = args.p {
-                            experiment.set_priority(&data.db, priority)?;
-                            changed = true;
-                        }
-
-                        if changed {
-                            Message::new()
-                                .line(
-                                    "memo",
-                                    format!(
-                                        "Configuration of the **`{}`** experiment changed.",
-                                        name
-                                    ),
-                                )
-                                .send(&issue.url, data)?;
-                        } else {
-                            Message::new()
-                                .line("warning", "No changes requested.")
-                                .send(&issue.url, data)?;
-                        }
-                    } else {
-                        bail!("an experiment named **`{}`** doesn't exist!", name);
-                    }
-                }
-            }
-
+        if command.len() == 1 && command[0] == "ping" {
+            Message::new()
+                .line("ping_pong", "**Pong!**")
+                .send(&issue.url, data)?;
             break;
         }
+
+        let args = parse_edit_arguments(&command)?;
+
+        let name = if let Some(name) = args.name {
+            name
+        } else if let Some(default) = default_experiment_name(issue) {
+            default
+        } else {
+            bail!("missing experiment name!");
+        };
+
+        match args.run {
+            // Create the experiment
+            Some(true) => {
+                if data.experiments.exists(&name)? {
+                    bail!("an experiment named **`{}`** already exists!", name);
+                }
+
+                let start = args.start.ok_or_else(|| "missing start toolchain")?;
+                let end = args.end.ok_or_else(|| "missing end toolchain")?;
+                let mode = args.mode.unwrap_or(ExMode::BuildAndTest);
+                let crates = args.crates.unwrap_or(ExCrateSelect::Full);
+                let cap_lints = args.lints.ok_or_else(|| "missing lints option")?;
+                let priority = args.p.unwrap_or(0);
+
+                data.experiments.create(
+                    &name,
+                    &start,
+                    &end,
+                    mode,
+                    crates,
+                    cap_lints,
+                    &data.config,
+                    Some(&issue.url),
+                    Some(&issue.html_url),
+                    Some(issue.number),
+                    priority,
+                )?;
+
+                Message::new()
+                    .line(
+                        "ok_hand",
+                        format!("Experiment **`{}`** created and queued.", name),
+                    )
+                    .set_label(Label::ExperimentQueued)
+                    .send(&issue.url, data)?;
+            }
+            // Delete the experiment
+            Some(false) => {
+                if !data.experiments.exists(&name)? {
+                    bail!("an experiment named **`{}`** doesn't exist!", name);
+                }
+
+                data.experiments.delete(&name)?;
+
+                Message::new()
+                    .line("wastebasket", format!("Experiment **`{}`** deleted!", name))
+                    .set_label(Label::ExperimentCompleted)
+                    .send(&issue.url, data)?;
+            }
+            // Edit the experiment
+            None => {
+                if let Some(mut experiment) = data.experiments.get(&name)? {
+                    let mut changed = false;
+
+                    if let Some(start) = args.start {
+                        experiment.set_start_toolchain(&data.db, start)?;
+                        changed = true;
+                    }
+                    if let Some(end) = args.end {
+                        experiment.set_end_toolchain(&data.db, end)?;
+                        changed = true;
+                    }
+                    if let Some(mode) = args.mode {
+                        experiment.set_mode(&data.db, mode)?;
+                        changed = true;
+                    }
+                    if let Some(cap_lints) = args.lints {
+                        experiment.set_cap_lints(&data.db, cap_lints)?;
+                        changed = true;
+                    }
+                    if let Some(crates) = args.crates {
+                        let crates = ex::get_crates(crates, &data.config)?;
+                        experiment.set_crates(&data.db, crates)?;
+                        changed = true;
+                    }
+                    if let Some(priority) = args.p {
+                        experiment.set_priority(&data.db, priority)?;
+                        changed = true;
+                    }
+
+                    if changed {
+                        Message::new()
+                            .line(
+                                "memo",
+                                format!("Configuration of the **`{}`** experiment changed.", name),
+                            )
+                            .send(&issue.url, data)?;
+                    } else {
+                        Message::new()
+                            .line("warning", "No changes requested.")
+                            .send(&issue.url, data)?;
+                    }
+                } else {
+                    bail!("an experiment named **`{}`** doesn't exist!", name);
+                }
+            }
+        }
+
+        break;
     }
 
     Ok(())

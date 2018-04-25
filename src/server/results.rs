@@ -83,20 +83,19 @@ impl<'a> ReadResults for ResultsDB<'a> {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<String>> {
-        Ok(self.db
-            .query(
-                "SELECT log FROM results \
-                 WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
-                 LIMIT 1;",
-                &[
-                    &ex.name,
-                    &serde_json::to_string(toolchain)?,
-                    &serde_json::to_string(krate)?,
-                ],
-                |row| row.get("log"),
-            )?
-            .pop())
+    ) -> Result<Option<Vec<u8>>> {
+        let log: Option<String> = self.db.get_row(
+            "SELECT log FROM results \
+             WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
+             LIMIT 1;",
+            &[
+                &ex.name,
+                &serde_json::to_string(toolchain)?,
+                &serde_json::to_string(krate)?,
+            ],
+            |row| row.get("log"),
+        )?;
+        Ok(log.map(|text| text.as_bytes().to_vec()))
     }
 
     fn load_test_result(

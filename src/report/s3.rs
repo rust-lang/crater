@@ -77,8 +77,10 @@ impl S3Writer {
     pub fn create(client: Box<S3>, prefix: S3Prefix) -> Result<S3Writer> {
         Ok(S3Writer { prefix, client })
     }
+}
 
-    fn write_vec<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {
+impl ReportWriter for S3Writer {
+    fn write_bytes<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {
         let mut retry = 0;
         let req = PutObjectRequest {
             acl: Some("public-read".into()),
@@ -112,16 +114,15 @@ impl S3Writer {
             }
         }
     }
-}
 
-impl ReportWriter for S3Writer {
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()> {
-        self.write_vec(path, s.into_owned().into_bytes(), mime)
+        self.write_bytes(path, s.into_owned().into_bytes(), mime)
     }
+
     fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()> {
         let mut bytes = Vec::new();
         io::copy(r, &mut bytes)?;
-        self.write_vec(path, bytes, mime)
+        self.write_bytes(path, bytes, mime)
     }
 }
 

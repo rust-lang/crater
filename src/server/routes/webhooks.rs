@@ -26,7 +26,7 @@ struct EditArguments {
     p: Option<i32>,
 }
 
-fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> Result<()> {
+fn process_webhook(payload: &[u8], signature: &str, event: &str, data: &Data) -> Result<()> {
     if !verify_signature(&data.tokens.bot.webhooks_secret, payload, signature) {
         bail!("invalid signature for the webhook!");
     }
@@ -34,7 +34,7 @@ fn process_webhook(payload: &str, signature: &str, event: &str, data: &Data) -> 
     match event {
         "ping" => info!("the webhook is configured correctly!"),
         "issue_comment" => {
-            let p: EventIssueComment = serde_json::from_str(payload)?;
+            let p: EventIssueComment = serde_json::from_slice(payload)?;
             if let Err(e) = process_command(&p.sender.login, &p.comment.body, &p.issue, data) {
                 Message::new()
                     .line("rotating_light", format!("**Error:** {}", e))
@@ -242,7 +242,7 @@ fn parse_edit_arguments(args: &[&str]) -> Result<EditArguments> {
     parse_edit_arguments!(args, bools: [run], args: [name, start, end, mode, crates, lints, p])
 }
 
-fn verify_signature(secret: &str, payload: &str, raw_signature: &str) -> bool {
+fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
     // The signature must have a =
     if !raw_signature.contains('=') {
         return false;
@@ -277,7 +277,7 @@ fn verify_signature(secret: &str, payload: &str, raw_signature: &str) -> bool {
 
     // Verify the HMAC signature
     let key = ring::hmac::VerificationKey::new(digest, secret.as_bytes());
-    ring::hmac::verify(&key, payload.as_bytes(), &signature).is_ok()
+    ring::hmac::verify(&key, payload, &signature).is_ok()
 }
 
 macro_rules! headers {
@@ -308,7 +308,7 @@ pub fn handle(req: Request, data: Arc<Data>, ctx: Arc<Context>) -> ResponseFutur
     });
 
     Box::new(req.body().concat2().and_then(move |body| {
-        let body = String::from_utf8_lossy(&body.iter().cloned().collect::<Vec<u8>>()).to_string();
+        let body = body.iter().cloned().collect::<Vec<u8>>();
 
         ctx.handle.spawn(ctx.pool.spawn_fn(move || {
             if let Err(err) = process_webhook(&body, &signature, &event, &data) {

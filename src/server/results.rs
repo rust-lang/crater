@@ -165,6 +165,7 @@ pub fn generate_report(
 
 #[cfg(test)]
 mod tests {
+    use super::{ResultsDB, TaskResult};
     use base64;
     use config::Config;
     use crates::{Crate, GitHubRepo, RegistryCrate};
@@ -172,7 +173,6 @@ mod tests {
     use results::{ReadResults, TestResult};
     use server::db::Database;
     use server::experiments::Experiments;
-    use super::{ResultsDB, TaskResult};
     use toolchain::Toolchain;
 
     #[test]

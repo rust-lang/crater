@@ -123,7 +123,7 @@ impl ResponseExt for Response {
     }
 
     fn json<S: Serialize>(data: &S) -> Result<Response> {
-        let text = ::serde_json::to_string(data)?;
+        let text = ::serde_json::to_vec(data)?;
 
         Ok(Response::new()
             .with_header(ContentLength(text.len() as u64))
@@ -148,7 +148,7 @@ macro_rules! api_endpoint {
         $($other_name:ident: $other_type:ty),*
     | -> $result:ty $code:block, $inner:ident) => {
         fn $inner(
-            $body_name: String,
+            $body_name: Vec<u8>,
             $data_name: Arc<Data>,
             $($other_name: $other_type)*,
         ) -> Result<ApiResponse<$result>> $code
@@ -160,9 +160,7 @@ macro_rules! api_endpoint {
             $($other_name: $other_type),*
         ) -> ResponseFuture {
             Box::new(req.body().concat2().and_then(move |body| {
-                let body = String::from_utf8_lossy(
-                    &body.iter().cloned().collect::<Vec<u8>>(),
-                ).to_string();
+                let body = body.iter().cloned().collect::<Vec<u8>>();
 
                 ctx.pool
                     .spawn_fn(move || future::done($inner(body, data, $($other_name),*)))

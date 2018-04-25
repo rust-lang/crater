@@ -58,7 +58,7 @@ pub struct FileDB {
 
 impl FileDB {
     fn shafile_path(&self, ex: &Experiment) -> PathBuf {
-        ex_dir(&ex.name).join("res").join("shas.json")
+        ex_dir(&ex.name).join("shas.json")
     }
 
     fn result_dir(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> PathBuf {

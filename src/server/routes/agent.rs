@@ -75,7 +75,7 @@ api_endpoint!(complete_ex: |_body, data, auth: AuthDetails| -> bool {
 }, complete_ex_inner);
 
 api_endpoint!(record_result: |body, data, auth: AuthDetails| -> bool {
-    let result: TaskResult = serde_json::from_str(&body)?;
+    let result: TaskResult = serde_json::from_slice(&body)?;
 
     let experiment = data.experiments.run_by_agent(&auth.name)?.ok_or("no experiment run by this agent")?;
 

@@ -1,3 +1,4 @@
+use base64;
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use ex::Experiment;
@@ -99,7 +100,7 @@ impl AgentApi {
         &self,
         krate: &Crate,
         toolchain: &Toolchain,
-        log: &str,
+        log: &[u8],
         result: TestResult,
         shas: &[(GitHubRepo, String)],
     ) -> Result<()> {
@@ -109,7 +110,7 @@ impl AgentApi {
                     "crate": krate,
                     "toolchain": toolchain,
                     "result": result,
-                    "log": log,
+                    "log": base64::encode(log),
                     "shas": shas,
                 }))
                 .send()?

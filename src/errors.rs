@@ -15,6 +15,7 @@ error_chain! {
         RusotoTls(::rusoto_core::TlsError);
         Rusqlite(::rusqlite::Error);
         R2D2(::r2d2::Error);
+        Base64Decode(::base64::DecodeError);
     }
 
     links {

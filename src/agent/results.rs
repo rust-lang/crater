@@ -56,8 +56,8 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         let mut log_file = ::tempfile::NamedTempFile::new()?;
         let result = log::redirect(log_file.path(), f)?;
 
-        let mut buffer = String::new();
-        log_file.read_to_string(&mut buffer)?;
+        let mut buffer = Vec::new();
+        log_file.read_to_end(&mut buffer)?;
 
         let shas = ::std::mem::replace(self.shas.lock().unwrap().deref_mut(), Vec::new());
 

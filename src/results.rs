@@ -104,7 +104,7 @@ impl ReadResults for FileDB {
 
         if path.exists() {
             let mut buffer = Vec::new();
-            BufReader::new(File::open(path)?).read_exact(&mut buffer)?;
+            BufReader::new(File::open(path)?).read_to_end(&mut buffer)?;
             Ok(Some(buffer))
         } else {
             Ok(None)

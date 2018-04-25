@@ -1,3 +1,4 @@
+use base64;
 use config::Config;
 use crates::{Crate, GitHubRepo};
 use errors::*;
@@ -33,6 +34,10 @@ impl<'a> ResultsDB<'a> {
     }
 
     pub fn store(&self, ex: &Experiment, result: &TaskResult) -> Result<()> {
+        // Ensure the log is valid base64 data
+        // This is a bit wasteful, but there is no `validate` method on the base64 crate
+        base64::decode(&result.log).chain_err(|| "invalid base64 log file provided")?;
+
         self.db.transaction(|trans| {
             trans.execute(
                 "INSERT INTO results (experiment, crate, toolchain, result, log) \
@@ -95,7 +100,12 @@ impl<'a> ReadResults for ResultsDB<'a> {
             ],
             |row| row.get("log"),
         )?;
-        Ok(log.map(|text| text.as_bytes().to_vec()))
+
+        if let Some(log) = log {
+            Ok(Some(base64::decode(&log)?))
+        } else {
+            Ok(None)
+        }
     }
 
     fn load_test_result(
@@ -155,13 +165,14 @@ pub fn generate_report(
 
 #[cfg(test)]
 mod tests {
-    use super::{ResultsDB, TaskResult};
+    use base64;
     use config::Config;
     use crates::{Crate, GitHubRepo, RegistryCrate};
     use ex::{ExCapLints, ExCrateSelect, ExMode};
     use results::{ReadResults, TestResult};
     use server::db::Database;
     use server::experiments::Experiments;
+    use super::{ResultsDB, TaskResult};
     use toolchain::Toolchain;
 
     #[test]
@@ -202,7 +213,7 @@ mod tests {
                     krate: krate.clone(),
                     toolchain: toolchain.clone(),
                     result: TestResult::TestPass,
-                    log: "foo".into(),
+                    log: base64::encode("foo"),
                     shas: vec![
                         (
                             GitHubRepo {
@@ -225,7 +236,7 @@ mod tests {
 
         assert_eq!(
             results.load_log(&ex, &toolchain, &krate).unwrap(),
-            Some("foo".into())
+            Some("foo".as_bytes().to_vec())
         );
         assert_eq!(
             results.load_test_result(&ex, &toolchain, &krate).unwrap(),

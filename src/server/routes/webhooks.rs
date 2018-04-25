@@ -10,6 +10,7 @@ use server::Data;
 use server::github::{EventIssueComment, Issue};
 use server::http::{Context, ResponseExt, ResponseFuture};
 use server::messages::{Label, Message};
+use server::experiments::Status;
 use std::sync::Arc;
 use toolchain::Toolchain;
 use util;
@@ -150,6 +151,10 @@ fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Resu
             // Edit the experiment
             None => {
                 if let Some(mut experiment) = data.experiments.get(&name)? {
+                    if experiment.server_data.status != Status::Queued {
+                        bail!("the experiment **`{}`** can't be edited anymore.", name);
+                    }
+
                     let mut changed = false;
 
                     if let Some(start) = args.start {

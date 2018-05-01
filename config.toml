@@ -48,6 +48,7 @@ af_unix = { skip = true } #automatic
 afl-plugin = { skip = true } #automatic
 afl-sys = { skip-tests = true } #automatic
 ahadmin-sys = { skip = true } #automatic
+ai = { skip-tests = true } # may fail due to randomness
 ai_kit = { skip-tests = true } #automatic
 aio = { skip = true } #automatic
 airspy = { skip = true } #automatic
@@ -382,6 +383,7 @@ cicada = { skip = true } #automatic
 cifar_10_loader = { skip-tests = true } #automatic
 citrus = { skip = true } #automatic
 citymapper = { skip-tests = true } #automatic
+cldap = { skip = true } # flaky test
 clear-coat = { skip = true } #automatic
 clfsmgmt-sys = { skip = true } #automatic
 clfsw32-sys = { skip = true } #automatic
@@ -963,6 +965,7 @@ gear = { skip = true } # flaky build
 gears-cli = { skip = true } #automatic
 generic-dns-update = { skip = true } #automatic
 genetic = { skip = true } #automatic
+geocode = { skip-tests = true } # depends on network
 geomprim2d = { skip = true } #automatic
 geoshaper = { skip = true } #automatic
 get_errno = { skip = true } #automatic
@@ -1215,6 +1218,7 @@ icaparse = { skip-tests = true } #automatic
 icm32-sys = { skip = true } #automatic
 icmp = { skip-tests = true } #automatic
 icmui-sys = { skip = true } #automatic
+idx = { skip-tests = true } # depends on filesystem
 iepmapi-sys = { skip = true } #automatic
 iesetup-sys = { skip = true } #automatic
 ifaddrs = { skip = true } #automatic
@@ -1505,6 +1509,7 @@ llvm_link = { skip = true } #automatic
 lmdb-zero = { skip-tests = true } #automatic
 load = { skip = true } #automatic
 loadconf = { skip-tests = true } # flaky test
+loaded_dice = { skip-tests = true } # may fail due to randomness
 loadperf-sys = { skip = true } #automatic
 lobby = { skip = true } #automatic
 local-encoding = { skip-tests = true } #automatic
@@ -1760,6 +1765,7 @@ neon-serde = { skip = true } #automatic
 neon-sys = { skip = true } #automatic
 neovim-rs = { skip = true } #automatic
 nes = { skip-tests = true } #automatic
+net-utils = { skip-tests = true } # depends on network
 net2 = { skip-tests = true } #automatic
 netaddr = { skip = true } #automatic
 netcdf = { skip = true } #automatic
@@ -2048,6 +2054,7 @@ poke-a-mango = { skip = true } #automatic
 pokerlookup = { skip-tests = true } #automatic
 poly2tri = { skip = true } #automatic
 pomf = { skip = true } #automatic
+poolite = { skip-tests = true } # flaky test
 popcorn-blas = { skip-tests = true } #automatic
 portabledeviceguids-sys = { skip = true } #automatic
 portapack-hal = { skip = true } #automatic
@@ -2714,6 +2721,7 @@ syntex_bitflags = { skip = true } #automatic
 syr = { skip = true } #automatic
 sysadmin-bindings = { skip = true } #automatic
 sysbar = { skip = true } #automatic
+sysconf = { skip-tests = true } # flaky test
 sysctl = { skip = true } #automatic
 syslog-ng-common = { skip = true } #automatic
 system_uri = { skip-tests = true } #automatic
@@ -4255,6 +4263,7 @@ zyre-sys = { skip = true } #automatic
 "vlthr/accord" = { skip = true } #automatic
 "vmchale/project-init" = { skip = true } #automatic
 "vmware/haret" = { skip = true } #automatic
+"volks73/cargo-wix" = { skip = true } # flaky test
 "vrcod/rust-pi-approximation" = { skip = true } #automatic
 "vrcod/rust-twitter-streaming" = { skip = true } #automatic
 "wackywendell/gzserde" = { skip = true } #automatic

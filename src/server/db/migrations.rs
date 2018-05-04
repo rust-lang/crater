@@ -69,6 +69,16 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
         ",
     ));
 
+    result.push((
+        "add_saved_names_table",
+        "
+        CREATE TABLE saved_names (
+            issue INTEGER PRIMARY KEY ON CONFLICT IGNORE,
+            experiment TEXT NOT NULL
+        );
+        ",
+    ));
+
     result
 }
 

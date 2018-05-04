@@ -7,10 +7,11 @@ use hyper::server::{Request, Response};
 use ring;
 use serde_json;
 use server::Data;
+use server::db::{Database, QueryUtils};
+use server::experiments::Status;
 use server::github::{EventIssueComment, Issue};
 use server::http::{Context, ResponseExt, ResponseFuture};
 use server::messages::{Label, Message};
-use server::experiments::Status;
 use std::sync::Arc;
 use toolchain::Toolchain;
 use util;
@@ -92,8 +93,9 @@ fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Resu
         let args = parse_edit_arguments(&command)?;
 
         let name = if let Some(name) = args.name {
+            store_experiment_name(&data.db, issue, &name)?;
             name
-        } else if let Some(default) = default_experiment_name(issue) {
+        } else if let Some(default) = default_experiment_name(&data.db, issue)? {
             default
         } else {
             bail!("missing experiment name!");
@@ -207,12 +209,30 @@ fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Resu
     Ok(())
 }
 
-fn default_experiment_name(issue: &Issue) -> Option<String> {
-    if issue.pull_request.is_some() {
+fn store_experiment_name(db: &Database, issue: &Issue, name: &str) -> Result<()> {
+    // Store the provided experiment name to provide it automatically on next command
+    // We don't have to worry about conflicts here since the table is defined with
+    // ON CONFLICT IGNORE.
+    db.execute(
+        "INSERT INTO saved_names (issue, experiment) VALUES (?1, ?2);",
+        &[&issue.number, &name],
+    )
+}
+
+fn default_experiment_name(db: &Database, issue: &Issue) -> Result<Option<String>> {
+    let name = db.get_row(
+        "SELECT experiment FROM saved_names WHERE issue = ?1",
+        &[&issue.number],
+        |r| r.get(0),
+    )?;
+
+    Ok(if let Some(name) = name {
+        Some(name)
+    } else if issue.pull_request.is_some() {
         Some(format!("pr-{}", issue.number))
     } else {
         None
-    }
+    })
 }
 
 fn parse_edit_arguments(args: &[&str]) -> Result<EditArguments> {
@@ -329,11 +349,14 @@ pub fn handle(req: Request, data: Arc<Data>, ctx: Arc<Context>) -> ResponseFutur
 
 #[cfg(test)]
 mod tests {
-    use super::default_experiment_name;
+    use super::{default_experiment_name, store_experiment_name};
+    use server::db::Database;
     use server::github;
 
     #[test]
     fn test_default_experiment_name() {
+        let db = Database::temp().unwrap();
+
         // With simple issues no default should be used
         let issue = github::Issue {
             number: 1,
@@ -342,7 +365,7 @@ mod tests {
             labels: Vec::new(),
             pull_request: None,
         };
-        assert!(default_experiment_name(&issue).is_none());
+        assert!(default_experiment_name(&db, &issue).unwrap().is_none());
 
         // With pull requests pr-{number} should be used
         let pr = github::Issue {
@@ -354,6 +377,16 @@ mod tests {
                 html_url: String::new(),
             }),
         };
-        assert_eq!(default_experiment_name(&pr).unwrap().as_str(), "pr-2");
+        assert_eq!(
+            default_experiment_name(&db, &pr).unwrap().unwrap().as_str(),
+            "pr-2"
+        );
+
+        // With a saved experiment name that name should be returned
+        store_experiment_name(&db, &pr, "foo").unwrap();
+        assert_eq!(
+            default_experiment_name(&db, &pr).unwrap().unwrap().as_str(),
+            "foo"
+        );
     }
 }

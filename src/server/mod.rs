@@ -15,6 +15,7 @@ pub mod api_types;
 use config::Config;
 use errors::*;
 use hyper::Method;
+use mime;
 use server::agents::Agents;
 use server::auth::auth_agent;
 use server::experiments::Experiments;
@@ -50,6 +51,13 @@ pub fn run(config: Config) -> Result<()> {
         experiments: Experiments::new(db.clone()),
         db: db.clone(),
     })?;
+
+    server.add_route(Method::Get, "/", routes::ui::queue);
+    server.add_route(
+        Method::Get,
+        "/+static/queue.css",
+        routes::ui::static_file("static/queue.css", mime::TEXT_CSS),
+    );
 
     server.add_route(
         Method::Get,

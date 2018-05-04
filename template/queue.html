@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Crater queue</title>
+
+        <link rel="stylesheet" href="/+static/queue.css">
+    </head>
+    <body>
+        <div class="wrapper">
+            <h1>Crater</h1>
+
+            <h2>Available agents</h2>
+            <table>
+                <tr>
+                    <th width="15%">Agent name</th>
+                    <th width="15%">Status</th>
+                    <th>Experiment:</th>
+                    <th width="5%">GitHub</th>
+                    <th width="15%">Status</th>
+                    <th width="10%">Progress</th>
+                </tr>
+                {{#if agents}}
+                {{#each agents}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td class="agent-status-{{status}}">{{status_text}}</td>
+                    {{#if ex_name}}
+                    <td>{{ex_name}}</td>
+                    <td><a href="{{ex_github_url}}">#{{ex_github_issue}}</a></td>
+                    <td class="status-{{ex_status}}">{{ex_status_text}}</td>
+                    <td>{{ex_progress}}</td>
+                    {{else}}
+                    <td colspan="4">No experiment assigned.</td>
+                    {{/if}}
+                </tr>
+                {{/each}}
+                {{else}}
+                <tr>
+                    <td colspan="6">There isn't any agent registered.</td>
+                </tr>
+                {{/if}}
+            </table>
+
+            <h2>Experiments queue</h2>
+            <table>
+                <tr>
+                    <th width="5%">GitHub</th>
+                    <th>Experiment</th>
+                    <th width="5%">Priority</th>
+                    <th width="10%">Status</th>
+                </tr>
+                {{#if experiments}}
+                {{#each experiments}}
+                <tr>
+                    <td>
+                        {{#if github_url}}
+                        <a href="{{github_url}}">#{{github_issue}}</a>
+                        {{else}}
+                        -
+                        {{/if}}
+                    </td>
+                    <td>{{name}}</td>
+                    <td>{{priority}}</td>
+                    <td class="status-{{status}}">{{status_text}}</td>
+                </tr>
+                {{/each}}
+                {{else}}
+                <tr>
+                    <td colspan="6">There is no experiment in queue.</td>
+                </tr>
+                {{/if}}
+            </table>
+
+            <h2>Completed experiments</h2>
+            <table>
+                <tr>
+                    <th width="5%">GitHub</th>
+                    <th>Experiment</th>
+                    <th width="15%">Executed on</th>
+                    <th width="10%">Status</th>
+                    <th width="10%"></th>
+                </tr>
+                {{#each completed}}
+                <tr>
+                    <td>
+                        {{#if github_url}}
+                        <a href="{{github_url}}">#{{github_issue}}</a>
+                        {{else}}
+                        -
+                        {{/if}}
+                    </td>
+                    <td>{{name}}</td>
+                    <td>{{assigned_agent}}</td>
+                    <td class="status-{{status}}">{{status_text}}</td>
+                    <td>
+                        {{#if report_url}}<a href="{{report_url}}">Report</a>{{/if}}
+                    </td>
+                </tr>
+                {{/each}}
+            </table>
+        </div>
+    </body>
+</html>

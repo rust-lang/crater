@@ -107,6 +107,7 @@ impl<D: 'static> Service for Server<D> {
 
 pub trait ResponseExt {
     fn text<S: Display>(text: S) -> Response;
+    fn html<S: Display>(html: S) -> Response;
     fn json<S: Serialize>(data: &S) -> Result<Response>;
     fn api<T: Serialize>(resp: ApiResponse<T>) -> Result<Response>;
     fn as_future(self) -> ResponseFuture;
@@ -120,6 +121,15 @@ impl ResponseExt for Response {
             .with_header(ContentLength(text.len() as u64))
             .with_header(ContentType::plaintext())
             .with_body(text)
+    }
+
+    fn html<S: Display>(html: S) -> Response {
+        let html = html.to_string();
+
+        Response::new()
+            .with_header(ContentLength(html.len() as u64))
+            .with_header(ContentType::html())
+            .with_body(html)
     }
 
     fn json<S: Serialize>(data: &S) -> Result<Response> {

@@ -157,10 +157,14 @@ pub fn generate_report(
 
     report::gen(&ResultsDB::new(db), &ex.experiment, &writer, config)?;
 
-    Ok(format!(
+    Ok(report_url(ex_name, tokens))
+}
+
+pub fn report_url(ex_name: &str, tokens: &Tokens) -> String {
+    format!(
         "{}/{}/{}/index.html",
         tokens.reports_bucket.public_url, tokens.reports_bucket.bucket, ex_name
-    ))
+    )
 }
 
 #[cfg(test)]

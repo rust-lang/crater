@@ -9,12 +9,11 @@ use std::collections::HashSet;
 /// Number of seconds without an heartbeat after an agent should be considered unreachable.
 const INACTIVE_AFTER: i64 = 300;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum AgentStatus {
-    Working,
-    Idle,
-    Unreachable,
-}
+string_enum!(pub enum AgentStatus {
+    Working => "working",
+    Idle => "idle",
+    Unreachable => "unreachable",
+});
 
 pub struct Agent {
     name: String,
@@ -27,6 +26,14 @@ impl Agent {
         let experiments = Experiments::new(db.clone());
         self.experiment = experiments.run_by_agent(&self.name)?;
         Ok(self)
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn experiment(&self) -> Option<&ExperimentData> {
+        self.experiment.as_ref()
     }
 
     pub fn status(&self) -> AgentStatus {

@@ -14,10 +14,25 @@ string_enum!(pub enum Status {
     Completed => "completed",
 });
 
+impl Status {
+    pub fn pretty(&self) -> &'static str {
+        match *self {
+            Status::Queued => "Queued",
+            Status::Running => "Running",
+            Status::Completed => "Completed",
+        }
+    }
+}
+
 pub struct GitHubIssue {
     pub api_url: String,
     pub html_url: String,
     pub number: i32,
+}
+
+pub struct ExperimentProgress {
+    pub total: u32,
+    pub executed: u32,
 }
 
 pub struct ServerData {
@@ -124,6 +139,22 @@ impl ExperimentData {
         )?;
         self.experiment.toolchains[1] = end;
         Ok(())
+    }
+
+    pub fn progress(&self, db: &Database) -> Result<Option<ExperimentProgress>> {
+        if self.server_data.status != Status::Running {
+            return Ok(None);
+        }
+
+        let total = self.experiment.crates.len() as u32 * 2;
+        let executed = db.get_row(
+            "SELECT COUNT(*) FROM results WHERE experiment = ?1",
+            &[&self.experiment.name],
+            |r| r.get(0),
+        )?
+            .ok_or("expected a count of experiments")?;
+
+        Ok(Some(ExperimentProgress { total, executed }))
     }
 }
 
@@ -287,6 +318,20 @@ impl Experiments {
         } else {
             Ok(None)
         }
+    }
+
+    pub fn get_all(&self) -> Result<Vec<ExperimentData>> {
+        let records = self.db.query(
+            "SELECT * FROM experiments ORDER BY priority DESC, created_at;",
+            &[],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+
+        let mut results = Vec::with_capacity(records.len());
+        for record in records {
+            results.push(record.into_experiment_data(&self.db)?);
+        }
+        Ok(results)
     }
 
     pub fn run_by_agent(&self, agent: &str) -> Result<Option<ExperimentData>> {

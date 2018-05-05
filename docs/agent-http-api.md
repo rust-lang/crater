@@ -17,6 +17,50 @@ Authorization: token YOUR-AGENT-TOKEN
 
 If authentication fails the API returns a `403 Unauthorized` status code.
 
+## Response format
+
+Every valid endpoint of the Agent API returns a JSON payload as response. The
+payload contains the following keys:
+
+* `status`: the type of the response; can be `unauthorized`, `success` or
+  `internal-error` (compatibility note: expect more types to be added in the
+  future)
+* `result`: the result of the request (only available if the status is `success`)
+* `error`: the error message (only available if the status is `internal-error`)
+
+```json
+{
+    "status": "success",
+    "result": true
+}
+```
+
+```json
+{
+    "status": "internal-error",
+    "error": "Something happened"
+}
+```
+
+## Expected behavior
+
+While any endpoint can be called at any time, Crater expects a proper agent to
+behave this way:
+
+* `GET /config` should be called when the agent starts, and its results should
+  be used as the configuration of the agent
+* `POST /heartbeat` should be called when the agent starts and every minute,
+  regardless of what the agent is doing
+* `GET /agent-api/next-experiment` should be called when the agent is waiting
+  for a new experiment; the endpoint returns `null` when there is no experiment
+  available, so the agent should just call the endpoint again after a few
+  seconds
+* `POST /agent-api/record-result` should be called as soon as a result is
+  available
+* `POST /agent-api/complete-experiment` should be called as soon as the agent
+  has nothing left to do with the current experiment; after the method returns
+  `next-experiment` will return a new experiment
+
 ## Available endpoints
 
 All the endpoints return a JSON response with a 200 status code if the request
@@ -35,8 +79,11 @@ Response fields:
 
 ```json
 {
-    "agent-name": "crater-1",
-    "crater-config": {...}
+    "status": "success",
+    "result": {
+        "agent-name": "crater-1",
+        "crater-config": {...}
+    }
 }
 ```
 
@@ -55,33 +102,92 @@ Response fields:
 * `toolchains`: a list of the toolchains used in this experiment
 * `mode`: the experiment mode
 
-If there is no experiment available at the moment this returns only `null`.
+```json
+{
+    "status": "success",
+    "result": {
+        "name": "experiment-1",
+        "crates": [
+            {
+                "Registry": {
+                    "name":"lazy_static",
+                    "version":"0.2.11"
+                }
+            },
+            {
+                "GitHub": {
+                    "org": "brson",
+                    "name": "hello-rs"
+                }
+            }
+        ],
+        "toolchains": [
+            {
+                "Dist": "stable"
+            },
+            {
+                "Dist": "beta"
+            }
+        ],
+        "mode": "BuildAndTest"
+    }
+}
+```
+
+If there is no experiment, the result is `null`:
 
 ```json
 {
-    "name": "experiment-1",
-    "crates": [
-        {
-            "Version": {
-                "name":"lazy_static",
-                "version":"0.2.11"
-            }
-        },
-        {
-            "Repo": {
-                "url": "https://github.com/brson/hello-rs"
-            }
+    "status": "success",
+    "result": null
+}
+```
+
+### `POST /record-result`
+
+This endpoint uploads the result of a single job run by the agent to the Crater
+server. The endpoint expects the following data to be provided as the request
+body, encoded in JSON:
+
+* `crate`: the serialized crate name
+* `toolchain`: the serialized toolchain name
+* `result`: the result of the experiment (for example `TestPass`)
+* `log`: the base64-encoded output of the job
+* `shas`: a list of GitHub repo shas captured during the job; can be empty
+
+For example, this is a valid request data:
+
+```json
+{
+    "crate": {
+        "GitHub": {
+            "org": "brson",
+            "repo": "hello-rs"
         }
-    ],
-    "toolchains": [
-        {
-            "Dist": "stable"
-        },
-        {
-            "Dist": "beta"
-        }
-    ],
-    "mode": "BuildAndTest"
+    },
+    "toolchain": {
+        "Dist": "stable"
+    },
+    "result": "TestPass",
+    "log": "cGlhZGluYSByb21hZ25vbGE=",
+    "shas": [
+        [
+            {
+                "org": "brson",
+                "name": "hello-rs"
+            },
+            "f45e5e3289dd46aaec8392134a12c019aca3d117"
+        ]
+    ]
+}
+```
+
+The endpoint replies with `true`.
+
+```json
+{
+    "status": "success",
+    "result": true
 }
 ```
 
@@ -91,4 +197,26 @@ This endpoint marks the experiment currently being run by the authenticated
 agent as complete. The server will publish the report, notify the user and
 assign a new experiment to the agent.
 
-The endpoint replies with an `OK` plain message.
+The endpoint replies with `true`.
+
+```json
+{
+    "status": "success",
+    "result": true
+}
+```
+
+### `POST /heartbeat`
+
+This endpoint tells the Crater server the agent is still alive. The method
+should be called by the agent every minute, and after some time the method is
+not called the Crater server will mark the agent as unreachable.
+
+The endpoint replies with `true`.
+
+```json
+{
+    "status": "success",
+    "result": true
+}
+```

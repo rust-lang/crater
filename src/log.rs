@@ -57,7 +57,7 @@ fn file_drain(
 }
 
 pub fn init() -> slog_scope::GlobalLoggerGuard {
-    START_TIME.deref();
+    let _ = START_TIME.deref();
 
     fs::create_dir_all(&*LOG_DIR).expect("Could create log directory.");
     let file = file_drain(global_log_name());

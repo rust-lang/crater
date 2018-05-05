@@ -1,36 +1,9 @@
-use hyper::header::{Authorization, Scheme};
+use hyper::header::Authorization;
 use hyper::server::{Request, Response};
 use server::Data;
-use server::api_types::ApiResponse;
+use server::api_types::{ApiResponse, CraterToken};
 use server::http::{Context, Handler, ResponseExt, ResponseFuture};
-use std::fmt;
-use std::str::FromStr;
 use std::sync::Arc;
-
-#[derive(Debug, Clone)]
-pub struct Token {
-    pub token: String,
-}
-
-impl Scheme for Token {
-    fn scheme() -> Option<&'static str> {
-        Some("token")
-    }
-
-    fn fmt_scheme(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.token)
-    }
-}
-
-impl FromStr for Token {
-    type Err = ::hyper::Error;
-
-    fn from_str(s: &str) -> ::hyper::Result<Token> {
-        Ok(Token {
-            token: s.to_owned(),
-        })
-    }
-}
 
 enum TokenType {
     Agent,
@@ -54,7 +27,7 @@ where
 {
     fn handle(&self, req: Request, data: Arc<Data>, ctx: Arc<Context>) -> ResponseFuture {
         let provided_token = req.headers()
-            .get::<Authorization<Token>>()
+            .get::<Authorization<CraterToken>>()
             .map(|t| t.token.clone());
 
         let mut authorized_as = None;

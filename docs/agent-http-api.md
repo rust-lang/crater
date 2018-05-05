@@ -12,7 +12,7 @@ Each agent should have its own unique API token. To authenticate you need to
 provide the `Authorization` HTTP header with the right token:
 
 ```
-Authorization: token YOUR-AGENT-TOKEN
+Authorization: CraterToken YOUR-AGENT-TOKEN
 ```
 
 If authentication fails the API returns a `403 Unauthorized` status code.

@@ -5,7 +5,7 @@ use ex::Experiment;
 use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
 use results::TestResult;
 use serde::de::DeserializeOwned;
-use server::api_types::{AgentConfig, ApiResponse};
+use server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use toolchain::Toolchain;
 
 trait ResponseExt {
@@ -48,7 +48,9 @@ impl AgentApi {
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
         let mut req = self.client
             .request(method, &format!("{}/agent-api/{}", self.url, url));
-        req.header(header::Authorization(format!("token {}", self.token)));
+        req.header(header::Authorization(CraterToken {
+            token: self.token.clone(),
+        }));
         req
     }
 

@@ -1,5 +1,8 @@
 use config::Config;
 use hyper::StatusCode;
+use hyper::header::Scheme;
+use std::fmt;
+use std::str::FromStr;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -23,5 +26,30 @@ impl<T> ApiResponse<T> {
             ApiResponse::InternalError { .. } => StatusCode::InternalServerError,
             ApiResponse::Unauthorized => StatusCode::Unauthorized,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CraterToken {
+    pub token: String,
+}
+
+impl Scheme for CraterToken {
+    fn scheme() -> Option<&'static str> {
+        Some("CraterToken")
+    }
+
+    fn fmt_scheme(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.token)
+    }
+}
+
+impl FromStr for CraterToken {
+    type Err = ::hyper::Error;
+
+    fn from_str(s: &str) -> ::hyper::Result<CraterToken> {
+        Ok(CraterToken {
+            token: s.to_owned(),
+        })
     }
 }

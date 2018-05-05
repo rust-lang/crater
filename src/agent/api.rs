@@ -16,7 +16,7 @@ impl ResponseExt for ::reqwest::Response {
     fn to_api_response<T: DeserializeOwned>(mut self) -> Result<T> {
         // 404 responses are not JSON, so avoid parsing them
         if self.status() == StatusCode::NotFound {
-            bail!("invalid API enpoint called");
+            bail!("invalid API endpoint called");
         }
 
         let result: ApiResponse<T> = self.json().chain_err(|| "failed to parse API response")?;

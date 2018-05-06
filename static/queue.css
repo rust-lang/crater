@@ -1,0 +1,66 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0.5em;
+
+    background: #eee;
+}
+
+h1 {
+    font-size: 2em;
+    font-weight: 400;
+    margin: 0.3em 0;
+    text-align: center;
+}
+
+h2 {
+    color: #888;
+    font-weight: 400;
+    font-size: 1.3em;
+    margin-top: 2em;
+    text-align: center;
+}
+
+.wrapper {
+    max-width: 82em;
+    margin: auto;
+}
+
+table {
+    width: 100%;
+
+    border-collapse: collapse;
+    border-radius: 0.2em;
+    background: #fff;
+    box-shadow: 0 0.2em 0.2em rgba(0, 0, 0, 0.2);
+}
+
+table tr td, table tr th {
+    padding: 1em 1.2em;
+}
+
+table tr td {
+    border-top: 0.1em solid #eee;
+}
+
+table tr th {
+    font-weight: 400;
+    text-align: left;
+    color: #888;
+}
+
+.status-completed, .agent-status-idle {
+    color: #34b434;
+}
+
+.status-running, .agent-status-working {
+    color: #f08c1d;
+}
+
+.agent-status-unreachable {
+    color: #e32121;
+}

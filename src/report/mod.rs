@@ -7,16 +7,16 @@ use handlebars::Handlebars;
 use mime::{self, Mime};
 use results::{ReadResults, TestResult};
 use serde_json;
-use std::{fs, io};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt::{self, Display};
-use std::fs::File;
+use std::fs::{self, File};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
 mod s3;
-pub use self::s3::{S3Prefix, S3Writer};
+pub use self::s3::{get_client_for_bucket, S3Prefix, S3Writer};
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
@@ -124,7 +124,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
             let content = db.load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| "missing logs".into()))
                 .chain_err(|| format!("failed to read log of {} on {}", krate, tc.to_string()))?;
-            dest.write_string(log_path, content.into(), &mime::TEXT_PLAIN_UTF_8)?;
+            dest.write_bytes(log_path, content, &mime::TEXT_PLAIN_UTF_8)?;
         }
     }
     Ok(())
@@ -132,13 +132,11 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
 
 pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     db: &DB,
-    ex_name: &str,
+    ex: &ex::Experiment,
     dest: &W,
     config: &Config,
 ) -> Result<()> {
-    let ex = ex::Experiment::load(ex_name)?;
-
-    let res = generate_report(db, config, &ex)?;
+    let res = generate_report(db, config, ex)?;
 
     info!("writing results to {}", dest);
     info!("writing metadata");
@@ -156,7 +154,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     info!("writing html files");
     write_html_files(dest)?;
     info!("writing logs");
-    write_logs(db, &ex, dest, config)?;
+    write_logs(db, ex, dest, config)?;
 
     Ok(())
 }
@@ -256,8 +254,9 @@ fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
 }
 
 pub trait ReportWriter {
+    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, mime: &Mime) -> Result<()>;
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()>;
-    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()>;
+    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()>;
 }
 
 pub struct FileWriter(PathBuf);
@@ -276,11 +275,18 @@ impl FileWriter {
 }
 
 impl ReportWriter for FileWriter {
+    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, _: &Mime) -> Result<()> {
+        self.create_prefix(path.as_ref())?;
+        File::create(self.0.join(path.as_ref()))?.write_all(&b)?;
+        Ok(())
+    }
+
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Result<()> {
         self.create_prefix(path.as_ref())?;
         file::write_string(&self.0.join(path.as_ref()), s.as_ref())
     }
-    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, _: &Mime) -> Result<()> {
+
+    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, _: &Mime) -> Result<()> {
         self.create_prefix(path.as_ref())?;
         io::copy(r, &mut File::create(self.0.join(path.as_ref()))?)?;
         Ok(())

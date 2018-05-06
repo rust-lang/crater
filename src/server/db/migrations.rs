@@ -3,9 +3,9 @@ use rusqlite::Connection;
 use std::collections::HashSet;
 
 fn migrations() -> Vec<(&'static str, &'static str)> {
-    let mut result = Vec::new();
+    let mut migrations = Vec::new();
 
-    result.push((
+    migrations.push((
         "initial",
         "
         CREATE TABLE experiments (
@@ -20,7 +20,11 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
             created_at DATETIME NOT NULL,
             status TEXT NOT NULL,
             github_issue TEXT,
-            assigned_to TEXT
+            github_issue_url TEXT,
+            github_issue_number INTEGER,
+            assigned_to TEXT,
+
+            FOREIGN KEY (assigned_to) REFERENCES agents(name) ON DELETE SET NULL
         );
 
         CREATE TABLE experiment_crates (
@@ -37,6 +41,7 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
             result TEXT NOT NULL,
             log BLOB NOT NULL,
 
+            PRIMARY KEY (experiment, crate, toolchain) ON CONFLICT REPLACE,
             FOREIGN KEY (experiment) REFERENCES experiments(name) ON DELETE CASCADE
         );
 
@@ -48,38 +53,20 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
 
             FOREIGN KEY (experiment) REFERENCES experiments(name) ON DELETE CASCADE
         );
-        ",
-    ));
 
-    result.push((
-        "add_extra_github_info",
-        "
-        ALTER TABLE experiments ADD COLUMN github_issue_url TEXT;
-        ALTER TABLE experiments ADD COLUMN github_issue_number INTEGER;
-        ",
-    ));
-
-    result.push((
-        "add_agents_table",
-        "
         CREATE TABLE agents (
             name TEXT PRIMARY KEY,
             last_heartbeat DATETIME
         );
-        ",
-    ));
 
-    result.push((
-        "add_saved_names_table",
-        "
         CREATE TABLE saved_names (
-            issue INTEGER PRIMARY KEY ON CONFLICT IGNORE,
+            issue INTEGER PRIMARY KEY ON CONFLICT REPLACE,
             experiment TEXT NOT NULL
         );
         ",
     ));
 
-    result
+    migrations
 }
 
 pub fn execute(db: &mut Connection) -> Result<()> {

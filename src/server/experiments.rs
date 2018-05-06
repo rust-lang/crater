@@ -331,10 +331,12 @@ impl Experiments {
 
 #[cfg(test)]
 mod tests {
-    use super::{Experiments, Status};
     use config::Config;
     use ex::{ExCapLints, ExCrateSelect, ExMode};
+    use server::agents::Agents;
     use server::db::Database;
+    use server::tokens::Tokens;
+    use super::{Experiments, Status};
     use toolchain::Toolchain;
 
     #[test]
@@ -403,6 +405,14 @@ mod tests {
     fn test_assigning_experiment() {
         let db = Database::temp().unwrap();
         let experiments = Experiments::new(db.clone());
+
+        let mut tokens = Tokens::default();
+        tokens.agents.insert("token1".into(), "agent-1".into());
+        tokens.agents.insert("token2".into(), "agent-2".into());
+        tokens.agents.insert("token3".into(), "agent-3".into());
+
+        // Populate the `agents` table
+        let _ = Agents::new(db.clone(), &tokens).unwrap();
 
         let config = Config::default();
         experiments

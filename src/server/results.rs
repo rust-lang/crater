@@ -34,10 +34,6 @@ impl<'a> ResultsDB<'a> {
     }
 
     pub fn store(&self, ex: &Experiment, result: &TaskResult) -> Result<()> {
-        // Ensure the log is valid base64 data
-        // This is a bit wasteful, but there is no `validate` method on the base64 crate
-        base64::decode(&result.log).chain_err(|| "invalid base64 log file provided")?;
-
         self.db.transaction(|trans| {
             trans.execute(
                 "INSERT INTO results (experiment, crate, toolchain, result, log) \
@@ -47,7 +43,7 @@ impl<'a> ResultsDB<'a> {
                     &serde_json::to_string(&result.krate)?,
                     &serde_json::to_string(&result.toolchain)?,
                     &result.result.to_str(),
-                    &result.log,
+                    &base64::decode(&result.log).chain_err(|| "invalid base64 log provided")?,
                 ],
             )?;
 
@@ -89,7 +85,7 @@ impl<'a> ReadResults for ResultsDB<'a> {
         toolchain: &Toolchain,
         krate: &Crate,
     ) -> Result<Option<Vec<u8>>> {
-        let log: Option<String> = self.db.get_row(
+        self.db.get_row(
             "SELECT log FROM results \
              WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
              LIMIT 1;",
@@ -99,13 +95,7 @@ impl<'a> ReadResults for ResultsDB<'a> {
                 &serde_json::to_string(krate)?,
             ],
             |row| row.get("log"),
-        )?;
-
-        if let Some(log) = log {
-            Ok(Some(base64::decode(&log)?))
-        } else {
-            Ok(None)
-        }
+        )
     }
 
     fn load_test_result(

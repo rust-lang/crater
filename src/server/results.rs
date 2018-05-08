@@ -15,6 +15,11 @@ pub struct TaskResult {
     pub toolchain: Toolchain,
     pub result: TestResult,
     pub log: String,
+}
+
+#[derive(Deserialize)]
+pub struct ProgressData {
+    pub results: Vec<TaskResult>,
     pub shas: Vec<(GitHubRepo, String)>,
 }
 
@@ -27,21 +32,23 @@ impl<'a> ResultsDB<'a> {
         ResultsDB { db }
     }
 
-    pub fn store(&self, ex: &Experiment, result: &TaskResult) -> Result<()> {
+    pub fn store(&self, ex: &Experiment, data: &ProgressData) -> Result<()> {
         self.db.transaction(|trans| {
-            trans.execute(
-                "INSERT INTO results (experiment, crate, toolchain, result, log) \
-                 VALUES (?1, ?2, ?3, ?4, ?5);",
-                &[
-                    &ex.name,
-                    &serde_json::to_string(&result.krate)?,
-                    &serde_json::to_string(&result.toolchain)?,
-                    &result.result.to_str(),
-                    &base64::decode(&result.log).chain_err(|| "invalid base64 log provided")?,
-                ],
-            )?;
+            for result in &data.results {
+                trans.execute(
+                    "INSERT INTO results (experiment, crate, toolchain, result, log) \
+                     VALUES (?1, ?2, ?3, ?4, ?5);",
+                    &[
+                        &ex.name,
+                        &serde_json::to_string(&result.krate)?,
+                        &serde_json::to_string(&result.toolchain)?,
+                        &result.result.to_str(),
+                        &base64::decode(&result.log).chain_err(|| "invalid base64 log provided")?,
+                    ],
+                )?;
+            }
 
-            for &(ref repo, ref sha) in &result.shas {
+            for &(ref repo, ref sha) in &data.shas {
                 trans.execute(
                     "INSERT INTO shas (experiment, org, name, sha) VALUES (?1, ?2, ?3, ?4)",
                     &[&ex.name, &repo.org, &repo.name, &sha.as_str()],
@@ -122,7 +129,7 @@ impl<'a> ReadResults for ResultsDB<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ResultsDB, TaskResult};
+    use super::{ProgressData, ResultsDB, TaskResult};
     use base64;
     use config::Config;
     use crates::{Crate, GitHubRepo, RegistryCrate};
@@ -166,11 +173,15 @@ mod tests {
         results
             .store(
                 &ex,
-                &TaskResult {
-                    krate: krate.clone(),
-                    toolchain: toolchain.clone(),
-                    result: TestResult::TestPass,
-                    log: base64::encode("foo"),
+                &ProgressData {
+                    results: vec![
+                        TaskResult {
+                            krate: krate.clone(),
+                            toolchain: toolchain.clone(),
+                            result: TestResult::TestPass,
+                            log: base64::encode("foo"),
+                        },
+                    ],
                     shas: vec![
                         (
                             GitHubRepo {

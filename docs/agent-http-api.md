@@ -55,7 +55,7 @@ behave this way:
   for a new experiment; the endpoint returns `null` when there is no experiment
   available, so the agent should just call the endpoint again after a few
   seconds
-* `POST /agent-api/record-result` should be called as soon as a result is
+* `POST /agent-api/record-progress` should be called as soon as a result is
   available
 * `POST /agent-api/complete-experiment` should be called as soon as the agent
   has nothing left to do with the current experiment; after the method returns
@@ -143,33 +143,40 @@ If there is no experiment, the result is `null`:
 }
 ```
 
-### `POST /record-result`
+### `POST /record-progress`
 
 This endpoint uploads the result of a single job run by the agent to the Crater
 server. The endpoint expects the following data to be provided as the request
 body, encoded in JSON:
 
-* `crate`: the serialized crate name
-* `toolchain`: the serialized toolchain name
-* `result`: the result of the experiment (for example `TestPass`)
-* `log`: the base64-encoded output of the job
+* `results`: a list of job results that should be recorded:
+
+    * `crate`: the serialized crate name
+    * `toolchain`: the serialized toolchain name
+    * `result`: the result of the experiment (for example `TestPass`)
+    * `log`: the base64-encoded output of the job
+
 * `shas`: a list of GitHub repo shas captured during the job; can be empty
 
 For example, this is a valid request data:
 
 ```json
 {
-    "crate": {
-        "GitHub": {
-            "org": "brson",
-            "repo": "hello-rs"
+    "results": [
+        {
+            "crate": {
+                "GitHub": {
+                    "org": "brson",
+                    "repo": "hello-rs"
+                }
+            },
+            "toolchain": {
+                "Dist": "stable"
+            },
+            "result": "TestPass",
+            "log": "cGlhZGluYSByb21hZ25vbGE="
         }
-    },
-    "toolchain": {
-        "Dist": "stable"
-    },
-    "result": "TestPass",
-    "log": "cGlhZGluYSByb21hZ25vbGE=",
+    ],
     "shas": [
         [
             {

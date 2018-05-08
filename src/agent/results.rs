@@ -63,7 +63,7 @@ impl<'a> WriteResults for ResultsUploader<'a> {
 
         info!("sending results to the crater server...");
         self.api
-            .record_result(krate, toolchain, &buffer, result, &shas)?;
+            .record_progress(krate, toolchain, &buffer, result, &shas)?;
 
         Ok(result)
     }

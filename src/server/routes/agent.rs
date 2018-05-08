@@ -9,7 +9,7 @@ use server::auth::AuthDetails;
 use server::experiments::Status;
 use server::http::{Context, ResponseExt, ResponseFuture};
 use server::messages::Message;
-use server::results::{ResultsDB, TaskResult};
+use server::results::{ProgressData, ResultsDB};
 use std::sync::Arc;
 
 api_endpoint!(config: |_body, data, auth: AuthDetails| -> AgentConfig {
@@ -57,24 +57,24 @@ api_endpoint!(complete_ex: |_body, data, auth: AuthDetails| -> bool {
     Ok(ApiResponse::Success { result: true })
 }, complete_ex_inner);
 
-api_endpoint!(record_result: |body, data, auth: AuthDetails| -> bool {
-    let result: TaskResult = serde_json::from_slice(&body)?;
+api_endpoint!(record_progress: |body, data, auth: AuthDetails| -> bool {
+    let result: ProgressData = serde_json::from_slice(&body)?;
 
-    let experiment = data.experiments.run_by_agent(&auth.name)?.ok_or("no experiment run by this agent")?;
+    let experiment = data.experiments
+        .run_by_agent(&auth.name)?
+        .ok_or("no experiment run by this agent")?;
 
     info!(
-        "receiving a result from agent {} (ex: {}, tc: {}, crate: {})",
-        auth.name,
+        "received progress on experiment {} from agent {}",
         experiment.experiment.name,
-        result.toolchain.to_string(),
-        result.krate
+        auth.name,
     );
 
     let db = ResultsDB::new(&data.db);
     db.store(&experiment.experiment, &result)?;
 
     Ok(ApiResponse::Success { result: true })
-}, record_result_inner);
+}, record_progress_inner);
 
 api_endpoint!(heartbeat: |_body, data, auth: AuthDetails| -> bool {
     data.agents.record_heartbeat(&auth.name)?;

@@ -98,7 +98,7 @@ impl AgentApi {
         })
     }
 
-    pub fn record_result(
+    pub fn record_progress(
         &self,
         krate: &Crate,
         toolchain: &Toolchain,
@@ -107,12 +107,16 @@ impl AgentApi {
         shas: &[(GitHubRepo, String)],
     ) -> Result<()> {
         self.retry(|this| {
-            let _: bool = this.build_request(Method::Post, "record-result")
+            let _: bool = this.build_request(Method::Post, "record-progress")
                 .json(&json!({
-                    "crate": krate,
-                    "toolchain": toolchain,
-                    "result": result,
-                    "log": base64::encode(log),
+                    "results": [
+                        {
+                            "crate": krate,
+                            "toolchain": toolchain,
+                            "result": result,
+                            "log": base64::encode(log),
+                        },
+                    ],
                     "shas": shas,
                 }))
                 .send()?

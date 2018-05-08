@@ -75,8 +75,8 @@ pub fn run(config: Config) -> Result<()> {
     );
     server.add_route(
         Method::Post,
-        "/agent-api/record-result",
-        auth_agent(routes::agent::record_result),
+        "/agent-api/record-progress",
+        auth_agent(routes::agent::record_progress),
     );
     server.add_route(
         Method::Post,

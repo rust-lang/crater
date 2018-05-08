@@ -1,5 +1,5 @@
 use errors::*;
-use ex::{self, ExCrateSelect, ExMode};
+use ex::{self, ExCapLints, ExCrateSelect, ExMode};
 use server::Data;
 use server::db::{Database, QueryUtils};
 use server::experiments::Status;
@@ -28,7 +28,7 @@ pub fn run(data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
         &args.end.ok_or_else(|| "missing end toolchain")?,
         args.mode.unwrap_or(ExMode::BuildAndTest),
         args.crates.unwrap_or(ExCrateSelect::Full),
-        args.cap_lints.ok_or_else(|| "missing cap-lints arg")?,
+        args.cap_lints.unwrap_or(ExCapLints::Forbid),
         &data.config,
         Some(&issue.url),
         Some(&issue.html_url),

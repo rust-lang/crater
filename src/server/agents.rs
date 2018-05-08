@@ -44,6 +44,7 @@ impl Agent {
     }
 }
 
+#[derive(Clone)]
 pub struct Agents {
     db: Database,
 }

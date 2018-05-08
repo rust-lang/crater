@@ -7,6 +7,7 @@ mod db;
 mod experiments;
 mod github;
 mod messages;
+mod reports;
 mod results;
 mod tokens;
 mod agents;
@@ -22,6 +23,7 @@ use server::github::GitHubApi;
 use server::http::Server;
 use server::tokens::Tokens;
 
+#[derive(Clone)]
 pub struct Data {
     pub bot_username: String,
     pub config: Config,
@@ -30,6 +32,7 @@ pub struct Data {
     pub agents: Agents,
     pub experiments: Experiments,
     pub db: db::Database,
+    pub reports_worker: reports::ReportsWorker,
 }
 
 pub fn run(config: Config) -> Result<()> {
@@ -41,7 +44,7 @@ pub fn run(config: Config) -> Result<()> {
 
     info!("bot username: {}", bot_username);
 
-    let mut server = Server::new(Data {
+    let data = Data {
         bot_username,
         config,
         github,
@@ -49,7 +52,11 @@ pub fn run(config: Config) -> Result<()> {
         agents,
         experiments: Experiments::new(db.clone()),
         db: db.clone(),
-    })?;
+        reports_worker: reports::ReportsWorker::new(),
+    };
+
+    data.reports_worker.spawn(data.clone());
+    let mut server = Server::new(data)?;
 
     server.add_route(
         Method::Get,

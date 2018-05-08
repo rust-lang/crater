@@ -5,7 +5,7 @@ use server::db::{Database, QueryUtils};
 use server::experiments::Status;
 use server::github::Issue;
 use server::messages::{Label, Message};
-use server::routes::webhooks::args::{AbortArgs, EditArgs, RunArgs};
+use server::routes::webhooks::args::{AbortArgs, EditArgs, RetryReportArgs, RunArgs};
 
 pub fn ping(data: &Data, issue: &Issue) -> Result<()> {
     Message::new()
@@ -95,6 +95,34 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Result<()> {
                 .line("warning", "No changes requested.")
                 .send(&issue.url, data)?;
         }
+
+        Ok(())
+    } else {
+        bail!("an experiment named **`{}`** doesn't exist!", name);
+    }
+}
+
+pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Result<()> {
+    let name = get_name(&data.db, issue, args.name)?;
+
+    if let Some(mut experiment) = data.experiments.get(&name)? {
+        if experiment.server_data.status != Status::ReportFailed {
+            bail!(
+                "generation of the report of the **`{}`** experiment didn't fail!",
+                name
+            );
+        }
+
+        experiment.set_status(&data.db, Status::NeedsReport)?;
+        data.reports_worker.wake();
+
+        Message::new()
+            .line(
+                "hammer_and_wrench",
+                format!("Generation of the report for **`{}`** queued again.", name),
+            )
+            .set_label(Label::ExperimentQueued)
+            .send(&issue.url, data)?;
 
         Ok(())
     } else {

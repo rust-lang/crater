@@ -86,6 +86,10 @@ fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Resu
                 commands::edit(data, issue, args)?;
             }
 
+            Command::RetryReport(args) => {
+                commands::retry_report(data, issue, args)?;
+            }
+
             Command::Abort(args) => {
                 commands::abort(data, issue, args)?;
             }

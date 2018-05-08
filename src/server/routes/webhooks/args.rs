@@ -103,6 +103,10 @@ generate_parser!(pub enum Command {
 
     "ping" => Ping(PingArgs {})
 
+    "retry-report" => RetryReport(RetryReportArgs {
+        name: Option<String> = "name",
+    })
+
     _ => Edit(EditArgs {
         name: Option<String> = "name",
         start: Option<Toolchain> = "start",

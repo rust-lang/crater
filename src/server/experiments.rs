@@ -11,6 +11,9 @@ use toolchain::Toolchain;
 string_enum!(pub enum Status {
     Queued => "queued",
     Running => "running",
+    NeedsReport => "needs-report",
+    GeneratingReport => "generating-report",
+    ReportFailed => "report-failed",
     Completed => "completed",
 });
 
@@ -206,6 +209,7 @@ impl ExperimentDBRecord {
     }
 }
 
+#[derive(Clone)]
 pub struct Experiments {
     db: Database,
 }
@@ -304,6 +308,22 @@ impl Experiments {
         }
     }
 
+    pub fn first_by_status(&self, status: Status) -> Result<Option<ExperimentData>> {
+        let record = self.db.get_row(
+            "SELECT * FROM experiments \
+             WHERE status = ?1 \
+             ORDER BY priority DESC, created_at;",
+            &[&status.to_str()],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+
+        if let Some(record) = record {
+            Ok(Some(record.into_experiment_data(&self.db)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn next(&self, agent: &str) -> Result<Option<(bool, ExperimentData)>> {
         // Avoid assigning two experiments to the same agent
         if let Some(experiment) = self.run_by_agent(agent)? {
@@ -331,12 +351,12 @@ impl Experiments {
 
 #[cfg(test)]
 mod tests {
+    use super::{Experiments, Status};
     use config::Config;
     use ex::{ExCapLints, ExCrateSelect, ExMode};
     use server::agents::Agents;
     use server::db::Database;
     use server::tokens::Tokens;
-    use super::{Experiments, Status};
     use toolchain::Toolchain;
 
     #[test]

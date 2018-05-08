@@ -8,8 +8,8 @@ use server::api_types::{AgentConfig, ApiResponse};
 use server::auth::AuthDetails;
 use server::experiments::Status;
 use server::http::{Context, ResponseExt, ResponseFuture};
-use server::messages::{Label, Message};
-use server::results::{self, ResultsDB, TaskResult};
+use server::messages::Message;
+use server::results::{ResultsDB, TaskResult};
 use std::sync::Arc;
 
 api_endpoint!(config: |_body, data, auth: AuthDetails| -> AgentConfig {
@@ -50,26 +50,9 @@ api_endpoint!(complete_ex: |_body, data, auth: AuthDetails| -> bool {
         .run_by_agent(&auth.name)?
         .ok_or("no experiment run by this agent")?;
 
-    ex.set_status(&data.db, Status::Completed)?;
-
-    let name = ex.experiment.name;
-
-    info!("experiment {} completed, generating report...", name);
-    let report_url = results::generate_report(&data.db, &name, &data.config, &data.tokens)?;
-    info!("report for the experiment {} generated successfully!", name);
-
-    if let Some(ref github_issue) = ex.server_data.github_issue {
-        Message::new()
-            .line("tada", format!("Experiment **`{}`** is completed!", name))
-            .line("newspaper", format!("[Open the full report]({}).", report_url))
-            .note(
-                "warning",
-                "If you notice any spurious failure [please add them to the \
-                blacklist](https://github.com/rust-lang-nursery/crater/blob/master/config.toml)!",
-            )
-            .set_label(Label::ExperimentCompleted)
-            .send(&github_issue.api_url, &data)?;
-    }
+    ex.set_status(&data.db, Status::NeedsReport)?;
+    info!("experiment {} completed, marked as needs-report", ex.experiment.name);
+    data.reports_worker.wake(); // Ensure the reports worker is awake
 
     Ok(ApiResponse::Success { result: true })
 }, complete_ex_inner);

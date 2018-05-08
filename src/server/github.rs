@@ -2,6 +2,7 @@ use errors::*;
 use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
 use server::tokens::Tokens;
 
+#[derive(Clone)]
 pub struct GitHubApi {
     token: String,
     client: Client,

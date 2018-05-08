@@ -8,7 +8,7 @@ use std::path::Path;
 
 static TOKENS_PATH: &'static str = "tokens.toml";
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BotTokens {
     pub webhooks_secret: String,
@@ -40,7 +40,7 @@ impl ProvideAwsCredentials for ReportsBucket {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Tokens {
     pub bot: BotTokens,

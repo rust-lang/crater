@@ -1,16 +1,10 @@
 use base64;
-use config::Config;
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use ex::Experiment;
-use report;
 use results::{ReadResults, TestResult};
-use rusoto_core::request::default_tls_client;
-use rusoto_s3::S3Client;
 use serde_json;
 use server::db::{Database, QueryUtils};
-use server::experiments::Experiments;
-use server::tokens::Tokens;
 use std::collections::HashMap;
 use toolchain::Toolchain;
 
@@ -124,33 +118,6 @@ impl<'a> ReadResults for ResultsDB<'a> {
             Ok(None)
         }
     }
-}
-
-pub fn generate_report(
-    db: &Database,
-    ex_name: &str,
-    config: &Config,
-    tokens: &Tokens,
-) -> Result<String> {
-    let client = S3Client::new(
-        default_tls_client()?,
-        tokens.reports_bucket.clone(),
-        tokens.reports_bucket.region.clone(),
-    );
-    let dest = format!("s3://{}/{}", tokens.reports_bucket.bucket, ex_name);
-    let writer = report::S3Writer::create(Box::new(client), dest.parse()?)?;
-
-    let experiments = Experiments::new(db.clone());
-    let ex = experiments
-        .get(ex_name)?
-        .ok_or_else(|| format!("missing experiment {}", ex_name))?;
-
-    report::gen(&ResultsDB::new(db), &ex.experiment, &writer, config)?;
-
-    Ok(format!(
-        "{}/{}/{}/index.html",
-        tokens.reports_bucket.public_url, tokens.reports_bucket.bucket, ex_name
-    ))
 }
 
 #[cfg(test)]

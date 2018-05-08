@@ -78,3 +78,23 @@ commands. At the moment, the name is predicted in these cases:
   default (for example `pr-12345`)
 
 [auto-name]: #automatic-experiment-names
+
+## Troubleshooting
+
+Crater allows some troubleshooting actions to be done directly from the bot.
+These steps should only be performed by the infra team though.
+
+### Regenerating a report if it failed
+
+If a report generation failed, the first thing to do should be to read the
+server logs and fix the problem (tip: the server logs contains the full error
+message). After doing that it's possible to restart the report generation
+without restarting the whole experiment, with the GitHub command
+`retry-report`:
+
+```
+@craterbot retry-report name=foo
+```
+
+* `name`: name of the experiment; required only if Crater [can't determine it
+  automatically][auto-name]

@@ -1421,6 +1421,7 @@ libarchive3-sys = { skip = true } #automatic
 libb2-sys = { skip = true } #automatic
 libbgmrank = { skip = true } #automatic
 libbindgen = { skip = true } #automatic
+libbreakpad-client-sys = { skip = true } # the archive can't be extracted
 libcapstone = { skip = true } #automatic
 libcapstone-sys = { skip = true } #automatic
 libcryptsetup-sys = { skip = true } #automatic

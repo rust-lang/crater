@@ -3,10 +3,7 @@ use crossbeam;
 use errors::*;
 use ex::{self, ExMode, Experiment};
 use file;
-use petgraph::dot::Dot;
-use petgraph::graph::{Graph, NodeIndex};
-use petgraph::visit::EdgeRef;
-use petgraph::Direction;
+use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph};
 use results::WriteResults;
 use std::fmt;
 use std::mem;
@@ -41,22 +38,16 @@ enum WalkResult {
 
 #[derive(Default)]
 pub struct TasksGraph {
-    graph: Graph<Node, ()>,
+    graph: StableDiGraph<Node, ()>,
     root: NodeIndex,
-    completed_root: NodeIndex,
 }
 
 impl TasksGraph {
     pub fn new() -> Self {
-        let mut graph = Graph::new();
+        let mut graph = StableDiGraph::new();
         let root = graph.add_node(Node::Root);
-        let completed_root = graph.add_node(Node::Root);
 
-        TasksGraph {
-            graph,
-            root,
-            completed_root,
-        }
+        TasksGraph { graph, root }
     }
 
     pub fn add_task(&mut self, task: Task, deps: &[NodeIndex]) -> NodeIndex {
@@ -126,19 +117,7 @@ impl TasksGraph {
     }
 
     pub fn mark_as_completed(&mut self, node: NodeIndex) {
-        // Remove all the edges from this node, and move the node to the completed root.
-        // The node is not removed because node IDs are not stable, so removing one node changes
-        // the ID of the other ones.
-        let mut edges = self
-            .graph
-            .edges_directed(node, Direction::Incoming)
-            .map(|e| e.id())
-            .collect::<Vec<_>>();
-        for edge in edges.drain(..) {
-            self.graph.remove_edge(edge);
-        }
-
-        self.graph.add_edge(self.completed_root, node, ());
+        self.graph.remove_node(node);
     }
 }
 

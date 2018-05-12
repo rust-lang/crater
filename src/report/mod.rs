@@ -15,6 +15,7 @@ use std::fmt::{self, Display};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use toolchain::Toolchain;
+use util;
 
 mod s3;
 pub use self::s3::{S3Prefix, S3Writer};
@@ -134,7 +135,14 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
             let log_path = crate_to_path_fragment(tc, krate).join("log.txt");
             let content = db.load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| "missing logs".into()))
-                .chain_err(|| format!("failed to read log of {} on {}", krate, tc.to_string()))?;
+                .chain_err(|| format!("failed to read log of {} on {}", krate, tc.to_string()));
+            let content = match content {
+                Ok(c) => c,
+                Err(e) => {
+                    util::report_error(&e);
+                    continue;
+                }
+            };
             dest.write_string(log_path, content.into(), &mime::TEXT_PLAIN_UTF_8)?;
         }
     }

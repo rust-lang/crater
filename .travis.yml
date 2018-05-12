@@ -44,8 +44,7 @@ before_script: |
 
 script: |
   if [[ $TASK = "lint" ]]; then
-      cargo fmt -- --write-mode diff
-      cargo clippy
+      cargo fmt -- --write-mode diff && cargo clippy
   elif [[ $TASK = "test" ]]; then
       cargo build && cargo test
   fi

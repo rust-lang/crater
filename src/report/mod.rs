@@ -14,6 +14,7 @@ use std::convert::AsRef;
 use std::fmt::{self, Display};
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use toolchain::Toolchain;
 
 mod s3;
 pub use self::s3::{S3Prefix, S3Writer};
@@ -49,15 +50,22 @@ struct BuildTestResult {
     log: String,
 }
 
-fn crate_to_path_fragment(krate: &Crate) -> PathBuf {
+fn crate_to_path_fragment(toolchain: &Toolchain, krate: &Crate) -> PathBuf {
+    let mut path = PathBuf::new();
+    path.push(toolchain.rustup_name());
+
     match *krate {
-        Crate::Registry(ref details) => PathBuf::new()
-            .join("reg")
-            .join(format!("{}-{}", details.name, details.version)),
-        Crate::GitHub(ref repo) => PathBuf::new()
-            .join("gh")
-            .join(format!("{}.{}", repo.org, repo.name)),
+        Crate::Registry(ref details) => {
+            path.push("reg");
+            path.push(format!("{}-{}", details.name, details.version));
+        }
+        Crate::GitHub(ref repo) => {
+            path.push("gh");
+            path.push(format!("{}.{}", repo.org, repo.name));
+        }
     }
+
+    path
 }
 
 pub fn generate_report<DB: ReadResults>(
@@ -79,7 +87,10 @@ pub fn generate_report<DB: ReadResults>(
 
                 Ok(BuildTestResult {
                     res,
-                    log: crate_to_path_fragment(&krate).to_str().unwrap().to_string(),
+                    log: crate_to_path_fragment(tc, &krate)
+                        .to_str()
+                        .unwrap()
+                        .to_string(),
                 })
             });
             // Convert errors to Nones
@@ -120,7 +131,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
         }
 
         for tc in &ex.toolchains {
-            let log_path = crate_to_path_fragment(krate).join("log.txt");
+            let log_path = crate_to_path_fragment(tc, krate).join("log.txt");
             let content = db.load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| "missing logs".into()))
                 .chain_err(|| format!("failed to read log of {} on {}", krate, tc.to_string()))?;

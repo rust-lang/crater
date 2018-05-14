@@ -3,6 +3,7 @@ use errors::*;
 use ex::{ex_dir, Experiment};
 use file;
 use log;
+use results::{ReadResults, WriteResults, DeleteResults, TestResult};
 use serde_json;
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -11,46 +12,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use toolchain::Toolchain;
 use util;
-
-pub trait ReadResults {
-    fn load_all_shas(&self, ex: &Experiment) -> Result<HashMap<GitHubRepo, String>>;
-    fn load_log(
-        &self,
-        ex: &Experiment,
-        toolchain: &Toolchain,
-        krate: &Crate,
-    ) -> Result<Option<Vec<u8>>>;
-    fn load_test_result(
-        &self,
-        ex: &Experiment,
-        toolchain: &Toolchain,
-        krate: &Crate,
-    ) -> Result<Option<TestResult>>;
-}
-
-pub trait WriteResults {
-    fn already_executed(
-        &self,
-        ex: &Experiment,
-        toolchain: &Toolchain,
-        krate: &Crate,
-    ) -> Result<Option<TestResult>>;
-    fn record_sha(&self, ex: &Experiment, repo: &GitHubRepo, sha: &str) -> Result<()>;
-    fn record_result<F>(
-        &self,
-        ex: &Experiment,
-        toolchain: &Toolchain,
-        krate: &Crate,
-        f: F,
-    ) -> Result<TestResult>
-    where
-        F: FnOnce() -> Result<TestResult>;
-}
-
-pub trait DeleteResults {
-    fn delete_all_results(&self, ex: &Experiment) -> Result<()>;
-    fn delete_result(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> Result<()>;
-}
 
 #[derive(Clone, Default)]
 pub struct FileDB {
@@ -199,10 +160,3 @@ impl DeleteResults for FileDB {
         Ok(())
     }
 }
-
-string_enum!(pub enum TestResult {
-    BuildFail => "build-fail",
-    TestFail => "test-fail",
-    TestSkipped => "test-skipped",
-    TestPass => "test-pass",
-});

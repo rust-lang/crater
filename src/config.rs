@@ -12,11 +12,11 @@ static CONFIG_FILE: &'static str = "config.toml";
 #[serde(rename_all = "kebab-case")]
 pub struct CrateConfig {
     #[serde(default = "default_false")]
-    skip: bool,
+    pub skip: bool,
     #[serde(default = "default_false")]
-    skip_tests: bool,
+    pub skip_tests: bool,
     #[serde(default = "default_false")]
-    quiet: bool,
+    pub quiet: bool,
 }
 
 fn default_false() -> bool {
@@ -49,9 +49,9 @@ pub struct DemoCrates {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Config {
-    demo_crates: DemoCrates,
-    crates: HashMap<String, CrateConfig>,
-    github_repos: HashMap<String, CrateConfig>,
+    pub demo_crates: DemoCrates,
+    pub crates: HashMap<String, CrateConfig>,
+    pub github_repos: HashMap<String, CrateConfig>,
     pub server: ServerConfig,
 }
 

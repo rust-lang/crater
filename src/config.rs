@@ -1,12 +1,14 @@
 use crates::Crate;
 use errors::*;
-use std::collections::HashMap;
+use regex::Regex;
+use serde_regex;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 
 static CONFIG_FILE: &'static str = "config.toml";
 
-#[derive(Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CrateConfig {
     #[serde(default = "default_false")]
@@ -21,19 +23,36 @@ fn default_false() -> bool {
     false
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ServerConfig {
+    pub bot_acl: HashSet<String>,
+    pub labels: ServerLabels,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ServerLabels {
+    #[serde(with = "serde_regex")]
+    pub remove: Regex,
+    pub experiment_queued: String,
+    pub experiment_completed: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DemoCrates {
     pub crates: Vec<String>,
     pub github_repos: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Config {
     demo_crates: DemoCrates,
     crates: HashMap<String, CrateConfig>,
     github_repos: HashMap<String, CrateConfig>,
+    pub server: ServerConfig,
 }
 
 impl Config {
@@ -69,6 +88,28 @@ impl Config {
 }
 
 #[cfg(test)]
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            demo_crates: DemoCrates {
+                crates: vec!["lazy_static".into()],
+                github_repos: vec!["brson/hello-rs".into()],
+            },
+            crates: HashMap::new(),
+            github_repos: HashMap::new(),
+            server: ServerConfig {
+                bot_acl: HashSet::new(),
+                labels: ServerLabels {
+                    remove: Regex::new("^$").unwrap(),
+                    experiment_queued: "".into(),
+                    experiment_completed: "".into(),
+                },
+            },
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::Config;
     use crates::{Crate, GitHubRepo, RegistryCrate};
@@ -77,6 +118,12 @@ mod tests {
     fn test_config() {
         // A sample config file loaded from memory
         let config = concat!(
+            "[server]\n",
+            "bot-acl = []\n",
+            "[server.labels]\n",
+            "remove = \"\"\n",
+            "experiment-queued = \"\"\n",
+            "experiment-completed = \"\"\n",
             "[demo-crates]\n",
             "crates = []\n",
             "github-repos = []\n",

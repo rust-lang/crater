@@ -1,7 +1,8 @@
 use errors::*;
 use mime::Mime;
 use report::ReportWriter;
-use rusoto_core::{default_tls_client, DefaultCredentialsProvider, Region};
+use rusoto_core::{DefaultCredentialsProvider, Region};
+use rusoto_core::request::default_tls_client;
 use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3, S3Client};
 use std::borrow::Cow;
 use std::fmt::{self, Display};
@@ -50,7 +51,7 @@ pub struct S3Writer {
     client: Box<S3>,
 }
 
-fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
+pub fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
     let make_client = |region| {
         let credentials = DefaultCredentialsProvider::new().unwrap();
         S3Client::new(default_tls_client().unwrap(), credentials, region)
@@ -73,13 +74,13 @@ fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
 const S3RETRIES: u64 = 4;
 
 impl S3Writer {
-    pub fn create(prefix: S3Prefix) -> Result<S3Writer> {
-        let client = get_client_for_bucket(&prefix.bucket)?;
-
+    pub fn create(client: Box<S3>, prefix: S3Prefix) -> Result<S3Writer> {
         Ok(S3Writer { prefix, client })
     }
+}
 
-    fn write_vec<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {
+impl ReportWriter for S3Writer {
+    fn write_bytes<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {
         let mut retry = 0;
         let req = PutObjectRequest {
             acl: Some("public-read".into()),
@@ -113,16 +114,15 @@ impl S3Writer {
             }
         }
     }
-}
 
-impl ReportWriter for S3Writer {
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()> {
-        self.write_vec(path, s.into_owned().into_bytes(), mime)
+        self.write_bytes(path, s.into_owned().into_bytes(), mime)
     }
+
     fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()> {
         let mut bytes = Vec::new();
         io::copy(r, &mut bytes)?;
-        self.write_vec(path, bytes, mime)
+        self.write_bytes(path, bytes, mime)
     }
 }
 

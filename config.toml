@@ -1,3 +1,18 @@
+[server]
+# The list of GitHub users allowed to interact with the GitHub bot
+bot-acl = [
+    "pietroalbini",
+    "aidanhs",
+]
+
+[server.labels]
+# Remove all labels matching this regex when applying new labels
+remove = "^S-"
+# Automatically apply the following labels to issues/pull requests
+experiment-queued = "S-waiting-on-crater"
+experiment-completed = "S-waiting-on-review"
+
+
 # This section contains the list of tested crates when defining an experiment
 # with `--crate-select demo`.
 

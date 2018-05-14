@@ -10,6 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
+use util;
 
 pub fn create_all_lists(full: bool) -> Result<()> {
     RecentList::create()?;
@@ -323,28 +324,22 @@ fn create_gh_app_list_from_cache() -> Result<()> {
 
 pub fn read_all_lists() -> Result<Vec<Crate>> {
     let mut all = HashSet::new();
-    let recent = RecentList::read();
-    let hot = HotList::read();
-    let gh_apps = GitHubAppList::read();
 
-    if let Ok(recent) = recent {
-        all.extend(recent.into_iter())
-    } else {
-        info!("failed to load recent list. ignoring");
+    match RecentList::read() {
+        Ok(recent) => all.extend(recent.into_iter()),
+        Err(e) => util::report_error(&e),
     }
-    if let Ok(hot) = hot {
-        all.extend(hot.into_iter())
-    } else {
-        info!("failed to load hot list. ignoring");
+    match HotList::read() {
+        Ok(hot) => all.extend(hot.into_iter()),
+        Err(e) => util::report_error(&e),
     }
-    if let Ok(gh_apps) = gh_apps {
-        all.extend(gh_apps.into_iter())
-    } else {
-        info!("failed to load gh-app list. ignoring");
+    match GitHubAppList::read() {
+        Ok(gh_apps) => all.extend(gh_apps.into_iter()),
+        Err(e) => util::report_error(&e),
     }
 
     if all.is_empty() {
-        bail!("no crates loaded. run `crater prepare-lists`?");
+        bail!("no crates loaded. run `crater prepare-local`?");
     }
 
     let mut all: Vec<_> = all.drain().collect();

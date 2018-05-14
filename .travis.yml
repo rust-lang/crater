@@ -46,5 +46,5 @@ script: |
   if [[ $TASK = "lint" ]]; then
       cargo fmt -- --write-mode diff && cargo clippy
   elif [[ $TASK = "test" ]]; then
-      cargo build && cargo test
+      cargo build && cargo run -- prepare-local --docker-env mini && cargo test
   fi

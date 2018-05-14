@@ -9,6 +9,13 @@ error_chain! {
         ReqwestError(::reqwest::Error);
         RustupError(::rustup_dist::Error);
         TomlDe(::toml::de::Error);
+        Hyper(::hyper::Error);
+        ParseInt(::std::num::ParseIntError);
+        Parse(::std::string::ParseError);
+        RusotoTls(::rusoto_core::TlsError);
+        Rusqlite(::rusqlite::Error);
+        R2D2(::r2d2::Error);
+        Base64Decode(::base64::DecodeError);
     }
 
     links {

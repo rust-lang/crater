@@ -5,7 +5,8 @@ use file;
 use log;
 use serde_json;
 use std::collections::HashMap;
-use std::fs;
+use std::fs::{self, File};
+use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use toolchain::Toolchain;
@@ -18,7 +19,7 @@ pub trait ReadResults {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<String>>;
+    ) -> Result<Option<Vec<u8>>>;
     fn load_test_result(
         &self,
         ex: &Experiment,
@@ -61,7 +62,7 @@ impl FileDB {
         ex_dir(&ex.name).join("shas.json")
     }
 
-    fn result_dir(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> PathBuf {
+    pub fn result_dir(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> PathBuf {
         let crate_path = match *krate {
             Crate::Registry(ref details) => format!("reg/{}-{}", details.name, details.version),
             Crate::GitHub(ref repo) => format!("gh/{}.{}", repo.org, repo.name),
@@ -98,11 +99,13 @@ impl ReadResults for FileDB {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<String>> {
+    ) -> Result<Option<Vec<u8>>> {
         let path = self.result_log(ex, toolchain, krate);
 
         if path.exists() {
-            file::read_string(&path).map(Some)
+            let mut buffer = Vec::new();
+            BufReader::new(File::open(path)?).read_to_end(&mut buffer)?;
+            Ok(Some(buffer))
         } else {
             Ok(None)
         }

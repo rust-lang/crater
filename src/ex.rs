@@ -41,7 +41,7 @@ pub fn ex_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name)
 }
 
-fn config_file(ex_name: &str) -> PathBuf {
+pub fn config_file(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("config.json")
 }
 
@@ -53,7 +53,7 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
     froml_dir(ex_name).join(format!("{}-{}.Cargo.toml", name, vers))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Experiment {
     pub name: String,
     pub crates: Vec<Crate>,
@@ -70,24 +70,27 @@ pub struct ExOpts {
     pub cap_lints: ExCapLints,
 }
 
+pub fn get_crates(crates: ExCrateSelect, config: &Config) -> Result<Vec<Crate>> {
+    match crates {
+        ExCrateSelect::Full => lists::read_all_lists(),
+        ExCrateSelect::Demo => demo_list(config),
+        ExCrateSelect::SmallRandom => small_random(),
+        ExCrateSelect::Top100 => top_100(),
+    }
+}
+
 pub fn define(opts: ExOpts, config: &Config) -> Result<()> {
     delete(&opts.name)?;
-    let crates = match opts.crates {
-        ExCrateSelect::Full => lists::read_all_lists()?,
-        ExCrateSelect::Demo => demo_list(config)?,
-        ExCrateSelect::SmallRandom => small_random()?,
-        ExCrateSelect::Top100 => top_100()?,
-    };
     define_(
         &opts.name,
         opts.toolchains,
-        crates,
+        get_crates(opts.crates, config)?,
         opts.mode,
         opts.cap_lints,
     )
 }
 
-fn demo_list(config: &Config) -> Result<Vec<Crate>> {
+pub fn demo_list(config: &Config) -> Result<Vec<Crate>> {
     let mut crates = config.demo_crates().crates.iter().collect::<HashSet<_>>();
     let repos = &config.demo_crates().github_repos;
     let expected_len = crates.len() + repos.len();

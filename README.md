@@ -31,8 +31,13 @@ Crater executes malicious code that will destroy what you love.
 **User documentation:**
 
 * [Local/CLI usage](docs/cli-usage.md)
+* [GitHub bot usage](docs/bot-usage.md)
 * [Crater report triage procedure](docs/report-triage.md)
 
 **Operations documentation:**
 
 * [Legacy operational workflow](docs/legacy-workflow.md)
+
+**Technical documentation:**
+
+* [Agent HTTP Api specification](docs/agent-http-api.md)

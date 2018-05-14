@@ -61,15 +61,8 @@ Crater includes a blacklist, which is used to skip parts of the experiment we
 already know can fail. The blacklist is stored in the `config.toml` file on
 this repository, in the `[crates]` and `[github-repos]` section.
 
-Each crate/repo has its own line, and can have the following options:
-
-* `skip`: all the crates with this option are ignored. This should be used if
-  the crate fails to build randomly.
-* `skip-tests`: the test suite of the crates with this option is not run. This
-  should be used if the crate has a flaky test suite.
-* `quiet`: builds of the crates with this option are not killed if they don't
-  produce any output for some time (but the hard timeout is still enforced).
-  This should be used if the build times out but doesn't take too long.
+Each crate/repo has its own line, and can have multiple options. Check out the
+comment in the `config.toml` file to learn more about those.
 
 For example, if the crate `foo` has a flaky test suite you should add this line
 in the configuration file (possibly sorting it):

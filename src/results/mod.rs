@@ -1,12 +1,15 @@
+#[cfg(test)]
+mod dummy;
 mod file;
 
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use ex::Experiment;
+#[cfg(test)]
+pub use results::dummy::DummyDB;
+pub use results::file::FileDB;
 use std::collections::HashMap;
 use toolchain::Toolchain;
-
-pub use results::file::FileDB;
 
 pub trait ReadResults {
     fn load_all_shas(&self, ex: &Experiment) -> Result<HashMap<GitHubRepo, String>>;

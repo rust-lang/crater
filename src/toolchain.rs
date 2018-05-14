@@ -26,7 +26,7 @@ const RUST_CI_COMPONENTS: [(&str, &str); 3] = [
     ("cargo", "cargo-nightly-x86_64-unknown-linux-gnu.tar.xz"),
 ];
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 /// A toolchain name, either a rustup channel identifier,
 /// or a URL+branch+sha: `https://github.com/rust-lang/rust+master+sha`
 pub enum Toolchain {

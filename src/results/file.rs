@@ -3,7 +3,7 @@ use errors::*;
 use ex::{ex_dir, Experiment};
 use file;
 use log;
-use results::{ReadResults, WriteResults, DeleteResults, TestResult};
+use results::{DeleteResults, ReadResults, TestResult, WriteResults};
 use serde_json;
 use std::collections::HashMap;
 use std::fs::{self, File};

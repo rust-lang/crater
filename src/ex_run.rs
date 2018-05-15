@@ -137,9 +137,11 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
             let remaining_tests = total_crates - completed_crates - skipped_crates;
             let remaining_time = remaining_tests * seconds_per_test as usize;
 
-            let remaining_time_str = if remaining_time < 60 * 8 {
+            let remaining_time_str = if remaining_time < 60 {
+                // 1 minute
                 format!("{:0} seconds", remaining_time)
-            } else if remaining_time < 60 * 60 * 8 {
+            } else if remaining_time < 60 * 60 {
+                // 1 hour
                 format!("{:0} minutes", remaining_time / 60)
             } else {
                 format!("{:0} hours", remaining_time / 60 / 60)

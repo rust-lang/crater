@@ -2324,6 +2324,7 @@ rsmtp = { skip-tests = true } #automatic
 rsndfile = { skip = true } #automatic
 rsnl = { skip = true } #automatic
 rsplit = { skip = true } #automatic
+rspotify = { slow = true } # slow build
 rsrl = { skip = true } #automatic
 rstack = { skip = true } #automatic
 rstack-self = { skip = true } #automatic

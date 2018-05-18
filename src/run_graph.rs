@@ -70,23 +70,39 @@ impl TasksGraph {
         id
     }
 
-    pub fn next_task(&mut self) -> Option<(NodeIndex, Task)> {
+    pub fn next_task<DB: WriteResults>(
+        &mut self,
+        ex: &Experiment,
+        db: &DB,
+    ) -> Option<(NodeIndex, Task)> {
         let root = self.root;
-        if let WalkResult::Task(id, task) = self.walk_graph(root) {
+        if let WalkResult::Task(id, task) = self.walk_graph(root, ex, db) {
             Some((id, task))
         } else {
             None
         }
     }
 
-    fn walk_graph(&mut self, node: NodeIndex) -> WalkResult {
+    fn walk_graph<DB: WriteResults>(
+        &mut self,
+        node: NodeIndex,
+        ex: &Experiment,
+        db: &DB,
+    ) -> WalkResult {
+        // Ensure tasks are only executed if needed
+        if let Node::Task(ref task) = self.graph[node] {
+            if !task.needs_exec(ex, db) {
+                return WalkResult::NotBlocked;
+            }
+        }
+
         let mut dependencies = 0;
 
         // Try to check for the dependencies of this node
         // The list is collected to make the borrowchecker happy
         let mut neighbors = self.graph.neighbors(node).collect::<Vec<_>>();
         for neighbor in neighbors.drain(..) {
-            match self.walk_graph(neighbor) {
+            match self.walk_graph(neighbor, ex, db) {
                 WalkResult::Task(id, task) => return WalkResult::Task(id, task),
                 WalkResult::Blocked => dependencies += 1,
                 WalkResult::NotBlocked => {}
@@ -197,7 +213,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
             let join = scope.builder().name(name).spawn(|| -> Result<()> {
                 // This uses a `loop` instead of a `while let` to avoid locking the graph too much
                 loop {
-                    let option_task = graph.lock().unwrap().next_task();
+                    let option_task = graph.lock().unwrap().next_task(ex, db);
                     if let Some((id, task)) = option_task {
                         info!("running task: {:?}", task);
                         task.run(ex, db)?;
@@ -221,7 +237,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     // Only the root node must be present
     let mut g = graph.lock().unwrap();
-    assert!(g.next_task().is_none());
+    assert!(g.next_task(ex, db).is_none());
     assert_eq!(g.graph.neighbors(g.root).count(), 0);
 
     Ok(())

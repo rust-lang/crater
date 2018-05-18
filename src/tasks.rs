@@ -58,6 +58,21 @@ impl fmt::Debug for Task {
 }
 
 impl Task {
+    pub fn needs_exec<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> bool {
+        // A prepare step should already be executed, and other steps only if were not executed
+        // already (on error checking if the step was executed it's executed again just to be safe)
+        match self.step {
+            TaskStep::Prepare => true,
+            TaskStep::BuildAndTest { ref tc, .. }
+            | TaskStep::BuildOnly { ref tc, .. }
+            | TaskStep::CheckOnly { ref tc, .. }
+            | TaskStep::UnstableFeatures { ref tc } => db
+                .already_executed(ex, tc, &self.krate)
+                .unwrap_or(None)
+                .is_none(),
+        }
+    }
+
     pub fn run<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> Result<()> {
         match self.step {
             TaskStep::Prepare => self.run_prepare(ex, db),

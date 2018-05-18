@@ -56,4 +56,5 @@ string_enum!(pub enum TestResult {
     TestFail => "test-fail",
     TestSkipped => "test-skipped",
     TestPass => "test-pass",
+    Error => "error",
 });

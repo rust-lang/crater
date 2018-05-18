@@ -88,7 +88,7 @@ impl Task {
                 db.record_result(ex, tc, &self.krate, || {
                     error!("this task or one of its parent failed!");
                     util::report_error(err);
-                    Ok(TestResult::BuildFail)
+                    Ok(TestResult::Error)
                 })?;
             }
         }

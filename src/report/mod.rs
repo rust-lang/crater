@@ -51,6 +51,7 @@ enum Comparison {
     Fixed,
     Skipped,
     Unknown,
+    Error,
     SameBuildFail,
     SameTestFail,
     SameTestSkipped,
@@ -258,6 +259,7 @@ fn compare(
             | (&TestPass, &BuildFail)
             | (&TestSkipped, &BuildFail)
             | (&TestFail, &BuildFail) => Comparison::Regressed,
+            (&Error, _) | (_, &Error) => Comparison::Error,
             (&TestFail, &TestSkipped)
             | (&TestPass, &TestSkipped)
             | (&TestSkipped, &TestFail)
@@ -536,6 +538,14 @@ mod tests {
                 TestPass + BuildFail = Regressed,
                 TestSkipped + BuildFail = Regressed,
                 TestFail + BuildFail = Regressed,
+                Error + TestPass = Error,
+                Error + TestSkipped = Error,
+                Error + TestFail = Error,
+                Error + BuildFail = Error,
+                TestPass + Error = Error,
+                TestSkipped + Error = Error,
+                TestFail + Error = Error,
+                BuildFail + Error = Error,
             ]
         );
 

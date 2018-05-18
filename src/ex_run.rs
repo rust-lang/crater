@@ -126,6 +126,10 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
                     result: TestResult::TestPass,
                     ..
                 }) => sum_test_pass += 1,
+                Ok(RunTestResult {
+                    result: TestResult::Error,
+                    ..
+                }) => unreachable!("error results are not supported with legacy run"),
             }
 
             let elapsed = Instant::now().duration_since(start_time).as_secs();

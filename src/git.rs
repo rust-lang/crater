@@ -23,6 +23,7 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
         info!("pulling existing url {} into {}", url, dir.display());
         RunCommand::new("git", &["fetch", "--all"]).cd(dir).run()?;
         RunCommand::new("git", &["reset", "--hard", "@{upstream}"])
+            .cd(dir)
             .run()
             .chain_err(|| format!("unable to pull {}", url))
     }

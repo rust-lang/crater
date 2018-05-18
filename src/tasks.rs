@@ -3,7 +3,7 @@ use errors::*;
 use ex::{self, Experiment};
 use ex_run;
 use git;
-use results::WriteResults;
+use results::{TestResult, WriteResults};
 use std::fmt;
 use toolchain::Toolchain;
 use util;
@@ -71,6 +71,29 @@ impl Task {
                 .unwrap_or(None)
                 .is_none(),
         }
+    }
+
+    pub fn mark_as_failed<DB: WriteResults>(
+        &self,
+        ex: &Experiment,
+        db: &DB,
+        err: &Error,
+    ) -> Result<()> {
+        match self.step {
+            TaskStep::Prepare => {}
+            TaskStep::BuildAndTest { ref tc, .. }
+            | TaskStep::BuildOnly { ref tc, .. }
+            | TaskStep::CheckOnly { ref tc, .. }
+            | TaskStep::UnstableFeatures { ref tc } => {
+                db.record_result(ex, tc, &self.krate, || {
+                    error!("this task or one of its parent failed!");
+                    util::report_error(err);
+                    Ok(TestResult::BuildFail)
+                })?;
+            }
+        }
+
+        Ok(())
     }
 
     pub fn run<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> Result<()> {

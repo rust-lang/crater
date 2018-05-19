@@ -129,35 +129,36 @@ pub fn prepare(list: &[Crate]) -> Result<()> {
     info!("preparing {} crates", list.len());
     let mut successes = 0;
     for krate in list {
-        let dir = krate.dir();
-        match *krate {
-            Crate::Registry(ref details) => {
-                let r = dl_registry(&details.name, &details.version, &dir)
-                    .chain_err(|| format!("unable to download {}", krate));
-                if let Err(e) = r {
-                    util::report_error(&e);
-                } else {
-                    successes += 1;
-                }
-                // crates.io doesn't rate limit. Go fast
-            }
-            Crate::GitHub(ref repo) => {
-                info!(
-                    "cloning GitHub repo {} to {}...",
-                    repo.slug(),
-                    dir.display()
-                );
-                if let Err(e) = util::copy_dir(&repo.mirror_dir(), &dir) {
-                    util::report_error(&e);
-                } else {
-                    successes += 1;
-                }
-            }
+        if let Err(e) = prepare_crate(krate) {
+            util::report_error(&e);
+        } else {
+            successes += 1;
         }
     }
 
     if successes < list.len() / 2 {
         bail!("unable to download a suspiciously-large number of crates");
+    }
+
+    Ok(())
+}
+
+pub fn prepare_crate(krate: &Crate) -> Result<()> {
+    let dir = krate.dir();
+    match *krate {
+        Crate::Registry(ref details) => {
+            // crates.io doesn't rate limit. Go fast
+            dl_registry(&details.name, &details.version, &dir)
+                .chain_err(|| format!("unable to download {}", krate))?;
+        }
+        Crate::GitHub(ref repo) => {
+            info!(
+                "cloning GitHub repo {} to {}...",
+                repo.slug(),
+                dir.display()
+            );
+            util::copy_dir(&repo.mirror_dir(), &dir)?;
+        }
     }
 
     Ok(())

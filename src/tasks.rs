@@ -107,7 +107,6 @@ impl Task {
     }
 
     fn run_prepare<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> Result<()> {
-        let krate = [self.krate.clone()];
         let stable = Toolchain::Dist("stable".into());
 
         // Fetch repository data if it's a git repo
@@ -116,13 +115,13 @@ impl Task {
                 util::report_error(&e);
             }
 
-            ex::capture_shas(ex, &krate, db)?;
+            ex::capture_shas(ex, &[self.krate.clone()], db)?;
         }
 
-        crates::prepare(&krate)?;
-        ex::frob_tomls(ex, &krate)?;
-        ex::capture_lockfiles(ex, &krate, &stable, false)?;
-        ex::fetch_deps(ex, &krate, &stable)?;
+        crates::prepare_crate(&self.krate)?;
+        ex::frob_toml(ex, &self.krate)?;
+        ex::capture_lockfile(ex, &self.krate, &stable, false)?;
+        ex::fetch_crate_deps(ex, &self.krate, &stable)?;
 
         Ok(())
     }

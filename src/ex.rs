@@ -204,18 +204,23 @@ impl Experiment {
     }
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
 pub fn frob_tomls(ex: &Experiment, crates: &[Crate]) -> Result<()> {
     for krate in crates {
-        if let Crate::Registry(ref details) = *krate {
-            fs::create_dir_all(&froml_dir(&ex.name))?;
-            let out = froml_path(&ex.name, &details.name, &details.version);
-            let r = toml_frobber::frob_toml(&krate.dir(), &details.name, &details.version, &out);
-            if let Err(e) = r {
-                info!("couldn't frob: {}", e);
-                util::report_error(&e);
-            }
+        if let Err(e) = frob_toml(ex, krate) {
+            info!("couldn't frob: {}", e);
+            util::report_error(&e);
         }
+    }
+
+    Ok(())
+}
+
+#[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
+pub fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
+    if let Crate::Registry(ref details) = *krate {
+        fs::create_dir_all(&froml_dir(&ex.name))?;
+        let out = froml_path(&ex.name, &details.name, &details.version);
+        toml_frobber::frob_toml(&krate.dir(), &details.name, &details.version, &out)?;
     }
 
     Ok(())
@@ -323,28 +328,8 @@ pub fn capture_lockfiles(
     toolchain: &Toolchain,
     recapture_existing: bool,
 ) -> Result<()> {
-    fs::create_dir_all(&lockfile_dir(&ex.name))?;
-
     for c in crates {
-        if c.dir().join("Cargo.lock").exists() {
-            info!("crate {} has a lockfile. skipping", c);
-            continue;
-        }
-        let captured_lockfile = lockfile(&ex.name, c);
-        if let Err(e) = captured_lockfile {
-            util::report_error(&e);
-            continue;
-        }
-        let captured_lockfile = captured_lockfile.expect("");
-        if captured_lockfile.exists() && !recapture_existing {
-            info!("skipping existing lockfile for {}", c);
-            continue;
-        }
-        let r = with_work_crate(ex, toolchain, c, |path| {
-            with_frobbed_toml(ex, c, path)?;
-            capture_lockfile(ex, c, path, toolchain)
-        }).chain_err(|| format!("failed to generate lockfile for {}", c));
-        if let Err(e) = r {
+        if let Err(e) = capture_lockfile(ex, c, toolchain, recapture_existing) {
             util::report_error(&e);
         }
     }
@@ -352,7 +337,34 @@ pub fn capture_lockfiles(
     Ok(())
 }
 
-fn capture_lockfile(
+pub fn capture_lockfile(
+    ex: &Experiment,
+    krate: &Crate,
+    toolchain: &Toolchain,
+    recapture_existing: bool,
+) -> Result<()> {
+    fs::create_dir_all(&lockfile_dir(&ex.name))?;
+
+    if krate.dir().join("Cargo.lock").exists() {
+        info!("crate {} has a lockfile. skipping", krate);
+        return Ok(());
+    }
+
+    let captured_lockfile = lockfile(&ex.name, krate)?;
+    if captured_lockfile.exists() && !recapture_existing {
+        info!("skipping existing lockfile for {}", krate);
+        return Ok(());
+    }
+
+    with_work_crate(ex, toolchain, krate, |path| {
+        with_frobbed_toml(ex, krate, path)?;
+        capture_lockfile_inner(ex, krate, path, toolchain)
+    }).chain_err(|| format!("failed to generate lockfile for {}", krate))?;
+
+    Ok(())
+}
+
+fn capture_lockfile_inner(
     ex: &Experiment,
     krate: &Crate,
     path: &Path,
@@ -404,23 +416,26 @@ pub fn with_captured_lockfile(ex: &Experiment, krate: &Crate, path: &Path) -> Re
 
 pub fn fetch_deps(ex: &Experiment, crates: &[Crate], toolchain: &Toolchain) -> Result<()> {
     for c in crates {
-        let r = with_work_crate(ex, toolchain, c, |path| {
-            with_frobbed_toml(ex, c, path)?;
-            with_captured_lockfile(ex, c, path)?;
-
-            let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
-            toolchain
-                .run_cargo(ex, path, args, CargoState::Unlocked, false)
-                .chain_err(|| format!("unable to fetch deps for {}", c))?;
-
-            Ok(())
-        });
-        if let Err(e) = r {
+        if let Err(e) = fetch_crate_deps(ex, c, toolchain) {
             util::report_error(&e);
         }
     }
 
     Ok(())
+}
+
+pub fn fetch_crate_deps(ex: &Experiment, krate: &Crate, toolchain: &Toolchain) -> Result<()> {
+    with_work_crate(ex, toolchain, krate, |path| {
+        with_frobbed_toml(ex, krate, path)?;
+        with_captured_lockfile(ex, krate, path)?;
+
+        let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
+        toolchain
+            .run_cargo(ex, path, args, CargoState::Unlocked, false)
+            .chain_err(|| format!("unable to fetch deps for {}", krate))?;
+
+        Ok(())
+    })
 }
 
 pub fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {

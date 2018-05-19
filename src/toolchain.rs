@@ -57,7 +57,15 @@ impl Toolchain {
     }
 
     pub fn target_dir(&self, ex_name: &str) -> PathBuf {
-        ex_target_dir(ex_name).join(self.to_string())
+        let mut dir = ex_target_dir(ex_name);
+
+        if let Some(thread) = ::std::thread::current().name() {
+            dir = dir.join(thread);
+        } else {
+            dir = dir.join("shared");
+        }
+
+        dir.join(self.to_string())
     }
 
     pub fn run_cargo(

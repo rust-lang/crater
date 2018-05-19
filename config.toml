@@ -1601,6 +1601,7 @@ md = { skip = true } #automatic
 mdbm-sys = { skip = true } #automatic
 mdmregistration-sys = { skip = true } #automatic
 mediainfo = { skip = true } #automatic
+median_three_quicksort = { skip-tests = true } # sorting library that sometimes doesn't sort (WTF)
 megam_rustyprint = { skip = true } #automatic
 melvin = { skip = true } #automatic
 membuf = { skip = true } #automatic
@@ -1648,6 +1649,7 @@ minrs = { skip = true } #automatic
 mint = { skip-tests = true } #automatic
 mio-aio = { skip = true } #automatic
 mioqu = { skip = true } #automatic
+mish = { skip-tests = true } # flaky test (bad math)
 mixpanel = { skip = true } #automatic
 mlcr = { skip-tests = true } #automatic
 mm = { skip = true } #automatic
@@ -1660,6 +1662,7 @@ mmdevapi-sys = { skip = true } #automatic
 mmslice = { skip = true } #automatic
 mnist = { skip-tests = true } #automatic
 mod_path = { skip = true } #automatic
+modbus = { skip-tests = true } # flaky test
 modesetting = { skip = true } #automatic
 moho = { skip = true } #automatic
 mon-artist = { skip = true } #automatic
@@ -2426,6 +2429,7 @@ rusterize = { skip = true } #automatic
 rusterpassword = { skip = true } #automatic
 rustic-io = { skip = true } #automatic
 rusticsearch = { skip = true } #automatic
+rustlearn = { skip-tests = true } # non-deterministic
 rustler = { skip = true } #automatic
 rustlex_codegen = { skip = true } #automatic
 rustml = { skip = true } #automatic

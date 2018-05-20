@@ -77,7 +77,16 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
         };
 
         for tc in tcs {
-            let r = run_test("testing", ex, tc, c, &db, config.is_quiet(c), test_fn);
+            let r = run_test(
+                config,
+                "testing",
+                ex,
+                tc,
+                c,
+                &db,
+                config.is_quiet(c),
+                test_fn,
+            );
 
             match r {
                 Err(ref e) => {
@@ -185,7 +194,9 @@ pub struct RunTestResult {
     pub skipped: bool,
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn run_test<DB: WriteResults>(
+    config: &Config,
     action: &str,
     ex: &Experiment,
     tc: &Toolchain,
@@ -203,7 +214,7 @@ pub fn run_test<DB: WriteResults>(
     } else {
         with_work_crate(ex, tc, krate, |source_path| {
             with_frobbed_toml(ex, krate, source_path)?;
-            with_captured_lockfile(ex, krate, source_path)?;
+            with_captured_lockfile(config, ex, krate, source_path)?;
 
             db.record_result(ex, tc, krate, || {
                 info!(

@@ -259,7 +259,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
                     let option_task = graph.lock().unwrap().next_task(ex, db);
                     if let Some((id, task)) = option_task {
                         info!("running task: {:?}", task);
-                        if let Err(e) = task.run(ex, db) {
+                        if let Err(e) = task.run(config, ex, db) {
                             error!("task failed, marking childs as failed too: {:?}", task);
                             util::report_error(&e);
                             graph.lock().unwrap().mark_as_failed(id, ex, db, &e)?;

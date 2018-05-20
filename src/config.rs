@@ -17,6 +17,8 @@ pub struct CrateConfig {
     pub skip_tests: bool,
     #[serde(default = "default_false")]
     pub quiet: bool,
+    #[serde(default = "default_false")]
+    pub update_lockfile: bool,
 }
 
 fn default_false() -> bool {
@@ -80,6 +82,12 @@ impl Config {
 
     pub fn is_quiet(&self, c: &Crate) -> bool {
         self.crate_config(c).map(|c| c.quiet).unwrap_or(false)
+    }
+
+    pub fn should_update_lockfile(&self, c: &Crate) -> bool {
+        self.crate_config(c)
+            .map(|c| c.update_lockfile)
+            .unwrap_or(false)
     }
 
     pub fn demo_crates(&self) -> &DemoCrates {

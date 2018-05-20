@@ -1,3 +1,4 @@
+use config::Config;
 use crates::{self, Crate};
 use errors::*;
 use ex::{self, Experiment};
@@ -96,17 +97,24 @@ impl Task {
         Ok(())
     }
 
-    pub fn run<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> Result<()> {
+    pub fn run<DB: WriteResults>(&self, config: &Config, ex: &Experiment, db: &DB) -> Result<()> {
         match self.step {
-            TaskStep::Prepare => self.run_prepare(ex, db),
-            TaskStep::BuildAndTest { ref tc, quiet } => self.run_build_and_test(ex, tc, db, quiet),
-            TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(ex, tc, db, quiet),
-            TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(ex, tc, db, quiet),
-            TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(ex, db, tc),
+            TaskStep::Prepare => self.run_prepare(config, ex, db),
+            TaskStep::BuildAndTest { ref tc, quiet } => {
+                self.run_build_and_test(config, ex, tc, db, quiet)
+            }
+            TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(config, ex, tc, db, quiet),
+            TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(config, ex, tc, db, quiet),
+            TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(config, ex, db, tc),
         }
     }
 
-    fn run_prepare<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> Result<()> {
+    fn run_prepare<DB: WriteResults>(
+        &self,
+        config: &Config,
+        ex: &Experiment,
+        db: &DB,
+    ) -> Result<()> {
         let stable = Toolchain::Dist("stable".into());
 
         // Fetch repository data if it's a git repo
@@ -120,20 +128,22 @@ impl Task {
 
         crates::prepare_crate(&self.krate)?;
         ex::frob_toml(ex, &self.krate)?;
-        ex::capture_lockfile(ex, &self.krate, &stable, false)?;
-        ex::fetch_crate_deps(ex, &self.krate, &stable)?;
+        ex::capture_lockfile(config, ex, &self.krate, &stable)?;
+        ex::fetch_crate_deps(config, ex, &self.krate, &stable)?;
 
         Ok(())
     }
 
     fn run_build_and_test<DB: WriteResults>(
         &self,
+        config: &Config,
         ex: &Experiment,
         tc: &Toolchain,
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
         ex_run::run_test(
+            config,
             "testing",
             ex,
             tc,
@@ -146,12 +156,14 @@ impl Task {
 
     fn run_build_only<DB: WriteResults>(
         &self,
+        config: &Config,
         ex: &Experiment,
         tc: &Toolchain,
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
         ex_run::run_test(
+            config,
             "testing",
             ex,
             tc,
@@ -164,12 +176,14 @@ impl Task {
 
     fn run_check_only<DB: WriteResults>(
         &self,
+        config: &Config,
         ex: &Experiment,
         tc: &Toolchain,
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
         ex_run::run_test(
+            config,
             "checking",
             ex,
             tc,
@@ -182,11 +196,13 @@ impl Task {
 
     fn run_unstable_features<DB: WriteResults>(
         &self,
+        config: &Config,
         ex: &Experiment,
         db: &DB,
         tc: &Toolchain,
     ) -> Result<()> {
         ex_run::run_test(
+            config,
             "checking",
             ex,
             tc,

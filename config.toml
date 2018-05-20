@@ -24,9 +24,10 @@ github-repos = ["brson/hello-rs"]
 # These sections allows to customize how crater treats specific crates/repos
 #
 # The available options for each crate/repo are:
-#  - skip       (bool): ignore this crate/repo
-#  - skip-tests (bool): don't run tests in this crate/repo
-#  - quiet      (bool): don't kill after two minutes without output
+#  - skip            (bool): ignore this crate/repo
+#  - skip-tests      (bool): don't run tests in this crate/repo
+#  - quiet           (bool): don't kill after two minutes without output
+#  - update-lockfile (bool): update the lockfile even if the crate has one
 #
 # Please add a comment along with each entry explaining the reasons of the
 # changes, thanks!
@@ -3247,6 +3248,7 @@ zyre-sys = { skip = true } #automatic
 "Bobo1239/rust-vst-demo" = { skip = true } #automatic
 "BookOwl/rusty-markov" = { skip = true } #automatic
 "BrainBlasted/Trumpet" = { skip = true } #automatic
+"BurntSushi/cargo-benchcmp" = { update-lockfile = true } # outdated lockfile
 "BygoneWorlds/telepipe" = { skip = true } #automatic
 "CSM-Dream-Team/final-project" = { skip = true } #automatic
 "CanalTP/mimirsbrunn" = { skip = true } #automatic
@@ -3311,6 +3313,7 @@ zyre-sys = { skip = true } #automatic
 "JuanPotato/botato" = { skip = true } #automatic
 "KaiserKyle/Rust_Chip8" = { skip = true } #automatic
 "Keats/gutenberg" = { skip = true } #automatic
+"KeenS/cargo-pack-docker" = { update-lockfile = true } # outdated lockfile
 "KeenS/webml" = { skip = true } #automatic
 "Kerollmops/particle-system-rs" = { skip = true } #automatic
 "KeyboardFire/babble" = { skip = true } #automatic
@@ -3431,6 +3434,7 @@ zyre-sys = { skip = true } #automatic
 "acmiyaguchi/rust-tinywm" = { skip = true } #automatic
 "adamgreig/asfmrs" = { skip = true } #automatic
 "adamwilbert/Rust-Guessing-Game" = { skip = true } #automatic
+"adfaure/batsim.rs" = { update-lockfile = true } # outdated lockfile
 "adinapoli/profiv" = { skip = true } #automatic
 "adinapoli/viktor" = { skip = true } #automatic
 "agatan/yoin" = { skip = true } #automatic
@@ -3476,6 +3480,7 @@ zyre-sys = { skip = true } #automatic
 "antifuchs/tmux_min_attacher" = { skip = true } #automatic
 "antiochp/grin-keybase-wallet" = { skip = true } #automatic
 "antoyo/titanium" = { skip = true } #automatic
+"anvie/litcrypt.rs" = { update-lockfile = true } # outdated lockfile
 "aochagavia/Rust-Sudoku-Solver" = { skip = true } #automatic
 "aochagavia/rocket" = { skip = true } #automatic
 "aochagavia/rocket_wasm" = { skip = true } #automatic
@@ -3541,6 +3546,7 @@ zyre-sys = { skip = true } #automatic
 "ca1ek/tetrahedrane" = { skip = true } #automatic
 "campaul/shovel" = { skip = true } #automatic
 "cantsin/pcg" = { skip = true } #automatic
+"cardoe/cargo-bitbake" = { update-lockfile = true } # outdated lockfile
 "carllerche/tokio-examples" = { skip = true } #automatic
 "cbiffle/httpd1" = { skip = true } #automatic
 "cdbfoster/takkerus" = { skip = true } #automatic
@@ -3577,6 +3583,7 @@ zyre-sys = { skip = true } #automatic
 "compass-rs/compass" = { skip = true } #automatic
 "computermouth/slapfight" = { skip = true } #automatic
 "conradkdotcom/rooster" = { skip = true } #automatic
+"cora32/Linkcrawl" = { update-lockfile = true } # outdated lockfile
 "coredump-ch/coredumpbot" = { skip = true } #automatic
 "coredump-ch/mdr" = { skip = true } #automatic
 "cptroot/gnu-efi" = { skip = true } #automatic
@@ -3584,6 +3591,7 @@ zyre-sys = { skip = true } #automatic
 "cracell/objects-in-space" = { skip = true } #automatic
 "crazymykl/rust-koans" = { skip = true } #automatic
 "creativcoder/graphin" = { skip = true } #automatic
+"creators/cli.sudoku.rs" = { update-lockfile = true } # outdated lockfile
 "cristeahub/hvilkenukeerdet" = { skip = true } #automatic
 "cristianoliveira/funzzy" = { skip = true } #automatic
 "cristicbz/treebank-tokenizer" = { skip = true } #automatic
@@ -3636,6 +3644,7 @@ zyre-sys = { skip = true } #automatic
 "dguenther/rustchip" = { skip = true } #automatic
 "dixego/motherbase_name_generator" = { skip = true } #automatic
 "djc/rust-sign" = { skip = true } #automatic
+"djmcgill/form" = { update-lockfile = true } # outdated lockfile
 "dlecan/rpi-management-api" = { skip = true } #automatic
 "dndx/pitot" = { skip = true } #automatic
 "dominictassio/peacock_panel" = { skip = true } #automatic
@@ -3668,6 +3677,7 @@ zyre-sys = { skip = true } #automatic
 "ef4/advent-of-code" = { skip = true } #automatic
 "eightbitraptor/bwt-rust" = { skip = true } #automatic
 "elsuizo/RSIS_Rust" = { skip = true } #automatic
+"emabee/rust-hdbconnect" = { update-lockfile = true } # outdated lockfile
 "emk/rust-slow-iteration-demo" = { skip = true } #automatic
 "emk/substudy" = { skip-tests = true } #automatic
 "emreyaren/zero85" = { skip = true } #automatic
@@ -3693,6 +3703,7 @@ zyre-sys = { skip = true } #automatic
 "fehrenbach/tuner" = { skip = true } #automatic
 "fengalin/media-toc" = { skip = true } #automatic
 "fenhl/lore-seeker-discord" = { skip = true } #automatic
+"fiirhok/mailcheck.rs" = { update-lockfile = true } # outdated lockfile
 "fitzgen/clife" = { skip = true } #automatic
 "fitzgen/oxischeme" = { skip = true } #automatic
 "fitzgen/preduce" = { skip = true } #automatic
@@ -3703,7 +3714,9 @@ zyre-sys = { skip = true } #automatic
 "folsen/rustfest2017" = { skip = true } #automatic
 "fosu/myceline" = { skip = true } #automatic
 "fosu/psilocybin" = { skip = true } #automatic
+"frankier/suchalotofdata" = { update-lockfile = true } # outdated lockfile
 "frankmcsherry/COST" = { skip = true } #automatic
+"frewsxcv/alert-after" = { update-lockfile = true } # outdated lockfile
 "friktor/git4telegram" = { skip = true } #automatic
 "fschutt/osmpg" = { skip = true } #automatic
 "funmaker/mandelrust" = { skip = true } #automatic
@@ -3806,6 +3819,8 @@ zyre-sys = { skip = true } #automatic
 "jamesmunns/pide" = { skip = true } #automatic
 "jamespharaoh/btrfs-dedupe" = { skip = true } #automatic
 "jamespharaoh/rzbackup" = { skip = true } #automatic
+"jamii/imp" = { update-lockfile = true } # outdated lockfile
+"japaric/swap-ld" = { update-lockfile = true } # outdated lockfile
 "jasonwhite/button-rs" = { skip = true } #automatic
 "jasonwyatt/braid-lib" = { skip = true } #automatic
 "jauhien/iron-kaleidoscope" = { skip = true } #automatic
@@ -3838,6 +3853,7 @@ zyre-sys = { skip = true } #automatic
 "jroblak/rustproj" = { skip = true } #automatic
 "jroesch/rustv" = { skip = true } #automatic
 "jstnlef/rustris" = { skip = true } #automatic
+"jswrenn/beep" = { update-lockfile = true } # outdated lockfile
 "jswrenn/rustylog" = { skip = true } #automatic
 "jtianling/toc-auto-add" = { skip = true } #automatic
 "juanibiapina/forust" = { skip = true } #automatic
@@ -3946,6 +3962,7 @@ zyre-sys = { skip = true } #automatic
 "mattkuo/rusty-chips" = { skip = true } #automatic
 "mattyhall/timmy" = { skip = true } #automatic
 "maufl/uip" = { skip = true } #automatic
+"max6cn/Kaleidoscope.rs" = { update-lockfile = true } # outdated lockfile
 "mcgoo/vcpkg-rs" = { skip = true } #automatic
 "mchesser/pikemon" = { skip = true } #automatic
 "mchesser/snake-rs" = { skip = true } #automatic
@@ -3954,6 +3971,7 @@ zyre-sys = { skip = true } #automatic
 "mdespuits/rust-playpen" = { skip = true } #automatic
 "mdg/leema" = { skip = true } #automatic
 "megamsys/meg" = { skip = true } #automatic
+"megamsys/megam_api.rs" = { update-lockfile = true } # outdated lockfile
 "megamsys/rust_cli" = { skip = true } #automatic
 "mehcode/xchip" = { skip = true } #automatic
 "mgattozzi/cargo-wa" = { skip = true } #automatic
@@ -3978,6 +3996,7 @@ zyre-sys = { skip = true } #automatic
 "mkpankov/parse-rust" = { skip = true } #automatic
 "mkpankov/rusty_boy" = { skip = true } #automatic
 "mlsteele/bittles" = { skip = true } #automatic
+"mmacedoeu/csvtoredis" = { update-lockfile = true } # outdated lockfile
 "mmstick/fontfinder" = { skip = true } #automatic
 "mmueller/advent2017" = { skip = true } #automatic
 "mneumann/izhikevich-neurons" = { skip = true } #automatic
@@ -4030,6 +4049,7 @@ zyre-sys = { skip = true } #automatic
 "ogham/exa" = { skip = true } #automatic
 "ohazi/opengl-demo-rust" = { skip = true } #automatic
 "ojacobson/rust-mount-demo" = { skip = true } #automatic
+"olegakbarov/cali" = { update-lockfile = true } # outdated lockfile
 "onur/at-rust" = { skip = true } #automatic
 "opensourcegeek/stest" = { skip = true } #automatic
 "oracal/rust-gumbo" = { skip = true } #automatic
@@ -4053,6 +4073,7 @@ zyre-sys = { skip = true } #automatic
 "passy/ordered-jobs-kata-rust" = { skip = true } #automatic
 "paulusx/text_generator" = { skip = true } #automatic
 "pcwalton/sprocketnes" = { skip = true } #automatic
+"pdpi/synth.rs" = { update-lockfile = true } # outdated lockfile
 "pelmers/geoshaper" = { skip = true } #automatic
 "pengowen123/horde_survival" = { skip = true } #automatic
 "pepyakin/chipster" = { skip = true } #automatic
@@ -4149,6 +4170,7 @@ zyre-sys = { skip = true } #automatic
 "rust-lang/rust-playpen" = { skip-tests = true } #automatic
 "rustamatics/rumo" = { skip = true } #automatic
 "rustmore/rumenu" = { skip = true } #automatic
+"rustoscript.js/rs-parser" = { update-lockfile = true } # outdated lockfile
 "rustyhorde/goopd" = { skip = true } #automatic
 "rustyhorde/twists" = { skip = true } #automatic
 "ruuda/claxon" = { skip-tests = true } #automatic
@@ -4228,6 +4250,7 @@ zyre-sys = { skip = true } #automatic
 "steveklabnik/geekout2016" = { skip = true } #automatic
 "steveklabnik/parse-example" = { skip = true } #automatic
 "steveklabnik/rustbook" = { skip = true } #automatic
+"steveklabnik/rustdoc" = { update-lockfile = true } # outdated lockfile
 "sticnarf/shunter-chnroutes" = { skip = true } #automatic
 "stratis-storage/stratisd" = { skip = true } #automatic
 "stuarthicks/otp" = { skip = true } #automatic
@@ -4270,6 +4293,7 @@ zyre-sys = { skip = true } #automatic
 "trixnz/rustsym" = { skip = true } #automatic
 "tschottdorf/findus" = { skip = true } #automatic
 "tsurai/data-mining-rs" = { skip = true } #automatic
+"ttacon/github.rs" = { update-lockfile = true } # outdated lockfile
 "twincitiespublictelevision/mm_api_notify" = { skip = true } #automatic
 "txus/lambada-rs" = { skip = true } #automatic
 "tylerwhall/tis-100-rs" = { skip = true } #automatic
@@ -4289,6 +4313,7 @@ zyre-sys = { skip = true } #automatic
 "vilhalmer/gosh" = { skip = true } #automatic
 "viperscape/font-atlas-example" = { skip = true } #automatic
 "viperscape/rust-irc" = { skip = true } #automatic
+"vitiral/artifact" = { update-lockfile = true } # outdated lockfile
 "vityafx/urlshortener-cli" = { skip = true } #automatic
 "vlthr/accord" = { skip = true } #automatic
 "vmchale/project-init" = { skip = true } #automatic

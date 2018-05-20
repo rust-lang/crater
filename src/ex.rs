@@ -176,21 +176,31 @@ impl Experiment {
         Ok(())
     }
 
-    pub fn prepare_shared<DB: WriteResults>(&self, db: &DB) -> Result<()> {
+    pub fn prepare_shared<DB: WriteResults>(&self, config: &Config, db: &DB) -> Result<()> {
         self.fetch_repo_crates()?;
         capture_shas(self, &self.crates, db)?;
         crates::prepare(&self.crates)?;
 
         frob_tomls(self, &self.crates)?;
-        capture_lockfiles(self, &self.crates, &Toolchain::Dist("stable".into()), false)?;
+        capture_lockfiles(
+            config,
+            self,
+            &self.crates,
+            &Toolchain::Dist("stable".into()),
+        )?;
         Ok(())
     }
 
-    pub fn prepare_local(&self) -> Result<()> {
+    pub fn prepare_local(&self, config: &Config) -> Result<()> {
         // Local experiment prep
         delete_all_target_dirs(&self.name)?;
         ex_run::delete_all_results(&self.name)?;
-        fetch_deps(self, &self.crates, &Toolchain::Dist("stable".into()))?;
+        fetch_deps(
+            config,
+            self,
+            &self.crates,
+            &Toolchain::Dist("stable".into()),
+        )?;
         prepare_all_toolchains(self)?;
 
         Ok(())
@@ -323,13 +333,13 @@ where
 }
 
 pub fn capture_lockfiles(
+    config: &Config,
     ex: &Experiment,
     crates: &[Crate],
     toolchain: &Toolchain,
-    recapture_existing: bool,
 ) -> Result<()> {
     for c in crates {
-        if let Err(e) = capture_lockfile(ex, c, toolchain, recapture_existing) {
+        if let Err(e) = capture_lockfile(config, ex, c, toolchain) {
             util::report_error(&e);
         }
     }
@@ -338,21 +348,15 @@ pub fn capture_lockfiles(
 }
 
 pub fn capture_lockfile(
+    config: &Config,
     ex: &Experiment,
     krate: &Crate,
     toolchain: &Toolchain,
-    recapture_existing: bool,
 ) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    if krate.dir().join("Cargo.lock").exists() {
+    if !config.should_update_lockfile(krate) && krate.dir().join("Cargo.lock").exists() {
         info!("crate {} has a lockfile. skipping", krate);
-        return Ok(());
-    }
-
-    let captured_lockfile = lockfile(&ex.name, krate)?;
-    if captured_lockfile.exists() && !recapture_existing {
-        info!("skipping existing lockfile for {}", krate);
         return Ok(());
     }
 
@@ -394,12 +398,20 @@ fn capture_lockfile_inner(
     Ok(())
 }
 
-pub fn with_captured_lockfile(ex: &Experiment, krate: &Crate, path: &Path) -> Result<()> {
+pub fn with_captured_lockfile(
+    config: &Config,
+    ex: &Experiment,
+    krate: &Crate,
+    path: &Path,
+) -> Result<()> {
+    let src_lockfile = &lockfile(&ex.name, krate)?;
     let dst_lockfile = &path.join("Cargo.lock");
-    if dst_lockfile.exists() {
+
+    // Only use the local lockfile if it wasn't overridden
+    if !config.should_update_lockfile(krate) && dst_lockfile.exists() {
         return Ok(());
     }
-    let src_lockfile = &lockfile(&ex.name, krate)?;
+
     if src_lockfile.exists() {
         info!("using lockfile {}", src_lockfile.display());
         fs::copy(src_lockfile, dst_lockfile).chain_err(|| {
@@ -414,9 +426,14 @@ pub fn with_captured_lockfile(ex: &Experiment, krate: &Crate, path: &Path) -> Re
     Ok(())
 }
 
-pub fn fetch_deps(ex: &Experiment, crates: &[Crate], toolchain: &Toolchain) -> Result<()> {
+pub fn fetch_deps(
+    config: &Config,
+    ex: &Experiment,
+    crates: &[Crate],
+    toolchain: &Toolchain,
+) -> Result<()> {
     for c in crates {
-        if let Err(e) = fetch_crate_deps(ex, c, toolchain) {
+        if let Err(e) = fetch_crate_deps(config, ex, c, toolchain) {
             util::report_error(&e);
         }
     }
@@ -424,10 +441,15 @@ pub fn fetch_deps(ex: &Experiment, crates: &[Crate], toolchain: &Toolchain) -> R
     Ok(())
 }
 
-pub fn fetch_crate_deps(ex: &Experiment, krate: &Crate, toolchain: &Toolchain) -> Result<()> {
+pub fn fetch_crate_deps(
+    config: &Config,
+    ex: &Experiment,
+    krate: &Crate,
+    toolchain: &Toolchain,
+) -> Result<()> {
     with_work_crate(ex, toolchain, krate, |path| {
         with_frobbed_toml(ex, krate, path)?;
-        with_captured_lockfile(ex, krate, path)?;
+        with_captured_lockfile(config, ex, krate, path)?;
 
         let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
         toolchain

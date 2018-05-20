@@ -210,11 +210,11 @@ fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String
     Ok(match *c {
         Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
         Crate::GitHub(ref repo) => {
-            let sha = shas
-                .get(repo)
-                .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
-                .as_str();
-            format!("{}.{}.{}", repo.org, repo.name, sha)
+            if let Some(sha) = shas.get(repo) {
+                format!("{}.{}.{}", repo.org, repo.name, sha)
+            } else {
+                format!("{}.{}", repo.org, repo.name)
+            }
         }
     })
 }
@@ -226,11 +226,11 @@ fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String>
             details.name, details.version
         ),
         Crate::GitHub(ref repo) => {
-            let sha = shas
-                .get(repo)
-                .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
-                .as_str();
-            format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)
+            if let Some(sha) = shas.get(repo) {
+                format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)
+            } else {
+                format!("https://github.com/{}/{}", repo.org, repo.name)
+            }
         }
     })
 }

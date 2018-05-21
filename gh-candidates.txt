@@ -3301,7 +3301,6 @@ fralalonde/advent-of-code-2017
 fralalonde/dipstick
 francesca64/hotwatch
 frankier/fst-extra-aut
-frankier/suchalotofdata
 frankmcsherry/COST
 frankmcsherry/columnar
 frankmcsherry/dataflow-join
@@ -3908,7 +3907,6 @@ jamesmunns/pide
 jamespharaoh/btrfs-dedupe
 jamespharaoh/rzbackup
 jameysharp/weighted-regexp-rs
-jamii/imp
 jamiltron/learn_gfx_2d
 jamorton/loccr
 jamorton/rust-dcpu16
@@ -5491,7 +5489,6 @@ ojacobson/rust-mount-demo
 ojhp/zed
 oldmacnut/sgt_initramfs
 oldsj/backup-rs
-olegakbarov/cali
 oli-obk/camera_capture
 oli-obk/pandoc-ast
 oli-obk/quine-mc_cluskey
@@ -6824,6 +6821,7 @@ steveklabnik/GPACalc.rs
 steveklabnik/compass-rust
 steveklabnik/core_mini_http.rs
 steveklabnik/cryptopals
+steveklabnik/doxidize
 steveklabnik/echo
 steveklabnik/escape_html
 steveklabnik/for_bbatha
@@ -6836,7 +6834,6 @@ steveklabnik/redis
 steveklabnik/ruby.rs
 steveklabnik/rust-issue-17417
 steveklabnik/rustbook
-steveklabnik/rustdoc
 steveklabnik/rustque
 steveklabnik/semver
 steveklabnik/semver-parser

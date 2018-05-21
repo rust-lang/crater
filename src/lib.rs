@@ -50,6 +50,7 @@ extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_process;
 extern crate tokio_timer;
+#[cfg_attr(test, macro_use)]
 extern crate toml;
 #[macro_use]
 extern crate url;

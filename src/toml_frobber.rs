@@ -29,6 +29,17 @@ pub fn frob_table(table: &mut Table, name: &str, vers: &str) -> bool {
         changed = true;
     }
 
+    // Frob target-specific dependencies
+    if let Some(&mut Value::Table(ref mut targets)) = table.get_mut("target") {
+        for (_, target) in targets.iter_mut() {
+            if let Value::Table(ref mut target_table) = *target {
+                if frob_dependencies(target_table, name, vers) {
+                    changed = true;
+                }
+            }
+        }
+    }
+
     // Eliminate workspaces
     if table.remove("workspace").is_some() {
         info!("removing workspace from {}-{}", name, vers);
@@ -76,6 +87,9 @@ mod tests {
 
             [dev-dependencies]
             baz = "1.0"
+
+            [target."cfg(unix)".dependencies]
+            quux = "1.0"
         };
 
         let result = toml.clone();
@@ -97,6 +111,9 @@ mod tests {
             [dev-dependencies]
             baz = { version = "1.0", path = "../baz" }
 
+            [target."cfg(unix)".dependencies]
+            quux = { version = "1.0", path = "../quux" }
+
             [workspace]
             members = []
         };
@@ -111,6 +128,9 @@ mod tests {
 
             [dev-dependencies]
             baz = { version = "1.0" }
+
+            [target."cfg(unix)".dependencies]
+            quux = { version = "1.0" }
         };
 
         assert!(frob_table(toml.as_table_mut().unwrap(), "foo", "1.0"));

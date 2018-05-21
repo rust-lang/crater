@@ -46,6 +46,14 @@ pub fn frob_table(table: &mut Table, name: &str, vers: &str) -> bool {
         changed = true;
     }
 
+    // Eliminate parent workspaces
+    if let Some(&mut Value::Table(ref mut package)) = table.get_mut("package") {
+        if package.remove("workspace").is_some() {
+            info!("removing parent workspace from {}-{}", name, vers);
+            changed = true;
+        }
+    }
+
     changed
 }
 
@@ -104,6 +112,7 @@ mod tests {
             [package]
             name = "foo"
             version = "1.0"
+            workspace = ".."
 
             [dependencies]
             bar = { version = "1.0", path = "../bar" }

@@ -28,6 +28,7 @@ github-repos = ["brson/hello-rs"]
 #  - skip-tests      (bool): don't run tests in this crate/repo
 #  - quiet           (bool): don't kill after two minutes without output
 #  - update-lockfile (bool): update the lockfile even if the crate has one
+#  - broken          (bool): skip the crate only if there is an crater error during a stage
 #
 # Please add a comment along with each entry explaining the reasons of the
 # changes, thanks!

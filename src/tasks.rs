@@ -79,6 +79,7 @@ impl Task {
         ex: &Experiment,
         db: &DB,
         err: &Error,
+        result: TestResult,
     ) -> Result<()> {
         match self.step {
             TaskStep::Prepare => {}
@@ -89,7 +90,7 @@ impl Task {
                 db.record_result(ex, tc, &self.krate, || {
                     error!("this task or one of its parent failed!");
                     util::report_error(err);
-                    Ok(TestResult::Error)
+                    Ok(result)
                 })?;
             }
         }

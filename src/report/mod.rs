@@ -558,6 +558,7 @@ mod tests {
                 skip_tests: false,
                 quiet: false,
                 update_lockfile: false,
+                broken: false,
             },
         );
         assert_eq!(compare(&config, &reg, &None, &None), Comparison::Skipped);

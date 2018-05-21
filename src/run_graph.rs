@@ -4,7 +4,7 @@ use errors::*;
 use ex::{self, ExMode, Experiment};
 use file;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
-use results::WriteResults;
+use results::{TestResult, WriteResults};
 use std::fmt;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -161,17 +161,18 @@ impl TasksGraph {
         ex: &Experiment,
         db: &DB,
         error: &Error,
+        result: TestResult,
     ) -> Result<()> {
         let mut children = self
             .graph
             .neighbors_directed(node, Direction::Incoming)
             .collect::<Vec<_>>();
         for child in children.drain(..) {
-            self.mark_as_failed(child, ex, db, error)?;
+            self.mark_as_failed(child, ex, db, error, result)?;
         }
 
         match self.graph[node] {
-            Node::Task { ref task, .. } => task.mark_as_failed(ex, db, error)?,
+            Node::Task { ref task, .. } => task.mark_as_failed(ex, db, error, result)?,
             Node::CrateCompleted | Node::Root => return Ok(()),
         }
 
@@ -262,7 +263,16 @@ pub fn run_ex<DB: WriteResults + Sync>(
                         if let Err(e) = task.run(config, ex, db) {
                             error!("task failed, marking childs as failed too: {:?}", task);
                             util::report_error(&e);
-                            graph.lock().unwrap().mark_as_failed(id, ex, db, &e)?;
+
+                            let result = if config.is_broken(&task.krate) {
+                                TestResult::BuildFail
+                            } else {
+                                TestResult::Error
+                            };
+                            graph
+                                .lock()
+                                .unwrap()
+                                .mark_as_failed(id, ex, db, &e, result)?;
                         } else {
                             graph.lock().unwrap().mark_as_completed(id);
                         }

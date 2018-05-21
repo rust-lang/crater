@@ -1015,6 +1015,7 @@ gitx = { skip = true } #automatic
 glib = { slow = true } # tests slow to run
 glide = { skip = true } #automatic
 glium = { slow = true } # tests build time close to 2 minutes
+glium_macros = { skip = true } # the archive can't be extracted
 glm = { skip-tests = true } #automatic
 glmf32-sys = { skip = true } #automatic
 glop = { skip = true } #automatic
@@ -1421,6 +1422,7 @@ libarchive3-sys = { skip = true } #automatic
 libb2-sys = { skip = true } #automatic
 libbgmrank = { skip = true } #automatic
 libbindgen = { skip = true } #automatic
+libbreakpad-client-sys = { skip = true } # the archive can't be extracted
 libcapstone = { skip = true } #automatic
 libcapstone-sys = { skip = true } #automatic
 libcryptsetup-sys = { skip = true } #automatic

@@ -3,13 +3,22 @@ webhooks-secret = ""
 api-token = ""
 
 [reports-bucket]
-# This is configured by default to use the public minio playground
-# S3 can be changed by setting the region name (for example "us-east-1")
-region = ["custom", "https://play.minio.io:9000"]
 bucket = "crater-reports"
-public-url = "https://play.minio.io:9000"
+
+# Configuration for the minio playground
+# This requires no authentication (credentials are public) and it's great for
+# local testing, but it's purged every few days. You might have to recreate the
+# bucket manually if it was deleted.
+region = { type = "custom", url = "https://play.minio.io:9000" }
+public-url = "https://play.minio.io:9000/{bucket}"
 access-key = "Q3AM3UQ867SPQQA43P2F"
 secret-key = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+
+# Configuration for production S3
+#region = { type = "s3", region = "us-west-1" }
+#public-url = "https://{bucket}.s3.amazonaws.com"
+#access-key = ""
+#secret-key = ""
 
 [agents]
 # "TOKEN" = "agent-name"

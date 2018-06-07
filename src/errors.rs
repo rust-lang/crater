@@ -16,6 +16,7 @@ error_chain! {
         ParseInt(::std::num::ParseIntError);
         Parse(::std::string::ParseError);
         RusotoTls(::rusoto_core::TlsError);
+        RusotoParseRegion(::rusoto_core::ParseRegionError);
         Rusqlite(::rusqlite::Error);
         R2D2(::r2d2::Error);
         Base64Decode(::base64::DecodeError);

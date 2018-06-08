@@ -107,6 +107,8 @@ generate_parser!(pub enum Command {
         name: Option<String> = "name",
     })
 
+    "reload-acl" => ReloadACL(ReloadACLArgs {})
+
     _ => Edit(EditArgs {
         name: Option<String> = "name",
         start: Option<Toolchain> = "start",

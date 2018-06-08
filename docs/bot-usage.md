@@ -98,3 +98,16 @@ without restarting the whole experiment, with the GitHub command
 
 * `name`: name of the experiment; required only if Crater [can't determine it
   automatically][auto-name]
+
+## Reload the list of GitHub team members
+
+Crater allows members of some teams (configured in `config.toml`) to interact
+with the GitHub bot, but the list of members is only loaded at startup. If a
+member joined or was removed from a team, you need to reload that list.
+
+It's possible to reload the list either restarting the Crater server or using
+the `reload-acl` command, which requires no arguments:
+
+```
+@craterbot reload-acl
+```

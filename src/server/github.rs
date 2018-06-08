@@ -1,6 +1,7 @@
 use errors::*;
 use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
 use server::tokens::Tokens;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct GitHubApi {
@@ -110,6 +111,44 @@ impl GitHubApi {
             );
         }
     }
+
+    pub fn list_teams(&self, org: &str) -> Result<HashMap<String, usize>> {
+        let mut response = self
+            .build_request(Method::Get, &format!("orgs/{}/teams", org))
+            .send()?;
+
+        if response.status() == StatusCode::Ok {
+            let teams: Vec<Team> = response.json()?;
+            Ok(teams.into_iter().map(|t| (t.slug, t.id)).collect())
+        } else {
+            let error: Error = response.json()?;
+            bail!(
+                "failed to get {}'s teams (status code {}): {}'",
+                org,
+                response.status(),
+                error.message
+            );
+        }
+    }
+
+    pub fn team_members(&self, team: usize) -> Result<Vec<String>> {
+        let mut response = self
+            .build_request(Method::Get, &format!("teams/{}/members", team))
+            .send()?;
+
+        if response.status() == StatusCode::Ok {
+            let users: Vec<User> = response.json()?;
+            Ok(users.into_iter().map(|u| u.login).collect())
+        } else {
+            let error: Error = response.json()?;
+            bail!(
+                "failed to get team {} members (status code {}): {}'",
+                team,
+                response.status(),
+                error.message
+            );
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -152,4 +191,10 @@ pub struct Label {
 #[derive(Deserialize)]
 pub struct Comment {
     pub body: String,
+}
+
+#[derive(Deserialize)]
+pub struct Team {
+    pub id: usize,
+    pub slug: String,
 }

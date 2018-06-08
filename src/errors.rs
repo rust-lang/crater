@@ -1,6 +1,9 @@
 // https://github.com/rust-lang-nursery/error-chain/issues/213
 // needs an upgrade to error-chain 0.11
-#![allow(unused_doc_comment)]
+
+// FIXME: replace this with #![allow(unused_doc_comment)] when we don't care about 1.26.* anymore.
+#![allow(unknown_lints, renamed_and_removed_lints, unused_doc_comments, unused_doc_comment)]
+
 error_chain! {
     foreign_links {
         IoError(::std::io::Error);

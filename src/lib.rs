@@ -57,6 +57,7 @@ extern crate url;
 extern crate walkdir;
 
 pub mod agent;
+mod assets;
 #[macro_use]
 pub mod log;
 #[macro_use]

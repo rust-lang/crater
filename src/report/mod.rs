@@ -1,9 +1,9 @@
+use assets;
 use config::Config;
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use ex;
 use file;
-use handlebars::Handlebars;
 use mime::{self, Mime};
 use results::{ReadResults, TestResult};
 use serde_json;
@@ -280,9 +280,8 @@ pub struct Context {
 }
 
 fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
-    let html_in = include_str!("../../template/report.html");
-    let js_in = include_str!("../../static/report.js");
-    let css_in = include_str!("../../static/report.css");
+    let js_in = assets::load("static/report.js")?;
+    let css_in = assets::load("static/report.css")?;
     let html_out = "index.html";
     let js_out = "report.js";
     let css_out = "report.css";
@@ -292,13 +291,11 @@ fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
         results_url: "results.json".into(),
         static_url: "".into(),
     };
-    let html = Handlebars::new()
-        .template_render(html_in, &context)
-        .chain_err(|| "Couldn't render template")?;
+    let html = assets::render_template("template/report.html", &context)?;
 
     dest.write_string(&html_out, html.into(), &mime::TEXT_HTML)?;
-    dest.write_string(&js_out, js_in.into(), &mime::TEXT_JAVASCRIPT)?;
-    dest.write_string(&css_out, css_in.into(), &mime::TEXT_CSS)?;
+    dest.write_string(&js_out, js_in.content()?, js_in.mime())?;
+    dest.write_string(&css_out, css_in.content()?, css_in.mime())?;
 
     Ok(())
 }

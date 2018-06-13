@@ -13,7 +13,7 @@ macro_rules! load_files {
             static ref ASSETS: HashMap<&'static str, Asset> = {
                 let mut assets = HashMap::new();
                 $(
-                    let content = load_files!(_content $asset);
+                    let content = load_files!(_content concat!("assets/", $asset));
                     assets.insert($asset, Asset {
                         content,
                         mime: mime::$mime,
@@ -24,7 +24,7 @@ macro_rules! load_files {
 
             static ref TEMPLATES: HashMap<&'static str, FileContent> = {
                 let mut templates = HashMap::new();
-                $(templates.insert($template, load_files!(_content $template));)*
+                $(templates.insert($template, load_files!(_content concat!("templates/", $template)));)*
                 templates
             };
         }
@@ -46,11 +46,11 @@ macro_rules! load_files {
 
 load_files! {
     templates: [
-        "template/report.html",
+        "report.html",
     ],
     assets: [
-        "static/report.css" => TEXT_CSS,
-        "static/report.js" => TEXT_JAVASCRIPT,
+        "report.css" => TEXT_CSS,
+        "report.js" => TEXT_JAVASCRIPT,
     ],
 }
 

@@ -280,8 +280,8 @@ pub struct Context {
 }
 
 fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
-    let js_in = assets::load("static/report.js")?;
-    let css_in = assets::load("static/report.css")?;
+    let js_in = assets::load("report.js")?;
+    let css_in = assets::load("report.css")?;
     let html_out = "index.html";
     let js_out = "report.js";
     let css_out = "report.css";
@@ -291,7 +291,7 @@ fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
         results_url: "results.json".into(),
         static_url: "".into(),
     };
-    let html = assets::render_template("template/report.html", &context)?;
+    let html = assets::render_template("report.html", &context)?;
 
     dest.write_string(&html_out, html.into(), &mime::TEXT_HTML)?;
     dest.write_string(&js_out, js_in.content()?, js_in.mime())?;

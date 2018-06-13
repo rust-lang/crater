@@ -517,6 +517,7 @@ cson = { skip = true } #automatic
 cssselect = { skip = true } #automatic
 csv = { skip-tests = true } # flaky test
 cttw = { skip = true } #automatic
+ctx = { skip-tests = true } # tests depends on timing
 ctypes = { skip = true } #automatic
 cuda_dnn = { skip = true } #automatic
 cudd-sys = { skip = true } #automatic
@@ -1804,6 +1805,7 @@ newbee = { skip-tests = true } #automatic
 newdev-sys = { skip = true } #automatic
 newtype-ops = { skip-tests = true } #automatic
 nextaction-rs = { skip = true } #automatic
+nexus-rs = { skip-tests = true } # flaky tests
 nfd-sys = { skip = true } #automatic
 nflog = { skip = true } #automatic
 nfqueue = { skip = true } #automatic
@@ -2621,6 +2623,7 @@ socks_rs = { skip-tests = true } #automatic
 sodium-sys = { skip = true } #automatic
 sodiumoxide_extras = { skip = true } #automatic
 sokoban-rs = { skip = true } #automatic
+solana = { skip-tests = true } # flaky tests
 solicit = { skip = true } #automatic
 solr = { skip-tests = true } #automatic
 songkick = { skip-tests = true } #automatic
@@ -2850,6 +2853,7 @@ tomcrypt-sys = { skip-tests = true } #automatic
 toml_document = { skip = true } #automatic
 tor_control = { skip = true } #automatic
 torch = { skip-tests = true } #automatic
+touch = { skip-tests = true } # depends on the filesystem
 tozny_auth = { skip = true } #automatic
 tr1pd = { skip = true } #automatic
 trace = { skip = true } #automatic

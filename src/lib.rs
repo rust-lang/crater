@@ -9,7 +9,6 @@ extern crate error_chain;
 extern crate flate2;
 extern crate futures;
 extern crate futures_cpupool;
-extern crate handlebars;
 extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
@@ -46,6 +45,7 @@ extern crate slog_term;
 extern crate tar;
 extern crate tempdir;
 extern crate tempfile;
+extern crate tera;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_process;

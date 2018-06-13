@@ -1,11 +1,22 @@
 use errors::*;
 use file;
-use handlebars::Handlebars;
 use mime::{self, Mime};
 use serde::Serialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tera::Tera;
+
+#[cfg(not(debug_assertions))]
+lazy_static! {
+    static ref TERA_CACHE: Tera = match build_tera_cache() {
+        Ok(tera) => tera,
+        Err(err) => {
+            ::util::report_error(&err);
+            ::std::process::exit(1);
+        }
+    };
+}
 
 macro_rules! load_files {
     (templates: [$($template:expr,)*], assets: [$($asset:expr => $mime:ident,)*],) => {
@@ -96,15 +107,37 @@ pub fn load(name: &str) -> Result<&Asset> {
     }
 }
 
-pub fn render_template<C: Serialize>(name: &str, context: &C) -> Result<String> {
-    if let Some(ref content) = TEMPLATES.get(name) {
-        Handlebars::new()
-            .template_render(&content.load()?, context)
-            .chain_err(|| format!("failed to render template: {}", name))
-    } else {
-        bail!(
-            "unknown template (did you add it to src/assets.rs?): {}",
-            name
-        );
+fn build_tera_cache() -> Result<Tera> {
+    let mut templates = Vec::new();
+    for (name, content) in TEMPLATES.iter() {
+        templates.push((*name, content.load()?));
     }
+
+    let to_add = templates
+        .iter()
+        .map(|(n, c)| (*n, c as &str))
+        .collect::<Vec<_>>();
+
+    let mut tera = Tera::default();
+    tera.add_raw_templates(to_add)?;
+    Ok(tera)
+}
+
+pub fn render_template<C: Serialize>(name: &str, context: &C) -> Result<String> {
+    // On debug builds the cache is rebuilt every time to pick up changed templates
+    let tera_owned;
+    let tera;
+
+    #[cfg(debug_assertions)]
+    {
+        tera_owned = build_tera_cache()?;
+        tera = &tera_owned;
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        tera = &TERA_CACHE;
+    }
+
+    Ok(tera.render(name, context)?)
 }

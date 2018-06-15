@@ -26,9 +26,19 @@ const RUST_CI_COMPONENTS: [(&str, &str); 3] = [
     ("cargo", "cargo-nightly-x86_64-unknown-linux-gnu.tar.xz"),
 ];
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
+pub fn ex_target_dir(ex_name: &str) -> PathBuf {
+    TARGET_DIR.join(ex_name)
+}
+
+#[derive(Copy, Clone)]
+pub enum CargoState {
+    Locked,
+    Unlocked,
+}
+
 /// A toolchain name, either a rustup channel identifier,
 /// or a URL+branch+sha: `https://github.com/rust-lang/rust+master+sha`
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub enum Toolchain {
     Dist(String), // rustup toolchain spec
     TryBuild { sha: String },
@@ -47,6 +57,51 @@ impl Toolchain {
         }
 
         Ok(())
+    }
+
+    pub fn rustup_name(&self) -> String {
+        match *self {
+            Toolchain::Dist(ref n) => n.to_string(),
+            Toolchain::TryBuild { ref sha } | Toolchain::Master { ref sha } => sha.to_string(),
+        }
+    }
+
+    pub fn target_dir(&self, ex_name: &str) -> PathBuf {
+        ex_target_dir(ex_name).join(self.to_string())
+    }
+
+    pub fn run_cargo(
+        &self,
+        ex: &Experiment,
+        source_dir: &Path,
+        args: &[&str],
+        cargo_state: CargoState,
+        quiet: bool,
+    ) -> Result<()> {
+        let toolchain_name = self.rustup_name();
+        let ex_target_dir = self.target_dir(&ex.name);
+
+        fs::create_dir_all(&ex_target_dir)?;
+
+        let toolchain_arg = "+".to_string() + &toolchain_name;
+        let mut full_args = vec!["cargo", &*toolchain_arg];
+        full_args.extend_from_slice(args);
+
+        info!("running: {}", full_args.join(" "));
+        let perm = match cargo_state {
+            CargoState::Locked => docker::Perm::ReadOnly,
+            CargoState::Unlocked => docker::Perm::ReadWrite,
+        };
+        let rust_env = docker::RustEnv {
+            args: &full_args,
+            work_dir: (source_dir.into(), perm),
+            cargo_home: (Path::new(&*CARGO_HOME).into(), perm),
+            rustup_home: (Path::new(&*RUSTUP_HOME).into(), docker::Perm::ReadOnly),
+            // This is configured as CARGO_TARGET_DIR by the docker container itself
+            target_dir: (ex_target_dir, docker::Perm::ReadWrite),
+            cap_lints: &ex.cap_lints,
+        };
+        docker::run(&docker::rust_container(rust_env), quiet)
     }
 }
 
@@ -208,63 +263,4 @@ fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
     tx.commit();
 
     Ok(())
-}
-
-impl Toolchain {
-    pub fn rustup_name(&self) -> String {
-        match *self {
-            Toolchain::Dist(ref n) => n.to_string(),
-            Toolchain::TryBuild { ref sha } | Toolchain::Master { ref sha } => sha.to_string(),
-        }
-    }
-}
-
-pub fn ex_target_dir(ex_name: &str) -> PathBuf {
-    TARGET_DIR.join(ex_name)
-}
-
-#[derive(Copy, Clone)]
-pub enum CargoState {
-    Locked,
-    Unlocked,
-}
-
-impl Toolchain {
-    pub fn target_dir(&self, ex_name: &str) -> PathBuf {
-        ex_target_dir(ex_name).join(self.to_string())
-    }
-
-    pub fn run_cargo(
-        &self,
-        ex: &Experiment,
-        source_dir: &Path,
-        args: &[&str],
-        cargo_state: CargoState,
-        quiet: bool,
-    ) -> Result<()> {
-        let toolchain_name = self.rustup_name();
-        let ex_target_dir = self.target_dir(&ex.name);
-
-        fs::create_dir_all(&ex_target_dir)?;
-
-        let toolchain_arg = "+".to_string() + &toolchain_name;
-        let mut full_args = vec!["cargo", &*toolchain_arg];
-        full_args.extend_from_slice(args);
-
-        info!("running: {}", full_args.join(" "));
-        let perm = match cargo_state {
-            CargoState::Locked => docker::Perm::ReadOnly,
-            CargoState::Unlocked => docker::Perm::ReadWrite,
-        };
-        let rust_env = docker::RustEnv {
-            args: &full_args,
-            work_dir: (source_dir.into(), perm),
-            cargo_home: (Path::new(&*CARGO_HOME).into(), perm),
-            rustup_home: (Path::new(&*RUSTUP_HOME).into(), docker::Perm::ReadOnly),
-            // This is configured as CARGO_TARGET_DIR by the docker container itself
-            target_dir: (ex_target_dir, docker::Perm::ReadWrite),
-            cap_lints: &ex.cap_lints,
-        };
-        docker::run(&docker::rust_container(rust_env), quiet)
-    }
 }

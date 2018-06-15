@@ -441,6 +441,7 @@ comsvcs-sys = { skip = true } #automatic
 concat-string = { skip = true } #automatic
 concat_bytes = { skip = true } #automatic
 concurrent-stack = { skip = true } #automatic
+conc = { skip-tests = true } # test timeout
 conductor = { skip = true } #automatic
 confluence = { skip = true } #automatic
 confusion = { skip = true } #automatic
@@ -1529,6 +1530,7 @@ loadperf-sys = { skip = true } #automatic
 lobby = { skip = true } #automatic
 local-encoding = { skip-tests = true } #automatic
 locationapi-sys = { skip = true } #automatic
+lockless = { skip-tests = true } # test timeout
 log4rs-syslog = { skip-tests = true } #automatic
 log_settings = { skip-tests = true } #automatic
 loggy = { skip-tests = true } #automatic

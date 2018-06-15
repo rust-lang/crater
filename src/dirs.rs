@@ -1,6 +1,6 @@
 use std::env;
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 lazy_static! {
     pub static ref WORK_DIR: PathBuf = {
@@ -12,9 +12,6 @@ lazy_static! {
 
     pub static ref CARGO_HOME: String = LOCAL_DIR.join("cargo-home").to_string_lossy().into();
     pub static ref RUSTUP_HOME: String = LOCAL_DIR.join("rustup-home").to_string_lossy().into();
-
-    // Custom toolchains
-    pub static ref TOOLCHAIN_DIR: PathBuf = Path::new(&*RUSTUP_HOME).join("toolchains");
 
     // Where cargo puts its output, when running outside a docker container,
     // CARGO_TARGET_DIR

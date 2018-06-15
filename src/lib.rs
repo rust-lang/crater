@@ -26,7 +26,6 @@ extern crate ring;
 extern crate rusoto_core;
 extern crate rusoto_s3;
 extern crate rusqlite;
-extern crate rustup_dist;
 #[macro_use]
 extern crate scopeguard;
 extern crate semver;

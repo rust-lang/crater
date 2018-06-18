@@ -9,6 +9,25 @@ use std::path::Path;
 static TOKENS_PATH: &'static str = "tokens.toml";
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "type", rename_all = "kebab-case")]
+pub enum BucketRegion {
+    S3 { region: String },
+    Custom { url: String },
+}
+
+impl BucketRegion {
+    pub fn to_region(&self) -> Result<Region> {
+        match *self {
+            BucketRegion::S3 { ref region } => Ok(region.parse()?),
+            BucketRegion::Custom { ref url } => Ok(Region::Custom {
+                name: "custom".to_string(),
+                endpoint: url.clone(),
+            }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BotTokens {
     pub webhooks_secret: String,
@@ -18,7 +37,7 @@ pub struct BotTokens {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ReportsBucket {
-    pub region: Region,
+    pub region: BucketRegion,
     pub bucket: String,
     pub public_url: String,
     pub access_key: String,
@@ -57,7 +76,9 @@ impl Default for Tokens {
                 api_token: String::new(),
             },
             reports_bucket: ReportsBucket {
-                region: "us-east-1".parse().unwrap(),
+                region: BucketRegion::S3 {
+                    region: "us-west-1".to_string(),
+                },
                 bucket: "crater-reports".into(),
                 public_url: String::new(),
                 access_key: String::new(),

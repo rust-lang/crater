@@ -18,7 +18,7 @@ fn generate_report(data: &Data, ex: &ExperimentData, results: &ResultsDB) -> Res
     let client = S3Client::new(
         default_tls_client()?,
         data.tokens.reports_bucket.clone(),
-        data.tokens.reports_bucket.region.clone(),
+        data.tokens.reports_bucket.region.to_region()?,
     );
     let dest = format!(
         "s3://{}/{}",
@@ -77,10 +77,11 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
             continue;
         }
 
-        let report_url = format!(
-            "{}/{}/{}/index.html",
-            data.tokens.reports_bucket.public_url, data.tokens.reports_bucket.bucket, name
-        );
+        let base_url = data.tokens
+            .reports_bucket
+            .public_url
+            .replace("{bucket}", &data.tokens.reports_bucket.bucket);
+        let report_url = format!("{}/{}/index.html", base_url, name);
 
         ex.set_status(&data.db, Status::Completed)?;
         info!("report for the experiment {} generated successfully!", name);

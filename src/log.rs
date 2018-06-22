@@ -14,8 +14,8 @@ use std::time::Instant;
 
 fn global_log_name() -> &'static Path {
     lazy_static! {
-        static ref PATH: PathBuf = LOG_DIR.join(
-                format!("{}", Utc::now().format("%Y-%m-%dT%H-%M-%S.%f")));
+        static ref PATH: PathBuf =
+            LOG_DIR.join(format!("{}", Utc::now().format("%Y-%m-%dT%H-%M-%S.%f")));
     };
     &*PATH
 }
@@ -36,8 +36,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref TERM_DRAIN: Arc<slog::Fuse<Mutex<
-        slog_term::CompactFormat<slog_term::TermDecorator>>>> = {
+    static ref TERM_DRAIN: Arc<slog::Fuse<Mutex<slog_term::CompactFormat<slog_term::TermDecorator>>>> = {
         let plain = slog_term::TermDecorator::new().stdout().build();
         let term = Mutex::new(slog_term::CompactFormat::new(plain).build()).fuse();
         Arc::new(term)

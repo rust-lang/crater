@@ -1,8 +1,8 @@
 use errors::*;
 use file;
 use std::path::Path;
-use toml::{self, Value};
 use toml::value::Table;
+use toml::{self, Value};
 
 pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
     info!("frobbing {}-{}", name, vers);

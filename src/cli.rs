@@ -62,13 +62,17 @@ impl FromStr for Dest {
 }
 
 #[derive(StructOpt)]
-#[structopt(name = "crater", about = "Kaboom!",
-            setting_raw = "AppSettings::VersionlessSubcommands",
-            setting_raw = "AppSettings::DeriveDisplayOrder",
-            setting_raw = "AppSettings::SubcommandRequiredElseHelp")]
+#[structopt(
+    name = "crater",
+    about = "Kaboom!",
+    setting_raw = "AppSettings::VersionlessSubcommands",
+    setting_raw = "AppSettings::DeriveDisplayOrder",
+    setting_raw = "AppSettings::SubcommandRequiredElseHelp"
+)]
 pub enum Crater {
-    #[structopt(name = "prepare-local",
-                about = "acquire toolchains, build containers, build crate lists")]
+    #[structopt(
+        name = "prepare-local", about = "acquire toolchains, build containers, build crate lists"
+    )]
     PrepareLocal {
         #[structopt(name = "docker env", long = "docker-env", default_value = "full")]
         env: DockerEnv,
@@ -85,16 +89,26 @@ pub enum Crater {
         tc1: Toolchain,
         #[structopt(name = "tc-2")]
         tc2: Toolchain,
-        #[structopt(name = "mode", long = "mode",
-                    default_value_raw = "ExMode::BuildAndTest.to_str()",
-                    possible_values_raw = "ExMode::possible_values()")]
+        #[structopt(
+            name = "mode",
+            long = "mode",
+            default_value_raw = "ExMode::BuildAndTest.to_str()",
+            possible_values_raw = "ExMode::possible_values()"
+        )]
         mode: ExMode,
-        #[structopt(name = "crate-select", long = "crate-select",
-                    default_value_raw = "ExCrateSelect::Demo.to_str()",
-                    possible_values_raw = "ExCrateSelect::possible_values()")]
+        #[structopt(
+            name = "crate-select",
+            long = "crate-select",
+            default_value_raw = "ExCrateSelect::Demo.to_str()",
+            possible_values_raw = "ExCrateSelect::possible_values()"
+        )]
         crates: ExCrateSelect,
-        #[structopt(name = "level", long = "cap-lints", required,
-                    possible_values_raw = "ExCapLints::possible_values()")]
+        #[structopt(
+            name = "level",
+            long = "cap-lints",
+            required,
+            possible_values_raw = "ExCapLints::possible_values()"
+        )]
         cap_lints: ExCapLints,
     },
 
@@ -113,8 +127,9 @@ pub enum Crater {
         ex: Ex,
     },
 
-    #[structopt(name = "delete-all-target-dirs",
-                about = "delete the cargo target dirs for an experiment")]
+    #[structopt(
+        name = "delete-all-target-dirs", about = "delete the cargo target dirs for an experiment"
+    )]
     DeleteAllTargetDirs {
         #[structopt(long = "ex", default_value = "default")]
         ex: Ex,
@@ -168,12 +183,18 @@ pub enum Crater {
 
     #[structopt(name = "publish-report", about = "publish the experiment report to S3")]
     PublishReport {
-        #[structopt(name = "experiment", long = "ex", default_value = "default",
-                    help = "The experiment to publish a report for.")]
+        #[structopt(
+            name = "experiment",
+            long = "ex",
+            default_value = "default",
+            help = "The experiment to publish a report for."
+        )]
         ex: Ex,
-        #[structopt(name = "S3 URI",
-                    help = "The S3 URI to put the report at. \
-                            [default: $CARGOBOMB_REPORT_S3_PREFIX/<experiment>")]
+        #[structopt(
+            name = "S3 URI",
+            help = "The S3 URI to put the report at. \
+                    [default: $CARGOBOMB_REPORT_S3_PREFIX/<experiment>"
+        )]
         s3_prefix: Option<report::S3Prefix>,
     },
 

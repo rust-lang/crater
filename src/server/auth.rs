@@ -1,8 +1,8 @@
 use hyper::header::Authorization;
 use hyper::server::{Request, Response};
-use server::Data;
 use server::api_types::{ApiResponse, CraterToken};
 use server::http::{Context, Handler, ResponseExt, ResponseFuture};
+use server::Data;
 use std::sync::Arc;
 
 enum TokenType {
@@ -26,7 +26,8 @@ where
     F: Fn(Request, Arc<Data>, Arc<Context>, AuthDetails) -> ResponseFuture,
 {
     fn handle(&self, req: Request, data: Arc<Data>, ctx: Arc<Context>) -> ResponseFuture {
-        let provided_token = req.headers()
+        let provided_token = req
+            .headers()
             .get::<Authorization<CraterToken>>()
             .map(|t| t.token.clone());
 

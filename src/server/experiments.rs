@@ -164,14 +164,15 @@ impl ExperimentDBRecord {
     }
 
     fn into_experiment_data(self, db: &Database) -> Result<ExperimentData> {
-        let crates = db.query(
-            "SELECT crate FROM experiment_crates WHERE experiment = ?1",
-            &[&self.name],
-            |r| {
-                let value: String = r.get("crate");
-                Ok(serde_json::from_str(&value)?)
-            },
-        )?
+        let crates = db
+            .query(
+                "SELECT crate FROM experiment_crates WHERE experiment = ?1",
+                &[&self.name],
+                |r| {
+                    let value: String = r.get("crate");
+                    Ok(serde_json::from_str(&value)?)
+                },
+            )?
             .into_iter()
             .collect::<Result<Vec<Crate>>>()?;
 

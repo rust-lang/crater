@@ -12,8 +12,8 @@ extern crate crater;
 
 mod cli;
 
-use crater::{log, util};
 use crater::errors::*;
+use crater::{log, util};
 use std::panic;
 use std::process;
 use structopt::StructOpt;

@@ -1,6 +1,6 @@
 use config::Config;
-use hyper::StatusCode;
 use hyper::header::Scheme;
+use hyper::StatusCode;
 use std::fmt;
 use std::str::FromStr;
 

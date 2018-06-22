@@ -1,11 +1,11 @@
 use errors::*;
 use ex::{self, ExCapLints, ExCrateSelect, ExMode};
-use server::Data;
 use server::db::{Database, QueryUtils};
 use server::experiments::Status;
 use server::github::Issue;
 use server::messages::{Label, Message};
 use server::routes::webhooks::args::{AbortArgs, EditArgs, RetryReportArgs, RunArgs};
+use server::Data;
 
 pub fn ping(data: &Data, issue: &Issue) -> Result<()> {
     Message::new()

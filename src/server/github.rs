@@ -43,7 +43,8 @@ impl GitHubApi {
     }
 
     pub fn list_labels(&self, issue_url: &str) -> Result<Vec<Label>> {
-        let mut response = self.build_request(Method::Get, &format!("{}/labels", issue_url))
+        let mut response = self
+            .build_request(Method::Get, &format!("{}/labels", issue_url))
             .send()?;
 
         if response.status() == StatusCode::Ok {
@@ -60,7 +61,8 @@ impl GitHubApi {
     }
 
     pub fn add_label(&self, issue_url: &str, label: &str) -> Result<()> {
-        let mut response = self.build_request(Method::Post, &format!("{}/labels", issue_url))
+        let mut response = self
+            .build_request(Method::Post, &format!("{}/labels", issue_url))
             .json(&json!([label]))
             .send()?;
 
@@ -79,9 +81,9 @@ impl GitHubApi {
     }
 
     pub fn remove_label(&self, issue_url: &str, label: &str) -> Result<()> {
-        let mut response =
-            self.build_request(Method::Delete, &format!("{}/labels/{}", issue_url, label))
-                .send()?;
+        let mut response = self
+            .build_request(Method::Delete, &format!("{}/labels/{}", issue_url, label))
+            .send()?;
 
         if response.status() == StatusCode::Ok {
             Ok(())

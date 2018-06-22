@@ -1,8 +1,8 @@
 use chrono::{TimeZone, Utc};
 use errors::*;
 use file;
-use rusoto_core::{AwsCredentials, CredentialsError, ProvideAwsCredentials};
 use rusoto_core::Region;
+use rusoto_core::{AwsCredentials, CredentialsError, ProvideAwsCredentials};
 use std::collections::HashMap;
 use std::path::Path;
 

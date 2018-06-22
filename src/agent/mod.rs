@@ -8,8 +8,8 @@ use ex::{self, Experiment};
 use file;
 use run_graph;
 use serde_json;
-use std::{fs, thread};
 use std::time::Duration;
+use std::{fs, thread};
 use util;
 
 struct Agent {

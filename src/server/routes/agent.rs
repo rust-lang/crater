@@ -3,13 +3,13 @@ use ex::Experiment;
 use futures::{future, Future, Stream};
 use hyper::server::{Request, Response};
 use serde_json;
-use server::Data;
 use server::api_types::{AgentConfig, ApiResponse};
 use server::auth::AuthDetails;
 use server::experiments::Status;
 use server::http::{Context, ResponseExt, ResponseFuture};
 use server::messages::Message;
 use server::results::{ProgressData, ResultsDB};
+use server::Data;
 use std::sync::Arc;
 
 api_endpoint!(config: |_body, data, auth: AuthDetails| -> AgentConfig {

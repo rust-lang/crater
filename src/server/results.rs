@@ -62,7 +62,8 @@ impl<'a> ResultsDB<'a> {
 
 impl<'a> ReadResults for ResultsDB<'a> {
     fn load_all_shas(&self, ex: &Experiment) -> Result<HashMap<GitHubRepo, String>> {
-        Ok(self.db
+        Ok(self
+            .db
             .query(
                 "SELECT * FROM shas WHERE experiment = ?1;",
                 &[&ex.name],
@@ -105,7 +106,8 @@ impl<'a> ReadResults for ResultsDB<'a> {
         toolchain: &Toolchain,
         krate: &Crate,
     ) -> Result<Option<TestResult>> {
-        let result: Option<String> = self.db
+        let result: Option<String> = self
+            .db
             .query(
                 "SELECT result FROM results \
                  WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
@@ -174,14 +176,12 @@ mod tests {
             .store(
                 &ex,
                 &ProgressData {
-                    results: vec![
-                        TaskResult {
-                            krate: krate.clone(),
-                            toolchain: toolchain.clone(),
-                            result: TestResult::TestPass,
-                            log: base64::encode("foo"),
-                        },
-                    ],
+                    results: vec![TaskResult {
+                        krate: krate.clone(),
+                        toolchain: toolchain.clone(),
+                        result: TestResult::TestPass,
+                        log: base64::encode("foo"),
+                    }],
                     shas: vec![
                         (
                             GitHubRepo {

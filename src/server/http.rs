@@ -2,9 +2,9 @@ use errors::*;
 use futures::future::{self, Future};
 use futures::prelude::*;
 use futures_cpupool::CpuPool;
-use hyper::{Method, StatusCode};
 use hyper::header::{ContentLength, ContentType};
 use hyper::server::{Http, Request, Response, Service};
+use hyper::{Method, StatusCode};
 use serde::Serialize;
 use server::api_types::ApiResponse;
 use std::collections::HashMap;
@@ -93,7 +93,8 @@ impl<D: 'static> Service for Server<D> {
     type Future = ResponseFuture;
 
     fn call(&self, req: Request) -> ResponseFuture {
-        if let Some(handler) = self.routes
+        if let Some(handler) = self
+            .routes
             .get(&(req.method().clone(), &req.path().to_string()))
         {
             handler.handle(req, self.data.clone(), self.context.clone())

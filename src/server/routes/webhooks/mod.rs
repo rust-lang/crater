@@ -4,15 +4,15 @@ mod commands;
 use errors::*;
 use futures::future;
 use futures::prelude::*;
-use hyper::StatusCode;
 use hyper::server::{Request, Response};
+use hyper::StatusCode;
 use ring;
 use serde_json;
-use server::Data;
 use server::github::{EventIssueComment, Issue};
 use server::http::{Context, ResponseExt, ResponseFuture};
 use server::messages::Message;
 use server::routes::webhooks::args::Command;
+use server::Data;
 use std::sync::Arc;
 use util;
 

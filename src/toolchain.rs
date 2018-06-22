@@ -202,12 +202,8 @@ fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
         if response.status() != reqwest::StatusCode::Ok {
             return Err(ErrorKind::Download.into());
         }
-        tx = dist::component::TarXzPackage::new(response, &cfg)?.install(
-            &target,
-            component,
-            None,
-            tx,
-        )?;
+        tx = dist::component::TarXzPackage::new(response, &cfg)?
+            .install(&target, component, None, tx)?;
     }
     tx.commit();
 

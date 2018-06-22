@@ -1,7 +1,8 @@
 #[macro_use]
 mod http;
 
-mod routes;
+mod agents;
+pub mod api_types;
 mod auth;
 mod db;
 mod experiments;
@@ -9,9 +10,8 @@ mod github;
 mod messages;
 mod reports;
 mod results;
+mod routes;
 mod tokens;
-mod agents;
-pub mod api_types;
 
 use config::Config;
 use errors::*;

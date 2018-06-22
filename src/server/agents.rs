@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
 use chrono::Duration;
+use chrono::{DateTime, Utc};
 use errors::*;
 use server::db::{Database, QueryUtils};
 use server::experiments::{ExperimentData, Experiments};
@@ -92,7 +92,8 @@ impl Agents {
 
     #[cfg(test)]
     fn get(&self, name: &str) -> Result<Option<Agent>> {
-        let row = self.db
+        let row = self
+            .db
             .get_row("SELECT * FROM agents WHERE name = ?1;", &[&name], |row| {
                 Agent {
                     name: row.get("name"),

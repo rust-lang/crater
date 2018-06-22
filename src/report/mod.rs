@@ -79,13 +79,15 @@ pub fn generate_report<DB: ReadResults>(
     let shas = db.load_all_shas(ex)?;
     assert_eq!(ex.toolchains.len(), 2);
 
-    let res = ex.crates
+    let res = ex
+        .crates
         .clone()
         .into_iter()
         .map(|krate| {
             // Any errors here will turn into unknown results
             let crate_results = ex.toolchains.iter().map(|tc| -> Result<BuildTestResult> {
-                let res = db.load_test_result(ex, tc, &krate)?
+                let res = db
+                    .load_test_result(ex, tc, &krate)?
                     .ok_or_else(|| "no result")?;
 
                 Ok(BuildTestResult {
@@ -135,7 +137,8 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
 
         for tc in &ex.toolchains {
             let log_path = crate_to_path_fragment(tc, krate).join("log.txt");
-            let content = db.load_log(ex, tc, krate)
+            let content = db
+                .load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| "missing logs".into()))
                 .chain_err(|| format!("failed to read log of {} on {}", krate, tc.to_string()));
             let content = match content {
@@ -184,7 +187,8 @@ fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String
     Ok(match *c {
         Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
         Crate::GitHub(ref repo) => {
-            let sha = shas.get(repo)
+            let sha = shas
+                .get(repo)
                 .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
                 .as_str();
             format!("{}.{}.{}", repo.org, repo.name, sha)
@@ -199,7 +203,8 @@ fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String>
             details.name, details.version
         ),
         Crate::GitHub(ref repo) => {
-            let sha = shas.get(repo)
+            let sha = shas
+                .get(repo)
                 .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
                 .as_str();
             format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)

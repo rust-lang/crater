@@ -46,7 +46,8 @@ impl AgentApi {
     }
 
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
-        let mut req = self.client
+        let mut req = self
+            .client
             .request(method, &format!("{}/agent-api/{}", self.url, url));
         req.header(header::Authorization(CraterToken {
             token: self.token.clone(),
@@ -86,7 +87,8 @@ impl AgentApi {
 
     pub fn next_experiment(&self) -> Result<Experiment> {
         self.retry(|this| loop {
-            let resp: Option<_> = this.build_request(Method::Get, "next-experiment")
+            let resp: Option<_> = this
+                .build_request(Method::Get, "next-experiment")
                 .send()?
                 .to_api_response()?;
 
@@ -107,7 +109,8 @@ impl AgentApi {
         shas: &[(GitHubRepo, String)],
     ) -> Result<()> {
         self.retry(|this| {
-            let _: bool = this.build_request(Method::Post, "record-progress")
+            let _: bool = this
+                .build_request(Method::Post, "record-progress")
                 .json(&json!({
                     "results": [
                         {
@@ -127,7 +130,8 @@ impl AgentApi {
 
     pub fn complete_experiment(&self) -> Result<()> {
         self.retry(|this| {
-            let _: bool = this.build_request(Method::Post, "complete-experiment")
+            let _: bool = this
+                .build_request(Method::Post, "complete-experiment")
                 .send()?
                 .to_api_response()?;
             Ok(())
@@ -136,7 +140,8 @@ impl AgentApi {
 
     pub fn heartbeat(&self) -> Result<()> {
         self.retry(|this| {
-            let _: bool = this.build_request(Method::Post, "heartbeat")
+            let _: bool = this
+                .build_request(Method::Post, "heartbeat")
                 .send()?
                 .to_api_response()?;
             Ok(())

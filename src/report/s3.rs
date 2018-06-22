@@ -1,8 +1,8 @@
 use errors::*;
 use mime::Mime;
 use report::ReportWriter;
-use rusoto_core::{DefaultCredentialsProvider, Region};
 use rusoto_core::request::default_tls_client;
+use rusoto_core::{DefaultCredentialsProvider, Region};
 use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3, S3Client};
 use std::borrow::Cow;
 use std::fmt::{self, Display};
@@ -26,8 +26,11 @@ impl FromStr for S3Prefix {
     fn from_str(url: &str) -> Result<S3Prefix> {
         let parsed = Url::parse(url).chain_err(|| ErrorKind::BadS3Uri)?;
 
-        if parsed.scheme() != "s3" || parsed.username() != "" || parsed.password().is_some()
-            || parsed.port().is_some() || parsed.query().is_some()
+        if parsed.scheme() != "s3"
+            || parsed.username() != ""
+            || parsed.password().is_some()
+            || parsed.port().is_some()
+            || parsed.query().is_some()
             || parsed.fragment().is_some()
         {
             return Err(ErrorKind::BadS3Uri.into());
@@ -86,7 +89,8 @@ impl ReportWriter for S3Writer {
             acl: Some("public-read".into()),
             body: Some(s),
             bucket: self.prefix.bucket.clone(),
-            key: self.prefix
+            key: self
+                .prefix
                 .prefix
                 .join(path.as_ref())
                 .to_string_lossy()
@@ -108,7 +112,8 @@ impl ReportWriter for S3Writer {
                     continue;
                 }
                 r => {
-                    return r.map(|_| ())
+                    return r
+                        .map(|_| ())
                         .chain_err(|| format!("S3 failure to upload {:?}", path.as_ref()))
                 }
             }

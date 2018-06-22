@@ -101,7 +101,8 @@ fn log_command(mut cmd: Command, capture: bool, quiet: bool) -> Result<ProcessOu
     let timer = tokio_timer::wheel()
         .max_timeout(Duration::from_secs(MAX_TIMEOUT_SECS * 2))
         .build();
-    let mut child = cmd.stdout(Stdio::piped())
+    let mut child = cmd
+        .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn_async(&core.handle())?;
 
@@ -233,8 +234,12 @@ where
                 future::Either::B(r) => (None, Some(r)),
             })
             .fold((Vec::new(), Vec::new()), |mut v, i| {
-                i.0.map(|i| v.0.push(i));
-                i.1.map(|i| v.1.push(i));
+                if let Some(i) = i.0 {
+                    v.0.push(i);
+                }
+                if let Some(i) = i.1 {
+                    v.1.push(i);
+                }
                 Ok(v)
             }),
     )

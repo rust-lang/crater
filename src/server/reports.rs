@@ -2,10 +2,10 @@ use errors::*;
 use report;
 use rusoto_core::request::default_tls_client;
 use rusoto_s3::S3Client;
-use server::Data;
 use server::experiments::{ExperimentData, Status};
 use server::messages::{Label, Message};
 use server::results::ResultsDB;
+use server::Data;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -77,7 +77,8 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
             continue;
         }
 
-        let base_url = data.tokens
+        let base_url = data
+            .tokens
             .reports_bucket
             .public_url
             .replace("{bucket}", &data.tokens.reports_bucket.bucket);

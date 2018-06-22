@@ -3,10 +3,10 @@ use crossbeam;
 use errors::*;
 use ex::{self, ExMode, Experiment};
 use file;
-use petgraph::Direction;
 use petgraph::dot::Dot;
 use petgraph::graph::{Graph, NodeIndex};
 use petgraph::visit::EdgeRef;
+use petgraph::Direction;
 use results::WriteResults;
 use std::fmt;
 use std::mem;
@@ -129,7 +129,8 @@ impl TasksGraph {
         // Remove all the edges from this node, and move the node to the completed root.
         // The node is not removed because node IDs are not stable, so removing one node changes
         // the ID of the other ones.
-        let mut edges = self.graph
+        let mut edges = self
+            .graph
             .edges_directed(node, Direction::Incoming)
             .map(|e| e.id())
             .collect::<Vec<_>>();

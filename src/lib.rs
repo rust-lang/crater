@@ -36,8 +36,10 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_regex;
-#[macro_use(slog_o, slog_info, slog_log, slog_error, slog_warn, slog_debug, slog_record,
-            slog_record_static, slog_b, slog_kv)]
+#[macro_use(
+    slog_o, slog_info, slog_log, slog_error, slog_warn, slog_debug, slog_record, slog_record_static,
+    slog_b, slog_kv
+)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
@@ -58,24 +60,24 @@ pub mod agent;
 pub mod log;
 #[macro_use]
 pub mod util;
-pub mod errors;
-pub mod toolchain;
-mod registry;
-pub mod lists;
-mod file;
-mod dl;
-mod gh;
-mod run;
-pub mod run_graph;
+pub mod config;
 pub mod crates;
-mod git;
+pub mod dirs;
+mod dl;
+pub mod docker;
+pub mod errors;
 pub mod ex;
 pub mod ex_run;
-pub mod config;
-mod toml_frobber;
+mod file;
+mod gh;
+mod git;
+pub mod lists;
+mod registry;
 pub mod report;
-pub mod docker;
-pub mod dirs;
 pub mod results;
+mod run;
+pub mod run_graph;
 pub mod server;
 mod tasks;
+mod toml_frobber;
+pub mod toolchain;

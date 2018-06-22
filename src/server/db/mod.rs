@@ -4,8 +4,8 @@ use dirs::WORK_DIR;
 use errors::*;
 use r2d2::{CustomizeConnection, Pool};
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{Connection, Row, Transaction};
 use rusqlite::types::ToSql;
+use rusqlite::{Connection, Row, Transaction};
 use std::sync::Arc;
 use tempfile::NamedTempFile;
 

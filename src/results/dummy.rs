@@ -19,7 +19,8 @@ pub struct DummyDB {
 
 impl DummyDB {
     fn get_data(&self, ex: &Experiment) -> Result<&DummyData> {
-        Ok(self.experiments
+        Ok(self
+            .experiments
             .get(&ex.name)
             .ok_or_else(|| format!("missing experiment {}", ex.name))?)
     }
@@ -66,7 +67,8 @@ impl ReadResults for DummyDB {
         toolchain: &Toolchain,
         krate: &Crate,
     ) -> Result<Option<Vec<u8>>> {
-        Ok(self.get_data(ex)?
+        Ok(self
+            .get_data(ex)?
             .logs
             .get(&(krate.clone(), toolchain.clone()))
             .cloned())
@@ -78,7 +80,8 @@ impl ReadResults for DummyDB {
         toolchain: &Toolchain,
         krate: &Crate,
     ) -> Result<Option<TestResult>> {
-        Ok(self.get_data(ex)?
+        Ok(self
+            .get_data(ex)?
             .results
             .get(&(krate.clone(), toolchain.clone()))
             .cloned())

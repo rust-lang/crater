@@ -108,20 +108,39 @@ impl ACL {
 
         let mut orgs = HashMap::new();
         for &(ref org, ref team) in &self.teams {
-            // Cache the list of teams in an org
-            if !orgs.contains_key(org) {
-                orgs.insert(org.clone(), github.list_teams(org)?);
-            }
-
-            let members = github.team_members(orgs[org][team])?;
-            for member in &members {
-                new_cache.insert(member.clone());
+            if let Err(err) = self.load_team(github, &mut new_cache, &mut orgs, org, team) {
+                warn!(
+                    "failed to authorize members of {}/{} to use the bot",
+                    org, team
+                );
+                warn!("caused by: {}", err);
             }
         }
 
         // Update the shared cache
         let mut cache = self.cached_usernames.write().unwrap();
         *cache = new_cache;
+
+        Ok(())
+    }
+
+    fn load_team(
+        &self,
+        github: &GitHubApi,
+        new_cache: &mut HashSet<String>,
+        orgs: &mut HashMap<String, HashMap<String, usize>>,
+        org: &str,
+        team: &str,
+    ) -> Result<()> {
+        // Cache the list of teams in an org
+        if !orgs.contains_key(org) {
+            orgs.insert(org.to_string(), github.list_teams(org)?);
+        }
+
+        let members = github.team_members(orgs[org][team])?;
+        for member in &members {
+            new_cache.insert(member.clone());
+        }
 
         Ok(())
     }

@@ -150,6 +150,7 @@ async = { skip = true } #automatic
 async-dnssd = { skip = true } #automatic
 async-http-client = { skip-tests = true } #automatic
 atlas = { skip = true } #automatic
+atomic-queue = { skip-tests = true } # flaky test
 atomic-stamped-ptr = { skip = true } #automatic
 atty = { skip-tests = true } #automatic
 audact = { skip = true } #automatic
@@ -438,10 +439,10 @@ compiler-builtins-snapshot = { skip = true } #automatic
 comppkgsup-sys = { skip = true } #automatic
 compstui-sys = { skip = true } #automatic
 comsvcs-sys = { skip = true } #automatic
+conc = { skip-tests = true } # test timeout
 concat-string = { skip = true } #automatic
 concat_bytes = { skip = true } #automatic
 concurrent-stack = { skip = true } #automatic
-conc = { skip-tests = true } # test timeout
 conductor = { skip = true } #automatic
 confluence = { skip = true } #automatic
 confusion = { skip = true } #automatic
@@ -1240,6 +1241,7 @@ iepmapi-sys = { skip = true } #automatic
 iesetup-sys = { skip = true } #automatic
 ifaddrs = { skip = true } #automatic
 image-base64 = { skip-tests = true } #automatic
+image-stream = { skip-tests = true } # depends on network
 image2emblem = { skip = true } #automatic
 image_colors = { skip-tests = true } #automatic
 imagefile = { skip = true } #automatic
@@ -1598,6 +1600,7 @@ mbedtls = { skip = true } #automatic
 mbedtls-sys-auto = { skip = true } #automatic
 mbnapi_uuid-sys = { skip = true } #automatic
 mbutiles = { skip-tests = true } #automatic
+mccs-caps = { skip-tests = true } # flaky test
 mciole32-sys = { skip = true } #automatic
 mcpat = { skip-tests = true } #automatic
 md = { skip = true } #automatic
@@ -2575,6 +2578,7 @@ shuttle-sdk = { skip = true } #automatic
 sigar = { skip = true } #automatic
 sigrok = { skip = true } #automatic
 sigrok-sys = { skip = true } #automatic
+silk = { slow = true } # tests slow to run
 silverknife = { skip = true } #automatic
 simavr-sys = { skip = true } #automatic
 simdop = { skip = true } #automatic
@@ -3187,6 +3191,7 @@ youkebox = { skip = true } #automatic
 yowsl = { skip = true } #automatic
 yubikey = { skip = true } #automatic
 yubirs = { skip = true } #automatic
+yup-hyper-mock = { slow = true } # tests slow to run
 yyid = { skip-tests = true } #automatic
 zbox = { skip = true } #automatic
 zcash-vanity = { skip = true } #automatic

@@ -1,16 +1,10 @@
 {% macro toolchain_name(tc) %}
-    {%- if tc.Dist -%}
-        {{ tc.Dist }}
-    {%- elif tc.TryBuild -%}
-        <a href="https://github.com/rust-lang/rust/commit/{{ tc.TryBuild.sha }}">
-            try#{{ tc.TryBuild.sha }}
-        </a>
-    {%- elif tc.Master -%}
-        <a href="https://github.com/rust-lang/rust/commit/{{ tc.Master.sha }}">
-            master#{{ tc.Master.sha }}
-        </a>
+    {%- if tc.source.type == "dist" %}
+        {{ tc.source.name }}
+    {%- elif tc.source.type == "ci" %}
+        <a href="https://github.com/rust-lang/rust/commit/{{ tc.source.sha }}">{{ tc.source.sha }}</a>
     {%- else -%}
-        {{ tc|json_encode }}
+        {{ tc.source|json_encode }}
     {%- endif -%}
 {% endmacro %}
 

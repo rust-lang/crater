@@ -471,7 +471,7 @@ mod tests {
     use server::agents::Agents;
     use server::db::Database;
     use server::tokens::Tokens;
-    use toolchain::Toolchain;
+    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_experiment_creation() {
@@ -485,8 +485,8 @@ mod tests {
         experiments
             .create(
                 "test".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
@@ -503,10 +503,7 @@ mod tests {
         assert_eq!(ex.experiment.name.as_str(), "test");
         assert_eq!(
             ex.experiment.toolchains,
-            vec![
-                Toolchain::Dist("stable".into()),
-                Toolchain::Dist("beta".into()),
-            ]
+            vec![MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()]
         );
         assert_eq!(ex.experiment.mode, ExMode::BuildAndTest);
         assert_eq!(ex.experiment.crates, ::ex::demo_list(&config).unwrap());
@@ -552,8 +549,8 @@ mod tests {
         experiments
             .create(
                 "test".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
@@ -567,8 +564,8 @@ mod tests {
         experiments
             .create(
                 "important".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,

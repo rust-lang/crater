@@ -42,5 +42,13 @@ error_chain! {
         ServerUnavailable {
             description("the server is not available at the moment")
         }
+
+        EmptyToolchainName {
+            description("empty toolchain name")
+        }
+        InvalidToolchainSourceName(name: String) {
+            description("invalid toolchain source name")
+            display("invalid toolchain source name: {}", name)
+        }
     }
 }

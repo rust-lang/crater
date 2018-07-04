@@ -13,7 +13,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml_frobber;
-use toolchain::{self, CargoState, Toolchain};
+use toolchain::{self, CargoState, Toolchain, MAIN_TOOLCHAIN};
 use util;
 
 string_enum!(pub enum ExMode {
@@ -182,12 +182,7 @@ impl Experiment {
         crates::prepare(&self.crates)?;
 
         frob_tomls(self, &self.crates)?;
-        capture_lockfiles(
-            config,
-            self,
-            &self.crates,
-            &Toolchain::Dist("stable".into()),
-        )?;
+        capture_lockfiles(config, self, &self.crates, &MAIN_TOOLCHAIN)?;
         Ok(())
     }
 
@@ -195,12 +190,7 @@ impl Experiment {
         // Local experiment prep
         delete_all_target_dirs(&self.name)?;
         ex_run::delete_all_results(&self.name)?;
-        fetch_deps(
-            config,
-            self,
-            &self.crates,
-            &Toolchain::Dist("stable".into()),
-        )?;
+        fetch_deps(config, self, &self.crates, &MAIN_TOOLCHAIN)?;
         prepare_all_toolchains(self)?;
 
         Ok(())

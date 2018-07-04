@@ -6,7 +6,7 @@ use ex_run;
 use git;
 use results::{TestResult, WriteResults};
 use std::fmt;
-use toolchain::Toolchain;
+use toolchain::{Toolchain, MAIN_TOOLCHAIN};
 use util;
 
 pub enum TaskStep {
@@ -119,8 +119,6 @@ impl Task {
         ex: &Experiment,
         db: &DB,
     ) -> Result<()> {
-        let stable = Toolchain::Dist("stable".into());
-
         // Fetch repository data if it's a git repo
         if let Some(repo) = self.krate.github() {
             if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
@@ -132,8 +130,8 @@ impl Task {
 
         crates::prepare_crate(&self.krate)?;
         ex::frob_toml(ex, &self.krate)?;
-        ex::capture_lockfile(config, ex, &self.krate, &stable)?;
-        ex::fetch_crate_deps(config, ex, &self.krate, &stable)?;
+        ex::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
+        ex::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
 
         Ok(())
     }

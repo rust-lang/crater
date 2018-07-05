@@ -17,10 +17,20 @@ use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use toolchain::Toolchain;
+use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
 use util;
 
 mod s3;
 pub use self::s3::{get_client_for_bucket, S3Prefix, S3Writer};
+
+define_encode_set! {
+    pub REPORT_ENCODE_SET = [DEFAULT_ENCODE_SET] | { '+' }
+}
+
+#[inline]
+fn url_encode(input: &str) -> String {
+    utf8_percent_encode(input, REPORT_ENCODE_SET).to_string()
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
@@ -53,18 +63,30 @@ struct BuildTestResult {
     log: String,
 }
 
-fn crate_to_path_fragment(toolchain: &Toolchain, krate: &Crate) -> PathBuf {
+fn crate_to_path_fragment(toolchain: &Toolchain, krate: &Crate, encode: bool) -> PathBuf {
     let mut path = PathBuf::new();
     path.push(toolchain.rustup_name());
 
     match *krate {
         Crate::Registry(ref details) => {
             path.push("reg");
-            path.push(format!("{}-{}", details.name, details.version));
+
+            let name = format!("{}-{}", details.name, details.version);
+            if encode {
+                path.push(url_encode(&name));
+            } else {
+                path.push(name);
+            }
         }
         Crate::GitHub(ref repo) => {
             path.push("gh");
-            path.push(format!("{}.{}", repo.org, repo.name));
+
+            let name = format!("{}.{}", repo.org, repo.name);
+            if encode {
+                path.push(url_encode(&name));
+            } else {
+                path.push(name);
+            }
         }
     }
 
@@ -92,7 +114,7 @@ pub fn generate_report<DB: ReadResults>(
 
                 Ok(BuildTestResult {
                     res,
-                    log: crate_to_path_fragment(tc, &krate)
+                    log: crate_to_path_fragment(tc, &krate, true)
                         .to_str()
                         .unwrap()
                         .to_string(),
@@ -136,7 +158,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
         }
 
         for tc in &ex.toolchains {
-            let log_path = crate_to_path_fragment(tc, krate).join("log.txt");
+            let log_path = crate_to_path_fragment(tc, krate, false).join("log.txt");
             let content = db
                 .load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| "missing logs".into()))
@@ -394,14 +416,26 @@ mod tests {
             org: "brson".into(),
             name: "hello-rs".into(),
         });
+        let plus = Crate::Registry(RegistryCrate {
+            name: "foo".into(),
+            version: "1.0+bar".into(),
+        });
 
         assert_eq!(
-            crate_to_path_fragment(&tc, &reg),
+            crate_to_path_fragment(&tc, &reg, false),
             PathBuf::from("stable/reg/lazy_static-1.0")
         );
         assert_eq!(
-            crate_to_path_fragment(&tc, &gh),
+            crate_to_path_fragment(&tc, &gh, false),
             PathBuf::from("stable/gh/brson.hello-rs")
+        );
+        assert_eq!(
+            crate_to_path_fragment(&tc, &plus, false),
+            PathBuf::from("stable/reg/foo-1.0+bar")
+        );
+        assert_eq!(
+            crate_to_path_fragment(&tc, &plus, true),
+            PathBuf::from("stable/reg/foo-1.0%2Bbar")
         );
     }
 

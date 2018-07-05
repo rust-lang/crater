@@ -5,6 +5,7 @@ use serde_regex;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
+use util::Size;
 
 static CONFIG_FILE: &'static str = "config.toml";
 
@@ -53,7 +54,7 @@ pub struct DemoCrates {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SandboxConfig {
-    pub memory_limit: String,
+    pub memory_limit: Size,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -119,7 +120,7 @@ impl Default for Config {
             crates: HashMap::new(),
             github_repos: HashMap::new(),
             sandbox: SandboxConfig {
-                memory_limit: "2G".into(),
+                memory_limit: Size::Gigabytes(2),
             },
             server: ServerConfig {
                 bot_acl: HashSet::new(),

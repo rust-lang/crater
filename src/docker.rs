@@ -4,7 +4,7 @@ use std::env;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
-use util;
+use util::{self, Size};
 
 pub static IMAGE_NAME: &'static str = "crater";
 
@@ -50,7 +50,7 @@ pub struct ContainerBuilder<'a> {
     image: &'a str,
     mounts: Vec<MountConfig<'a>>,
     env: Vec<(&'static str, String)>,
-    memory_limit: Option<&'a str>,
+    memory_limit: Option<Size>,
 }
 
 impl<'a> ContainerBuilder<'a> {
@@ -77,7 +77,7 @@ impl<'a> ContainerBuilder<'a> {
         self
     }
 
-    pub fn memory_limit(mut self, limit: &'a str) -> Self {
+    pub fn memory_limit(mut self, limit: Size) -> Self {
         self.memory_limit = Some(limit);
         self
     }
@@ -98,7 +98,7 @@ impl<'a> ContainerBuilder<'a> {
 
         if let Some(limit) = self.memory_limit {
             args.push("-m".into());
-            args.push(limit.into());
+            args.push(limit.to_string());
         }
 
         args.push(self.image.into());

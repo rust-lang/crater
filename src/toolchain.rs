@@ -113,7 +113,7 @@ impl Toolchain {
             .env("RUST_BACKTRACE", "full".to_string())
             .env("RUSTFLAGS", format!("--cap-lints={}", ex.cap_lints.to_str()))
             // Add some limits to the container
-            .memory_limit(&config.sandbox.memory_limit);
+            .memory_limit(config.sandbox.memory_limit);
 
         if enable_unstable_cargo_features {
             container = container.env(
@@ -310,7 +310,7 @@ fn user_id() -> ::libc::uid_t {
     unsafe { ::libc::geteuid() }
 }
 
-#[cfg(unix)]
+#[cfg(windows)]
 fn user_id() -> u32 {
     unimplemented!();
 }

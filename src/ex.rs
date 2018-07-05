@@ -362,13 +362,14 @@ pub fn capture_lockfile(
 
     with_work_crate(ex, toolchain, krate, |path| {
         with_frobbed_toml(ex, krate, path)?;
-        capture_lockfile_inner(ex, krate, path, toolchain)
+        capture_lockfile_inner(config, ex, krate, path, toolchain)
     }).chain_err(|| format!("failed to generate lockfile for {}", krate))?;
 
     Ok(())
 }
 
 fn capture_lockfile_inner(
+    config: &Config,
     ex: &Experiment,
     krate: &Crate,
     path: &Path,
@@ -381,7 +382,7 @@ fn capture_lockfile_inner(
         "-Zno-index-update",
     ];
     toolchain
-        .run_cargo(ex, path, args, CargoState::Unlocked, false, false)
+        .run_cargo(config, ex, path, args, CargoState::Unlocked, false, false)
         .chain_err(|| format!("unable to generate lockfile for {}", krate))?;
 
     let src_lockfile = &path.join("Cargo.lock");
@@ -458,7 +459,7 @@ pub fn fetch_crate_deps(
 
         let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
         toolchain
-            .run_cargo(ex, path, args, CargoState::Unlocked, false, true)
+            .run_cargo(config, ex, path, args, CargoState::Unlocked, false, true)
             .chain_err(|| format!("unable to fetch deps for {}", krate))?;
 
         Ok(())

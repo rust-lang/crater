@@ -52,11 +52,18 @@ pub struct DemoCrates {
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub struct SandboxConfig {
+    pub memory_limit: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Config {
     pub demo_crates: DemoCrates,
     pub crates: HashMap<String, CrateConfig>,
     pub github_repos: HashMap<String, CrateConfig>,
     pub server: ServerConfig,
+    pub sandbox: SandboxConfig,
 }
 
 impl Config {
@@ -111,6 +118,9 @@ impl Default for Config {
             },
             crates: HashMap::new(),
             github_repos: HashMap::new(),
+            sandbox: SandboxConfig {
+                memory_limit: "2G".into(),
+            },
             server: ServerConfig {
                 bot_acl: HashSet::new(),
                 labels: ServerLabels {
@@ -141,6 +151,8 @@ mod tests {
             "[demo-crates]\n",
             "crates = []\n",
             "github-repos = []\n",
+            "[sandbox]\n",
+            "memory-limit = \"2G\"\n",
             "[crates]\n",
             "lazy_static = { skip = true }\n",
             "\n",

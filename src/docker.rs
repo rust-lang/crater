@@ -1,12 +1,12 @@
 use errors::*;
-use ex::ExCapLints;
 use run::RunCommand;
 use std::env;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
+use util;
 
-static IMAGE_NAME: &'static str = "crater";
+pub static IMAGE_NAME: &'static str = "crater";
 
 /// Builds the docker container image, 'crater', what will be used
 /// to isolate builds from each other. This expects the Dockerfile
@@ -20,32 +20,22 @@ pub fn build_container(docker_env: &str) -> Result<()> {
 }
 
 #[derive(Copy, Clone)]
-pub enum Perm {
+pub enum MountPerms {
     ReadWrite,
     ReadOnly,
 }
 
-pub struct RustEnv<'a> {
-    pub args: &'a [&'a str],
-    pub work_dir: (PathBuf, Perm),
-    pub cargo_home: (PathBuf, Perm),
-    pub rustup_home: (PathBuf, Perm),
-    pub target_dir: (PathBuf, Perm),
-    pub cap_lints: &'a ExCapLints,
-    pub enable_unstable_cargo_features: bool,
-}
-
-pub struct MountConfig<'a> {
-    pub host_path: PathBuf,
-    pub container_path: &'a str,
-    pub perm: Perm,
+struct MountConfig<'a> {
+    host_path: PathBuf,
+    container_path: &'a str,
+    perm: MountPerms,
 }
 
 impl<'a> MountConfig<'a> {
     fn to_arg(&self) -> String {
         let perm = match self.perm {
-            Perm::ReadWrite => "rw",
-            Perm::ReadOnly => "ro",
+            MountPerms::ReadWrite => "rw",
+            MountPerms::ReadOnly => "ro",
         };
         format!(
             "{}:{}:{},Z",
@@ -56,69 +46,79 @@ impl<'a> MountConfig<'a> {
     }
 }
 
-pub struct ContainerConfig<'a> {
-    pub image_name: &'a str,
-    pub mounts: Vec<MountConfig<'a>>,
-    pub env: Vec<(&'static str, String)>,
+pub struct ContainerBuilder<'a> {
+    image: &'a str,
+    mounts: Vec<MountConfig<'a>>,
+    env: Vec<(&'static str, String)>,
+    memory_limit: Option<&'a str>,
 }
 
-pub fn run(config: &ContainerConfig, quiet: bool) -> Result<()> {
-    let c = Container::create_container(config)?;
-    defer!{{
-        if let Err(e) = c.delete() {
-            error!{"Cannot delete container: {}", e; "container" => &c.id}
+impl<'a> ContainerBuilder<'a> {
+    pub fn new(image: &'a str) -> Self {
+        ContainerBuilder {
+            image,
+            mounts: Vec::new(),
+            env: Vec::new(),
+            memory_limit: None,
         }
-    }}
-    c.run(quiet)
-}
-
-pub fn rust_container(config: RustEnv) -> ContainerConfig {
-    info!("creating container for: {}", config.args.join(" "));
-
-    let mounts = vec![
-        MountConfig {
-            host_path: config.work_dir.0,
-            container_path: "/source",
-            perm: config.work_dir.1,
-        },
-        MountConfig {
-            host_path: config.target_dir.0,
-            container_path: "/target",
-            perm: config.target_dir.1,
-        },
-        MountConfig {
-            host_path: config.cargo_home.0,
-            container_path: "/cargo-home",
-            perm: config.cargo_home.1,
-        },
-        MountConfig {
-            host_path: config.rustup_home.0,
-            container_path: "/rustup-home",
-            perm: config.rustup_home.1,
-        },
-    ];
-
-    let mut env = vec![
-        ("USER_ID", format!("{}", user_id())),
-        ("CMD", config.args.join(" ")),
-        ("CARGO_INCREMENTAL", "0".to_string()),
-        ("RUST_BACKTRACE", "full".to_string()),
-        (
-            "RUSTFLAGS",
-            format!("--cap-lints={}", config.cap_lints.to_str()),
-        ),
-    ];
-    if config.enable_unstable_cargo_features {
-        env.push((
-            "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS",
-            "nightly".to_string(),
-        ));
     }
 
-    ContainerConfig {
-        image_name: IMAGE_NAME,
-        mounts,
-        env,
+    pub fn mount(mut self, host_path: PathBuf, container_path: &'a str, perm: MountPerms) -> Self {
+        self.mounts.push(MountConfig {
+            host_path,
+            container_path,
+            perm,
+        });
+        self
+    }
+
+    pub fn env(mut self, key: &'static str, value: String) -> Self {
+        self.env.push((key, value));
+        self
+    }
+
+    pub fn memory_limit(mut self, limit: &'a str) -> Self {
+        self.memory_limit = Some(limit);
+        self
+    }
+
+    pub fn create(self) -> Result<Container> {
+        let mut args: Vec<String> = vec!["create".into()];
+
+        for mount in &self.mounts {
+            fs::create_dir_all(&mount.host_path)?;
+            args.push("-v".into());
+            args.push(mount.to_arg())
+        }
+
+        for &(var, ref value) in &self.env {
+            args.push("-e".into());
+            args.push(format!{"{}={}", var, value})
+        }
+
+        if let Some(limit) = self.memory_limit {
+            args.push("-m".into());
+            args.push(limit.into());
+        }
+
+        args.push(self.image.into());
+
+        let (out, _) = RunCommand::new("docker", &*args).run_capture()?;
+        Ok(Container { id: out[0].clone() })
+    }
+
+    pub fn run(self, quiet: bool) -> Result<()> {
+        let container = self.create()?;
+
+        // Ensure the container is properly deleted even if something panics
+        defer! {{
+            if let Err(err) = container.delete().chain_err(|| format!("failed to delete container {}", container.id)) {
+                util::report_error(&err);
+            }
+        }}
+
+        container.run(quiet)?;
+        Ok(())
     }
 }
 
@@ -129,16 +129,6 @@ fn absolute(path: &Path) -> PathBuf {
         let cd = env::current_dir().expect("unable to get current dir");
         cd.join(path)
     }
-}
-
-#[cfg(unix)]
-fn user_id() -> ::libc::uid_t {
-    unsafe { ::libc::geteuid() }
-}
-
-#[cfg(windows)]
-fn user_id() -> u32 {
-    panic!("unimplemented user_id");
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -154,25 +144,6 @@ impl Display for Container {
 }
 
 impl Container {
-    fn create_container(config: &ContainerConfig) -> Result<Self> {
-        let mut args: Vec<String> = vec!["create".into()];
-
-        for mount in &config.mounts {
-            fs::create_dir_all(&mount.host_path)?;
-            args.push("-v".into());
-            args.push(mount.to_arg())
-        }
-
-        for &(var, ref value) in &config.env {
-            args.push("-e".into());
-            args.push(format!{"{}={}", var, value})
-        }
-        args.push(config.image_name.into());
-
-        let (out, _) = RunCommand::new("docker", &*args).run_capture()?;
-        Ok(Self { id: out[0].clone() })
-    }
-
     pub fn run(&self, quiet: bool) -> Result<()> {
         RunCommand::new("docker", &["start", "-a", &self.id])
             .quiet(quiet)

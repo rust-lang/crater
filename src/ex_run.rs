@@ -203,7 +203,7 @@ pub fn run_test<DB: WriteResults>(
     krate: &Crate,
     db: &DB,
     quiet: bool,
-    test_fn: fn(&Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,
+    test_fn: fn(&Config, &Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,
 ) -> Result<RunTestResult> {
     if let Some(res) = db.get_result(ex, tc, krate)? {
         info!("skipping crate {}. existing result: {}", krate, res);
@@ -224,7 +224,7 @@ pub fn run_test<DB: WriteResults>(
                     tc.to_string(),
                     ex.name
                 );
-                test_fn(ex, source_path, tc, quiet)
+                test_fn(config, ex, source_path, tc, quiet)
             })
         }).map(|result| RunTestResult {
             result,
@@ -233,8 +233,15 @@ pub fn run_test<DB: WriteResults>(
     }
 }
 
-fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
+fn build(
+    config: &Config,
+    ex: &Experiment,
+    source_path: &Path,
+    toolchain: &Toolchain,
+    quiet: bool,
+) -> Result<()> {
     toolchain.run_cargo(
+        config,
         ex,
         source_path,
         &["build", "--frozen"],
@@ -243,6 +250,7 @@ fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool
         false,
     )?;
     toolchain.run_cargo(
+        config,
         ex,
         source_path,
         &["test", "--frozen", "--no-run"],
@@ -253,8 +261,15 @@ fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool
     Ok(())
 }
 
-fn test(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool) -> Result<()> {
+fn test(
+    config: &Config,
+    ex: &Experiment,
+    source_path: &Path,
+    toolchain: &Toolchain,
+    quiet: bool,
+) -> Result<()> {
     toolchain.run_cargo(
+        config,
         ex,
         source_path,
         &["test", "--frozen"],
@@ -265,14 +280,15 @@ fn test(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool)
 }
 
 pub fn test_build_and_test(
+    config: &Config,
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Result<TestResult> {
-    let build_r = build(ex, source_path, toolchain, quiet);
+    let build_r = build(config, ex, source_path, toolchain, quiet);
     let test_r = if build_r.is_ok() {
-        Some(test(ex, source_path, toolchain, quiet))
+        Some(test(config, ex, source_path, toolchain, quiet))
     } else {
         None
     };
@@ -286,12 +302,13 @@ pub fn test_build_and_test(
 }
 
 pub fn test_build_only(
+    config: &Config,
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Result<TestResult> {
-    let r = build(ex, source_path, toolchain, quiet);
+    let r = build(config, ex, source_path, toolchain, quiet);
     if r.is_ok() {
         Ok(TestResult::TestSkipped)
     } else {
@@ -300,12 +317,14 @@ pub fn test_build_only(
 }
 
 pub fn test_check_only(
+    config: &Config,
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Result<TestResult> {
     let r = toolchain.run_cargo(
+        config,
         ex,
         source_path,
         &["check", "--frozen", "--all", "--all-targets"],
@@ -322,6 +341,7 @@ pub fn test_check_only(
 }
 
 pub fn test_find_unstable_features(
+    _config: &Config,
     _ex: &Experiment,
     source_path: &Path,
     _toolchain: &Toolchain,

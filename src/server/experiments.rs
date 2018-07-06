@@ -218,6 +218,7 @@ impl ExperimentData {
         }
 
         self.experiment.crates = new_crates;
+
         Ok(())
     }
 }

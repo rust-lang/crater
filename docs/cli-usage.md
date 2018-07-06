@@ -12,8 +12,7 @@ own rustup installation, crate mirrors, etc.
 ```
 cargo run -- prepare-local --docker-env mini
 cargo run -- define-ex --crate-select=demo --cap-lints=forbid stable beta
-cargo run -- prepare-ex
-cargo run -- run
+cargo run -- run-graph --threads NUM_CPUS
 cargo run -- gen-report work/ex/default/
 ```
 
@@ -36,9 +35,8 @@ defaults to `default`. Here's what each of the steps does:
 * `define-ex` - defines a new experiment
   performing a build-test experiment on the 'demo' set of crates.
 
-* `prepare-ex` - fetches repos from github and captures their commit
-  shas, downloads all crates, hacks up Cargo.toml files, captures
-  lockfiles, fetches all dependencies, and prepares toolchains.
+* `run-graph` - executes the experiment. You can control the number of parallel
+  tasks executed with the `--threads` flag.
 
 * `run` - runs tests on crates in the experiment, against both
   toolchains

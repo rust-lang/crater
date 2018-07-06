@@ -132,26 +132,30 @@ impl ExperimentData {
     }
 
     pub fn set_start_toolchain(&mut self, db: &Database, start: Toolchain) -> Result<()> {
+        self.experiment.toolchains[0] = start;
+        self.experiment.validate()?;
+
         db.execute(
             "UPDATE experiments SET toolchain_start = ?1 WHERE name = ?2;",
             &[
-                &serde_json::to_string(&start)?,
+                &serde_json::to_string(&self.experiment.toolchains[0])?,
                 &self.experiment.name.as_str(),
             ],
         )?;
-        self.experiment.toolchains[0] = start;
         Ok(())
     }
 
     pub fn set_end_toolchain(&mut self, db: &Database, end: Toolchain) -> Result<()> {
+        self.experiment.toolchains[1] = end;
+        self.experiment.validate()?;
+
         db.execute(
             "UPDATE experiments SET toolchain_end = ?1 WHERE name = ?2;",
             &[
-                &serde_json::to_string(&end)?,
+                &serde_json::to_string(&self.experiment.toolchains[1])?,
                 &self.experiment.name.as_str(),
             ],
         )?;
-        self.experiment.toolchains[1] = end;
         Ok(())
     }
 
@@ -342,6 +346,15 @@ impl Experiments {
     ) -> Result<()> {
         self.db.transaction(|transaction| {
             let crates = ex::get_crates(crates, config)?;
+
+            // First of all, validate if the experiment is valid
+            Experiment {
+                name: name.to_string(),
+                crates: crates.clone(),
+                toolchains: vec![toolchain_start.clone(), toolchain_end.clone()],
+                mode,
+                cap_lints,
+            }.validate()?;
 
             transaction.execute(
                 "INSERT INTO experiments \

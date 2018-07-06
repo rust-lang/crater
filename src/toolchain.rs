@@ -1,9 +1,8 @@
-use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR, TOOLCHAIN_DIR};
+use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR};
 use dl;
 use docker;
 use errors::*;
 use ex::Experiment;
-use reqwest;
 use run::RunCommand;
 use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
@@ -15,20 +14,19 @@ use util;
 
 const RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
 
-const RUST_CI_BASE_URL: &str = "https://rust-lang-ci2.s3.amazonaws.com/rustc-builds-alt";
+pub fn ex_target_dir(ex_name: &str) -> PathBuf {
+    TARGET_DIR.join(ex_name)
+}
 
-const RUST_CI_COMPONENTS: [(&str, &str); 3] = [
-    ("rustc", "rustc-nightly-x86_64-unknown-linux-gnu.tar.xz"),
-    (
-        "rust-std-x86_64-unknown-linux-gnu",
-        "rust-std-nightly-x86_64-unknown-linux-gnu.tar.xz",
-    ),
-    ("cargo", "cargo-nightly-x86_64-unknown-linux-gnu.tar.xz"),
-];
+#[derive(Copy, Clone)]
+pub enum CargoState {
+    Locked,
+    Unlocked,
+}
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 /// A toolchain name, either a rustup channel identifier,
 /// or a URL+branch+sha: `https://github.com/rust-lang/rust+master+sha`
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub enum Toolchain {
     Dist(String), // rustup toolchain spec
     TryBuild { sha: String },
@@ -42,11 +40,58 @@ impl Toolchain {
         match *self {
             Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
             Toolchain::Master { ref sha } | Toolchain::TryBuild { ref sha } => {
-                init_toolchain_from_ci(RUST_CI_BASE_URL, sha)?
+                init_toolchain_from_ci(true, sha)?
             }
         }
 
         Ok(())
+    }
+
+    pub fn rustup_name(&self) -> String {
+        match *self {
+            Toolchain::Dist(ref n) => n.to_string(),
+            Toolchain::TryBuild { ref sha } | Toolchain::Master { ref sha } => {
+                format!("{}-alt", sha)
+            }
+        }
+    }
+
+    pub fn target_dir(&self, ex_name: &str) -> PathBuf {
+        ex_target_dir(ex_name).join(self.to_string())
+    }
+
+    pub fn run_cargo(
+        &self,
+        ex: &Experiment,
+        source_dir: &Path,
+        args: &[&str],
+        cargo_state: CargoState,
+        quiet: bool,
+    ) -> Result<()> {
+        let toolchain_name = self.rustup_name();
+        let ex_target_dir = self.target_dir(&ex.name);
+
+        fs::create_dir_all(&ex_target_dir)?;
+
+        let toolchain_arg = "+".to_string() + &toolchain_name;
+        let mut full_args = vec!["cargo", &*toolchain_arg];
+        full_args.extend_from_slice(args);
+
+        info!("running: {}", full_args.join(" "));
+        let perm = match cargo_state {
+            CargoState::Locked => docker::Perm::ReadOnly,
+            CargoState::Unlocked => docker::Perm::ReadWrite,
+        };
+        let rust_env = docker::RustEnv {
+            args: &full_args,
+            work_dir: (source_dir.into(), perm),
+            cargo_home: (Path::new(&*CARGO_HOME).into(), perm),
+            rustup_home: (Path::new(&*RUSTUP_HOME).into(), docker::Perm::ReadOnly),
+            // This is configured as CARGO_TARGET_DIR by the docker container itself
+            target_dir: (ex_target_dir, docker::Perm::ReadWrite),
+            cap_lints: &ex.cap_lints,
+        };
+        docker::run(&docker::rust_container(rust_env), quiet)
     }
 }
 
@@ -89,7 +134,7 @@ impl FromStr for Toolchain {
 fn init_rustup() -> Result<()> {
     fs::create_dir_all(&*CARGO_HOME)?;
     fs::create_dir_all(&*RUSTUP_HOME)?;
-    if rustup_exists() {
+    if Path::new(&installed_binary("rustup")).exists() {
         update_rustup()?;
     } else {
         install_rustup()?;
@@ -98,19 +143,8 @@ fn init_rustup() -> Result<()> {
     Ok(())
 }
 
-fn rustup_exe() -> String {
-    format!("{}/bin/rustup{}", *CARGO_HOME, EXE_SUFFIX)
-}
-
-fn rustup_exists() -> bool {
-    Path::new(&rustup_exe()).exists()
-}
-
-fn rustup_run(name: &str, args: &[&str]) -> Result<()> {
-    RunCommand::new(name, args)
-        .env("CARGO_HOME", &*CARGO_HOME)
-        .env("RUSTUP_HOME", &*RUSTUP_HOME)
-        .run()
+fn installed_binary(name: &str) -> String {
+    format!("{}/bin/{}{}", *CARGO_HOME, name, EXE_SUFFIX)
 }
 
 fn install_rustup() -> Result<()> {
@@ -131,9 +165,10 @@ fn install_rustup() -> Result<()> {
         make_executable(installer)?;
     }
 
-    // FIXME: Wish I could install rustup without installing a toolchain
     util::try_hard(|| {
-        rustup_run(&installer.to_string_lossy(), &["-y", "--no-modify-path"])
+        RunCommand::new(&installer.to_string_lossy(), &["-y", "--no-modify-path"])
+            .local_rustup()
+            .run()
             .chain_err(|| "unable to run rustup-init")
     })
 }
@@ -164,7 +199,9 @@ pub fn make_executable(path: &Path) -> Result<()> {
 fn update_rustup() -> Result<()> {
     info!("updating rustup");
     util::try_hard(|| {
-        rustup_run(&rustup_exe(), &["self", "update"])
+        RunCommand::new(&installed_binary("rustup"), &["self", "update"])
+            .local_rustup()
+            .run()
             .chain_err(|| "unable to run rustup self-update")
     })
 }
@@ -172,99 +209,50 @@ fn update_rustup() -> Result<()> {
 fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
     info!("installing toolchain {}", toolchain);
     util::try_hard(|| {
-        rustup_run(&rustup_exe(), &["toolchain", "install", toolchain])
-            .chain_err(|| "unable to install toolchain via rustup")
+        RunCommand::new(
+            &installed_binary("rustup"),
+            &["toolchain", "install", toolchain],
+        ).local_rustup()
+            .run()
+            .chain_err(|| format!("unable to install toolchain {} via rustup", toolchain))
     })
 }
 
-fn init_toolchain_from_ci(base_url: &str, sha: &str) -> Result<()> {
-    info!("installing toolchain try#{}", sha);
-
-    fs::create_dir_all(&*TOOLCHAIN_DIR)?;
-    let dir = TOOLCHAIN_DIR.join(sha);
-    use rustup_dist as dist;
-    use rustup_dist::component::Package;
-
-    let prefix = dist::prefix::InstallPrefix::from(dir);
-    let target = dist::component::Components::open(prefix.clone())?;
-    let cfg = dist::temp::Cfg::new((&*RUSTUP_HOME).into(), RUSTUP_BASE_URL, Box::new(|_| {}));
-    let notifier = |_: dist::notifications::Notification| {};
-    let mut tx = dist::component::Transaction::new(prefix, &cfg, &notifier);
-
-    for &(component, file) in &RUST_CI_COMPONENTS {
-        if target.find(component)?.is_some() {
-            info!("skipping component {}, already installed", component);
-            continue;
-        };
-        info!("installing component {}", component);
-        let url = format!("{}/{}/{}", base_url, sha, file);
-        let response = dl::download_limit(&url, 10_000)?;
-        if response.status() != reqwest::StatusCode::Ok {
-            return Err(ErrorKind::Download.into());
-        }
-        tx = dist::component::TarXzPackage::new(response, &cfg)?
-            .install(&target, component, None, tx)?;
-    }
-    tx.commit();
-
-    Ok(())
-}
-
-impl Toolchain {
-    pub fn rustup_name(&self) -> String {
-        match *self {
-            Toolchain::Dist(ref n) => n.to_string(),
-            Toolchain::TryBuild { ref sha } | Toolchain::Master { ref sha } => sha.to_string(),
-        }
-    }
-}
-
-pub fn ex_target_dir(ex_name: &str) -> PathBuf {
-    TARGET_DIR.join(ex_name)
-}
-
-#[derive(Copy, Clone)]
-pub enum CargoState {
-    Locked,
-    Unlocked,
-}
-
-impl Toolchain {
-    pub fn target_dir(&self, ex_name: &str) -> PathBuf {
-        ex_target_dir(ex_name).join(self.to_string())
+fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
+    // Ensure rustup-toolchain-install-master is installed
+    let bin = installed_binary("rustup-toolchain-install-master");
+    if !Path::new(&bin).exists() {
+        info!("installing rustup-toolchain-install-master");
+        util::try_hard(|| {
+            RunCommand::new(
+                &installed_binary("cargo"),
+                &["install", "rustup-toolchain-install-master"],
+            ).local_rustup()
+                .run()
+                .chain_err(|| "unable to install rustup-toolchain-install-master")
+        })?;
     }
 
-    pub fn run_cargo(
-        &self,
-        ex: &Experiment,
-        source_dir: &Path,
-        args: &[&str],
-        cargo_state: CargoState,
-        quiet: bool,
-    ) -> Result<()> {
-        let toolchain_name = self.rustup_name();
-        let ex_target_dir = self.target_dir(&ex.name);
-
-        fs::create_dir_all(&ex_target_dir)?;
-
-        let toolchain_arg = "+".to_string() + &toolchain_name;
-        let mut full_args = vec!["cargo", &*toolchain_arg];
-        full_args.extend_from_slice(args);
-
-        info!("running: {}", full_args.join(" "));
-        let perm = match cargo_state {
-            CargoState::Locked => docker::Perm::ReadOnly,
-            CargoState::Unlocked => docker::Perm::ReadWrite,
-        };
-        let rust_env = docker::RustEnv {
-            args: &full_args,
-            work_dir: (source_dir.into(), perm),
-            cargo_home: (Path::new(&*CARGO_HOME).into(), perm),
-            rustup_home: (Path::new(&*RUSTUP_HOME).into(), docker::Perm::ReadOnly),
-            // This is configured as CARGO_TARGET_DIR by the docker container itself
-            target_dir: (ex_target_dir, docker::Perm::ReadWrite),
-            cap_lints: &ex.cap_lints,
-        };
-        docker::run(&docker::rust_container(rust_env), quiet)
+    if alt {
+        info!("installing toolchain {}-alt", sha);
+    } else {
+        info!("installing toolchain {}", sha);
     }
+
+    let mut args = vec![sha, "-c", "cargo"];
+    if alt {
+        args.push("--alt");
+    }
+
+    util::try_hard(|| {
+        RunCommand::new(&bin, &args)
+            .local_rustup()
+            .run()
+            .chain_err(|| {
+                format!(
+                    "unable to install toolchain {} via rustup-toolchain-install-master",
+                    sha
+                )
+            })
+    })
 }

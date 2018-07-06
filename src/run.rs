@@ -1,5 +1,6 @@
 #![deny(unused_must_use)]
 
+use dirs::{CARGO_HOME, RUSTUP_HOME};
 use errors::*;
 use futures::{future, Future, Stream};
 use futures_cpupool::CpuPool;
@@ -47,6 +48,11 @@ impl<'a, S: AsRef<OsStr>> RunCommand<'a, S> {
     pub fn quiet(mut self, quiet: bool) -> Self {
         self.quiet = quiet;
         self
+    }
+
+    pub fn local_rustup(self) -> Self {
+        self.env("CARGO_HOME", &*CARGO_HOME)
+            .env("RUSTUP_HOME", &*RUSTUP_HOME)
     }
 
     pub fn run(self) -> Result<()> {

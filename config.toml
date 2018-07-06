@@ -2912,7 +2912,6 @@ twists = { skip = true } #automatic
 twisty = { skip = true } #automatic
 twitch_api = { skip = true } #automatic
 twitter-stream-message = { skip-tests = true } #automatic
-twox-hash = { skip = true } #automatic
 twre_ecs = { skip = true } #automatic
 txfw32-sys = { skip = true } #automatic
 txs = { skip = true } #automatic

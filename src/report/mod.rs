@@ -82,7 +82,11 @@ struct BuildTestResult {
 
 fn crate_to_path_fragment(toolchain: &Toolchain, krate: &Crate, encode: bool) -> PathBuf {
     let mut path = PathBuf::new();
-    path.push(toolchain.rustup_name());
+    if encode {
+        path.push(url_encode(&toolchain.to_string()));
+    } else {
+        path.push(toolchain.to_string());
+    }
 
     match *krate {
         Crate::Registry(ref details) => {

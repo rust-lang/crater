@@ -29,6 +29,7 @@ pub fn run(data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
         args.mode.unwrap_or(ExMode::BuildAndTest),
         args.crates.unwrap_or(ExCrateSelect::Full),
         args.cap_lints.unwrap_or(ExCapLints::Forbid),
+        args.rustflags.as_ref().map(|s| s.as_str()),
         &data.config,
         Some(&issue.url),
         Some(&issue.html_url),
@@ -80,6 +81,10 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Result<()> {
         }
         if let Some(priority) = args.priority {
             experiment.set_priority(&data.db, priority)?;
+            changed = true;
+        }
+        if let Some(rustflags) = args.rustflags {
+            experiment.set_rustflags(&data.db, &Some(rustflags))?;
             changed = true;
         }
 

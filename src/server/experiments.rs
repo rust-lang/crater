@@ -132,6 +132,17 @@ impl ExperimentData {
         )?;
         Ok(())
     }
+
+    pub fn set_rustflags(&mut self, db: &Database, rustflags: &Option<String>) -> Result<()> {
+        self.experiment.rustflags = rustflags.clone();
+        self.experiment.validate()?;
+
+        db.execute(
+            "UPDATE experiments SET rustflags = ?1 WHERE name = ?2;",
+            &[rustflags, &self.experiment.name.as_str()],
+        )?;
+        Ok(())
+    }
 }
 
 struct ExperimentDBRecord {
@@ -147,6 +158,7 @@ struct ExperimentDBRecord {
     github_issue_number: Option<i32>,
     status: String,
     assigned_to: Option<String>,
+    rustflags: Option<String>,
 }
 
 impl ExperimentDBRecord {
@@ -164,6 +176,7 @@ impl ExperimentDBRecord {
             github_issue_url: row.get("github_issue_url"),
             github_issue_number: row.get("github_issue_number"),
             assigned_to: row.get("assigned_to"),
+            rustflags: row.get("rustflags"),
         }
     }
 
@@ -190,6 +203,7 @@ impl ExperimentDBRecord {
                 ],
                 cap_lints: self.cap_lints.parse()?,
                 mode: self.mode.parse()?,
+                rustflags: self.rustflags,
             },
             server_data: ServerData {
                 priority: self.priority,
@@ -238,6 +252,7 @@ impl Experiments {
         mode: ExMode,
         crates: ExCrateSelect,
         cap_lints: ExCapLints,
+        rustflags: Option<&str>,
         config: &Config,
         github_issue: Option<&str>,
         github_issue_url: Option<&str>,
@@ -254,13 +269,14 @@ impl Experiments {
                 toolchains: vec![toolchain_start.clone(), toolchain_end.clone()],
                 mode,
                 cap_lints,
+                rustflags: rustflags.map(|s| s.to_string()),
             }.validate()?;
 
             transaction.execute(
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
-                 status, github_issue, github_issue_url, github_issue_number) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
+                 status, github_issue, github_issue_url, github_issue_number, rustflags) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);",
                 &[
                     &name,
                     &mode.to_str(),
@@ -273,6 +289,7 @@ impl Experiments {
                     &github_issue,
                     &github_issue_url,
                     &github_issue_number,
+                    &rustflags,
                 ],
             )?;
 
@@ -390,6 +407,7 @@ mod tests {
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
+                None,
                 &config,
                 Some(api_url),
                 Some(html_url),
@@ -454,6 +472,7 @@ mod tests {
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
+                None,
                 &config,
                 None,
                 None,
@@ -469,6 +488,7 @@ mod tests {
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
+                None,
                 &config,
                 None,
                 None,

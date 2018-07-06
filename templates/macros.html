@@ -1,4 +1,4 @@
-{% macro toolchain_name(tc) %}
+{% macro toolchain_name(ex, tc) %}
     {%- if tc.source.type == "dist" %}
         {{ tc.source.name }}
     {%- elif tc.source.type == "ci" %}
@@ -6,4 +6,10 @@
     {%- else -%}
         {{ tc.source|json_encode }}
     {%- endif -%}
+
+    <div class="flags">
+        {% if tc.enable_rustflags %}
+            <span>rustflags: <code>{{ ex.rustflags }}</code></span>
+        {% endif %}
+    </div>
 {% endmacro %}

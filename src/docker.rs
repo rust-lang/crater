@@ -33,6 +33,7 @@ pub struct RustEnv<'a> {
     pub target_dir: (PathBuf, Perm),
     pub cap_lints: &'a ExCapLints,
     pub enable_unstable_cargo_features: bool,
+    pub rustflags: &'a Option<String>,
 }
 
 pub struct MountConfig<'a> {
@@ -105,7 +106,11 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
         ("RUST_BACKTRACE", "full".to_string()),
         (
             "RUSTFLAGS",
-            format!("--cap-lints={}", config.cap_lints.to_str()),
+            if let Some(flags) = config.rustflags {
+                format!("--cap-lints={} {}", config.cap_lints.to_str(), flags)
+            } else {
+                format!("--cap-lints={}", config.cap_lints.to_str())
+            },
         ),
     ];
     if config.enable_unstable_cargo_features {

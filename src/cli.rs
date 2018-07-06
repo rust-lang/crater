@@ -110,6 +110,8 @@ pub enum Crater {
             possible_values_raw = "ExCapLints::possible_values()"
         )]
         cap_lints: ExCapLints,
+        #[structopt(name = "rustflags", long = "rustflags")]
+        rustflags: Option<String>,
     },
 
     #[structopt(name = "prepare-ex", about = "prepare shared and local data for experiment")]
@@ -237,6 +239,7 @@ impl Crater {
                 ref mode,
                 ref crates,
                 ref cap_lints,
+                ref rustflags,
             } => {
                 let config = Config::load()?;
 
@@ -247,6 +250,7 @@ impl Crater {
                         mode: *mode,
                         crates: *crates,
                         cap_lints: *cap_lints,
+                        rustflags: rustflags.clone(),
                     },
                     &config,
                 )?;

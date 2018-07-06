@@ -210,6 +210,7 @@ mod tests {
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
+                None,
                 &config,
                 None,
                 None,

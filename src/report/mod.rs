@@ -568,6 +568,7 @@ mod tests {
             toolchains: vec![MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
             mode: ExMode::BuildAndTest,
             cap_lints: ExCapLints::Forbid,
+            rustflags: None,
         };
 
         let mut db = DummyDB::default();

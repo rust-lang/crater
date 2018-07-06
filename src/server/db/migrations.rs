@@ -66,6 +66,13 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
         ",
     ));
 
+    migrations.push((
+        "add_rustflags_experiments_field",
+        "
+        ALTER TABLE experiments ADD COLUMN rustflags TEXT;
+        ",
+    ));
+
     migrations
 }
 

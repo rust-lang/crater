@@ -57,6 +57,7 @@ macro_rules! load_files {
 
 load_files! {
     templates: [
+        "macros.html",
         "report.html",
     ],
     assets: [

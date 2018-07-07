@@ -25,39 +25,39 @@ th {
     text-align: left;
 }
 
-.regressed {
+.s-Regressed {
     background-color: #DB3026;
 }
 
-.fixed {
+.s-Fixed {
     background-color: #5630DB;
 }
 
-.same-build-fail {
+.s-SameBuildFail {
     background-color: #65461E;
 }
 
-.same-test-fail {
+.s-SameTestFail {
     background-color: #788843;
 }
 
-.same-test-skipped {
+.s-SameTestSkipped {
     background: repeating-linear-gradient(-45deg, #72A156, #72A156 15px, #80B65F 15px, #80B65F 30px);
 }
 
-.same-test-pass {
+.s-SameTestPass {
     background-color: #72A156;
 }
 
-.unknown {
+.s-Unknown {
     background-color: #494B4A;
 }
 
-.skipped {
+.s-Skipped {
     background: repeating-linear-gradient(-45deg, #494b4a, #494b4a 15px, #555 15px, #555 30px);
 }
 
-.errors {
+.S-Error {
     background: #d77026;
 }
 

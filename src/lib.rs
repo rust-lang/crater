@@ -14,6 +14,7 @@ extern crate hyper;
 extern crate lazy_static;
 extern crate libc;
 extern crate mime;
+extern crate minifier;
 extern crate petgraph;
 extern crate r2d2;
 extern crate r2d2_sqlite;

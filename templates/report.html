@@ -1,73 +1,66 @@
+{%- import "macros.html" as macros -%}
+
 <!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="{{ static_url }}report.css">
+    </head>
+    <body>
+        <header>
+            <div>
+                Experiment: {{ ex.name }}
+            </div>
+            <div>
+                Toolchain 1: {{ macros::toolchain_name(tc=ex.toolchains[0]) }}
+            </div>
+            <div>
+                Toolchain 2: {{ macros::toolchain_name(tc=ex.toolchains[1]) }}
+            </div>
+            <div>
+                Total crates: {{ crates_count }}
+            </div>
+        </header>
 
-<meta charset="utf-8">
-<link rel="stylesheet" href="{{static_url}}report.css">
-<script>
-config_url = "{{config_url}}"
-results_url = "{{results_url}}"
-</script>
-<script src="{{static_url}}report.js"></script>
+        <div id="controls">
+            {% for comparison, count in summary %}
+            <span class="s-{{ comparison }} toggle" data-toggle=".s-{{ comparison }}">
+                {{ comparison }}
+                <span class="count">{{ count }}</span>
+            </span>
+            {% endfor %}
+        </div>
+        {% if not full %}
+            <p>
+                This report only shows the {{ res.crates|length }} relevant
+                results.
+                <a href="full.html">Load all the {{ crates_count }} crates</a>
+            </p>
+        {% endif %}
+        <div id="results">
+            <div>
+                <span>name</span><span>toolchain 1</span><span>toolchain 2</span>
+            </div>
+            {% for crate in res.crates -%}
+                <div class="s-{{ crate.res }}">
+                    <span>
+                        <a href="{{ crate.url|safe }}" target="_blank" rel="noopener">
+                            {{ crate.name }}
+                        </a>
+                    </span>
+                    {% for run in crate.runs -%}
+                        <span>
+                            {% if run %}
+                                <a href="{{ run.log|safe|urlencode }}/log.txt">{{ run.res }}</a>
+                            {% else %}
+                                {{ crate.res }}
+                            {% endif %}
+                        </span>
+                    {% endfor %}
+                </div>
+            {%- endfor %}
+        </div>
 
-<header>
-  <div>
-    Experiment:
-    <span id="ex-name"></span>
-  </div>
-  <div>
-    Toolchain 1:
-    <span id="ex-tc1"></span>
-  </div>
-  <div>
-    Toolchain 2:
-    <span id="ex-tc2"></span>
-  </div>
-  <div>
-    Total crates:
-    <span id="ex-crates"></span>
-  </div>
-</header>
-
-<div id="controls">
-  <span id="c-regressed" class="regressed">
-    regressed
-    <span class="count"></span>
-  </span>
-  <span id="c-fixed" class="fixed">
-    fixed
-    <span class="count"></span>
-  </span>
-  <span id="c-skipped" class="skipped">
-    skipped
-    <span class="count"></span>
-  </span>
-  <span id="c-unknown" class="unknown">
-    unknown
-    <span class="count"></span>
-  </span>
-  <span id="c-errors" class="errors">
-    errors
-    <span class="count"></span>
-  </span>
-  <br>
-  <span id="c-same-build-fail" class="same-build-fail">
-    build-fail
-    <span class="count"></span>
-  </span>
-  <span id="c-same-test-fail" class="same-test-fail">
-    test-fail
-    <span class="count"></span>
-  </span>
-  <span id="c-same-test-skipped" class="same-test-skipped">
-    test-skipped
-    <span class="count"></span>
-  </span>
-  <span id="c-same-test-pass" class="same-test-pass">
-    test-pass
-    <span class="count"></span>
-  </span>
-</div>
-<div id="results">
-  <div>
-    <span>name</span><span>toolchain 1</span><span>toolchain 2</span>
-  </div>
-</div>
+        <script src="{{ static_url }}report.js"></script>
+    </body>
+</html>

@@ -88,6 +88,11 @@ header div.toolchains div.toolchain.toolchain-start {
     background: #292929;
 }
 
+header div.toolchains div.toolchain.toolchain-start div {
+    width: 100%;
+    text-align: right;
+}
+
 header div.toolchains div.arrow {
     flex: 0;
     height: 0;

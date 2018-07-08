@@ -75,7 +75,15 @@ pub fn run(url: &str, token: &str, threads_count: usize) -> Result<()> {
 
     loop {
         let ex = agent.experiment()?;
-        run_graph::run_ex(&ex, &db, threads_count, &agent.config)?;
+
+        let result = run_graph::run_ex(&ex, &db, threads_count, &agent.config);
+
+        // Ensure local data is cleaned up even if the run crashed
+        ex::delete_all_target_dirs(&ex.name)?;
+        ex::delete(&ex.name)?;
+
+        result?;
+
         agent.api.complete_experiment()?;
     }
 }

@@ -1,31 +1,150 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: sans-serif;
-    background-color: #111;
+    background: #111;
     color: #eee;
-    padding: 1rem;
+    margin: 0;
 }
 
 a {
     color: #eee;
 }
 
-#controls, #results td {
-    color: #eee;
+.hidden {
+    display: none;
 }
 
-header > div {
-    margin-top: 1rem;
+.toggle {
+    cursor: pointer;
 }
 
 header {
-    margin-bottom: 2rem;
+    padding: 1px;
+    margin-bottom: 2em;
+    background: #222;
 }
 
-th {
-    text-align: left;
+header div.navbar {
+    display: flex;
+    padding: 1em;
 }
 
-.s-Regressed {
+header div.navbar h1 {
+    flex: 1;
+
+    margin: 0;
+    font-size: 1em;
+    font-weight: 400;
+}
+
+header div.navbar ul {
+    flex: 1;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+header div.navbar ul li {
+    display: inline-block;
+    padding: 0 0.5em;
+}
+
+header div.navbar ul li a {
+    color: #999;
+    font-weight: 400;
+    text-decoration: none;
+}
+
+header div.navbar ul li a:hover {
+    text-decoration: underline;
+}
+
+header div.navbar ul li a.active {
+    color: #eee;
+    text-decoration: none;
+}
+
+header div.navbar div.count {
+    flex: 1;
+    text-align: right;
+}
+
+header div.toolchains {
+    display: flex;
+}
+
+header div.toolchains div.toolchain {
+    display: flex;
+    align-items: center;
+
+    flex: 1;
+    padding: 0 1em;
+}
+
+header div.toolchains div.toolchain.toolchain-start {
+    background: #292929;
+}
+
+header div.toolchains div.arrow {
+    flex: 0;
+    height: 0;
+    width: 0;
+
+    border-top: 2em solid transparent;
+    border-bottom: 2em solid transparent;
+    border-left: 2em solid #292929;
+}
+
+div.nothing {
+    text-align: center;
+}
+
+div.category {
+    width: 70em;
+    margin: 1em auto;
+}
+
+div.category div.header {
+    padding: 0.5em 0.8em;
+    border-radius: 0.2em;
+    box-shadow: 0 0.1em 0.2em rgba(0, 0, 0, 0.5);
+
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0.5em;
+}
+
+div.category div.crate {
+    display: flex;
+    padding: 0.8em;
+    border-top: 1px solid #333;
+}
+
+div.category div.crate:first-child {
+    border-top: 0;
+}
+
+div.category div.crate > a {
+    flex: 1;
+    text-decoration: none;
+}
+
+div.category div.crate > span {
+    flex-basis: 10em;
+}
+
+div.category div.crate > span > b {
+    display: inline-block;
+    height: 0.5em;
+    width: 0.5em;
+    margin: 0 0.2em 0.1em 0;
+    border-radius: 0.5em;
+}
+
+.s-Regressed, .s-BuildFail {
     background-color: #DB3026;
 }
 
@@ -33,7 +152,7 @@ th {
     background-color: #5630DB;
 }
 
-.s-SameBuildFail {
+.s-SameBuildFail, .s-TestFail {
     background-color: #65461E;
 }
 
@@ -45,7 +164,7 @@ th {
     background: repeating-linear-gradient(-45deg, #72A156, #72A156 15px, #80B65F 15px, #80B65F 30px);
 }
 
-.s-SameTestPass {
+.s-SameTestPass, .s-TestPass, .s-TestSkipped {
     background-color: #72A156;
 }
 
@@ -57,76 +176,6 @@ th {
     background: repeating-linear-gradient(-45deg, #494b4a, #494b4a 15px, #555 15px, #555 30px);
 }
 
-.S-Error {
+.s-Error {
     background: #d77026;
-}
-
-#controls {
-    line-height: 3.5em;
-    margin-bottom: 2rem;
-}
-
-#controls > span {
-    padding: 0.5em;
-    padding-left: 1em;
-    padding-right: 1em;
-    margin: 0.5em;
-    white-space: nowrap;
-    border: 0.2rem solid #111;
-}
-
-#controls > span:hover {
-    cursor: pointer;
-}
-
-#controls > span.selected {
-    border: 0.2rem solid #eee;
-}
-
-#controls .count::before {
-    content: "( ";
-    opacity: 0.5;
-}
-
-#controls .count::after {
-    content: " )";
-    opacity: 0.5;
-}
-
-#results > div {
-    display: none;
-    width: 44em;
-    border-bottom: 0.2rem solid #222;
-}
-
-#results > div.header {
-    display: block;
-}
-
-#results > div.visible {
-    display: block;
-}
-
-#results > div > span {
-    word-break: keep-all;
-    overflow: hidden;
-    text-overflow: ellipses;
-    display: inline-block; 
-    margin: 0.5em;
-}
-
-#results > div > span:first-child {
-    width: 24em;
-}
-
-#results > div > span:nth-child(2) {
-    width: 8em;
-}
-
-#results > div > span:nth-child(3) {
-    width: 8em;
-}
-
-#results > div:first-child {
-    display: block;
 }

@@ -9,7 +9,7 @@ function setup_buttons() {
             let selector = this.getAttribute("data-toggle");
             let elements = document.querySelectorAll(selector);
             for (let i = 0; i < elements.length; i++) {
-                elements[i].classList.toggle("visible");
+                elements[i].classList.toggle("hidden");
             }
         }.bind(buttons[i]));
     }

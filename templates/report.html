@@ -4,62 +4,71 @@
 <html lang="en">
     <head>
         <meta charset="utf-8">
+        <title>{{ ex.name }} - Crater report</title>
         <link rel="stylesheet" href="{{ static_url }}report.css">
     </head>
     <body>
         <header>
-            <div>
-                Experiment: {{ ex.name }}
+            <div class="navbar">
+                <h1>Crater report for <b>{{ ex.name }}</b></h1>
+                <ul>
+                    <li><a {% if not full %} class="active"{% endif %} href="index.html">Summary</a></li>
+                    <li><a {% if full %} class="active"{% endif %} href="full.html">Full report</a></li>
+                </ul>
+                <div class="count">{{ crates_count }} crates tested</div>
             </div>
-            <div>
-                Toolchain 1: {{ macros::toolchain_name(tc=ex.toolchains[0]) }}
-            </div>
-            <div>
-                Toolchain 2: {{ macros::toolchain_name(tc=ex.toolchains[1]) }}
-            </div>
-            <div>
-                Total crates: {{ crates_count }}
+            <div class="toolchains">
+                <div class="toolchain toolchain-start">
+                    <div>
+                        {{ macros::toolchain_name(tc=ex.toolchains[0]) }}
+                    </div>
+                </div>
+                <div class="arrow"></div>
+                <div class="toolchain">
+                    <div>
+                        {{ macros::toolchain_name(tc=ex.toolchains[1]) }}
+                    </div>
+                </div>
             </div>
         </header>
 
-        <div id="controls">
-            {% for comparison, count in summary %}
-            <span class="s-{{ comparison }} toggle" data-toggle=".s-{{ comparison }}">
-                {{ comparison }}
-                <span class="count">{{ count }}</span>
-            </span>
-            {% endfor %}
-        </div>
-        {% if not full %}
-            <p>
-                This report only shows the {{ res.crates|length }} relevant
-                results.
-                <a href="full.html">Load all the {{ crates_count }} crates</a>
-            </p>
-        {% endif %}
-        <div id="results">
-            <div>
-                <span>name</span><span>toolchain 1</span><span>toolchain 2</span>
-            </div>
-            {% for crate in res.crates -%}
-                <div class="s-{{ crate.res }}">
-                    <span>
-                        <a href="{{ crate.url|safe }}" target="_blank" rel="noopener">
-                            {{ crate.name }}
-                        </a>
-                    </span>
-                    {% for run in crate.runs -%}
-                        <span>
-                            {% if run %}
-                                <a href="{{ run.log|safe|urlencode }}/log.txt">{{ run.res }}</a>
-                            {% else %}
-                                {{ crate.res }}
-                            {% endif %}
-                        </span>
+        {% if categories %}
+            {% for name, crates in categories %}
+            <div class="category">
+                <div class="header s-{{ name }} toggle" data-toggle="#crates-{{ name }}">
+                    {{ name }} ({{ crates|length }})
+                </div>
+
+                <div class="crates hidden" id="crates-{{ name }}">
+                    {% for crate in crates %}
+                        <div class="crate">
+                            <a href="{{ crate.url|safe }}" target="_blank" rel="noopener">{{ crate.name }}</a>
+                            {% for run in crate.runs %}
+                                <span class="run">
+                                    {% if run %}
+                                        <b class="s-{{ run.res }}"></b>
+                                        <a href="{{ run.log|safe }}/log.txt">{{ run.res }}</a>
+                                    {% else %}
+                                        <b class="s-{{ crate.res }}"></b>
+                                        {{ crate.res }}
+                                    {% endif %}
+                                </span>
+                            {% endfor %}
+                        </div>
                     {% endfor %}
                 </div>
-            {%- endfor %}
-        </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="nothing">
+                {% if full %}
+                    No results available.
+                {% else %}
+                    There are no relevant results.
+                    <a href="full.html">Check the full report</a>
+                {% endif %}
+            </div>
+        {% endif %}
 
         <script src="{{ static_url }}report.js"></script>
     </body>

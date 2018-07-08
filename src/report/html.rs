@@ -3,26 +3,14 @@ use errors::*;
 use ex::Experiment;
 use mime;
 use minifier;
-use report::{Comparison, ReportWriter, TestResults};
+use report::{Comparison, CrateResult, ReportWriter, TestResults};
 use std::collections::HashMap;
-
-fn calculate_summary(res: &TestResults) -> HashMap<Comparison, usize> {
-    let mut result = HashMap::new();
-
-    for krate in &res.crates {
-        let mut counter = result.entry(krate.res).or_insert(0);
-        *counter += 1;
-    }
-
-    result
-}
 
 #[derive(Serialize)]
 struct Context<'a> {
     ex: &'a Experiment,
-    res: &'a TestResults,
     static_url: String,
-    summary: HashMap<Comparison, usize>,
+    categories: HashMap<Comparison, Vec<CrateResult>>,
     full: bool,
     crates_count: usize,
 }
@@ -34,30 +22,23 @@ fn write_report<W: ReportWriter>(
     to: &str,
     dest: &W,
 ) -> Result<()> {
-    let crates_count = res.crates.len();
+    let mut categories = HashMap::new();
+    for result in &res.crates {
+        // Skip some categories if this is not the full report
+        if !full && !result.res.show_in_summary() {
+            continue;
+        }
 
-    // Reduce the number of crates if this is the summary
-    let summary_res;
-    let mut res = res;
-    if !full {
-        summary_res = TestResults {
-            crates: res
-                .crates
-                .iter()
-                .filter(|c| c.res.show_in_summary())
-                .cloned()
-                .collect(),
-        };
-        res = &summary_res;
+        let mut category = categories.entry(result.res).or_insert_with(Vec::new);
+        category.push(result.clone());
     }
 
     let context = Context {
         ex,
-        res,
         static_url: String::new(),
-        summary: calculate_summary(res),
+        categories,
         full,
-        crates_count,
+        crates_count: res.crates.len(),
     };
 
     info!("generating {}", to);
@@ -74,7 +55,6 @@ pub fn write_html_report<W: ReportWriter>(
 ) -> Result<()> {
     let js_in = assets::load("report.js")?;
     let css_in = assets::load("report.css")?;
-
     write_report(ex, res, false, "index.html", dest)?;
     write_report(ex, res, true, "full.html", dest)?;
 

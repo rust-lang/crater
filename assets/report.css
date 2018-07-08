@@ -143,39 +143,3 @@ div.category div.crate > span > b {
     margin: 0 0.2em 0.1em 0;
     border-radius: 0.5em;
 }
-
-.s-Regressed, .s-BuildFail {
-    background-color: #DB3026;
-}
-
-.s-Fixed {
-    background-color: #5630DB;
-}
-
-.s-SameBuildFail, .s-TestFail {
-    background-color: #65461E;
-}
-
-.s-SameTestFail {
-    background-color: #788843;
-}
-
-.s-SameTestSkipped {
-    background: repeating-linear-gradient(-45deg, #72A156, #72A156 15px, #80B65F 15px, #80B65F 30px);
-}
-
-.s-SameTestPass, .s-TestPass, .s-TestSkipped {
-    background-color: #72A156;
-}
-
-.s-Unknown {
-    background-color: #494B4A;
-}
-
-.s-Skipped {
-    background: repeating-linear-gradient(-45deg, #494b4a, #494b4a 15px, #555 15px, #555 30px);
-}
-
-.s-Error {
-    background: #d77026;
-}

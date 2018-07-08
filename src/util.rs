@@ -8,7 +8,7 @@ use std::time::Duration;
 #[macro_use]
 macro_rules! string_enum {
     (pub enum $name:ident { $($item:ident => $str:expr,)* }) => {
-        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Copy, Clone)]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Copy, Clone)]
         pub enum $name {
             $($item,)*
         }

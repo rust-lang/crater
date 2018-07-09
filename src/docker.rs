@@ -109,7 +109,10 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
         ),
     ];
     if config.enable_unstable_cargo_features {
-        env.push(("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly".to_string()));
+        env.push((
+            "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS",
+            "nightly".to_string(),
+        ));
     }
 
     ContainerConfig {

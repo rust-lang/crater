@@ -1,0 +1,150 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: sans-serif;
+    background: #111;
+    color: #eee;
+    margin: 0;
+}
+
+a {
+    color: #eee;
+}
+
+.hidden {
+    display: none;
+}
+
+.toggle {
+    cursor: pointer;
+}
+
+header {
+    padding: 1px;
+    margin-bottom: 2em;
+    background: #222;
+}
+
+header div.navbar {
+    display: flex;
+    padding: 1em;
+}
+
+header div.navbar h1 {
+    flex: 1;
+
+    margin: 0;
+    font-size: 1em;
+    font-weight: 400;
+}
+
+header div.navbar ul {
+    flex: 1;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+header div.navbar ul li {
+    display: inline-block;
+    padding: 0 0.5em;
+}
+
+header div.navbar ul li a {
+    color: #999;
+    font-weight: 400;
+    text-decoration: none;
+}
+
+header div.navbar ul li a:hover {
+    text-decoration: underline;
+}
+
+header div.navbar ul li a.active {
+    color: #eee;
+    text-decoration: none;
+}
+
+header div.navbar div.count {
+    flex: 1;
+    text-align: right;
+}
+
+header div.toolchains {
+    display: flex;
+}
+
+header div.toolchains div.toolchain {
+    display: flex;
+    align-items: center;
+
+    flex: 1;
+    padding: 0 1em;
+}
+
+header div.toolchains div.toolchain.toolchain-start {
+    background: #292929;
+}
+
+header div.toolchains div.toolchain.toolchain-start div {
+    width: 100%;
+    text-align: right;
+}
+
+header div.toolchains div.arrow {
+    flex: 0;
+    height: 0;
+    width: 0;
+
+    border-top: 2em solid transparent;
+    border-bottom: 2em solid transparent;
+    border-left: 2em solid #292929;
+}
+
+div.nothing {
+    text-align: center;
+}
+
+div.category {
+    width: 70em;
+    margin: 1em auto;
+}
+
+div.category div.header {
+    padding: 0.5em 0.8em;
+    border-radius: 0.2em;
+    box-shadow: 0 0.1em 0.2em rgba(0, 0, 0, 0.5);
+
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0.5em;
+}
+
+div.category div.crate {
+    display: flex;
+    padding: 0.8em;
+    border-top: 1px solid #333;
+}
+
+div.category div.crate:first-child {
+    border-top: 0;
+}
+
+div.category div.crate > a {
+    flex: 1;
+    text-decoration: none;
+}
+
+div.category div.crate > span {
+    flex-basis: 10em;
+}
+
+div.category div.crate > span > b {
+    display: inline-block;
+    height: 0.5em;
+    width: 0.5em;
+    margin: 0 0.2em 0.1em 0;
+    border-radius: 0.5em;
+}

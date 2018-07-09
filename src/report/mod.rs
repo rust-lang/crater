@@ -1,9 +1,8 @@
 use config::Config;
 use crates::{Crate, GitHubRepo};
 use errors::*;
-use ex;
+use ex::Experiment;
 use file;
-use handlebars::Handlebars;
 use mime::{self, Mime};
 use results::{ReadResults, TestResult};
 use serde_json;
@@ -20,7 +19,9 @@ use toolchain::Toolchain;
 use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
 use util;
 
+mod html;
 mod s3;
+
 pub use self::s3::{get_client_for_bucket, S3Prefix, S3Writer};
 
 define_encode_set! {
@@ -37,7 +38,7 @@ pub struct TestResults {
     crates: Vec<CrateResult>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct CrateResult {
     name: String,
     url: String,
@@ -45,7 +46,7 @@ struct CrateResult {
     runs: [Option<BuildTestResult>; 2],
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Copy, Clone, Debug)]
 enum Comparison {
     Regressed,
     Fixed,
@@ -58,7 +59,22 @@ enum Comparison {
     SameTestPass,
 }
 
-#[derive(Serialize, Deserialize)]
+impl Comparison {
+    fn show_in_summary(&self) -> bool {
+        match self {
+            Comparison::Regressed | Comparison::Fixed | Comparison::Unknown | Comparison::Error => {
+                true
+            }
+            Comparison::Skipped
+            | Comparison::SameBuildFail
+            | Comparison::SameTestFail
+            | Comparison::SameTestSkipped
+            | Comparison::SameTestPass => false,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 struct BuildTestResult {
     res: TestResult,
     log: String,
@@ -97,7 +113,7 @@ fn crate_to_path_fragment(toolchain: &Toolchain, krate: &Crate, encode: bool) ->
 pub fn generate_report<DB: ReadResults>(
     db: &DB,
     config: &Config,
-    ex: &ex::Experiment,
+    ex: &Experiment,
 ) -> Result<TestResults> {
     let shas = db.load_all_shas(ex)?;
     assert_eq!(ex.toolchains.len(), 2);
@@ -143,7 +159,7 @@ const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
 
 fn write_logs<DB: ReadResults, W: ReportWriter>(
     db: &DB,
-    ex: &ex::Experiment,
+    ex: &Experiment,
     dest: &W,
     config: &Config,
 ) -> Result<()> {
@@ -179,7 +195,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
 
 pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     db: &DB,
-    ex: &ex::Experiment,
+    ex: &Experiment,
     dest: &W,
     config: &Config,
 ) -> Result<()> {
@@ -199,7 +215,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     )?;
 
     info!("writing html files");
-    write_html_files(dest)?;
+    html::write_html_report(ex, &res, dest)?;
     info!("writing logs");
     write_logs(db, ex, dest, config)?;
 
@@ -270,37 +286,6 @@ fn compare(
         _ if config.should_skip(krate) => Comparison::Skipped,
         _ => Comparison::Unknown,
     }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Context {
-    pub config_url: String,
-    pub results_url: String,
-    pub static_url: String,
-}
-
-fn write_html_files<W: ReportWriter>(dest: &W) -> Result<()> {
-    let html_in = include_str!("../../template/report.html");
-    let js_in = include_str!("../../static/report.js");
-    let css_in = include_str!("../../static/report.css");
-    let html_out = "index.html";
-    let js_out = "report.js";
-    let css_out = "report.css";
-
-    let context = Context {
-        config_url: "config.json".into(),
-        results_url: "results.json".into(),
-        static_url: "".into(),
-    };
-    let html = Handlebars::new()
-        .template_render(html_in, &context)
-        .chain_err(|| "Couldn't render template")?;
-
-    dest.write_string(&html_out, html.into(), &mime::TEXT_HTML)?;
-    dest.write_string(&js_out, js_in.into(), &mime::TEXT_JAVASCRIPT)?;
-    dest.write_string(&css_out, css_in.into(), &mime::TEXT_CSS)?;
-
-    Ok(())
 }
 
 pub trait ReportWriter {

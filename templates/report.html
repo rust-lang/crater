@@ -1,0 +1,97 @@
+{%- import "macros.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>{{ ex.name }} - Crater report</title>
+        <link rel="stylesheet" href="report.css">
+
+        <style>
+            {% for name, color in result_colors %}
+                .cr-{{ name }} {
+                    {% if color.Single %}
+                        background: {{ color.Single }};
+                    {% elif color.Striped %}
+                        background: repeating-linear-gradient(-45deg, {{ color.Striped[0] }}, {{ color.Striped[0] }} 15px, {{ color.Striped[1] }} 15px, {{ color.Striped[1] }} 30px);
+                    {% endif %}
+                }
+            {% endfor %}
+
+            {% for name, color in comparison_colors %}
+                .cc-{{ name }} {
+                    {% if color.Single %}
+                        background: {{ color.Single }};
+                    {% elif color.Striped %}
+                        background: repeating-linear-gradient(-45deg, {{ color.Striped[0] }}, {{ color.Striped[0] }} 15px, {{ color.Striped[1] }} 15px, {{ color.Striped[1] }} 30px);
+                    {% endif %}
+                }
+            {% endfor %}
+        </style>
+    </head>
+    <body>
+        <header>
+            <div class="navbar">
+                <h1>Crater report for <b>{{ ex.name }}</b></h1>
+                <ul>
+                    <li><a {% if not full %} class="active"{% endif %} href="index.html">Summary</a></li>
+                    <li><a {% if full %} class="active"{% endif %} href="full.html">Full report</a></li>
+                </ul>
+                <div class="count">{{ crates_count }} crates tested</div>
+            </div>
+            <div class="toolchains">
+                <div class="toolchain toolchain-start">
+                    <div>
+                        {{ macros::toolchain_name(tc=ex.toolchains[0]) }}
+                    </div>
+                </div>
+                <div class="arrow"></div>
+                <div class="toolchain">
+                    <div>
+                        {{ macros::toolchain_name(tc=ex.toolchains[1]) }}
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        {% if categories %}
+            {% for name, crates in categories %}
+            <div class="category">
+                <div class="header cc-{{ name }} toggle" data-toggle="#crates-{{ name }}">
+                    {{ name }} ({{ crates|length }})
+                </div>
+
+                <div class="crates hidden" id="crates-{{ name }}">
+                    {% for crate in crates %}
+                        <div class="crate">
+                            <a href="{{ crate.url|safe }}" target="_blank" rel="noopener">{{ crate.name }}</a>
+                            {% for run in crate.runs %}
+                                <span class="run">
+                                    {% if run %}
+                                        <b class="cr-{{ run.res }}"></b>
+                                        <a href="{{ run.log|safe }}/log.txt">{{ run.res }}</a>
+                                    {% else %}
+                                        <b class="cc-{{ crate.res }}"></b>
+                                        {{ crate.res }}
+                                    {% endif %}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="nothing">
+                {% if full %}
+                    No results available.
+                {% else %}
+                    There are no relevant results.
+                    <a href="full.html">Check the full report</a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <script src="report.js"></script>
+    </body>
+</html>

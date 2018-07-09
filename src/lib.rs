@@ -9,13 +9,13 @@ extern crate error_chain;
 extern crate flate2;
 extern crate futures;
 extern crate futures_cpupool;
-extern crate handlebars;
 extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
 #[cfg(not(windows))]
 extern crate libc;
 extern crate mime;
+extern crate minifier;
 extern crate petgraph;
 extern crate r2d2;
 extern crate r2d2_sqlite;
@@ -47,6 +47,7 @@ extern crate slog_term;
 extern crate tar;
 extern crate tempdir;
 extern crate tempfile;
+extern crate tera;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_process;
@@ -60,6 +61,7 @@ extern crate walkdir;
 extern crate winapi;
 
 pub mod agent;
+mod assets;
 #[macro_use]
 pub mod log;
 #[macro_use]

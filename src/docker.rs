@@ -106,6 +106,7 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
             "RUSTFLAGS",
             format!("--cap-lints={}", config.cap_lints.to_str()),
         ),
+        ("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly".to_string())
     ];
 
     ContainerConfig {

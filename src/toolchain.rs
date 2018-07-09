@@ -44,6 +44,8 @@ impl Toolchain {
             }
         }
 
+        self.prep_offline_registry()?;
+
         Ok(())
     }
 
@@ -100,6 +102,20 @@ impl Toolchain {
             cap_lints: &ex.cap_lints,
         };
         docker::run(&docker::rust_container(rust_env), quiet)
+    }
+
+    pub fn prep_offline_registry(&self) -> Result<()> {
+        // This nop cargo command is to update the registry
+        // so we don't have to do it for each crate.
+        let toolchain_arg = "+".to_string() + &self.rustup_name();
+        let full_args = [&toolchain_arg, "search", "lazy_static"];
+        RunCommand::new(
+            &installed_binary("cargo"),
+            &full_args,
+        ).local_rustup()
+            .quiet(true)
+            .run()
+            .chain_err(|| format!("unable to update the index for toolchain {}", &self.rustup_name()))
     }
 }
 

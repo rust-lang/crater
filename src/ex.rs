@@ -374,7 +374,7 @@ fn capture_lockfile_inner(
     path: &Path,
     toolchain: &Toolchain,
 ) -> Result<()> {
-    let args = &["generate-lockfile", "--manifest-path", "Cargo.toml"];
+    let args = &["generate-lockfile", "--manifest-path", "Cargo.toml", "-Zno-index-update"];
     toolchain
         .run_cargo(ex, path, args, CargoState::Unlocked, false)
         .chain_err(|| format!("unable to generate lockfile for {}", krate))?;

@@ -124,9 +124,10 @@ fn build_tera_cache() -> Result<Tera> {
     Ok(tera)
 }
 
+#[allow(unused_variables)]
 pub fn render_template<C: Serialize>(name: &str, context: &C) -> Result<String> {
     // On debug builds the cache is rebuilt every time to pick up changed templates
-    let tera_owned;
+    let tera_owned: Tera;
     let tera;
 
     #[cfg(debug_assertions)]

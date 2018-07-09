@@ -25,7 +25,7 @@ impl<'a> ResultsUploader<'a> {
 }
 
 impl<'a> WriteResults for ResultsUploader<'a> {
-    fn already_executed(
+    fn get_result(
         &self,
         _ex: &Experiment,
         _toolchain: &Toolchain,

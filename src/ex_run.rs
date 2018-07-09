@@ -205,7 +205,7 @@ pub fn run_test<DB: WriteResults>(
     quiet: bool,
     test_fn: fn(&Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,
 ) -> Result<RunTestResult> {
-    if let Some(res) = db.already_executed(ex, tc, krate)? {
+    if let Some(res) = db.get_result(ex, tc, krate)? {
         info!("skipping crate {}. existing result: {}", krate, res);
         Ok(RunTestResult {
             result: res,

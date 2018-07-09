@@ -84,6 +84,8 @@ impl TasksGraph {
         db: &DB,
     ) -> Option<(NodeIndex, Arc<Task>)> {
         let root = self.root;
+        // Should recurse a maximum of one time, since completed nodes should have been removed
+        // from the graph
         if let WalkResult::Task(id, task) = self.walk_graph(root, ex, db) {
             Some((id, task))
         } else {
@@ -98,17 +100,20 @@ impl TasksGraph {
         db: &DB,
     ) -> WalkResult {
         // Ensure tasks are only executed if needed
+        let mut already_executed = false;
         if let Node::Task {
             ref task,
             running: false,
         } = self.graph[node]
         {
             if !task.needs_exec(ex, db) {
-                return WalkResult::NotBlocked;
+                already_executed = true;
             }
         }
-
-        let mut dependencies = 0;
+        if already_executed {
+            self.mark_as_completed(node);
+            return WalkResult::NotBlocked;
+        }
 
         // Try to check for the dependencies of this node
         // The list is collected to make the borrowchecker happy
@@ -116,39 +121,35 @@ impl TasksGraph {
         for neighbor in neighbors.drain(..) {
             match self.walk_graph(neighbor, ex, db) {
                 WalkResult::Task(id, task) => return WalkResult::Task(id, task),
-                WalkResult::Blocked => dependencies += 1,
+                WalkResult::Blocked => return WalkResult::Blocked,
                 WalkResult::NotBlocked => {}
             }
         }
 
-        if dependencies == 0 {
-            let mut delete = false;
-            let result = match self.graph[node] {
-                Node::Task { running: true, .. } => WalkResult::Blocked,
-                Node::Task {
-                    ref task,
-                    ref mut running,
-                } => {
-                    *running = true;
-                    WalkResult::Task(node, task.clone())
-                }
-                Node::CrateCompleted => {
-                    // All the steps for this crate were completed
-                    delete = true;
-                    WalkResult::NotBlocked
-                }
-                Node::Root => WalkResult::NotBlocked,
-            };
-
-            // This is done after the match to avoid borrowck issues
-            if delete {
-                self.mark_as_completed(node);
+        let mut delete = false;
+        let result = match self.graph[node] {
+            Node::Task { running: true, .. } => WalkResult::Blocked,
+            Node::Task {
+                ref task,
+                ref mut running,
+            } => {
+                *running = true;
+                WalkResult::Task(node, task.clone())
             }
+            Node::CrateCompleted => {
+                // All the steps for this crate were completed
+                delete = true;
+                WalkResult::NotBlocked
+            }
+            Node::Root => WalkResult::NotBlocked,
+        };
 
-            result
-        } else {
-            WalkResult::Blocked
+        // This is done after the match to avoid borrowck issues
+        if delete {
+            self.mark_as_completed(node);
         }
+
+        result
     }
 
     pub fn mark_as_completed(&mut self, node: NodeIndex) {

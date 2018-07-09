@@ -118,12 +118,18 @@ impl TasksGraph {
         // Try to check for the dependencies of this node
         // The list is collected to make the borrowchecker happy
         let mut neighbors = self.graph.neighbors(node).collect::<Vec<_>>();
+        let mut blocked = false;
         for neighbor in neighbors.drain(..) {
             match self.walk_graph(neighbor, ex, db) {
                 WalkResult::Task(id, task) => return WalkResult::Task(id, task),
-                WalkResult::Blocked => return WalkResult::Blocked,
+                WalkResult::Blocked => blocked = true,
                 WalkResult::NotBlocked => {}
             }
+        }
+        // The early return for Blocked is done outside of the loop, allowing other dependent tasks
+        // to be checked first: if they contain a non-blocked task that is returned instead
+        if blocked {
+            return WalkResult::Blocked;
         }
 
         let mut delete = false;

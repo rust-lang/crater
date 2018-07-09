@@ -181,9 +181,12 @@ fn log_command(mut cmd: Command, capture: bool, quiet: bool) -> Result<ProcessOu
     #[cfg(windows)]
     fn kill_process(id: u32) {
         unsafe {
-            let handle = kernel32::OpenProcess(winapi::winnt::PROCESS_TERMINATE, 0, id);
-            kernel32::TerminateProcess(handle, 101);
-            if kernel32::CloseHandle(handle) == 0 {
+            use winapi::um::handleapi::CloseHandle;
+            use winapi::um::processthreadsapi::{OpenProcess, TerminateProcess};
+            use winapi::um::winnt::PROCESS_TERMINATE;
+            let handle = OpenProcess(PROCESS_TERMINATE, 0, id);
+            TerminateProcess(handle, 101);
+            if CloseHandle(handle) == 0 {
                 panic!("CloseHandle for process {} failed", id);
             }
         };

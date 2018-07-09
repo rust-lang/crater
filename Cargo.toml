@@ -47,6 +47,7 @@ tokio-timer = "0.1.1"
 toml = "0.4.6"
 url = "1.1"
 walkdir = "2"
+winapi = "0.3"
 regex = "0.2.10"
 ring = "0.12.1"
 rusqlite = { version = "0.13.0", features = ["chrono"] }

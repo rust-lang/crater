@@ -13,6 +13,7 @@ extern crate handlebars;
 extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
+#[cfg(not(windows))]
 extern crate libc;
 extern crate mime;
 extern crate petgraph;
@@ -55,6 +56,8 @@ extern crate toml;
 #[macro_use]
 extern crate url;
 extern crate walkdir;
+#[cfg(windows)]
+extern crate winapi;
 
 pub mod agent;
 #[macro_use]

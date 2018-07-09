@@ -113,31 +113,14 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
        necessarily the same date as retrieved in the `BETA_VERSION` command).
    - Run `cargo run --release -- define-ex --crate-select=full --ex EX_NAME EX_START EX_END`.
      This will complete in a few seconds.
-   - Run `cargo run --release -- prepare-ex --ex EX_NAME`.
-   - Change status to 'Preparing'.
+   - Run `cargo run --release -- run-graph --threads 8 --ex EX_NAME`.
+   - Change status to 'Running'.
    - Update either the PR or the person requesting the run to let them know the run has started.
-   - Go to next run.
- - Preparing
-   - Log onto appropriate box and connect to multiplexer.
-   - Switch to the `master` multiplexer window.
-   - If preparation is ongoing, go to next run.
-   - If preparation failed, fix it. Known errors:
-     - "missing sha for ..." - remove the referenced repository from `gh-apps.txt`
-       and `gh-candidates.txt` (may be present in one or both). Make the same
-       change locally and make a PR against Crater. Use
-       `cargo run --release -- delete-all-target-dirs --ex EX_NAME` and
-       `cargo run --release -- delete-ex --ex EX_NAME`, then jump to start of 'Pending'.
-   - Switch to the `tc1` multiplexer window.
-   - Run `cargo run --release -- run-tc --ex EX_NAME EX_START`.
-   - Switch to the `tc2` multiplexer window.
-   - Run `cargo run --release -- run-tc --ex EX_NAME EX_END`.
    - Go to next run.
  - Running
    - Log onto appropriate box and connect to multiplexer.
    - Switch to the `master` multiplexer window.
-   - If the run is ongoing in either the `tc1` or `tc2` multiplexer
-     windows, go to next run.
-   - Switch to the `master` multiplexer window.
+   - If the run is ongoing go to next run.
    - Run `du -sh work/ex/EX_NAME`, output should be <2GB. If not:
      - Run `find work/ex/EX_NAME -type f -size +100M | xargs --no-run-if-empty du -sh`,
        there will likely only be a couple of files listed and they should be in the `res` directory.

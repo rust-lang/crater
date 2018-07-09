@@ -28,7 +28,7 @@ pub trait ReadResults {
 }
 
 pub trait WriteResults {
-    fn already_executed(
+    fn get_result(
         &self,
         ex: &Experiment,
         toolchain: &Toolchain,
@@ -56,4 +56,5 @@ string_enum!(pub enum TestResult {
     TestFail => "test-fail",
     TestSkipped => "test-skipped",
     TestPass => "test-pass",
+    Error => "error",
 });

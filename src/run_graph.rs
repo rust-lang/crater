@@ -3,20 +3,16 @@ use crossbeam;
 use errors::*;
 use ex::{self, ExMode, Experiment};
 use file;
-use petgraph::dot::Dot;
-use petgraph::graph::{Graph, NodeIndex};
-use petgraph::visit::EdgeRef;
-use petgraph::Direction;
-use results::WriteResults;
+use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
+use results::{TestResult, WriteResults};
 use std::fmt;
-use std::mem;
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tasks::{Task, TaskStep};
+use util;
 
 pub enum Node {
-    Task(Task),
-    RunningTask,
+    Task { task: Arc<Task>, running: bool },
     CrateCompleted,
     Root,
 }
@@ -24,8 +20,11 @@ pub enum Node {
 impl fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Node::Task(ref task) => write!(f, "{:?}", task)?,
-            Node::RunningTask => write!(f, "running task")?,
+            Node::Task { ref task, running } => if running {
+                write!(f, "running: {:?}", task)?;
+            } else {
+                write!(f, "{:?}", task)?;
+            },
             Node::CrateCompleted => write!(f, "crate completed")?,
             Node::Root => write!(f, "root")?,
         }
@@ -34,33 +33,33 @@ impl fmt::Debug for Node {
 }
 
 enum WalkResult {
-    Task(NodeIndex, Task),
+    Task(NodeIndex, Arc<Task>),
     Blocked,
     NotBlocked,
 }
 
 #[derive(Default)]
 pub struct TasksGraph {
-    graph: Graph<Node, ()>,
+    graph: StableDiGraph<Node, ()>,
     root: NodeIndex,
-    completed_root: NodeIndex,
 }
 
 impl TasksGraph {
     pub fn new() -> Self {
-        let mut graph = Graph::new();
+        let mut graph = StableDiGraph::new();
         let root = graph.add_node(Node::Root);
-        let completed_root = graph.add_node(Node::Root);
 
-        TasksGraph {
-            graph,
-            root,
-            completed_root,
-        }
+        TasksGraph { graph, root }
     }
 
     pub fn add_task(&mut self, task: Task, deps: &[NodeIndex]) -> NodeIndex {
-        self.add_node(Node::Task(task), deps)
+        self.add_node(
+            Node::Task {
+                task: Arc::new(task),
+                running: false,
+            },
+            deps,
+        )
     }
 
     pub fn add_crate(&mut self, deps: &[NodeIndex]) -> NodeIndex {
@@ -79,66 +78,107 @@ impl TasksGraph {
         id
     }
 
-    pub fn next_task(&mut self) -> Option<(NodeIndex, Task)> {
+    pub fn next_task<DB: WriteResults>(
+        &mut self,
+        ex: &Experiment,
+        db: &DB,
+    ) -> Option<(NodeIndex, Arc<Task>)> {
         let root = self.root;
-        if let WalkResult::Task(id, task) = self.walk_graph(root) {
+        // Should recurse a maximum of one time, since completed nodes should have been removed
+        // from the graph
+        if let WalkResult::Task(id, task) = self.walk_graph(root, ex, db) {
             Some((id, task))
         } else {
             None
         }
     }
 
-    fn walk_graph(&mut self, node: NodeIndex) -> WalkResult {
-        let mut dependencies = 0;
+    fn walk_graph<DB: WriteResults>(
+        &mut self,
+        node: NodeIndex,
+        ex: &Experiment,
+        db: &DB,
+    ) -> WalkResult {
+        // Ensure tasks are only executed if needed
+        let mut already_executed = false;
+        if let Node::Task {
+            ref task,
+            running: false,
+        } = self.graph[node]
+        {
+            if !task.needs_exec(ex, db) {
+                already_executed = true;
+            }
+        }
+        if already_executed {
+            self.mark_as_completed(node);
+            return WalkResult::NotBlocked;
+        }
 
         // Try to check for the dependencies of this node
         // The list is collected to make the borrowchecker happy
         let mut neighbors = self.graph.neighbors(node).collect::<Vec<_>>();
         for neighbor in neighbors.drain(..) {
-            match self.walk_graph(neighbor) {
+            match self.walk_graph(neighbor, ex, db) {
                 WalkResult::Task(id, task) => return WalkResult::Task(id, task),
-                WalkResult::Blocked => dependencies += 1,
+                WalkResult::Blocked => return WalkResult::Blocked,
                 WalkResult::NotBlocked => {}
             }
         }
 
-        if dependencies == 0 {
-            match self.graph[node] {
-                Node::Task(_) => {
-                    let content = mem::replace(&mut self.graph[node], Node::RunningTask);
-                    if let Node::Task(task) = content {
-                        WalkResult::Task(node, task)
-                    } else {
-                        unreachable!();
-                    }
-                }
-                Node::RunningTask => WalkResult::Blocked,
-                Node::CrateCompleted => {
-                    // All the steps for this crate were completed
-                    self.mark_as_completed(node);
-                    WalkResult::NotBlocked
-                }
-                Node::Root => WalkResult::NotBlocked,
+        let mut delete = false;
+        let result = match self.graph[node] {
+            Node::Task { running: true, .. } => WalkResult::Blocked,
+            Node::Task {
+                ref task,
+                ref mut running,
+            } => {
+                *running = true;
+                WalkResult::Task(node, task.clone())
             }
-        } else {
-            WalkResult::Blocked
+            Node::CrateCompleted => {
+                // All the steps for this crate were completed
+                delete = true;
+                WalkResult::NotBlocked
+            }
+            Node::Root => WalkResult::NotBlocked,
+        };
+
+        // This is done after the match to avoid borrowck issues
+        if delete {
+            self.mark_as_completed(node);
         }
+
+        result
     }
 
     pub fn mark_as_completed(&mut self, node: NodeIndex) {
-        // Remove all the edges from this node, and move the node to the completed root.
-        // The node is not removed because node IDs are not stable, so removing one node changes
-        // the ID of the other ones.
-        let mut edges = self
+        self.graph.remove_node(node);
+    }
+
+    pub fn mark_as_failed<DB: WriteResults>(
+        &mut self,
+        node: NodeIndex,
+        ex: &Experiment,
+        db: &DB,
+        error: &Error,
+        result: TestResult,
+    ) -> Result<()> {
+        let mut children = self
             .graph
-            .edges_directed(node, Direction::Incoming)
-            .map(|e| e.id())
+            .neighbors_directed(node, Direction::Incoming)
             .collect::<Vec<_>>();
-        for edge in edges.drain(..) {
-            self.graph.remove_edge(edge);
+        for child in children.drain(..) {
+            self.mark_as_failed(child, ex, db, error, result)?;
         }
 
-        self.graph.add_edge(self.completed_root, node, ());
+        match self.graph[node] {
+            Node::Task { ref task, .. } => task.mark_as_failed(ex, db, error, result)?,
+            Node::CrateCompleted | Node::Root => return Ok(()),
+        }
+
+        self.mark_as_completed(node);
+        Ok(())
     }
 }
 
@@ -218,11 +258,25 @@ pub fn run_ex<DB: WriteResults + Sync>(
             let join = scope.builder().name(name).spawn(|| -> Result<()> {
                 // This uses a `loop` instead of a `while let` to avoid locking the graph too much
                 loop {
-                    let option_task = graph.lock().unwrap().next_task();
+                    let option_task = graph.lock().unwrap().next_task(ex, db);
                     if let Some((id, task)) = option_task {
                         info!("running task: {:?}", task);
-                        task.run(ex, db)?;
-                        graph.lock().unwrap().mark_as_completed(id);
+                        if let Err(e) = task.run(config, ex, db) {
+                            error!("task failed, marking childs as failed too: {:?}", task);
+                            util::report_error(&e);
+
+                            let result = if config.is_broken(&task.krate) {
+                                TestResult::BuildFail
+                            } else {
+                                TestResult::Error
+                            };
+                            graph
+                                .lock()
+                                .unwrap()
+                                .mark_as_failed(id, ex, db, &e, result)?;
+                        } else {
+                            graph.lock().unwrap().mark_as_completed(id);
+                        }
                     } else {
                         break;
                     }
@@ -242,7 +296,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     // Only the root node must be present
     let mut g = graph.lock().unwrap();
-    assert!(g.next_task().is_none());
+    assert!(g.next_task(ex, db).is_none());
     assert_eq!(g.graph.neighbors(g.root).count(), 0);
 
     Ok(())

@@ -77,7 +77,16 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
         };
 
         for tc in tcs {
-            let r = run_test("testing", ex, tc, c, &db, config.is_quiet(c), test_fn);
+            let r = run_test(
+                config,
+                "testing",
+                ex,
+                tc,
+                c,
+                &db,
+                config.is_quiet(c),
+                test_fn,
+            );
 
             match r {
                 Err(ref e) => {
@@ -126,6 +135,10 @@ fn run_exts(ex: &Experiment, tcs: &[Toolchain], config: &Config) -> Result<()> {
                     result: TestResult::TestPass,
                     ..
                 }) => sum_test_pass += 1,
+                Ok(RunTestResult {
+                    result: TestResult::Error,
+                    ..
+                }) => unreachable!("error results are not supported with legacy run"),
             }
 
             let elapsed = Instant::now().duration_since(start_time).as_secs();
@@ -181,7 +194,9 @@ pub struct RunTestResult {
     pub skipped: bool,
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn run_test<DB: WriteResults>(
+    config: &Config,
     action: &str,
     ex: &Experiment,
     tc: &Toolchain,
@@ -190,7 +205,7 @@ pub fn run_test<DB: WriteResults>(
     quiet: bool,
     test_fn: fn(&Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,
 ) -> Result<RunTestResult> {
-    if let Some(res) = db.already_executed(ex, tc, krate)? {
+    if let Some(res) = db.get_result(ex, tc, krate)? {
         info!("skipping crate {}. existing result: {}", krate, res);
         Ok(RunTestResult {
             result: res,
@@ -199,7 +214,7 @@ pub fn run_test<DB: WriteResults>(
     } else {
         with_work_crate(ex, tc, krate, |source_path| {
             with_frobbed_toml(ex, krate, source_path)?;
-            with_captured_lockfile(ex, krate, source_path)?;
+            with_captured_lockfile(config, ex, krate, source_path)?;
 
             db.record_result(ex, tc, krate, || {
                 info!(

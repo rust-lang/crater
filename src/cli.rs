@@ -253,10 +253,11 @@ impl Crater {
                 )?;
             }
             Crater::PrepareEx { ref ex } => {
+                let config = Config::load()?;
                 let ex = ex::Experiment::load(&ex.0)?;
                 let db = FileDB::default();
-                ex.prepare_shared(&db)?;
-                ex.prepare_local()?;
+                ex.prepare_shared(&config, &db)?;
+                ex.prepare_local(&config)?;
             }
             Crater::CopyEx { ref ex1, ref ex2 } => {
                 ex::copy(&ex1.0, &ex2.0)?;

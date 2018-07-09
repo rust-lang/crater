@@ -51,6 +51,7 @@ enum Comparison {
     Fixed,
     Skipped,
     Unknown,
+    Error,
     SameBuildFail,
     SameTestFail,
     SameTestSkipped,
@@ -209,11 +210,11 @@ fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String
     Ok(match *c {
         Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
         Crate::GitHub(ref repo) => {
-            let sha = shas
-                .get(repo)
-                .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
-                .as_str();
-            format!("{}.{}.{}", repo.org, repo.name, sha)
+            if let Some(sha) = shas.get(repo) {
+                format!("{}.{}.{}", repo.org, repo.name, sha)
+            } else {
+                format!("{}.{}", repo.org, repo.name)
+            }
         }
     })
 }
@@ -225,11 +226,11 @@ fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String>
             details.name, details.version
         ),
         Crate::GitHub(ref repo) => {
-            let sha = shas
-                .get(repo)
-                .ok_or_else(|| format!("missing sha for GitHub repo {}", repo.slug()))?
-                .as_str();
-            format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)
+            if let Some(sha) = shas.get(repo) {
+                format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)
+            } else {
+                format!("https://github.com/{}/{}", repo.org, repo.name)
+            }
         }
     })
 }
@@ -258,6 +259,7 @@ fn compare(
             | (&TestPass, &BuildFail)
             | (&TestSkipped, &BuildFail)
             | (&TestFail, &BuildFail) => Comparison::Regressed,
+            (&Error, _) | (_, &Error) => Comparison::Error,
             (&TestFail, &TestSkipped)
             | (&TestPass, &TestSkipped)
             | (&TestSkipped, &TestFail)
@@ -536,6 +538,14 @@ mod tests {
                 TestPass + BuildFail = Regressed,
                 TestSkipped + BuildFail = Regressed,
                 TestFail + BuildFail = Regressed,
+                Error + TestPass = Error,
+                Error + TestSkipped = Error,
+                Error + TestFail = Error,
+                Error + BuildFail = Error,
+                TestPass + Error = Error,
+                TestSkipped + Error = Error,
+                TestFail + Error = Error,
+                BuildFail + Error = Error,
             ]
         );
 
@@ -547,6 +557,8 @@ mod tests {
                 skip: true,
                 skip_tests: false,
                 quiet: false,
+                update_lockfile: false,
+                broken: false,
             },
         );
         assert_eq!(compare(&config, &reg, &None, &None), Comparison::Skipped);

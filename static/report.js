@@ -58,6 +58,7 @@ function begin(config, results) {
     let sameTestSkippedEl = document.querySelector("#c-same-test-skipped .count");
     let sameTestPassEl = document.querySelector("#c-same-test-pass .count");
     let skippedEl = document.querySelector("#c-skipped .count");
+    let errorsEl = document.querySelector("#c-errors .count");
 
     regressedEl.innerHTML = summary.regressed;
     fixedEl.innerHTML = summary.fixed;
@@ -67,6 +68,7 @@ function begin(config, results) {
     sameTestSkippedEl.innerHTML = summary.sameTestSkipped;
     sameTestPassEl.innerHTML = summary.sameTestPass;
     skippedEl.innerHTML = summary.skipped;
+    errorsEl.innerHTML = summary.errors;
 
     // Creating the document will take a second. Lay out the summary first.
     let results_ = results;
@@ -101,38 +103,42 @@ function calcSummary(results) {
     let sameTestSkipped = 0;
     let sameTestPass = 0;
     let skipped = 0;
+    let errors = 0;
 
     for (crate of results.crates) {
-	if (crate.res == "Regressed") {
-	    regressed += 1;
-	} else if (crate.res == "Fixed") {
-	    fixed += 1;
-	} else if (crate.res == "Unknown") {
-	    unknown += 1;
-	} else if (crate.res == "SameBuildFail") {
-	    sameBuildFail += 1;
-	} else if (crate.res == "SameTestFail") {
-	    sameTestFail += 1;
-    } else if (crate.res == "SameTestSkipped") {
-        sameTestSkipped += 1;
-    } else if (crate.res == "SameTestPass") {
-	    sameTestPass += 1;
-    } else if (crate.res == "Skipped") {
-        skipped += 1;
-    } else {
-	    throw "unknown test status";
-	}
+        if (crate.res == "Regressed") {
+            regressed += 1;
+        } else if (crate.res == "Fixed") {
+            fixed += 1;
+        } else if (crate.res == "Unknown") {
+            unknown += 1;
+        } else if (crate.res == "SameBuildFail") {
+            sameBuildFail += 1;
+        } else if (crate.res == "SameTestFail") {
+            sameTestFail += 1;
+        } else if (crate.res == "SameTestSkipped") {
+            sameTestSkipped += 1;
+        } else if (crate.res == "SameTestPass") {
+            sameTestPass += 1;
+        } else if (crate.res == "Skipped") {
+            skipped += 1;
+        } else if (crate.res == "Error") {
+            errors += 1;
+        } else {
+            throw "unknown test status";
+        }
     }
 
     return {
-	regressed: regressed,
-	fixed: fixed,
-	unknown: unknown,
-	sameBuildFail: sameBuildFail,
-	sameTestFail: sameTestFail,
-    sameTestSkipped: sameTestSkipped,
-	sameTestPass: sameTestPass,
-    skipped: skipped,
+        regressed: regressed,
+        fixed: fixed,
+        unknown: unknown,
+        sameBuildFail: sameBuildFail,
+        sameTestFail: sameTestFail,
+        sameTestSkipped: sameTestSkipped,
+        sameTestPass: sameTestPass,
+        skipped: skipped,
+        errors: errors,
     };
 }
 
@@ -190,6 +196,8 @@ function jsonCrateResToCss(res) {
         return "same-test-pass";
     } else if (res == "Skipped") {
         return "skipped";
+    } else if (res == "Error") {
+        return "errors";
     } else {
         throw "unknown test status";
     }
@@ -214,6 +222,8 @@ function parseRunResult(crate_res, res) {
             result = "test-skipped";
         } else if (res.res == "TestPass") {
             result = "test-pass";
+        } else if (res.res == "Error") {
+            result = "error";
         } else {
             throw "unknown test status";
         }

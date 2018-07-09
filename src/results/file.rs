@@ -90,7 +90,7 @@ impl ReadResults for FileDB {
 }
 
 impl WriteResults for FileDB {
-    fn already_executed(
+    fn get_result(
         &self,
         ex: &Experiment,
         toolchain: &Toolchain,

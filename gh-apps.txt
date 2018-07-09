@@ -838,7 +838,6 @@ https://github.com/fosu/myceline
 https://github.com/fosu/psilocybin
 https://github.com/fourohfour/richter
 https://github.com/fralalonde/dipstick
-https://github.com/frankier/suchalotofdata
 https://github.com/frankmcsherry/COST
 https://github.com/franleplant/syntaxis_lexer.rs
 https://github.com/frewsxcv/alert-after
@@ -1024,7 +1023,6 @@ https://github.com/jakubtuchol/ls
 https://github.com/jamesmunns/pide
 https://github.com/jamespharaoh/btrfs-dedupe
 https://github.com/jamespharaoh/rzbackup
-https://github.com/jamii/imp
 https://github.com/japaric/itm
 https://github.com/japaric/particle-tools
 https://github.com/japaric/sc-gen
@@ -1411,7 +1409,6 @@ https://github.com/ohazi/opengl-demo-rust
 https://github.com/ohua-dev/ohua-rust-runtime
 https://github.com/ojacobson/rust-mount-demo
 https://github.com/oldsj/backup-rs
-https://github.com/olegakbarov/cali
 https://github.com/onefrankguy/chifir
 https://github.com/onelson/loose-coupling
 https://github.com/onur/at-rust
@@ -1739,11 +1736,11 @@ https://github.com/starlingjs/starling
 https://github.com/stevej/keymaster
 https://github.com/steveklabnik/GPACalc.rs
 https://github.com/steveklabnik/cryptopals
+https://github.com/steveklabnik/doxidize
 https://github.com/steveklabnik/echo
 https://github.com/steveklabnik/geekout2016
 https://github.com/steveklabnik/parse-example
 https://github.com/steveklabnik/rustbook
-https://github.com/steveklabnik/rustdoc
 https://github.com/steveklabnik/semver.crates.io
 https://github.com/stewart/rff
 https://github.com/sticnarf/shunter-chnroutes

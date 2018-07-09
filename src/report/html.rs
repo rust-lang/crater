@@ -47,7 +47,6 @@ impl ResultColor for TestResult {
 #[derive(Serialize)]
 struct Context<'a> {
     ex: &'a Experiment,
-    static_url: String,
     categories: HashMap<Comparison, Vec<CrateResult>>,
     full: bool,
     crates_count: usize,
@@ -94,7 +93,6 @@ fn write_report<W: ReportWriter>(
 
     let context = Context {
         ex,
-        static_url: String::new(),
         categories,
         full,
         crates_count: res.crates.len(),

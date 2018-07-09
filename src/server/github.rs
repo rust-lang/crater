@@ -34,12 +34,24 @@ impl GitHubApi {
     }
 
     pub fn post_comment(&self, issue_url: &str, body: &str) -> Result<()> {
-        self.build_request(Method::Post, &format!("{}/comments", issue_url))
+        let mut response = self
+            .build_request(Method::Post, &format!("{}/comments", issue_url))
             .json(&json!({
                 "body": body,
             }))
             .send()?;
-        Ok(())
+
+        if response.status() == StatusCode::Created {
+            Ok(())
+        } else {
+            let error: Error = response.json()?;
+            bail!(
+                "failed to post comment on issue {} (status code {}): {}",
+                issue_url,
+                response.status(),
+                error.message
+            );
+        }
     }
 
     pub fn list_labels(&self, issue_url: &str) -> Result<Vec<Label>> {

@@ -1,6 +1,6 @@
 # Crater [![Build Status](https://travis-ci.org/rust-lang-nursery/crater.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/crater)
 
-Crater is a tool to run experiments across the whole Rust ecosystem. Its
+Crater is a tool to run experiments across a large number of crates on crates.io. Its
 primary purpose is to detect regressions in the Rust compiler, and it does this
 by building large number of crates, running their test suites and comparing the
 results between two versions of the Rust compiler.

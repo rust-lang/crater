@@ -51,7 +51,7 @@ impl Message {
         // Always add a note at the bottom explaining what this is
         self = self.note(
             "information_source",
-            "**Crater** is a tool to run experiments across the whole Rust ecosystem. \
+            "**Crater** is a tool to run experiments across a large number of crates on crates.io. \
              [Learn more](https://github.com/rust-lang-nursery/crater)",
         );
 

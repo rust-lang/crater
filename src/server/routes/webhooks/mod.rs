@@ -25,6 +25,12 @@ fn process_webhook(payload: &[u8], signature: &str, event: &str, data: &Data) ->
         "ping" => info!("the webhook is configured correctly!"),
         "issue_comment" => {
             let p: EventIssueComment = serde_json::from_slice(payload)?;
+
+            // Only process "created" events, and ignore when a comment is edited or deleted
+            if p.action != "created" {
+                return Ok(());
+            }
+
             if let Err(e) = process_command(&p.sender.login, &p.comment.body, &p.issue, data) {
                 Message::new()
                     .line("rotating_light", format!("**Error:** {}", e))

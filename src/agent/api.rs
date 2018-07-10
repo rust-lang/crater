@@ -15,8 +15,14 @@ trait ResponseExt {
 impl ResponseExt for ::reqwest::Response {
     fn to_api_response<T: DeserializeOwned>(mut self) -> Result<T> {
         // 404 responses are not JSON, so avoid parsing them
-        if self.status() == StatusCode::NotFound {
-            bail!("invalid API endpoint called");
+        match self.status() {
+            StatusCode::NotFound => bail!("invalid API endpoint called"),
+            StatusCode::BadGateway
+            | StatusCode::ServiceUnavailable
+            | StatusCode::GatewayTimeout => {
+                return Err(ErrorKind::ServerUnavailable.into());
+            }
+            _ => {}
         }
 
         let result: ApiResponse<T> = self.json().chain_err(|| "failed to parse API response")?;
@@ -60,17 +66,25 @@ impl AgentApi {
             match f(self) {
                 Ok(res) => return Ok(res),
                 Err(err) => {
-                    if let ErrorKind::ReqwestError(ref error) = *err.kind() {
-                        if error
+                    let mut retry = false;
+                    match *err.kind() {
+                        ErrorKind::ServerUnavailable => retry = true,
+                        ErrorKind::ReqwestError(ref error) => if error
                             .get_ref()
                             .map(|e| e.is::<::std::io::Error>())
                             .unwrap_or(false)
                         {
-                            warn!("connection to the server failed. retrying in a few seconds...");
-                            ::std::thread::sleep(::std::time::Duration::from_secs(RETRY_AFTER));
-                            continue;
-                        }
+                            retry = true;
+                        },
+                        _ => {}
                     }
+
+                    if retry {
+                        warn!("connection to the server failed. retrying in a few seconds...");
+                        ::std::thread::sleep(::std::time::Duration::from_secs(RETRY_AFTER));
+                        continue;
+                    }
+
                     return Err(err);
                 }
             }

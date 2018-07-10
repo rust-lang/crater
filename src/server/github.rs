@@ -124,6 +124,7 @@ pub struct User {
 
 #[derive(Deserialize)]
 pub struct EventIssueComment {
+    pub action: String,
     pub issue: Issue,
     pub comment: Comment,
     pub sender: User,

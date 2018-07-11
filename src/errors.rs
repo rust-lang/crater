@@ -35,5 +35,8 @@ error_chain! {
         BadS3Uri {
             description("the S3 URI could not be parsed.")
         }
+        ServerUnavailable {
+            description("the server is not available at the moment")
+        }
     }
 }

@@ -32,6 +32,7 @@ pub struct RustEnv<'a> {
     pub rustup_home: (PathBuf, Perm),
     pub target_dir: (PathBuf, Perm),
     pub cap_lints: &'a ExCapLints,
+    pub enable_unstable_cargo_features: bool,
 }
 
 pub struct MountConfig<'a> {
@@ -97,7 +98,7 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
         },
     ];
 
-    let env = vec![
+    let mut env = vec![
         ("USER_ID", format!("{}", user_id())),
         ("CMD", config.args.join(" ")),
         ("CARGO_INCREMENTAL", "0".to_string()),
@@ -107,6 +108,12 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
             format!("--cap-lints={}", config.cap_lints.to_str()),
         ),
     ];
+    if config.enable_unstable_cargo_features {
+        env.push((
+            "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS",
+            "nightly".to_string(),
+        ));
+    }
 
     ContainerConfig {
         image_name: IMAGE_NAME,

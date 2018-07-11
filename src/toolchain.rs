@@ -44,6 +44,8 @@ impl Toolchain {
             }
         }
 
+        self.prep_offline_registry()?;
+
         Ok(())
     }
 
@@ -90,6 +92,10 @@ impl Toolchain {
             CargoState::Locked => docker::Perm::ReadOnly,
             CargoState::Unlocked => docker::Perm::ReadWrite,
         };
+
+        let enable_unstable_cargo_features =
+            !toolchain_name.starts_with("nightly-") && args.iter().any(|a| a.starts_with("-Z"));
+
         let rust_env = docker::RustEnv {
             args: &full_args,
             work_dir: (source_dir.into(), perm),
@@ -98,8 +104,26 @@ impl Toolchain {
             // This is configured as CARGO_TARGET_DIR by the docker container itself
             target_dir: (ex_target_dir, docker::Perm::ReadWrite),
             cap_lints: &ex.cap_lints,
+            enable_unstable_cargo_features,
         };
         docker::run(&docker::rust_container(rust_env), quiet)
+    }
+
+    pub fn prep_offline_registry(&self) -> Result<()> {
+        // This nop cargo command is to update the registry
+        // so we don't have to do it for each crate.
+        let toolchain_arg = "+".to_string() + &self.rustup_name();
+        let full_args = [&toolchain_arg, "search", "lazy_static"];
+        RunCommand::new(&installed_binary("cargo"), &full_args)
+            .local_rustup()
+            .quiet(true)
+            .run()
+            .chain_err(|| {
+                format!(
+                    "unable to update the index for toolchain {}",
+                    &self.rustup_name()
+                )
+            })
     }
 }
 

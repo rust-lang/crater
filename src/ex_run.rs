@@ -240,6 +240,7 @@ fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool
         &["build", "--frozen"],
         CargoState::Locked,
         quiet,
+        false,
     )?;
     toolchain.run_cargo(
         ex,
@@ -247,6 +248,7 @@ fn build(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool
         &["test", "--frozen", "--no-run"],
         CargoState::Locked,
         quiet,
+        false,
     )?;
     Ok(())
 }
@@ -258,6 +260,7 @@ fn test(ex: &Experiment, source_path: &Path, toolchain: &Toolchain, quiet: bool)
         &["test", "--frozen"],
         CargoState::Locked,
         quiet,
+        false,
     )
 }
 
@@ -308,6 +311,7 @@ pub fn test_check_only(
         &["check", "--frozen", "--all", "--all-targets"],
         CargoState::Locked,
         quiet,
+        false,
     );
 
     if r.is_ok() {

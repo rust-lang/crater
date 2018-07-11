@@ -77,6 +77,7 @@ impl Toolchain {
         args: &[&str],
         cargo_state: CargoState,
         quiet: bool,
+        unstable_cargo: bool,
     ) -> Result<()> {
         let toolchain_name = self.rustup_name();
         let ex_target_dir = self.target_dir(&ex.name);
@@ -93,8 +94,8 @@ impl Toolchain {
             CargoState::Unlocked => docker::Perm::ReadWrite,
         };
 
-        let enable_unstable_cargo_features =
-            !toolchain_name.starts_with("nightly-") && args.iter().any(|a| a.starts_with("-Z"));
+        let enable_unstable_cargo_features = !toolchain_name.starts_with("nightly-")
+            && (unstable_cargo || args.iter().any(|a| a.starts_with("-Z")));
 
         let rust_env = docker::RustEnv {
             args: &full_args,

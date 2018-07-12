@@ -1,5 +1,8 @@
-sudo: false
+sudo: required
 dist: trusty
+
+services:
+  - docker
 
 language: rust
 cache: cargo

@@ -49,7 +49,7 @@ walkdir = "2"
 winapi = "0.3"
 regex = "0.2.10"
 ring = "0.12.1"
-rusqlite = { version = "0.13.0", features = ["chrono"] }
+rusqlite = { version = "0.13.0", features = ["chrono", "bundled"] }
 r2d2 = "0.8.2"
 r2d2_sqlite = "0.5.0"
 base64 = "0.9.0"

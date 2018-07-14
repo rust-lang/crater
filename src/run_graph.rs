@@ -1,3 +1,21 @@
+// This module creates a DAG (Directed Acyclic Graph) that contains all the tasks that needs to be
+// executed in order to complete the Crater run. Once the DAG is created, a number of worker
+// threads are spawned, and each thread picks the first task without dependencies from the DAG and
+// marks it as running, removing it when the task is done. The next task then is picked using a
+// depth-first search.
+//
+//                                   +---+ tc1 <---+
+//                                   |             |
+//          +---+ crate-complete <---+             +---+ prepare
+//          |                        |             |
+//          |                        +---+ tc2 <---+
+// root <---+
+//          |                        +---+ tc1 <---+
+//          |                        |             |
+//          +---+ crate-complete <---+             +---+ prepare
+//                                   |             |
+//                                   +---+ tc2 <---+
+
 use config::Config;
 use crossbeam;
 use errors::*;
@@ -93,8 +111,6 @@ impl TasksGraph {
     }
 
     pub fn next_task<DB: WriteResults>(&mut self, ex: &Experiment, db: &DB) -> WalkResult {
-        // Should recurse a maximum of one time, since completed nodes should have been removed
-        // from the graph
         let root = self.root;
         self.walk_graph(root, ex, db)
     }

@@ -143,7 +143,7 @@ the sheet that does not have a status of 'Complete' or 'Failed'.
    - Update either the PR or the person requesting the beta run. Template is:
      > Hi X (crater requester), Y (PR reviewer)! Crater results are at: \<url>. 'Blacklisted' crates (spurious failures etc) can be found \[here\](https://github.com/rust-lang-nursery/crater/blob/master/config.toml). If you see any spurious failures not on the list, please make a PR against that file.
      >
-     > (interested observers: Crater is a tool for testing the impact of changes on a large portion of the crates.io ecosystem. You can find out more at the \[repo\](https://github.com/rust-lang-nursery/crater/) if you're curious)
+     > (interested observers: Crater is a tool for testing the impact of changes on parts of the Rust ecosystem. You can find out more at the \[repo\](https://github.com/rust-lang-nursery/crater/) if you're curious)
    - Give yourself a pat on the back! Good job!
    - Go to next run.
 

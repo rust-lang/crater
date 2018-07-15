@@ -137,7 +137,11 @@ impl ACL {
             orgs.insert(org.to_string(), github.list_teams(org)?);
         }
 
-        let members = github.team_members(orgs[org][team])?;
+        let members = github.team_members(
+            *orgs[org]
+                .get(team)
+                .ok_or_else(|| format!("team {}/{} doesn't exist", org, team))?,
+        )?;
         for member in &members {
             new_cache.insert(member.clone());
         }

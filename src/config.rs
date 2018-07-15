@@ -2,7 +2,7 @@ use crates::Crate;
 use errors::*;
 use regex::Regex;
 use serde_regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 
@@ -30,7 +30,7 @@ fn default_false() -> bool {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ServerConfig {
-    pub bot_acl: HashSet<String>,
+    pub bot_acl: Vec<String>,
     pub labels: ServerLabels,
 }
 
@@ -112,7 +112,7 @@ impl Default for Config {
             crates: HashMap::new(),
             github_repos: HashMap::new(),
             server: ServerConfig {
-                bot_acl: HashSet::new(),
+                bot_acl: Vec::new(),
                 labels: ServerLabels {
                     remove: Regex::new("^$").unwrap(),
                     experiment_queued: "".into(),

@@ -33,6 +33,7 @@ pub struct Data {
     pub experiments: Experiments,
     pub db: db::Database,
     pub reports_worker: reports::ReportsWorker,
+    pub acl: auth::ACL,
 }
 
 pub fn run(config: Config) -> Result<()> {
@@ -41,6 +42,7 @@ pub fn run(config: Config) -> Result<()> {
     let github = GitHubApi::new(&tokens);
     let agents = Agents::new(db.clone(), &tokens)?;
     let bot_username = github.username()?;
+    let acl = auth::ACL::new(&config, &github)?;
 
     info!("bot username: {}", bot_username);
 
@@ -53,6 +55,7 @@ pub fn run(config: Config) -> Result<()> {
         experiments: Experiments::new(db.clone()),
         db: db.clone(),
         reports_worker: reports::ReportsWorker::new(),
+        acl,
     };
 
     data.reports_worker.spawn(data.clone());

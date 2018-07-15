@@ -59,7 +59,7 @@ fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Resu
             continue;
         }
 
-        if !data.config.server.bot_acl.contains(sender) {
+        if !data.acl.allowed(sender) {
             Message::new()
                 .line(
                     "lock",
@@ -98,6 +98,10 @@ fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Resu
 
             Command::Abort(args) => {
                 commands::abort(data, issue, args)?;
+            }
+
+            Command::ReloadACL(_) => {
+                commands::reload_acl(data, issue)?;
             }
         }
 

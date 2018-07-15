@@ -147,6 +147,16 @@ pub fn abort(data: &Data, issue: &Issue, args: AbortArgs) -> Result<()> {
     Ok(())
 }
 
+pub fn reload_acl(data: &Data, issue: &Issue) -> Result<()> {
+    data.acl.refresh_cache(&data.github)?;
+
+    Message::new()
+        .line("hammer_and_wrench", "List of authorized users reloaded!")
+        .send(&issue.url, data)?;
+
+    Ok(())
+}
+
 fn get_name(db: &Database, issue: &Issue, name: Option<String>) -> Result<String> {
     if let Some(name) = name {
         store_experiment_name(db, issue, &name)?;

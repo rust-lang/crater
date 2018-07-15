@@ -1,5 +1,6 @@
 [server]
 # The list of GitHub users allowed to interact with the GitHub bot
+# You can mix usernames and teams
 bot-acl = [
     "pietroalbini",
     "aidanhs",

@@ -1,3 +1,21 @@
+// This module creates a DAG (Directed Acyclic Graph) that contains all the tasks that needs to be
+// executed in order to complete the Crater run. Once the DAG is created, a number of worker
+// threads are spawned, and each thread picks the first task without dependencies from the DAG and
+// marks it as running, removing it when the task is done. The next task then is picked using a
+// depth-first search.
+//
+//                                   +---+ tc1 <---+
+//                                   |             |
+//          +---+ crate-complete <---+             +---+ prepare
+//          |                        |             |
+//          |                        +---+ tc2 <---+
+// root <---+
+//          |                        +---+ tc1 <---+
+//          |                        |             |
+//          +---+ crate-complete <---+             +---+ prepare
+//                                   |             |
+//                                   +---+ tc2 <---+
+
 use config::Config;
 use crossbeam;
 use errors::*;
@@ -5,9 +23,11 @@ use ex::{self, ExMode, Experiment};
 use file;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
 use results::{TestResult, WriteResults};
+use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::thread;
 use tasks::{Task, TaskStep};
 use util;
 
@@ -32,10 +52,22 @@ impl fmt::Debug for Node {
     }
 }
 
-enum WalkResult {
+#[derive(Debug)]
+pub enum WalkResult {
     Task(NodeIndex, Arc<Task>),
     Blocked,
     NotBlocked,
+    Finished,
+}
+
+impl WalkResult {
+    pub fn is_finished(&self) -> bool {
+        if let WalkResult::Finished = self {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Default)]
@@ -78,19 +110,9 @@ impl TasksGraph {
         id
     }
 
-    pub fn next_task<DB: WriteResults>(
-        &mut self,
-        ex: &Experiment,
-        db: &DB,
-    ) -> Option<(NodeIndex, Arc<Task>)> {
+    pub fn next_task<DB: WriteResults>(&mut self, ex: &Experiment, db: &DB) -> WalkResult {
         let root = self.root;
-        // Should recurse a maximum of one time, since completed nodes should have been removed
-        // from the graph
-        if let WalkResult::Task(id, task) = self.walk_graph(root, ex, db) {
-            Some((id, task))
-        } else {
-            None
-        }
+        self.walk_graph(root, ex, db)
     }
 
     fn walk_graph<DB: WriteResults>(
@@ -122,6 +144,7 @@ impl TasksGraph {
         for neighbor in neighbors.drain(..) {
             match self.walk_graph(neighbor, ex, db) {
                 WalkResult::Task(id, task) => return WalkResult::Task(id, task),
+                WalkResult::Finished => return WalkResult::Finished,
                 WalkResult::Blocked => blocked = true,
                 WalkResult::NotBlocked => {}
             }
@@ -147,7 +170,7 @@ impl TasksGraph {
                 delete = true;
                 WalkResult::NotBlocked
             }
-            Node::Root => WalkResult::NotBlocked,
+            Node::Root => WalkResult::Finished,
         };
 
         // This is done after the match to avoid borrowck issues
@@ -256,6 +279,10 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     info!("running tasks in {} threads...", threads_count);
 
+    // An HashMap is used instead of an HashSet because Thread is not Eq+Hash
+    let parked_threads: Mutex<HashMap<thread::ThreadId, thread::Thread>> =
+        Mutex::new(HashMap::new());
+
     crossbeam::scope(|scope| -> Result<()> {
         let mut threads = Vec::new();
 
@@ -264,27 +291,46 @@ pub fn run_ex<DB: WriteResults + Sync>(
             let join = scope.builder().name(name).spawn(|| -> Result<()> {
                 // This uses a `loop` instead of a `while let` to avoid locking the graph too much
                 loop {
-                    let option_task = graph.lock().unwrap().next_task(ex, db);
-                    if let Some((id, task)) = option_task {
-                        info!("running task: {:?}", task);
-                        if let Err(e) = task.run(config, ex, db) {
-                            error!("task failed, marking childs as failed too: {:?}", task);
-                            util::report_error(&e);
+                    let walk_result = graph.lock().unwrap().next_task(ex, db);
+                    match walk_result {
+                        WalkResult::Task(id, task) => {
+                            info!("running task: {:?}", task);
+                            if let Err(e) = task.run(config, ex, db) {
+                                error!("task failed, marking childs as failed too: {:?}", task);
+                                util::report_error(&e);
 
-                            let result = if config.is_broken(&task.krate) {
-                                TestResult::BuildFail
+                                let result = if config.is_broken(&task.krate) {
+                                    TestResult::BuildFail
+                                } else {
+                                    TestResult::Error
+                                };
+                                graph
+                                    .lock()
+                                    .unwrap()
+                                    .mark_as_failed(id, ex, db, &e, result)?;
                             } else {
-                                TestResult::Error
-                            };
-                            graph
-                                .lock()
-                                .unwrap()
-                                .mark_as_failed(id, ex, db, &e, result)?;
-                        } else {
-                            graph.lock().unwrap().mark_as_completed(id);
+                                graph.lock().unwrap().mark_as_completed(id);
+                            }
+
+                            // Unpark all the threads
+                            let mut parked = parked_threads.lock().unwrap();
+                            for (_id, thread) in parked.drain() {
+                                thread.unpark();
+                            }
                         }
-                    } else {
-                        break;
+                        WalkResult::Blocked => {
+                            // Wait until another thread finished before looking for tasks again
+                            // If the thread spuriously wake up (parking does not guarantee no
+                            // spurious wakeups) it's not a big deal, it will just get parked again
+                            {
+                                let mut parked_threads = parked_threads.lock().unwrap();
+                                let current = thread::current();
+                                parked_threads.insert(current.id(), current);
+                            }
+                            thread::park();
+                        }
+                        WalkResult::NotBlocked => unreachable!("NotBlocked leaked from the run"),
+                        WalkResult::Finished => break,
                     }
                 }
 
@@ -302,7 +348,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     // Only the root node must be present
     let mut g = graph.lock().unwrap();
-    assert!(g.next_task(ex, db).is_none());
+    assert!(g.next_task(ex, db).is_finished());
     assert_eq!(g.graph.neighbors(g.root).count(), 0);
 
     Ok(())

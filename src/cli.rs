@@ -71,14 +71,22 @@ impl FromStr for Dest {
 )]
 pub enum Crater {
     #[structopt(
-        name = "prepare-local", about = "acquire toolchains, build containers, build crate lists"
+        name = "prepare-local",
+        about = "acquire toolchains, build containers, build crate lists"
     )]
     PrepareLocal {
-        #[structopt(name = "docker env", long = "docker-env", default_value = "full")]
+        #[structopt(
+            name = "docker env",
+            long = "docker-env",
+            default_value = "full"
+        )]
         env: DockerEnv,
     },
 
-    #[structopt(name = "create-lists", about = "create all the lists of crates")]
+    #[structopt(
+        name = "create-lists",
+        about = "create all the lists of crates"
+    )]
     CreateLists,
 
     #[structopt(name = "define-ex", about = "define an experiment")]
@@ -112,36 +120,52 @@ pub enum Crater {
         cap_lints: ExCapLints,
     },
 
-    #[structopt(name = "prepare-ex", about = "prepare shared and local data for experiment")]
+    #[structopt(
+        name = "prepare-ex",
+        about = "prepare shared and local data for experiment"
+    )]
     PrepareEx {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
     },
 
-    #[structopt(name = "copy-ex", about = "copy all data from one experiment to another")]
+    #[structopt(
+        name = "copy-ex",
+        about = "copy all data from one experiment to another"
+    )]
     CopyEx { ex1: Ex, ex2: Ex },
 
-    #[structopt(name = "delete-ex", about = "delete shared data for experiment")]
+    #[structopt(
+        name = "delete-ex",
+        about = "delete shared data for experiment"
+    )]
     DeleteEx {
         #[structopt(long = "ex", default_value = "default")]
         ex: Ex,
     },
 
     #[structopt(
-        name = "delete-all-target-dirs", about = "delete the cargo target dirs for an experiment"
+        name = "delete-all-target-dirs",
+        about = "delete the cargo target dirs for an experiment"
     )]
     DeleteAllTargetDirs {
         #[structopt(long = "ex", default_value = "default")]
         ex: Ex,
     },
 
-    #[structopt(name = "delete-all-results", about = "delete all results for an experiment")]
+    #[structopt(
+        name = "delete-all-results",
+        about = "delete all results for an experiment"
+    )]
     DeleteAllResults {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
     },
 
-    #[structopt(name = "delete-result", about = "delete results for a crate from an experiment")]
+    #[structopt(
+        name = "delete-result",
+        about = "delete results for a crate from an experiment"
+    )]
     DeleteResult {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
@@ -151,13 +175,19 @@ pub enum Crater {
         krate: Crate,
     },
 
-    #[structopt(name = "run", about = "run an experiment, with all toolchains")]
+    #[structopt(
+        name = "run",
+        about = "run an experiment, with all toolchains"
+    )]
     Run {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
     },
 
-    #[structopt(name = "run-tc", about = "run an experiment, with a single toolchain")]
+    #[structopt(
+        name = "run-tc",
+        about = "run an experiment, with a single toolchain"
+    )]
     RunTc {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
@@ -169,11 +199,19 @@ pub enum Crater {
     RunGraph {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
-        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
+        #[structopt(
+            name = "threads",
+            short = "t",
+            long = "threads",
+            default_value = "1"
+        )]
         threads: usize,
     },
 
-    #[structopt(name = "gen-report", about = "generate the experiment report")]
+    #[structopt(
+        name = "gen-report",
+        about = "generate the experiment report"
+    )]
     GenReport {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
@@ -181,7 +219,10 @@ pub enum Crater {
         dest: Dest,
     },
 
-    #[structopt(name = "publish-report", about = "publish the experiment report to S3")]
+    #[structopt(
+        name = "publish-report",
+        about = "publish the experiment report to S3"
+    )]
     PublishReport {
         #[structopt(
             name = "experiment",
@@ -207,11 +248,19 @@ pub enum Crater {
         url: String,
         #[structopt(name = "token")]
         token: String,
-        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
+        #[structopt(
+            name = "threads",
+            short = "t",
+            long = "threads",
+            default_value = "1"
+        )]
         threads: usize,
     },
 
-    #[structopt(name = "dump-tasks-graph", about = "dump the internal tasks graph in .dot format")]
+    #[structopt(
+        name = "dump-tasks-graph",
+        about = "dump the internal tasks graph in .dot format"
+    )]
     DumpTasksGraph {
         #[structopt(name = "dest", parse(from_os_str))]
         dest: PathBuf,

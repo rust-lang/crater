@@ -60,7 +60,7 @@ enum Comparison {
 }
 
 impl Comparison {
-    fn show_in_summary(&self) -> bool {
+    fn show_in_summary(self) -> bool {
         match self {
             Comparison::Regressed | Comparison::Fixed | Comparison::Unknown | Comparison::Error => {
                 true

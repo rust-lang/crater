@@ -11,9 +11,6 @@ env:
   global:
     - RUSTFLAGS=-Dwarnings
 
-    # Versions known to work with pinned nightly for lints.
-    - CLIPPY_VERSION=0.0.207
-
 matrix:
   include:
     # Tests on all the channels
@@ -26,7 +23,7 @@ matrix:
 
     # Execute lints with the pinned nightly we know works.
     - env: TASK=lint
-      rust: nightly-2018-06-10
+      rust: nightly-2018-07-17
 
   # Don't block CI if a nightly is faulty
   fast_finish: true
@@ -35,14 +32,8 @@ matrix:
 
 before_script: |
   if [[ $TASK = "lint" ]]; then
-      if ! type -p cargo-install-update; then
-          cargo install --force cargo-update
-      else
-          cargo install-update -i cargo-update
-      fi
-
       rustup component add rustfmt-preview
-      cargo install-update -i "clippy:$CLIPPY_VERSION"
+      rustup component add clippy-preview
   fi
 
 script: |

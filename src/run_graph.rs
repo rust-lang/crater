@@ -238,10 +238,12 @@ fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
                             tc: tc.clone(),
                             quiet,
                         },
-                        ExMode::BuildAndTest if config.should_skip(krate) => TaskStep::BuildOnly {
-                            tc: tc.clone(),
-                            quiet,
-                        },
+                        ExMode::BuildAndTest if config.should_skip_tests(krate) => {
+                            TaskStep::BuildOnly {
+                                tc: tc.clone(),
+                                quiet,
+                            }
+                        }
                         ExMode::BuildAndTest => TaskStep::BuildAndTest {
                             tc: tc.clone(),
                             quiet,

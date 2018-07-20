@@ -121,15 +121,6 @@ pub enum Crater {
     },
 
     #[structopt(
-        name = "prepare-ex",
-        about = "prepare shared and local data for experiment"
-    )]
-    PrepareEx {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")]
-        ex: Ex,
-    },
-
-    #[structopt(
         name = "copy-ex",
         about = "copy all data from one experiment to another"
     )]
@@ -173,26 +164,6 @@ pub enum Crater {
         tc: Option<Toolchain>,
         #[structopt(name = "crate")]
         krate: Crate,
-    },
-
-    #[structopt(
-        name = "run",
-        about = "run an experiment, with all toolchains"
-    )]
-    Run {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")]
-        ex: Ex,
-    },
-
-    #[structopt(
-        name = "run-tc",
-        about = "run an experiment, with a single toolchain"
-    )]
-    RunTc {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")]
-        ex: Ex,
-        #[structopt(name = "toolchain")]
-        tc: Toolchain,
     },
 
     #[structopt(name = "run-graph", about = "run a parallelized experiment")]
@@ -301,13 +272,6 @@ impl Crater {
                     &config,
                 )?;
             }
-            Crater::PrepareEx { ref ex } => {
-                let config = Config::load()?;
-                let ex = ex::Experiment::load(&ex.0)?;
-                let db = FileDB::default();
-                ex.prepare_shared(&config, &db)?;
-                ex.prepare_local(&config)?;
-            }
             Crater::CopyEx { ref ex1, ref ex2 } => {
                 ex::copy(&ex1.0, &ex2.0)?;
             }
@@ -325,14 +289,6 @@ impl Crater {
                 ref tc,
                 ref krate,
             } => ex_run::delete_result(&ex.0, tc.as_ref(), krate)?,
-            Crater::Run { ref ex } => {
-                let config = Config::load()?;
-                ex_run::run_ex_all_tcs(&ex.0, &config)?;
-            }
-            Crater::RunTc { ref ex, ref tc } => {
-                let config = Config::load()?;
-                ex_run::run_ex(&ex.0, tc.clone(), &config)?;
-            }
             Crater::RunGraph { ref ex, threads } => {
                 let config = Config::load()?;
                 let experiment = Experiment::load(&ex.0)?;

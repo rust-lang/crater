@@ -125,24 +125,6 @@ impl FromStr for Crate {
     }
 }
 
-pub fn prepare(list: &[Crate]) -> Result<()> {
-    info!("preparing {} crates", list.len());
-    let mut successes = 0;
-    for krate in list {
-        if let Err(e) = prepare_crate(krate) {
-            util::report_error(&e);
-        } else {
-            successes += 1;
-        }
-    }
-
-    if successes < list.len() / 2 {
-        bail!("unable to download a suspiciously-large number of crates");
-    }
-
-    Ok(())
-}
-
 pub fn prepare_crate(krate: &Crate) -> Result<()> {
     let dir = krate.dir();
     match *krate {

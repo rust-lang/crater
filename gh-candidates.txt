@@ -2127,6 +2127,7 @@ brogowski/randbash
 brooss/Chipy8
 brson/bimap
 brson/coingrab
+brson/hello-rs
 brson/httptest
 brson/pwrabs
 brson/rust-llvm

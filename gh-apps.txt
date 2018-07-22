@@ -601,6 +601,7 @@ https://github.com/brennie/chat
 https://github.com/brisad/age
 https://github.com/brocode/goat
 https://github.com/brson/coingrab
+https://github.com/brson/hello-rs
 https://github.com/brson/httptest
 https://github.com/brunoczim/rust-bfc
 https://github.com/bschwind/mqtt

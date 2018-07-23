@@ -20,6 +20,7 @@ pub struct Agent {
     name: String,
     experiment: Option<ExperimentData>,
     last_heartbeat: Option<DateTime<Utc>>,
+    git_revision: Option<String>,
 }
 
 impl Agent {
@@ -27,6 +28,10 @@ impl Agent {
         let experiments = Experiments::new(db.clone());
         self.experiment = experiments.run_by_agent(&self.name)?;
         Ok(self)
+    }
+
+    pub fn git_revision(&self) -> Option<&String> {
+        self.git_revision.as_ref()
     }
 
     pub fn status(&self) -> AgentStatus {
@@ -82,6 +87,7 @@ impl Agents {
                 Agent {
                     name: row.get("name"),
                     last_heartbeat: row.get("last_heartbeat"),
+                    git_revision: row.get("git_revision"),
                     experiment: None, // Lazy loaded after this
                 }
             })?
@@ -98,6 +104,7 @@ impl Agents {
                 Agent {
                     name: row.get("name"),
                     last_heartbeat: row.get("last_heartbeat"),
+                    git_revision: row.get("git_revision"),
                     experiment: None, // Lazy loaded after this
                 }
             })?;
@@ -113,6 +120,13 @@ impl Agents {
         self.db.execute(
             "UPDATE agents SET last_heartbeat = ?1 WHERE name = ?2;",
             &[&Utc::now(), &agent],
+        )
+    }
+
+    pub fn set_git_revision(&self, agent: &str, revision: &str) -> Result<()> {
+        self.db.execute(
+            "UPDATE agents SET git_revision = ?1 WHERE name = ?2;",
+            &[&revision, &agent],
         )
     }
 }

@@ -2,7 +2,7 @@ use errors::*;
 use futures::future::{self, Future};
 use futures::prelude::*;
 use futures_cpupool::CpuPool;
-use hyper::header::{ContentLength, ContentType};
+use hyper::header::{ContentLength, ContentType, Server as ServerHeader};
 use hyper::server::{Http, Request, Response, Service};
 use hyper::{Method, StatusCode};
 use serde::Serialize;
@@ -11,6 +11,10 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 use tokio_core::reactor::{Core, Handle};
+
+lazy_static! {
+    static ref SERVER_HEADER: String = format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
+}
 
 pub type ResponseFuture = Box<Future<Item = Response, Error = ::hyper::Error>>;
 
@@ -84,15 +88,8 @@ impl<D: 'static> Server<D> {
 
         Ok(())
     }
-}
 
-impl<D: 'static> Service for Server<D> {
-    type Request = Request;
-    type Response = Response;
-    type Error = ::hyper::Error;
-    type Future = ResponseFuture;
-
-    fn call(&self, req: Request) -> ResponseFuture {
+    fn handle(&self, req: Request) -> ResponseFuture {
         if let Some(handler) = self
             .routes
             .get(&(req.method().clone(), &req.path().to_string()))
@@ -103,6 +100,20 @@ impl<D: 'static> Service for Server<D> {
                 .with_status(StatusCode::NotFound)
                 .as_future()
         }
+    }
+}
+
+impl<D: 'static> Service for Server<D> {
+    type Request = Request;
+    type Response = Response;
+    type Error = ::hyper::Error;
+    type Future = ResponseFuture;
+
+    fn call(&self, req: Request) -> ResponseFuture {
+        Box::new(
+            self.handle(req)
+                .map(|response| response.with_header(ServerHeader::new(SERVER_HEADER.as_str()))),
+        )
     }
 }
 

@@ -95,3 +95,5 @@ pub mod server;
 mod tasks;
 mod toml_frobber;
 pub mod toolchain;
+
+pub static GIT_REVISION: Option<&'static str> = include!(concat!(env!("OUT_DIR"), "/sha"));

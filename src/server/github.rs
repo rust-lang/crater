@@ -3,6 +3,10 @@ use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
 use server::tokens::Tokens;
 use std::collections::HashMap;
 
+lazy_static! {
+    static ref USER_AGENT: String = format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
+}
+
 #[derive(Clone)]
 pub struct GitHubApi {
     token: String,
@@ -26,6 +30,7 @@ impl GitHubApi {
 
         let mut req = self.client.request(method, &url);
         req.header(header::Authorization(format!("token {}", self.token)));
+        req.header(header::UserAgent::new(USER_AGENT.as_str()));
         req
     }
 

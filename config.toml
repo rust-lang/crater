@@ -4,6 +4,7 @@
 bot-acl = [
     "pietroalbini",
     "aidanhs",
+    "Mark-Simulacrum",
 ]
 
 [server.labels]

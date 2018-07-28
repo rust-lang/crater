@@ -1,6 +1,9 @@
+use crates::Crate;
+use ex::Experiment;
 use std::env;
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use toolchain::Toolchain;
 
 lazy_static! {
     pub static ref WORK_DIR: PathBuf = {
@@ -32,4 +35,16 @@ lazy_static! {
 
     pub static ref EXPERIMENT_DIR: PathBuf = WORK_DIR.join("ex");
     pub static ref LOG_DIR: PathBuf = WORK_DIR.join("logs");
+}
+
+pub fn crate_source(krate: &Crate) -> PathBuf {
+    CRATES_DIR.join(krate.id())
+}
+
+pub fn ex_crate_source(ex: &Experiment, tc: &Toolchain, krate: &Crate) -> PathBuf {
+    EXPERIMENT_DIR
+        .join(&ex.name)
+        .join("sources")
+        .join(tc.to_string())
+        .join(krate.id())
 }

@@ -1,6 +1,6 @@
 use config::Config;
 use crates::{Crate, RegistryCrate};
-use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
+use dirs::{self, EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
 use file;
 use git;
@@ -217,7 +217,12 @@ pub fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
     if let Crate::Registry(ref details) = *krate {
         fs::create_dir_all(&froml_dir(&ex.name))?;
         let out = froml_path(&ex.name, &details.name, &details.version);
-        toml_frobber::frob_toml(&krate.dir(), &details.name, &details.version, &out)?;
+        toml_frobber::frob_toml(
+            &dirs::crate_source(krate),
+            &details.name,
+            &details.version,
+            &out,
+        )?;
     }
 
     Ok(())
@@ -288,12 +293,11 @@ fn lockfile(ex_name: &str, krate: &Crate) -> Result<PathBuf> {
     Ok(lockfile_dir(ex_name).join(name))
 }
 
-fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
-    let mut dir = TEST_SOURCE_DIR.clone();
-    if let Some(thread) = ::std::thread::current().name() {
-        dir = dir.join(thread);
-    }
-    dir.join(ex_name).join(toolchain.to_string())
+fn crate_work_dir(ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> PathBuf {
+    TEST_SOURCE_DIR
+        .join(&ex.name)
+        .join(toolchain.to_string())
+        .join(krate.id())
 }
 
 pub fn with_work_crate<F, R>(
@@ -305,8 +309,8 @@ pub fn with_work_crate<F, R>(
 where
     F: Fn(&Path) -> Result<R>,
 {
-    let src_dir = krate.dir();
-    let dest_dir = crate_work_dir(&ex.name, toolchain);
+    let src_dir = dirs::ex_crate_source(ex, toolchain, krate);
+    let dest_dir = crate_work_dir(ex, toolchain, krate);
     info!(
         "creating temporary build dir for {} in {}",
         krate,
@@ -327,7 +331,8 @@ pub fn capture_lockfile(
 ) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    if !config.should_update_lockfile(krate) && krate.dir().join("Cargo.lock").exists() {
+    let lockfile = dirs::crate_source(krate).join("Cargo.lock");
+    if !config.should_update_lockfile(krate) && lockfile.exists() {
         info!("crate {} has a lockfile. skipping", krate);
         return Ok(());
     }

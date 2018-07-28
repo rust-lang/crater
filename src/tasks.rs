@@ -128,7 +128,7 @@ impl Task {
             ex::capture_shas(ex, &[self.krate.clone()], db)?;
         }
 
-        crates::prepare_crate(&self.krate)?;
+        crates::prepare_crate(ex, &self.krate)?;
         ex::frob_toml(ex, &self.krate)?;
         ex::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
         ex::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;

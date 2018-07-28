@@ -1,6 +1,7 @@
-use dirs::{CRATES_DIR, GH_MIRRORS_DIR};
+use dirs::{self, GH_MIRRORS_DIR};
 use dl;
 use errors::*;
+use ex::Experiment;
 use flate2::read::GzDecoder;
 use std::fmt;
 use std::fs;
@@ -81,14 +82,13 @@ impl Crate {
         }
     }
 
-    pub fn dir(&self) -> PathBuf {
+    pub fn id(&self) -> PathBuf {
         match *self {
-            Crate::Registry(ref details) => CRATES_DIR
+            Crate::Registry(ref details) => PathBuf::new()
                 .join("reg")
-                .join(format!("{}-{}", details.name, details.version)),
-            Crate::GitHub(ref repo) => CRATES_DIR
-                .join("gh")
-                .join(format!("{}.{}", repo.org, repo.name)),
+                .join(&details.name)
+                .join(&details.version),
+            Crate::GitHub(ref repo) => PathBuf::new().join("gh").join(&repo.org).join(&repo.name),
         }
     }
 }
@@ -125,22 +125,29 @@ impl FromStr for Crate {
     }
 }
 
-pub fn prepare_crate(krate: &Crate) -> Result<()> {
-    let dir = krate.dir();
-    match *krate {
+pub fn prepare_crate(ex: &Experiment, krate: &Crate) -> Result<()> {
+    let dir = match *krate {
         Crate::Registry(ref details) => {
+            let dir = dirs::crate_source(krate);
+
             // crates.io doesn't rate limit. Go fast
             dl_registry(&details.name, &details.version, &dir)
                 .chain_err(|| format!("unable to download {}", krate))?;
+
+            dir
         }
-        Crate::GitHub(ref repo) => {
-            info!(
-                "cloning GitHub repo {} to {}...",
-                repo.slug(),
-                dir.display()
-            );
-            util::copy_dir(&repo.mirror_dir(), &dir)?;
-        }
+        Crate::GitHub(ref repo) => repo.mirror_dir(),
+    };
+
+    for tc in &ex.toolchains {
+        let dest = dirs::ex_crate_source(ex, tc, krate);
+        info!(
+            "copying {} source from {} to {}",
+            krate,
+            dir.to_string_lossy(),
+            dest.to_string_lossy(),
+        );
+        util::copy_dir(&dir, &dest)?;
     }
 
     Ok(())

@@ -245,18 +245,6 @@ pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB
     Ok(())
 }
 
-fn lockfile_dir(ex_name: &str) -> PathBuf {
-    EXPERIMENT_DIR.join(ex_name).join("lockfiles")
-}
-
-fn lockfile(ex_name: &str, krate: &Crate) -> Result<PathBuf> {
-    let name = match *krate {
-        Crate::Registry(ref details) => format!("reg-{}-{}.lock", details.name, details.version),
-        Crate::GitHub(ref repo) => format!("reg-{}-{}.lock", repo.org, repo.name),
-    };
-    Ok(lockfile_dir(ex_name).join(name))
-}
-
 fn crate_work_dir(ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> PathBuf {
     TEST_SOURCE_DIR
         .join(&ex.name)
@@ -268,118 +256,63 @@ pub fn with_work_crate<F, R>(
     ex: &Experiment,
     toolchain: &Toolchain,
     krate: &Crate,
+    allow_source_changes: bool,
     f: F,
 ) -> Result<R>
 where
     F: Fn(&Path) -> Result<R>,
 {
     let src_dir = dirs::ex_crate_source(ex, toolchain, krate);
-    let dest_dir = crate_work_dir(ex, toolchain, krate);
-    info!(
-        "creating temporary build dir for {} in {}",
-        krate,
-        dest_dir.display()
-    );
 
-    util::copy_dir(&src_dir, &dest_dir)?;
-    let r = f(&dest_dir);
-    util::remove_dir_all(&dest_dir)?;
-    r
+    if allow_source_changes {
+        f(&src_dir)
+    } else {
+        let dest_dir = crate_work_dir(ex, toolchain, krate);
+        info!(
+            "creating temporary build dir for {} in {}",
+            krate,
+            dest_dir.display()
+        );
+
+        util::copy_dir(&src_dir, &dest_dir)?;
+        let r = f(&dest_dir);
+        util::remove_dir_all(&dest_dir)?;
+        r
+    }
 }
 
 pub fn capture_lockfile(
     config: &Config,
     ex: &Experiment,
-    krate: &Crate,
     toolchain: &Toolchain,
+    krate: &Crate,
 ) -> Result<()> {
-    fs::create_dir_all(&lockfile_dir(&ex.name))?;
-
-    let lockfile = dirs::crate_source(krate).join("Cargo.lock");
+    let lockfile = dirs::ex_crate_source(ex, toolchain, krate).join("Cargo.lock");
     if !config.should_update_lockfile(krate) && lockfile.exists() {
         info!("crate {} has a lockfile. skipping", krate);
         return Ok(());
     }
 
-    with_work_crate(ex, toolchain, krate, |path| {
-        capture_lockfile_inner(ex, krate, path, toolchain)
+    with_work_crate(ex, toolchain, krate, true, |path| {
+        let args = &[
+            "generate-lockfile",
+            "--manifest-path",
+            "Cargo.toml",
+            "-Zno-index-update",
+        ];
+        toolchain
+            .run_cargo(ex, path, args, CargoState::Unlocked, false, false)
+            .chain_err(|| format!("unable to generate lockfile for {}", krate))?;
+
+        info!("generated lockfile for {}", krate);
+        Ok(())
     }).chain_err(|| format!("failed to generate lockfile for {}", krate))?;
 
     Ok(())
 }
 
-fn capture_lockfile_inner(
-    ex: &Experiment,
-    krate: &Crate,
-    path: &Path,
-    toolchain: &Toolchain,
-) -> Result<()> {
-    let args = &[
-        "generate-lockfile",
-        "--manifest-path",
-        "Cargo.toml",
-        "-Zno-index-update",
-    ];
-    toolchain
-        .run_cargo(ex, path, args, CargoState::Unlocked, false, false)
-        .chain_err(|| format!("unable to generate lockfile for {}", krate))?;
-
-    let src_lockfile = &path.join("Cargo.lock");
-    let dst_lockfile = &lockfile(&ex.name, krate)?;
-    fs::copy(src_lockfile, dst_lockfile).chain_err(|| {
-        format!(
-            "unable to copy lockfile from {} to {}",
-            src_lockfile.display(),
-            dst_lockfile.display()
-        )
-    })?;
-
-    info!(
-        "generated lockfile for {} at {}",
-        krate,
-        dst_lockfile.display()
-    );
-
-    Ok(())
-}
-
-pub fn with_captured_lockfile(
-    config: &Config,
-    ex: &Experiment,
-    krate: &Crate,
-    path: &Path,
-) -> Result<()> {
-    let src_lockfile = &lockfile(&ex.name, krate)?;
-    let dst_lockfile = &path.join("Cargo.lock");
-
-    // Only use the local lockfile if it wasn't overridden
-    if !config.should_update_lockfile(krate) && dst_lockfile.exists() {
-        return Ok(());
-    }
-
-    if src_lockfile.exists() {
-        info!("using lockfile {}", src_lockfile.display());
-        fs::copy(src_lockfile, dst_lockfile).chain_err(|| {
-            format!(
-                "unable to copy lockfile from {} to {}",
-                src_lockfile.display(),
-                dst_lockfile.display()
-            )
-        })?;
-    }
-
-    Ok(())
-}
-
-pub fn fetch_crate_deps(
-    config: &Config,
-    ex: &Experiment,
-    krate: &Crate,
-    toolchain: &Toolchain,
-) -> Result<()> {
-    with_work_crate(ex, toolchain, krate, |path| {
-        with_captured_lockfile(config, ex, krate, path)?;
-
+pub fn fetch_crate_deps(ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> Result<()> {
+    with_work_crate(ex, toolchain, krate, false, |path| {
         let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
         toolchain
             .run_cargo(ex, path, args, CargoState::Unlocked, false, true)

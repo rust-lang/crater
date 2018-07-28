@@ -6,7 +6,7 @@ use ex_run;
 use git;
 use results::{TestResult, WriteResults};
 use std::fmt;
-use toolchain::{Toolchain, MAIN_TOOLCHAIN};
+use toolchain::Toolchain;
 use util;
 
 pub enum TaskStep {
@@ -104,12 +104,10 @@ impl Task {
     pub fn run<DB: WriteResults>(&self, config: &Config, ex: &Experiment, db: &DB) -> Result<()> {
         match self.step {
             TaskStep::Prepare => self.run_prepare(config, ex, db),
-            TaskStep::BuildAndTest { ref tc, quiet } => {
-                self.run_build_and_test(config, ex, tc, db, quiet)
-            }
-            TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(config, ex, tc, db, quiet),
-            TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(config, ex, tc, db, quiet),
-            TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(config, ex, db, tc),
+            TaskStep::BuildAndTest { ref tc, quiet } => self.run_build_and_test(ex, tc, db, quiet),
+            TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(ex, tc, db, quiet),
+            TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(ex, tc, db, quiet),
+            TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(ex, db, tc),
         }
     }
 
@@ -131,23 +129,21 @@ impl Task {
         crates::prepare_crate(ex, &self.krate)?;
         for tc in &ex.toolchains {
             ex::frob_toml(ex, tc, &self.krate)?;
+            ex::capture_lockfile(config, ex, tc, &self.krate)?;
+            ex::fetch_crate_deps(ex, tc, &self.krate)?;
         }
-        ex::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
-        ex::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
 
         Ok(())
     }
 
     fn run_build_and_test<DB: WriteResults>(
         &self,
-        config: &Config,
         ex: &Experiment,
         tc: &Toolchain,
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
         ex_run::run_test(
-            config,
             "testing",
             ex,
             tc,
@@ -160,14 +156,12 @@ impl Task {
 
     fn run_build_only<DB: WriteResults>(
         &self,
-        config: &Config,
         ex: &Experiment,
         tc: &Toolchain,
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
         ex_run::run_test(
-            config,
             "testing",
             ex,
             tc,
@@ -180,14 +174,12 @@ impl Task {
 
     fn run_check_only<DB: WriteResults>(
         &self,
-        config: &Config,
         ex: &Experiment,
         tc: &Toolchain,
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
         ex_run::run_test(
-            config,
             "checking",
             ex,
             tc,
@@ -200,13 +192,11 @@ impl Task {
 
     fn run_unstable_features<DB: WriteResults>(
         &self,
-        config: &Config,
         ex: &Experiment,
         db: &DB,
         tc: &Toolchain,
     ) -> Result<()> {
         ex_run::run_test(
-            config,
             "checking",
             ex,
             tc,

@@ -1,4 +1,3 @@
-use config::Config;
 use crates::Crate;
 use errors::*;
 use ex::*;
@@ -34,7 +33,6 @@ pub struct RunTestResult {
 
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn run_test<DB: WriteResults>(
-    config: &Config,
     action: &str,
     ex: &Experiment,
     tc: &Toolchain,
@@ -50,9 +48,7 @@ pub fn run_test<DB: WriteResults>(
             skipped: true,
         })
     } else {
-        with_work_crate(ex, tc, krate, |source_path| {
-            with_captured_lockfile(config, ex, krate, source_path)?;
-
+        with_work_crate(ex, tc, krate, false, |source_path| {
             db.record_result(ex, tc, krate, || {
                 info!(
                     "{} {} against {} for {}",

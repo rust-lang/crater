@@ -1,6 +1,6 @@
 use config::Config;
 use crates::{Crate, RegistryCrate};
-use dirs::{self, EXPERIMENT_DIR, TEST_SOURCE_DIR};
+use dirs::{self, EXPERIMENT_DIR};
 use errors::*;
 use file;
 use git;
@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use toml_frobber;
 use toolchain::{self, CargoState, Toolchain};
 use util;
+use tempdir::TempDir;
 
 string_enum!(pub enum ExMode {
     BuildAndTest => "build-and-test",
@@ -245,13 +246,6 @@ pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB
     Ok(())
 }
 
-fn crate_work_dir(ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> PathBuf {
-    TEST_SOURCE_DIR
-        .join(&ex.name)
-        .join(toolchain.to_string())
-        .join(krate.id())
-}
-
 pub fn with_work_crate<F, R>(
     ex: &Experiment,
     toolchain: &Toolchain,
@@ -267,17 +261,15 @@ where
     if allow_source_changes {
         f(&src_dir)
     } else {
-        let dest_dir = crate_work_dir(ex, toolchain, krate);
+        let dest_dir = TempDir::new("crater")?;
         info!(
             "creating temporary build dir for {} in {}",
             krate,
-            dest_dir.display()
+            dest_dir.path().to_string_lossy(),
         );
 
-        util::copy_dir(&src_dir, &dest_dir)?;
-        let r = f(&dest_dir);
-        util::remove_dir_all(&dest_dir)?;
-        r
+        util::copy_dir(&src_dir, dest_dir.path())?;
+        f(dest_dir.path())
     }
 }
 

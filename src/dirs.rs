@@ -20,10 +20,6 @@ lazy_static! {
     // CARGO_TARGET_DIR
     pub static ref TARGET_DIR: PathBuf = LOCAL_DIR.join("target-dirs");
 
-    // The directory crates are unpacked to for running tests, mounted
-    // in docker containers
-    pub static ref TEST_SOURCE_DIR: PathBuf = LOCAL_DIR.join("test-source");
-
     // Where GitHub crate mirrors are stored
     pub static ref GH_MIRRORS_DIR: PathBuf = LOCAL_DIR.join("gh-mirrors");
 

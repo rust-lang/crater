@@ -31,7 +31,7 @@ impl FileDB {
 
         ex_dir(&ex.name)
             .join("res")
-            .join(toolchain.rustup_name())
+            .join(toolchain.to_string())
             .join(crate_path)
     }
 

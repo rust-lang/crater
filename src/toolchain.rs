@@ -5,6 +5,7 @@ use errors::*;
 use ex::Experiment;
 use run::RunCommand;
 use std::env::consts::EXE_SUFFIX;
+use std::fmt;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -24,24 +25,54 @@ pub enum CargoState {
     Unlocked,
 }
 
-/// A toolchain name, either a rustup channel identifier,
-/// or a URL+branch+sha: `https://github.com/rust-lang/rust+master+sha`
+lazy_static! {
+    /// This is the main toolchain used by Crater for everything not experiment-specific, such as
+    /// generating lockfiles or fetching dependencies.
+    pub static ref MAIN_TOOLCHAIN: Toolchain = Toolchain {
+        source: ToolchainSource::Dist {
+            name: "stable".to_string()
+        },
+        enable_rustflags: false,
+    };
+}
+
+#[cfg(test)]
+lazy_static! {
+    /// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
+    pub static ref TEST_TOOLCHAIN: Toolchain = Toolchain {
+        source: ToolchainSource::Dist {
+            name: "beta".to_string()
+        },
+        enable_rustflags: false,
+    };
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-pub enum Toolchain {
-    Dist(String), // rustup toolchain spec
-    TryBuild { sha: String },
-    Master { sha: String },
+#[serde(rename_all = "kebab-case", tag = "type")]
+pub enum ToolchainSource {
+    Dist {
+        name: String,
+    },
+    #[serde(rename = "ci")]
+    CI {
+        sha: String,
+        try: bool,
+    },
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
+pub struct Toolchain {
+    pub source: ToolchainSource,
+    pub enable_rustflags: bool,
 }
 
 impl Toolchain {
     pub fn prepare(&self) -> Result<()> {
         init_rustup()?;
 
-        match *self {
-            Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
-            Toolchain::Master { ref sha } | Toolchain::TryBuild { ref sha } => {
-                init_toolchain_from_ci(true, sha)?
-            }
+        match self.source {
+            ToolchainSource::Dist { ref name } => init_toolchain_from_dist(name)?,
+            ToolchainSource::CI { ref sha, .. } => init_toolchain_from_ci(true, sha)?,
         }
 
         self.prep_offline_registry()?;
@@ -50,11 +81,9 @@ impl Toolchain {
     }
 
     pub fn rustup_name(&self) -> String {
-        match *self {
-            Toolchain::Dist(ref n) => n.to_string(),
-            Toolchain::TryBuild { ref sha } | Toolchain::Master { ref sha } => {
-                format!("{}-alt", sha)
-            }
+        match self.source {
+            ToolchainSource::Dist { ref name } => name.clone(),
+            ToolchainSource::CI { ref sha, .. } => format!("{}-alt", sha),
         }
     }
 
@@ -106,6 +135,11 @@ impl Toolchain {
             target_dir: (ex_target_dir, docker::Perm::ReadWrite),
             cap_lints: &ex.cap_lints,
             enable_unstable_cargo_features,
+            rustflags: if self.enable_rustflags {
+                &ex.rustflags
+            } else {
+                &None
+            },
         };
         docker::run(&docker::rust_container(rust_env), quiet)
     }
@@ -128,13 +162,22 @@ impl Toolchain {
     }
 }
 
-impl ToString for Toolchain {
-    fn to_string(&self) -> String {
-        match *self {
-            Toolchain::Dist(ref s) => s.clone(),
-            Toolchain::TryBuild { ref sha } => format!("try#{}", sha),
-            Toolchain::Master { ref sha } => format!("master#{}", sha),
+impl fmt::Display for Toolchain {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.source {
+            ToolchainSource::Dist { ref name } => write!(f, "{}", name)?,
+            ToolchainSource::CI { ref sha, try } => if try {
+                write!(f, "try#{}", sha)?;
+            } else {
+                write!(f, "master#{}", sha)?;
+            },
+        };
+
+        if self.enable_rustflags {
+            write!(f, "+rustflags")?;
         }
+
+        Ok(())
     }
 }
 
@@ -150,17 +193,41 @@ impl FromStr for Toolchain {
                 Err("no sha for try toolchain".into())
             }
         }
-        if s.starts_with("try#") {
-            Ok(Toolchain::TryBuild {
-                sha: get_sha(s)?.into(),
-            })
-        } else if s.starts_with("master#") {
-            Ok(Toolchain::Master {
-                sha: get_sha(s)?.into(),
-            })
-        } else {
-            Ok(Toolchain::Dist(s.to_string()))
+
+        let mut parts = s.trim().split('+');
+        let raw_source = parts.next().ok_or("empty toolchain")?;
+        if raw_source == "" {
+            bail!("empty toolchain");
         }
+
+        let source = if raw_source.starts_with("try#") {
+            ToolchainSource::CI {
+                sha: get_sha(raw_source)?.to_string(),
+                try: true,
+            }
+        } else if s.starts_with("master#") {
+            ToolchainSource::CI {
+                sha: get_sha(raw_source)?.to_string(),
+                try: false,
+            }
+        } else {
+            ToolchainSource::Dist {
+                name: raw_source.to_string(),
+            }
+        };
+
+        let mut enable_rustflags = false;
+        for flag in parts {
+            match flag {
+                "rustflags" => enable_rustflags = true,
+                unknown => bail!("unknown toolchain flag: {}", unknown),
+            }
+        }
+
+        Ok(Toolchain {
+            source,
+            enable_rustflags,
+        })
     }
 }
 
@@ -288,4 +355,67 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
                 )
             })
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Toolchain, ToolchainSource};
+    use std::str::FromStr;
+
+    #[test]
+    fn test_string_repr() {
+        macro_rules! test_from_str {
+            ($($str:expr => $source:expr,)*) => {
+                $(
+                    // Test parsing without flags
+                    test_from_str!($str => Toolchain {
+                        source: $source,
+                        enable_rustflags: false,
+                    });
+
+                    // Test parsing with flags
+                    test_from_str!(concat!($str, "+rustflags") => Toolchain {
+                        source: $source,
+                        enable_rustflags: true,
+                    });
+                )*
+            };
+            ($str:expr => $rust:expr) => {
+                // Test parsing from string to rust
+                assert_eq!(Toolchain::from_str($str).unwrap(), $rust);
+
+                // Test dumping from rust to string
+                assert_eq!(&$rust.to_string(), $str);
+
+                // Test dumping from rust to string to rust
+                assert_eq!(Toolchain::from_str($rust.to_string().as_ref()).unwrap(), $rust);
+            };
+        }
+
+        // Test valid reprs
+        test_from_str! {
+            "stable" => ToolchainSource::Dist {
+                name: "stable".into(),
+            },
+            "beta-1970-01-01" => ToolchainSource::Dist {
+                name: "beta-1970-01-01".into(),
+            },
+            "nightly-1970-01-01" => ToolchainSource::Dist {
+                name: "nightly-1970-01-01".into(),
+            },
+
+            "master#0000000000000000000000000000000000000000" => ToolchainSource::CI {
+                sha: "0000000000000000000000000000000000000000".into(),
+                try: false,
+            },
+            "try#0000000000000000000000000000000000000000" => ToolchainSource::CI {
+                sha: "0000000000000000000000000000000000000000".into(),
+                try: true,
+            },
+        };
+
+        // Test invalid reprs
+        assert!(Toolchain::from_str("").is_err());
+        assert!(Toolchain::from_str("stable+donotaddthisflagitsusedintests").is_err())
+    }
 }

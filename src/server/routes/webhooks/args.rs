@@ -95,6 +95,7 @@ generate_parser!(pub enum Command {
         crates: Option<ExCrateSelect> = "crates",
         cap_lints: Option<ExCapLints> = "cap-lints",
         priority: Option<i32> = "p",
+        rustflags: Option<String> = "rustflags",
     })
 
     "abort" => Abort(AbortArgs {
@@ -117,6 +118,7 @@ generate_parser!(pub enum Command {
         crates: Option<ExCrateSelect> = "crates",
         cap_lints: Option<ExCapLints> = "cap-lints",
         priority: Option<i32> = "p",
+        rustflags: Option<String> = "rustflags",
     })
 });
 

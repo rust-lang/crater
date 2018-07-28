@@ -106,26 +106,41 @@ impl ExperimentData {
     }
 
     pub fn set_start_toolchain(&mut self, db: &Database, start: Toolchain) -> Result<()> {
+        self.experiment.toolchains[0] = start;
+        self.experiment.validate()?;
+
         db.execute(
             "UPDATE experiments SET toolchain_start = ?1 WHERE name = ?2;",
             &[
-                &serde_json::to_string(&start)?,
+                &serde_json::to_string(&self.experiment.toolchains[0])?,
                 &self.experiment.name.as_str(),
             ],
         )?;
-        self.experiment.toolchains[0] = start;
         Ok(())
     }
 
     pub fn set_end_toolchain(&mut self, db: &Database, end: Toolchain) -> Result<()> {
+        self.experiment.toolchains[1] = end;
+        self.experiment.validate()?;
+
         db.execute(
             "UPDATE experiments SET toolchain_end = ?1 WHERE name = ?2;",
             &[
-                &serde_json::to_string(&end)?,
+                &serde_json::to_string(&self.experiment.toolchains[1])?,
                 &self.experiment.name.as_str(),
             ],
         )?;
-        self.experiment.toolchains[1] = end;
+        Ok(())
+    }
+
+    pub fn set_rustflags(&mut self, db: &Database, rustflags: &Option<String>) -> Result<()> {
+        self.experiment.rustflags = rustflags.clone();
+        self.experiment.validate()?;
+
+        db.execute(
+            "UPDATE experiments SET rustflags = ?1 WHERE name = ?2;",
+            &[rustflags, &self.experiment.name.as_str()],
+        )?;
         Ok(())
     }
 }
@@ -143,6 +158,7 @@ struct ExperimentDBRecord {
     github_issue_number: Option<i32>,
     status: String,
     assigned_to: Option<String>,
+    rustflags: Option<String>,
 }
 
 impl ExperimentDBRecord {
@@ -160,6 +176,7 @@ impl ExperimentDBRecord {
             github_issue_url: row.get("github_issue_url"),
             github_issue_number: row.get("github_issue_number"),
             assigned_to: row.get("assigned_to"),
+            rustflags: row.get("rustflags"),
         }
     }
 
@@ -186,6 +203,7 @@ impl ExperimentDBRecord {
                 ],
                 cap_lints: self.cap_lints.parse()?,
                 mode: self.mode.parse()?,
+                rustflags: self.rustflags,
             },
             server_data: ServerData {
                 priority: self.priority,
@@ -234,6 +252,7 @@ impl Experiments {
         mode: ExMode,
         crates: ExCrateSelect,
         cap_lints: ExCapLints,
+        rustflags: Option<&str>,
         config: &Config,
         github_issue: Option<&str>,
         github_issue_url: Option<&str>,
@@ -243,11 +262,21 @@ impl Experiments {
         self.db.transaction(|transaction| {
             let crates = ex::get_crates(crates, config)?;
 
+            // First of all, validate if the experiment is valid
+            Experiment {
+                name: name.to_string(),
+                crates: crates.clone(),
+                toolchains: vec![toolchain_start.clone(), toolchain_end.clone()],
+                mode,
+                cap_lints,
+                rustflags: rustflags.map(|s| s.to_string()),
+            }.validate()?;
+
             transaction.execute(
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
-                 status, github_issue, github_issue_url, github_issue_number) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
+                 status, github_issue, github_issue_url, github_issue_number, rustflags) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);",
                 &[
                     &name,
                     &mode.to_str(),
@@ -260,6 +289,7 @@ impl Experiments {
                     &github_issue,
                     &github_issue_url,
                     &github_issue_number,
+                    &rustflags,
                 ],
             )?;
 
@@ -358,7 +388,7 @@ mod tests {
     use server::agents::Agents;
     use server::db::Database;
     use server::tokens::Tokens;
-    use toolchain::Toolchain;
+    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_experiment_creation() {
@@ -372,11 +402,12 @@ mod tests {
         experiments
             .create(
                 "test".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
+                None,
                 &config,
                 Some(api_url),
                 Some(html_url),
@@ -390,10 +421,7 @@ mod tests {
         assert_eq!(ex.experiment.name.as_str(), "test");
         assert_eq!(
             ex.experiment.toolchains,
-            vec![
-                Toolchain::Dist("stable".into()),
-                Toolchain::Dist("beta".into()),
-            ]
+            vec![MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()]
         );
         assert_eq!(ex.experiment.mode, ExMode::BuildAndTest);
         assert_eq!(ex.experiment.crates, ::ex::demo_list(&config).unwrap());
@@ -439,11 +467,12 @@ mod tests {
         experiments
             .create(
                 "test".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
+                None,
                 &config,
                 None,
                 None,
@@ -454,11 +483,12 @@ mod tests {
         experiments
             .create(
                 "important".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
+                None,
                 &config,
                 None,
                 None,

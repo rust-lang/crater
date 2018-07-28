@@ -59,6 +59,7 @@ pub struct Experiment {
     pub toolchains: Vec<Toolchain>,
     pub mode: ExMode,
     pub cap_lints: ExCapLints,
+    pub rustflags: Option<String>,
 }
 
 pub struct ExOpts {
@@ -67,6 +68,7 @@ pub struct ExOpts {
     pub mode: ExMode,
     pub crates: ExCrateSelect,
     pub cap_lints: ExCapLints,
+    pub rustflags: Option<String>,
 }
 
 pub fn get_crates(crates: ExCrateSelect, config: &Config) -> Result<Vec<Crate>> {
@@ -86,6 +88,7 @@ pub fn define(opts: ExOpts, config: &Config) -> Result<()> {
         get_crates(opts.crates, config)?,
         opts.mode,
         opts.cap_lints,
+        opts.rustflags,
     )
 }
 
@@ -145,6 +148,7 @@ pub fn define_(
     crates: Vec<Crate>,
     mode: ExMode,
     cap_lints: ExCapLints,
+    rustflags: Option<String>,
 ) -> Result<()> {
     info!(
         "defining experiment {} for {} crates",
@@ -157,7 +161,11 @@ pub fn define_(
         toolchains,
         mode,
         cap_lints,
+        rustflags,
     };
+
+    ex.validate()?;
+
     fs::create_dir_all(&ex_dir(&ex.name))?;
     let json = serde_json::to_string(&ex)?;
     info!("writing ex config to {}", config_file(ex_name).display());
@@ -166,6 +174,27 @@ pub fn define_(
 }
 
 impl Experiment {
+    pub fn validate(&self) -> Result<()> {
+        if self.toolchains[0] == self.toolchains[1] {
+            bail!("reusing the same toolchain isn't supported");
+        }
+
+        if self.rustflags.is_some()
+            && !self.toolchains[0].enable_rustflags
+            && !self.toolchains[1].enable_rustflags
+        {
+            bail!("rustflags are present but no toolchain is using them");
+        }
+
+        if self.rustflags.is_none()
+            && (self.toolchains[0].enable_rustflags || self.toolchains[1].enable_rustflags)
+        {
+            bail!("a toolchain is enabling rustflags but none are set");
+        }
+
+        Ok(())
+    }
+
     pub fn fetch_repo_crates(&self) -> Result<()> {
         for repo in self.crates.iter().filter_map(|krate| krate.github()) {
             if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
@@ -432,4 +461,64 @@ pub fn delete(ex_name: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ExCapLints, ExMode, Experiment};
+
+    #[test]
+    fn test_validate_experiment() {
+        // Correct experiment
+        assert!(
+            Experiment {
+                name: "foo".to_string(),
+                crates: vec![],
+                toolchains: vec!["stable".parse().unwrap(), "beta".parse().unwrap()],
+                mode: ExMode::BuildAndTest,
+                cap_lints: ExCapLints::Forbid,
+                rustflags: None,
+            }.validate()
+                .is_ok()
+        );
+
+        // Experiment with the same toolchain
+        assert!(
+            Experiment {
+                name: "foo".to_string(),
+                crates: vec![],
+                toolchains: vec!["stable".parse().unwrap(), "stable".parse().unwrap()],
+                mode: ExMode::BuildAndTest,
+                cap_lints: ExCapLints::Forbid,
+                rustflags: None,
+            }.validate()
+                .is_err()
+        );
+
+        // Experiment with rustflags but no toolchain using them
+        assert!(
+            Experiment {
+                name: "foo".to_string(),
+                crates: vec![],
+                toolchains: vec!["stable".parse().unwrap(), "beta".parse().unwrap()],
+                mode: ExMode::BuildAndTest,
+                cap_lints: ExCapLints::Forbid,
+                rustflags: Some("-Zfoo".into()),
+            }.validate()
+                .is_err()
+        );
+
+        // Experiment with no rustflags but a toolchain using them
+        assert!(
+            Experiment {
+                name: "foo".to_string(),
+                crates: vec![],
+                toolchains: vec!["stable".parse().unwrap(), "beta+rustflags".parse().unwrap()],
+                mode: ExMode::BuildAndTest,
+                cap_lints: ExCapLints::Forbid,
+                rustflags: None,
+            }.validate()
+                .is_err()
+        );
+    }
 }

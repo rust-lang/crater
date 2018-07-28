@@ -139,7 +139,7 @@ mod tests {
     use results::{ReadResults, TestResult};
     use server::db::Database;
     use server::experiments::Experiments;
-    use toolchain::Toolchain;
+    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_results_db() {
@@ -151,11 +151,12 @@ mod tests {
         experiments
             .create(
                 "test",
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
+                None,
                 &Config::default(),
                 None,
                 None,
@@ -169,7 +170,6 @@ mod tests {
             name: "lazy_static".into(),
             version: "1".into(),
         });
-        let toolchain = Toolchain::Dist("stable".into());
 
         // Store a result and some SHAs
         results
@@ -178,7 +178,7 @@ mod tests {
                 &ProgressData {
                     results: vec![TaskResult {
                         krate: krate.clone(),
-                        toolchain: toolchain.clone(),
+                        toolchain: MAIN_TOOLCHAIN.clone(),
                         result: TestResult::TestPass,
                         log: base64::encode("foo"),
                     }],
@@ -203,11 +203,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            results.load_log(&ex, &toolchain, &krate).unwrap(),
+            results.load_log(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
             Some("foo".as_bytes().to_vec())
         );
         assert_eq!(
-            results.load_test_result(&ex, &toolchain, &krate).unwrap(),
+            results
+                .load_test_result(&ex, &MAIN_TOOLCHAIN, &krate)
+                .unwrap(),
             Some(TestResult::TestPass)
         );
     }

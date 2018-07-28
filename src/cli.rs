@@ -22,7 +22,7 @@ use crater::report;
 use crater::results::FileDB;
 use crater::run_graph;
 use crater::server;
-use crater::toolchain::Toolchain;
+use crater::toolchain::{Toolchain, MAIN_TOOLCHAIN};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -118,6 +118,8 @@ pub enum Crater {
             possible_values_raw = "ExCapLints::possible_values()"
         )]
         cap_lints: ExCapLints,
+        #[structopt(name = "rustflags", long = "rustflags")]
+        rustflags: Option<String>,
     },
 
     #[structopt(
@@ -246,8 +248,7 @@ impl Crater {
             Crater::CreateLists => lists::create_all_lists(true)?,
             Crater::PrepareLocal { ref env } => {
                 let docker_env = &env.0;
-                let stable_tc = Toolchain::Dist("stable".into());
-                stable_tc.prepare()?;
+                MAIN_TOOLCHAIN.prepare()?;
                 docker::build_container(docker_env)?;
                 lists::create_all_lists(false)?;
             }
@@ -258,6 +259,7 @@ impl Crater {
                 ref mode,
                 ref crates,
                 ref cap_lints,
+                ref rustflags,
             } => {
                 let config = Config::load()?;
 
@@ -268,6 +270,7 @@ impl Crater {
                         mode: *mode,
                         crates: *crates,
                         cap_lints: *cap_lints,
+                        rustflags: rustflags.clone(),
                     },
                     &config,
                 )?;

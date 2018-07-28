@@ -1,31 +1,35 @@
+use crates::Crate;
 use errors::*;
 use file;
 use std::path::Path;
 use toml::value::Table;
 use toml::{self, Value};
 
-pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
-    info!("frobbing {}-{}", name, vers);
-    let toml_str = file::read_string(&dir.join("Cargo.toml")).chain_err(|| "no cargo.toml?")?;
+pub fn frob_toml(dir: &Path, krate: &Crate) -> Result<()> {
+    info!("frobbing {}", krate);
+
+    let cargo_toml = dir.join("Cargo.toml");
+
+    let toml_str = file::read_string(&cargo_toml).chain_err(|| "no Cargo.toml?")?;
     let mut toml: Table = toml::from_str(&toml_str)
-        .chain_err(|| Error::from(format!("unable to parse Cargo.toml at {}", dir.display())))?;
+        .chain_err(|| Error::from(format!("unable to parse {}", cargo_toml.to_string_lossy())))?;
 
-    if frob_table(&mut toml, name, vers) {
+    if frob_table(&mut toml, krate) {
         let toml = Value::Table(toml);
-        file::write_string(out, &format!("{}", toml))?;
+        file::write_string(&cargo_toml, &toml.to_string())?;
 
-        info!("frobbed toml written to {}", out.display());
+        info!("frobbed toml written to {}", cargo_toml.to_string_lossy());
     }
 
     Ok(())
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(useless_let_if_seq))]
-pub fn frob_table(table: &mut Table, name: &str, vers: &str) -> bool {
+pub fn frob_table(table: &mut Table, krate: &Crate) -> bool {
     let mut changed = false;
 
     // Frob top-level dependencies
-    if frob_dependencies(table, name, vers) {
+    if frob_dependencies(table, krate) {
         changed = true;
     }
 
@@ -33,7 +37,7 @@ pub fn frob_table(table: &mut Table, name: &str, vers: &str) -> bool {
     if let Some(&mut Value::Table(ref mut targets)) = table.get_mut("target") {
         for (_, target) in targets.iter_mut() {
             if let Value::Table(ref mut target_table) = *target {
-                if frob_dependencies(target_table, name, vers) {
+                if frob_dependencies(target_table, krate) {
                     changed = true;
                 }
             }
@@ -42,14 +46,14 @@ pub fn frob_table(table: &mut Table, name: &str, vers: &str) -> bool {
 
     // Eliminate workspaces
     if table.remove("workspace").is_some() {
-        info!("removing workspace from {}-{}", name, vers);
+        info!("removing workspace from {}", krate);
         changed = true;
     }
 
     // Eliminate parent workspaces
     if let Some(&mut Value::Table(ref mut package)) = table.get_mut("package") {
         if package.remove("workspace").is_some() {
-            info!("removing parent workspace from {}-{}", name, vers);
+            info!("removing parent workspace from {}", krate);
             changed = true;
         }
     }
@@ -57,7 +61,7 @@ pub fn frob_table(table: &mut Table, name: &str, vers: &str) -> bool {
     changed
 }
 
-fn frob_dependencies(table: &mut Table, name: &str, vers: &str) -> bool {
+fn frob_dependencies(table: &mut Table, krate: &Crate) -> bool {
     let mut changed = false;
 
     // Convert path dependencies to registry dependencies
@@ -68,7 +72,7 @@ fn frob_dependencies(table: &mut Table, name: &str, vers: &str) -> bool {
             for (dep_name, v) in deps.iter_mut() {
                 if let Value::Table(ref mut dep_props) = *v {
                     if dep_props.remove("path").is_some() {
-                        info!("removing path from {} in {}-{}", dep_name, name, vers);
+                        info!("removing path from {} in {}", dep_name, krate);
                         changed = true;
                     }
                 }
@@ -82,6 +86,7 @@ fn frob_dependencies(table: &mut Table, name: &str, vers: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::frob_table;
+    use crates::{Crate, RegistryCrate};
 
     #[test]
     fn test_frob_table_noop() {
@@ -102,7 +107,11 @@ mod tests {
 
         let result = toml.clone();
 
-        assert!(!frob_table(toml.as_table_mut().unwrap(), "foo", "1.0"));
+        let krate = Crate::Registry(RegistryCrate {
+            name: "foo".to_string(),
+            version: "1.0".to_string(),
+        });
+        assert!(!frob_table(toml.as_table_mut().unwrap(), &krate));
         assert_eq!(toml, result);
     }
 
@@ -142,7 +151,11 @@ mod tests {
             quux = { version = "1.0" }
         };
 
-        assert!(frob_table(toml.as_table_mut().unwrap(), "foo", "1.0"));
+        let krate = Crate::Registry(RegistryCrate {
+            name: "foo".to_string(),
+            version: "1.0".to_string(),
+        });
+        assert!(frob_table(toml.as_table_mut().unwrap(), &krate));
         assert_eq!(toml, result);
     }
 }

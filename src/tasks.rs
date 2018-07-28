@@ -129,7 +129,9 @@ impl Task {
         }
 
         crates::prepare_crate(ex, &self.krate)?;
-        ex::frob_toml(ex, &self.krate)?;
+        for tc in &ex.toolchains {
+            ex::frob_toml(ex, tc, &self.krate)?;
+        }
         ex::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
         ex::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
 

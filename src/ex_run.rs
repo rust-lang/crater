@@ -51,7 +51,6 @@ pub fn run_test<DB: WriteResults>(
         })
     } else {
         with_work_crate(ex, tc, krate, |source_path| {
-            with_frobbed_toml(ex, krate, source_path)?;
             with_captured_lockfile(config, ex, krate, source_path)?;
 
             db.record_result(ex, tc, krate, || {

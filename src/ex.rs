@@ -44,14 +44,6 @@ pub fn config_file(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("config.json")
 }
 
-fn froml_dir(ex_name: &str) -> PathBuf {
-    EXPERIMENT_DIR.join(ex_name).join("fromls")
-}
-
-fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
-    froml_dir(ex_name).join(format!("{}-{}.Cargo.toml", name, vers))
-}
-
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Experiment {
     pub name: String,
@@ -213,16 +205,9 @@ impl Experiment {
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
-pub fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
-    if let Crate::Registry(ref details) = *krate {
-        fs::create_dir_all(&froml_dir(&ex.name))?;
-        let out = froml_path(&ex.name, &details.name, &details.version);
-        toml_frobber::frob_toml(
-            &dirs::crate_source(krate),
-            &details.name,
-            &details.version,
-            &out,
-        )?;
+pub fn frob_toml(ex: &Experiment, tc: &Toolchain, krate: &Crate) -> Result<()> {
+    if let Crate::Registry(_) = *krate {
+        toml_frobber::frob_toml(&dirs::ex_crate_source(ex, tc, krate), krate)?;
     }
 
     Ok(())
@@ -255,27 +240,6 @@ pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB
             db.record_sha(ex, repo, &sha)
                 .chain_err(|| format!("failed to record the sha of GitHub repo {}", repo.slug()))?;
         }
-    }
-
-    Ok(())
-}
-
-pub fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> Result<()> {
-    let (crate_name, crate_vers) = match *krate {
-        Crate::Registry(ref details) => (details.name.clone(), details.version.clone()),
-        _ => return Ok(()),
-    };
-    let src_froml = &froml_path(&ex.name, &crate_name, &crate_vers);
-    let dst_froml = &path.join("Cargo.toml");
-    if src_froml.exists() {
-        info!("using frobbed toml {}", src_froml.display());
-        fs::copy(src_froml, dst_froml).chain_err(|| {
-            format!(
-                "unable to copy frobbed toml from {} to {}",
-                src_froml.display(),
-                dst_froml.display()
-            )
-        })?;
     }
 
     Ok(())
@@ -338,7 +302,6 @@ pub fn capture_lockfile(
     }
 
     with_work_crate(ex, toolchain, krate, |path| {
-        with_frobbed_toml(ex, krate, path)?;
         capture_lockfile_inner(ex, krate, path, toolchain)
     }).chain_err(|| format!("failed to generate lockfile for {}", krate))?;
 
@@ -415,7 +378,6 @@ pub fn fetch_crate_deps(
     toolchain: &Toolchain,
 ) -> Result<()> {
     with_work_crate(ex, toolchain, krate, |path| {
-        with_frobbed_toml(ex, krate, path)?;
         with_captured_lockfile(config, ex, krate, path)?;
 
         let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];

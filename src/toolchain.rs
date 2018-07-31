@@ -33,6 +33,7 @@ lazy_static! {
             name: "stable".to_string()
         },
         enable_rustflags: false,
+        enable_tmprustfix: false,
     };
 }
 
@@ -44,6 +45,7 @@ lazy_static! {
             name: "beta".to_string()
         },
         enable_rustflags: false,
+        enable_tmprustfix: false,
     };
 }
 
@@ -64,6 +66,7 @@ pub enum ToolchainSource {
 pub struct Toolchain {
     pub source: ToolchainSource,
     pub enable_rustflags: bool,
+    pub enable_tmprustfix: bool,
 }
 
 impl Toolchain {
@@ -126,6 +129,8 @@ impl Toolchain {
         let enable_unstable_cargo_features = !toolchain_name.starts_with("nightly-")
             && (unstable_cargo || args.iter().any(|a| a.starts_with("-Z")));
 
+        let editionflags = Some("-Zcrate-attr=feature(rust_2018_preview)".to_string());
+
         let rust_env = docker::RustEnv {
             args: &full_args,
             work_dir: (source_dir.into(), perm),
@@ -137,6 +142,8 @@ impl Toolchain {
             enable_unstable_cargo_features,
             rustflags: if self.enable_rustflags {
                 &ex.rustflags
+            } else if self.enable_tmprustfix {
+                &editionflags
             } else {
                 &None
             },
@@ -175,6 +182,10 @@ impl fmt::Display for Toolchain {
 
         if self.enable_rustflags {
             write!(f, "+rustflags")?;
+        }
+
+        if self.enable_tmprustfix {
+            write!(f, "+tmprustfix")?;
         }
 
         Ok(())
@@ -217,9 +228,11 @@ impl FromStr for Toolchain {
         };
 
         let mut enable_rustflags = false;
+        let mut enable_tmprustfix = false;
         for flag in parts {
             match flag {
                 "rustflags" => enable_rustflags = true,
+                "tmprustfix" => enable_tmprustfix = true,
                 unknown => bail!("unknown toolchain flag: {}", unknown),
             }
         }
@@ -227,6 +240,7 @@ impl FromStr for Toolchain {
         Ok(Toolchain {
             source,
             enable_rustflags,
+            enable_tmprustfix,
         })
     }
 }

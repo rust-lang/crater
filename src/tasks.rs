@@ -14,6 +14,7 @@ pub enum TaskStep {
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
     CheckOnly { tc: Toolchain, quiet: bool },
+    TmpRustfix { tc: Toolchain, quiet: bool },
     UnstableFeatures { tc: Toolchain },
 }
 
@@ -35,6 +36,12 @@ impl fmt::Debug for TaskStep {
             }
             TaskStep::CheckOnly { ref tc, quiet } => {
                 write!(f, "check {}", tc.to_string())?;
+                if quiet {
+                    write!(f, " (quiet)")?;
+                }
+            }
+            TaskStep::TmpRustfix { ref tc, quiet } => {
+                write!(f, "tmprustfix {}", tc.to_string())?;
                 if quiet {
                     write!(f, " (quiet)")?;
                 }
@@ -71,6 +78,7 @@ impl Task {
             TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
+            | TaskStep::TmpRustfix { ref tc, .. }
             | TaskStep::UnstableFeatures { ref tc } => {
                 db.get_result(ex, tc, &self.krate).unwrap_or(None).is_none()
             }
@@ -89,6 +97,7 @@ impl Task {
             TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
+            | TaskStep::TmpRustfix { ref tc, .. }
             | TaskStep::UnstableFeatures { ref tc } => {
                 db.record_result(ex, tc, &self.krate, || {
                     error!("this task or one of its parent failed!");
@@ -107,6 +116,7 @@ impl Task {
             TaskStep::BuildAndTest { ref tc, quiet } => self.run_build_and_test(ex, tc, db, quiet),
             TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(ex, tc, db, quiet),
             TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(ex, tc, db, quiet),
+            TaskStep::TmpRustfix { ref tc, quiet } => self.run_tmp_rustfix(ex, tc, db, quiet),
             TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(ex, db, tc),
         }
     }
@@ -187,6 +197,24 @@ impl Task {
             db,
             quiet,
             ex_run::test_check_only,
+        ).map(|_| ())
+    }
+
+    fn run_tmp_rustfix<DB: WriteResults>(
+        &self,
+        ex: &Experiment,
+        tc: &Toolchain,
+        db: &DB,
+        quiet: bool,
+    ) -> Result<()> {
+        ex_run::run_test(
+            "tmprustfix",
+            ex,
+            tc,
+            &self.krate,
+            db,
+            quiet,
+            ex_run::test_tmprustfix,
         ).map(|_| ())
     }
 

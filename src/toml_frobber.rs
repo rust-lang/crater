@@ -5,6 +5,40 @@ use std::path::Path;
 use toml::value::Table;
 use toml::{self, Value};
 
+pub fn frob_edition(dir: &Path, krate: &Crate, edition: &str) -> Result<()> {
+    info!("frobbing {}", krate);
+
+    let cargo_toml = dir.join("Cargo.toml");
+
+    let toml_str = file::read_string(&cargo_toml).chain_err(|| "no Cargo.toml?")?;
+    let mut toml: Table = toml::from_str(&toml_str)
+        .chain_err(|| Error::from(format!("unable to parse {}", cargo_toml.to_string_lossy())))?;
+
+    {
+        let val = toml
+            .entry("cargo-features".to_string())
+            .or_insert_with(|| Value::Array(Vec::new()));
+
+        if let Value::Array(ref mut array) = val {
+            let feature = Value::String("edition".to_string());
+            if !array.contains(&feature) {
+                array.push(feature);
+            }
+        }
+    }
+
+    if let Some(&mut Value::Table(ref mut package)) = toml.get_mut("package") {
+        package.insert("edition".to_string(), Value::String(edition.to_string()));
+    }
+
+    let toml = Value::Table(toml);
+    file::write_string(&cargo_toml, &toml.to_string())?;
+
+    info!("frobbed toml written to {}", cargo_toml.to_string_lossy());
+
+    Ok(())
+}
+
 pub fn frob_toml(dir: &Path, krate: &Crate) -> Result<()> {
     info!("frobbing {}", krate);
 

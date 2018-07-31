@@ -11,15 +11,16 @@ use serde_json;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use tempdir::TempDir;
 use toml_frobber;
 use toolchain::{self, CargoState, Toolchain};
 use util;
-use tempdir::TempDir;
 
 string_enum!(pub enum ExMode {
     BuildAndTest => "build-and-test",
     BuildOnly => "build-only",
     CheckOnly => "check-only",
+    TmpRustfix => "tmprustfix",
     UnstableFeatures => "unstable-features",
 });
 
@@ -207,10 +208,7 @@ impl Experiment {
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
 pub fn frob_toml(ex: &Experiment, tc: &Toolchain, krate: &Crate) -> Result<()> {
-    if let Crate::Registry(_) = *krate {
-        toml_frobber::frob_toml(&dirs::ex_crate_source(ex, tc, krate), krate)?;
-    }
-
+    toml_frobber::frob_toml(&dirs::ex_crate_source(ex, tc, krate), krate)?;
     Ok(())
 }
 

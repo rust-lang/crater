@@ -252,6 +252,10 @@ fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
                             tc: tc.clone(),
                             quiet,
                         },
+                        ExMode::TmpRustfix => TaskStep::TmpRustfix {
+                            tc: tc.clone(),
+                            quiet,
+                        },
                         ExMode::UnstableFeatures => TaskStep::UnstableFeatures { tc: tc.clone() },
                     },
                 },

@@ -39,7 +39,7 @@ pub fn run_test<DB: WriteResults>(
     krate: &Crate,
     db: &DB,
     quiet: bool,
-    test_fn: fn(&Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,
+    test_fn: fn(&Experiment, &Path, &Toolchain, &Crate, bool) -> Result<TestResult>,
 ) -> Result<RunTestResult> {
     if let Some(res) = db.get_result(ex, tc, krate)? {
         info!("skipping crate {}. existing result: {}", krate, res);
@@ -57,7 +57,7 @@ pub fn run_test<DB: WriteResults>(
                     tc.to_string(),
                     ex.name
                 );
-                test_fn(ex, source_path, tc, quiet)
+                test_fn(ex, source_path, tc, krate, quiet)
             })
         }).map(|result| RunTestResult {
             result,
@@ -101,6 +101,7 @@ pub fn test_build_and_test(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
+    _krate: &Crate,
     quiet: bool,
 ) -> Result<TestResult> {
     let build_r = build(ex, source_path, toolchain, quiet);
@@ -122,6 +123,7 @@ pub fn test_build_only(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
+    _krate: &Crate,
     quiet: bool,
 ) -> Result<TestResult> {
     let r = build(ex, source_path, toolchain, quiet);
@@ -136,6 +138,7 @@ pub fn test_check_only(
     ex: &Experiment,
     source_path: &Path,
     toolchain: &Toolchain,
+    _krate: &Crate,
     quiet: bool,
 ) -> Result<TestResult> {
     let r = toolchain.run_cargo(
@@ -154,10 +157,65 @@ pub fn test_check_only(
     }
 }
 
+pub fn test_tmprustfix(
+    ex: &Experiment,
+    source_path: &Path,
+    toolchain: &Toolchain,
+    krate: &Crate,
+    quiet: bool,
+) -> Result<TestResult> {
+    if toolchain.enable_tmprustfix {
+        if let Err(err) = with_work_crate(ex, toolchain, krate, true, |source_path| {
+            ::toml_frobber::frob_edition(source_path, krate, "2015")?;
+
+            let mut last_error = None;
+            for _ in 0..5 {
+                if let Err(err) = toolchain.run_cargo(
+                    ex,
+                    source_path,
+                    &[
+                        "fix",
+                        "--prepare-for",
+                        "2018",
+                        "--all-targets",
+                        "--all-features",
+                        "--allow-no-vcs",
+                    ],
+                    CargoState::Unlocked,
+                    quiet,
+                    false,
+                ) {
+                    last_error = Some(err);
+                } else {
+                    break;
+                }
+            }
+
+            if let Some(err) = last_error {
+                return Err(err);
+            }
+
+            ::toml_frobber::frob_edition(source_path, krate, "2018")?;
+
+            Ok(())
+        }) {
+            ::util::report_error(&err);
+            return Ok(TestResult::BuildFail);
+        }
+
+        with_work_crate(ex, toolchain, krate, false, |source_path| {
+            test_build_and_test(ex, source_path, toolchain, krate, quiet)
+        })
+    } else {
+        test_build_and_test(ex, source_path, toolchain, krate, quiet)
+    }
+}
+
 pub fn test_find_unstable_features(
     _ex: &Experiment,
     source_path: &Path,
     _toolchain: &Toolchain,
+    _krate: &Crate,
     _quiet: bool,
 ) -> Result<TestResult> {
     use walkdir::*;

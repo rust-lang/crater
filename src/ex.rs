@@ -207,10 +207,7 @@ impl Experiment {
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
 pub fn frob_toml(ex: &Experiment, tc: &Toolchain, krate: &Crate) -> Result<()> {
-    if let Crate::Registry(_) = *krate {
-        toml_frobber::frob_toml(&dirs::ex_crate_source(ex, tc, krate), krate)?;
-    }
-
+    toml_frobber::frob_toml(&dirs::ex_crate_source(ex, tc, krate), tc, krate)?;
     Ok(())
 }
 
@@ -280,10 +277,6 @@ pub fn capture_lockfile(
     krate: &Crate,
 ) -> Result<()> {
     let lockfile = dirs::ex_crate_source(ex, toolchain, krate).join("Cargo.lock");
-    if !config.should_update_lockfile(krate) && lockfile.exists() {
-        info!("crate {} has a lockfile. skipping", krate);
-        return Ok(());
-    }
 
     with_work_crate(ex, toolchain, krate, true, |path| {
         let args = &[

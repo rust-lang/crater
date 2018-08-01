@@ -33,6 +33,7 @@ lazy_static! {
             name: "stable".to_string()
         },
         enable_rustflags: false,
+        enable_tmplazy: false,
     };
 }
 
@@ -44,6 +45,7 @@ lazy_static! {
             name: "beta".to_string()
         },
         enable_rustflags: false,
+        enable_tmplazy: false,
     };
 }
 
@@ -64,6 +66,7 @@ pub enum ToolchainSource {
 pub struct Toolchain {
     pub source: ToolchainSource,
     pub enable_rustflags: bool,
+    pub enable_tmplazy: bool,
 }
 
 impl Toolchain {
@@ -177,6 +180,10 @@ impl fmt::Display for Toolchain {
             write!(f, "+rustflags")?;
         }
 
+        if self.enable_tmplazy {
+            write!(f, "+tmplazy")?;
+        }
+
         Ok(())
     }
 }
@@ -217,9 +224,11 @@ impl FromStr for Toolchain {
         };
 
         let mut enable_rustflags = false;
+        let mut enable_tmplazy = false;
         for flag in parts {
             match flag {
                 "rustflags" => enable_rustflags = true,
+                "tmplazy" => enable_tmplazy = true,
                 unknown => bail!("unknown toolchain flag: {}", unknown),
             }
         }
@@ -227,6 +236,7 @@ impl FromStr for Toolchain {
         Ok(Toolchain {
             source,
             enable_rustflags,
+            enable_tmplazy,
         })
     }
 }

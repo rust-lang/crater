@@ -1,11 +1,13 @@
 use crates::Crate;
 use errors::*;
 use file;
+use std::collections::BTreeMap;
 use std::path::Path;
 use toml::value::Table;
 use toml::{self, Value};
+use toolchain::Toolchain;
 
-pub fn frob_toml(dir: &Path, krate: &Crate) -> Result<()> {
+pub fn frob_toml(dir: &Path, tc: &Toolchain, krate: &Crate) -> Result<()> {
     info!("frobbing {}", krate);
 
     let cargo_toml = dir.join("Cargo.toml");
@@ -14,7 +16,7 @@ pub fn frob_toml(dir: &Path, krate: &Crate) -> Result<()> {
     let mut toml: Table = toml::from_str(&toml_str)
         .chain_err(|| Error::from(format!("unable to parse {}", cargo_toml.to_string_lossy())))?;
 
-    if frob_table(&mut toml, krate) {
+    if frob_table(&mut toml, tc, krate) {
         let toml = Value::Table(toml);
         file::write_string(&cargo_toml, &toml.to_string())?;
 
@@ -25,7 +27,7 @@ pub fn frob_toml(dir: &Path, krate: &Crate) -> Result<()> {
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(useless_let_if_seq))]
-pub fn frob_table(table: &mut Table, krate: &Crate) -> bool {
+pub fn frob_table(table: &mut Table, tc: &Toolchain, krate: &Crate) -> bool {
     let mut changed = false;
 
     // Frob top-level dependencies
@@ -55,6 +57,22 @@ pub fn frob_table(table: &mut Table, krate: &Crate) -> bool {
         if package.remove("workspace").is_some() {
             info!("removing parent workspace from {}", krate);
             changed = true;
+        }
+    }
+
+    if tc.enable_tmplazy {
+        let patch_table = table.entry("patch".to_string())
+            .or_insert_with(|| Value::Table(BTreeMap::new()));
+        if let Value::Table(ref mut patch) = patch_table {
+            let crates_io_table = patch.entry("crates-io".to_string())
+                .or_insert_with(|| Value::Table(BTreeMap::new()));
+            if let Value::Table(ref mut crates_io) = crates_io_table {
+                let mut lazy_static = BTreeMap::new();
+                lazy_static.insert("git".to_string(), Value::String("https://github.com/anp/lazy-static.rs".to_string()));
+                lazy_static.insert("rev".to_string(), Value::String("0463a90b433d12db6a0e8f2087b2bd9d1afe9c48".to_string()));
+                crates_io.insert("lazy_static".to_string(), Value::Table(lazy_static));
+                changed = true;
+            }
         }
     }
 

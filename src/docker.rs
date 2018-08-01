@@ -88,7 +88,7 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
             perm: config.target_dir.1,
         },
         MountConfig {
-            host_path: config.cargo_home.0,
+            host_path: config.cargo_home.0.clone(),
             container_path: "/cargo-home",
             perm: config.cargo_home.1,
         },
@@ -96,6 +96,11 @@ pub fn rust_container(config: RustEnv) -> ContainerConfig {
             host_path: config.rustup_home.0,
             container_path: "/rustup-home",
             perm: config.rustup_home.1,
+        },
+        MountConfig {
+            host_path: config.cargo_home.0.join("git"),
+            container_path: "/cargo-home/git",
+            perm: Perm::ReadWrite,
         },
     ];
 

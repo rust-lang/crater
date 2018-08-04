@@ -1,8 +1,7 @@
 use config::Config;
-use crates::{self, Crate, RegistryCrate};
+use crates::{Crate, RegistryCrate};
 use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
-use ex_run;
 use file;
 use git;
 use lists::{self, List};
@@ -175,36 +174,6 @@ impl Experiment {
         }
         Ok(())
     }
-
-    pub fn prepare_shared<DB: WriteResults>(&self, config: &Config, db: &DB) -> Result<()> {
-        self.fetch_repo_crates()?;
-        capture_shas(self, &self.crates, db)?;
-        crates::prepare(&self.crates)?;
-
-        frob_tomls(self, &self.crates)?;
-        capture_lockfiles(
-            config,
-            self,
-            &self.crates,
-            &Toolchain::Dist("stable".into()),
-        )?;
-        Ok(())
-    }
-
-    pub fn prepare_local(&self, config: &Config) -> Result<()> {
-        // Local experiment prep
-        delete_all_target_dirs(&self.name)?;
-        ex_run::delete_all_results(&self.name)?;
-        fetch_deps(
-            config,
-            self,
-            &self.crates,
-            &Toolchain::Dist("stable".into()),
-        )?;
-        prepare_all_toolchains(self)?;
-
-        Ok(())
-    }
 }
 
 impl Experiment {
@@ -212,17 +181,6 @@ impl Experiment {
         let config = file::read_string(&config_file(ex_name))?;
         Ok(serde_json::from_str(&config)?)
     }
-}
-
-pub fn frob_tomls(ex: &Experiment, crates: &[Crate]) -> Result<()> {
-    for krate in crates {
-        if let Err(e) = frob_toml(ex, krate) {
-            info!("couldn't frob: {}", e);
-            util::report_error(&e);
-        }
-    }
-
-    Ok(())
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
@@ -332,21 +290,6 @@ where
     r
 }
 
-pub fn capture_lockfiles(
-    config: &Config,
-    ex: &Experiment,
-    crates: &[Crate],
-    toolchain: &Toolchain,
-) -> Result<()> {
-    for c in crates {
-        if let Err(e) = capture_lockfile(config, ex, c, toolchain) {
-            util::report_error(&e);
-        }
-    }
-
-    Ok(())
-}
-
 pub fn capture_lockfile(
     config: &Config,
     ex: &Experiment,
@@ -426,21 +369,6 @@ pub fn with_captured_lockfile(
                 dst_lockfile.display()
             )
         })?;
-    }
-
-    Ok(())
-}
-
-pub fn fetch_deps(
-    config: &Config,
-    ex: &Experiment,
-    crates: &[Crate],
-    toolchain: &Toolchain,
-) -> Result<()> {
-    for c in crates {
-        if let Err(e) = fetch_crate_deps(config, ex, c, toolchain) {
-            util::report_error(&e);
-        }
     }
 
     Ok(())

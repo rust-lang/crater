@@ -68,9 +68,9 @@ pub fn frob_table(table: &mut Table, tc: &Toolchain, krate: &Crate) -> bool {
                 .or_insert_with(|| Value::Table(BTreeMap::new()));
             if let Value::Table(ref mut crates_io) = crates_io_table {
                 let mut lazy_static = BTreeMap::new();
-                lazy_static.insert("git".to_string(), Value::String("https://github.com/anp/lazy-static.rs".to_string()));
-                lazy_static.insert("rev".to_string(), Value::String("0463a90b433d12db6a0e8f2087b2bd9d1afe9c48".to_string()));
-                crates_io.insert("lazy_static".to_string(), Value::Table(lazy_static));
+                lazy_static.insert("git".to_string(), Value::String("https://github.com/alexcrichton/libc".to_string()));
+                lazy_static.insert("rev".to_string(), Value::String("02fc60d2e30d04cf07d4561aef05a0ae755a3163".to_string()));
+                crates_io.insert("libc".to_string(), Value::Table(lazy_static));
                 changed = true;
             }
         }

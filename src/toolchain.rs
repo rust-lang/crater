@@ -71,6 +71,7 @@ impl Toolchain {
         dir.join(self.to_string())
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
     pub fn run_cargo(
         &self,
         config: &Config,

@@ -317,9 +317,11 @@ impl Experiments {
     }
 
     pub fn all(&self) -> Result<Vec<ExperimentData>> {
-        let records = self.db.query("SELECT * FROM experiments;", &[], |r| {
-            ExperimentDBRecord::from_row(r)
-        })?;
+        let records = self.db.query(
+            "SELECT * FROM experiments ORDER BY priority DESC, created_at;",
+            &[],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
         records
             .into_iter()
             .map(|record| record.into_experiment_data(&self.db))

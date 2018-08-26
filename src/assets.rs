@@ -18,7 +18,7 @@ lazy_static! {
 }
 
 macro_rules! load_files {
-    (templates: [$($template:expr,)*], assets: [$($asset:expr => $mime:ident,)*],) => {
+    (templates: [$($template:expr,)*], assets: [$($asset:expr => $mime:expr,)*],) => {
         lazy_static! {
             static ref ASSETS: HashMap<&'static str, Asset> = {
                 let mut assets = HashMap::new();
@@ -26,7 +26,7 @@ macro_rules! load_files {
                     let content = load_files!(_content concat!("assets/", $asset));
                     assets.insert($asset, Asset {
                         content,
-                        mime: mime::$mime,
+                        mime: $mime,
                     });
                 )*
                 assets
@@ -65,10 +65,12 @@ load_files! {
         "report.html",
     ],
     assets: [
-        "ui.css" => TEXT_CSS,
+        "ui.css" => mime::TEXT_CSS,
 
-        "report.css" => TEXT_CSS,
-        "report.js" => TEXT_JAVASCRIPT,
+        "report.css" => mime::TEXT_CSS,
+        "report.js" => mime::TEXT_JAVASCRIPT,
+
+        "favicon.ico" => "image/x-icon".parse().unwrap(),
     ],
 }
 

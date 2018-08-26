@@ -1,6 +1,7 @@
+use config::Config;
 use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR};
 use dl;
-use docker;
+use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
 use errors::*;
 use ex::Experiment;
 use run::RunCommand;
@@ -72,6 +73,7 @@ impl Toolchain {
 
     pub fn run_cargo(
         &self,
+        config: &Config,
         ex: &Experiment,
         source_dir: &Path,
         args: &[&str],
@@ -89,25 +91,38 @@ impl Toolchain {
         full_args.extend_from_slice(args);
 
         info!("running: {}", full_args.join(" "));
-        let perm = match cargo_state {
-            CargoState::Locked => docker::Perm::ReadOnly,
-            CargoState::Unlocked => docker::Perm::ReadWrite,
-        };
 
         let enable_unstable_cargo_features = !toolchain_name.starts_with("nightly-")
             && (unstable_cargo || args.iter().any(|a| a.starts_with("-Z")));
 
-        let rust_env = docker::RustEnv {
-            args: &full_args,
-            work_dir: (source_dir.into(), perm),
-            cargo_home: (Path::new(&*CARGO_HOME).into(), perm),
-            rustup_home: (Path::new(&*RUSTUP_HOME).into(), docker::Perm::ReadOnly),
-            // This is configured as CARGO_TARGET_DIR by the docker container itself
-            target_dir: (ex_target_dir, docker::Perm::ReadWrite),
-            cap_lints: &ex.cap_lints,
-            enable_unstable_cargo_features,
+        let perm = match cargo_state {
+            CargoState::Locked => MountPerms::ReadOnly,
+            CargoState::Unlocked => MountPerms::ReadWrite,
         };
-        docker::run(&docker::rust_container(rust_env), quiet)
+
+        let mut container = ContainerBuilder::new(IMAGE_NAME)
+            // Setup all the mount points
+            .mount(source_dir.into(), "/source", perm)
+            .mount(ex_target_dir, "/target", MountPerms::ReadWrite)
+            .mount(Path::new(&*CARGO_HOME).into(), "/cargo-home", perm)
+            .mount(Path::new(&*RUSTUP_HOME).into(), "/rustup-home", MountPerms::ReadOnly)
+            // Add environment variables
+            .env("USER_ID", user_id().to_string())
+            .env("CMD", full_args.join(" "))
+            .env("CARGO_INCREMENTAL", "0".to_string())
+            .env("RUST_BACKTRACE", "full".to_string())
+            .env("RUSTFLAGS", format!("--cap-lints={}", ex.cap_lints.to_str()))
+            // Add some limits to the container
+            .memory_limit(config.sandbox.memory_limit);
+
+        if enable_unstable_cargo_features {
+            container = container.env(
+                "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS",
+                "nightly".to_string(),
+            );
+        }
+
+        container.run(quiet)
     }
 
     pub fn prep_offline_registry(&self) -> Result<()> {
@@ -288,4 +303,14 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
                 )
             })
     })
+}
+
+#[cfg(unix)]
+fn user_id() -> ::libc::uid_t {
+    unsafe { ::libc::geteuid() }
+}
+
+#[cfg(windows)]
+fn user_id() -> u32 {
+    unimplemented!();
 }

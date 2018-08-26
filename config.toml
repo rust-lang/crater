@@ -24,6 +24,11 @@ crates = ["lazy_static"]
 github-repos = ["brson/hello-rs"]
 
 
+[sandbox]
+# Maximum amount of RAM allowed during builds
+memory-limit = "2G"
+
+
 # These sections allows to customize how crater treats specific crates/repos
 #
 # The available options for each crate/repo are:

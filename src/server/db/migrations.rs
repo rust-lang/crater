@@ -73,6 +73,13 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
         ",
     ));
 
+    migrations.push((
+        "store_skipped_crates",
+        "
+        ALTER TABLE experiment_crates ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0;
+        ",
+    ));
+
     migrations
 }
 

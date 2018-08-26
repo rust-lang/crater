@@ -132,7 +132,8 @@ impl ExperimentData {
     pub fn progress(&self, db: &Database) -> Result<u8> {
         let crates_len: u32 = db
             .get_row(
-                "SELECT COUNT(*) AS count FROM experiment_crates WHERE experiment = ?1;",
+                "SELECT COUNT(*) AS count FROM experiment_crates \
+                 WHERE experiment = ?1 AND skipped = 0;",
                 &[&self.experiment.name.as_str()],
                 |r| r.get("count"),
             )?
@@ -284,9 +285,10 @@ impl Experiments {
             )?;
 
             for krate in &crates {
+                let skipped = config.should_skip(krate) as i32;
                 transaction.execute(
-                    "INSERT INTO experiment_crates (experiment, crate) VALUES (?1, ?2);",
-                    &[&name, &serde_json::to_string(&krate)?],
+                    "INSERT INTO experiment_crates (experiment, crate, skipped) VALUES (?1, ?2, ?3);",
+                    &[&name, &serde_json::to_string(&krate)?, &skipped],
                 )?;
             }
 

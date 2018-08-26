@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>
+            {% block title %}{% endblock %} - Crater
+        </title>
+
+        <link rel="stylesheet" href="/assets/ui.css">
+    </head>
+    <body>
+        <header>
+            <div class="wrapper">
+                <h1>Crater</h1>
+                <ul>
+                    <li><a href="/">Queue</a></li>
+                    <li><a href="/agents">Agents</a></li>
+                </ul>
+            </div>
+        </header>
+
+        {% block content %}
+        {% endblock %}
+
+        <footer>
+            {% if layout.git_revision %}
+                Crater
+                <a href="https://github.com/rust-lang-nursery/crater/tree/{{ layout.git_revision }}">
+                    {{ layout.git_revision }}
+                </a>
+            {% endif %}
+        </footer>
+    </body>
+</html>

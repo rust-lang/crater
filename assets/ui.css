@@ -1,0 +1,154 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: sans-serif;
+    margin: 0;
+
+    background: #eee;
+}
+
+a {
+    color: #00f;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.wrapper {
+    max-width: 65rem;
+    margin: auto;
+}
+
+
+.red {
+    color: #f00;
+}
+
+.green {
+    color: #080;
+}
+
+.orange {
+    color: #f80;
+}
+
+.blue {
+    color: #00f;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.empty {
+    color: #888;
+    padding: 1em;
+    text-align: center;
+}
+
+
+header {
+    background: #fff;
+    box-shadow: 0 0.2em 0.2em rgba(200, 200, 200, 0.1);
+    margin-bottom: 1.5em;
+}
+
+header div.wrapper {
+    display: flex;
+    align-items: center;
+}
+
+header h1 {
+    flex: 1;
+
+    margin: 0;
+    padding: 0.5em 0;
+    font-size: 1.4em;
+    font-weight: 400;
+}
+
+header ul {
+    flex: 1;
+    text-align: right;
+
+    margin: 0;
+    padding: 0;
+}
+
+header ul li {
+    display: inline-block;
+    margin-left: 0.7em;
+}
+
+div.card {
+    display: block;
+
+    background: #fff;
+    box-shadow: 0 0.2em 0.2em rgba(200, 200, 200, 0.1);
+    padding: 0.75em;
+    margin: 1em 0;
+    border-radius: 0.2em;
+}
+
+div.card > *:first-child {
+    margin-top: 0 !important;
+}
+
+div.card > *:last-child {
+    margin-bottom: 0 !important;
+}
+
+
+table {
+    width: 63rem;
+    border-collapse: collapse;
+}
+
+table tr th, table tr td {
+    padding: 0.7em 0.5em;
+}
+
+table tr th {
+    font-weight: 400;
+    text-align: left;
+    color: #888;
+}
+
+table tr td {
+    border-top: 1px solid #eee;
+}
+
+
+footer {
+    margin: 1.5rem 0;
+    font-size: 0.9em;
+    text-align: center;
+    color: #888;
+}
+
+footer a {
+    color: #333;
+}
+
+
+@media all and (max-width: 60rem) {
+    header div.wrapper {
+        display: block;
+        text-align: center;
+    }
+
+    header ul {
+        text-align: center;
+        padding-bottom: 1em;
+    }
+
+
+    div.card {
+        margin-left: 0.5em;
+        margin-right: 0.5em;
+    }
+}

@@ -34,6 +34,18 @@ impl Agent {
         self.git_revision.as_ref()
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn assigned_experiment(&self) -> Option<&ExperimentData> {
+        self.experiment.as_ref()
+    }
+
+    pub fn last_heartbeat(&self) -> Option<&DateTime<Utc>> {
+        self.last_heartbeat.as_ref()
+    }
+
     pub fn status(&self) -> AgentStatus {
         if let Some(ref heartbeat) = self.last_heartbeat {
             if Utc::now() - Duration::seconds(INACTIVE_AFTER) < *heartbeat {

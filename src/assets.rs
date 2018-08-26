@@ -58,9 +58,16 @@ macro_rules! load_files {
 load_files! {
     templates: [
         "macros.html",
+
+        "layout.html",
+        "index.html",
+        "agents.html",
+
         "report.html",
     ],
     assets: [
+        "ui.css" => TEXT_CSS,
+
         "report.css" => TEXT_CSS,
         "report.js" => TEXT_JAVASCRIPT,
     ],

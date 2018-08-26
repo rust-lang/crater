@@ -119,6 +119,7 @@ impl<D: 'static> Service for Server<D> {
 
 pub trait ResponseExt {
     fn text<S: Display>(text: S) -> Response;
+    fn html<S: Display>(text: S) -> Response;
     fn json<S: Serialize>(data: &S) -> Result<Response>;
     fn api<T: Serialize>(resp: ApiResponse<T>) -> Result<Response>;
     fn as_future(self) -> ResponseFuture;
@@ -131,6 +132,15 @@ impl ResponseExt for Response {
         Response::new()
             .with_header(ContentLength(text.len() as u64))
             .with_header(ContentType::plaintext())
+            .with_body(text)
+    }
+
+    fn html<S: Display>(text: S) -> Response {
+        let text = text.to_string();
+
+        Response::new()
+            .with_header(ContentLength(text.len() as u64))
+            .with_header(ContentType::html())
             .with_body(text)
     }
 
@@ -183,6 +193,41 @@ macro_rules! api_endpoint {
                             error: err.to_string(),
                         };
                         future::ok(Response::api(resp).unwrap())
+                    })
+            }))
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! html_endpoint {
+    ($name:ident: |
+        $body_name:ident,
+        $data_name:ident
+    | -> $result:ty $code:block, $inner:ident) => {
+        fn $inner(
+            $body_name: Vec<u8>,
+            $data_name: Arc<Data>,
+        ) -> Result<$result> $code
+
+        pub fn $name(
+            req: Request,
+            data: Arc<Data>,
+            ctx: Arc<Context>,
+        ) -> ResponseFuture {
+            use hyper::StatusCode;
+
+            Box::new(req.body().concat2().and_then(move |body| {
+                let body = body.iter().cloned().collect::<Vec<u8>>();
+
+                ctx.pool
+                    .spawn_fn(move || future::done($inner(body, data)))
+                    .and_then(|resp| future::ok(Response::html(resp)))
+                    .or_else(|err| {
+                        error!("internal error while processing request");
+                        ::util::report_error(&err);
+                        future::ok(Response::text(format!("Internal server error: {}\n", err))
+                            .with_status(StatusCode::InternalServerError))
                     })
             }))
         }

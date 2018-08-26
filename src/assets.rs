@@ -1,5 +1,4 @@
 use errors::*;
-use file;
 use mime::{self, Mime};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -50,7 +49,7 @@ macro_rules! load_files {
 
         #[cfg(not(debug_assertions))]
         {
-            FileContent::Static(include_str!(concat!("../", $file)))
+            FileContent::Static(include_bytes!(concat!("../", $file)))
         }
     }};
 }
@@ -75,16 +74,16 @@ load_files! {
 
 enum FileContent {
     #[cfg_attr(debug_assertions, allow(dead_code))]
-    Static(&'static str),
+    Static(&'static [u8]),
     #[cfg_attr(not(debug_assertions), allow(dead_code))]
     Dynamic(PathBuf),
 }
 
 impl FileContent {
-    fn load(&self) -> Result<Cow<str>> {
+    fn load(&self) -> Result<Cow<[u8]>> {
         Ok(match *self {
             FileContent::Static(content) => Cow::Borrowed(content),
-            FileContent::Dynamic(ref path) => Cow::Owned(file::read_string(path)?),
+            FileContent::Dynamic(ref path) => Cow::Owned(::std::fs::read(path)?),
         })
     }
 }
@@ -95,7 +94,7 @@ pub struct Asset {
 }
 
 impl Asset {
-    pub fn content(&self) -> Result<Cow<str>> {
+    pub fn content(&self) -> Result<Cow<[u8]>> {
         self.content.load()
     }
 
@@ -118,7 +117,7 @@ pub fn load(name: &str) -> Result<&Asset> {
 fn build_tera_cache() -> Result<Tera> {
     let mut templates = Vec::new();
     for (name, content) in TEMPLATES.iter() {
-        templates.push((*name, content.load()?));
+        templates.push((*name, String::from_utf8(content.load()?.into_owned())?));
     }
 
     let to_add = templates

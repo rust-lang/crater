@@ -20,6 +20,7 @@ error_chain! {
         R2D2(::r2d2::Error);
         Base64Decode(::base64::DecodeError);
         Tera(::tera::Error);
+        Utf8(::std::string::FromUtf8Error);
     }
 
     links {

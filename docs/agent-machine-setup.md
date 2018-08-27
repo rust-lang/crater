@@ -31,7 +31,9 @@ bind z send-prefix
 EOF
 ```
 
-Log out of the machine and in again. Then, execute these commands:
+Log out of the machine. From the bastion, copy the `~/.aws/credentials` file
+from an existing agent into the new one, and then log into it again and
+execute:
 
 ```
 git clone https://github.com/rust-lang-nursery/crater

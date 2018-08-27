@@ -82,7 +82,7 @@ impl ExperimentData {
         Ok(())
     }
 
-    pub fn set_crates(&mut self, db: &Database, crates: Vec<Crate>) -> Result<()> {
+    pub fn set_crates(&mut self, db: &Database, config: &Config, crates: Vec<Crate>) -> Result<()> {
         db.transaction(|transaction| {
             transaction.execute(
                 "DELETE FROM experiment_crates WHERE experiment = ?1;",
@@ -91,10 +91,12 @@ impl ExperimentData {
 
             for krate in &crates {
                 transaction.execute(
-                    "INSERT INTO experiment_crates (experiment, crate) VALUES (?1, ?2);",
+                    "INSERT INTO experiment_crates (experiment, crate, skipped) \
+                     VALUES (?1, ?2, ?3);",
                     &[
                         &self.experiment.name.as_str(),
                         &serde_json::to_string(&krate)?,
+                        &config.should_skip(krate),
                     ],
                 )?;
             }

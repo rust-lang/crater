@@ -75,7 +75,7 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Result<()> {
         }
         if let Some(crates) = args.crates {
             let crates = ex::get_crates(crates, &data.config)?;
-            experiment.set_crates(&data.db, crates)?;
+            experiment.set_crates(&data.db, &data.config, crates)?;
             changed = true;
         }
         if let Some(priority) = args.priority {

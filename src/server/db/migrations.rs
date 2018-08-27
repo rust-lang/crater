@@ -80,6 +80,17 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
         ",
     ));
 
+    migrations.push((
+        "add_ui_progress_percent_indexes",
+        "
+        CREATE INDEX experiment_crates__experiment_skipped
+        ON experiment_crates (experiment, skipped);
+
+        CREATE INDEX results__experiment
+        ON results (experiment);
+        ",
+    ));
+
     migrations
 }
 

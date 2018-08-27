@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+
+{% block title -%} Agents {%- endblock %}
+
+{% block content %}
+    <div class="wrapper">
+        <div class="card">
+            {% if agents|length %}
+                <table>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Last heartbeat</th>
+                        <th>Assigned experiment</th>
+                        <th>Source code</th>
+                    </tr>
+                    {% for agent in agents %}
+                        <tr>
+                            <td>{{ agent.name }}</td>
+                            <td class="{{ agent.status_class }}">{{ agent.status_pretty }}</td>
+                            <td>
+                                {% if agent.last_heartbeat %}
+                                    {{ agent.last_heartbeat | date }}
+                                    {{ agent.last_heartbeat | date(format="%H:%M:%S") }}
+                                    UTC
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if agent.assigned_experiment %}
+                                    {{ agent.assigned_experiment }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if agent.git_revision %}
+                                    <a rel="noopener" target="_blank" href="https://github.com/rust-lang-nursery/crater/tree/{{ agent.git_revision }}">
+                                        {{ agent.git_revision }}
+                                    </a>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <p class="empty">No available agent.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

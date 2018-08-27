@@ -8,6 +8,10 @@ use serde::de::DeserializeOwned;
 use server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use toolchain::Toolchain;
 
+lazy_static! {
+    static ref USER_AGENT: String = format!("crater-agent/{}", ::GIT_REVISION.unwrap_or("unknown"));
+}
+
 trait ResponseExt {
     fn to_api_response<T: DeserializeOwned>(self) -> Result<T>;
 }
@@ -58,6 +62,7 @@ impl AgentApi {
         req.header(header::Authorization(CraterToken {
             token: self.token.clone(),
         }));
+        req.header(header::UserAgent::new(USER_AGENT.as_str()));
         req
     }
 

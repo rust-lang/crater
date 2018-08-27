@@ -119,8 +119,8 @@ pub fn write_html_report<W: ReportWriter>(
     write_report(ex, res, true, "full.html", dest)?;
 
     info!("copying static assets");
-    dest.write_string("report.js", js_in.content()?, js_in.mime())?;
-    dest.write_string("report.css", css_in.content()?, css_in.mime())?;
+    dest.write_bytes("report.js", js_in.content()?.into_owned(), js_in.mime())?;
+    dest.write_bytes("report.css", css_in.content()?.into_owned(), css_in.mime())?;
 
     Ok(())
 }

@@ -128,6 +128,27 @@ impl ExperimentData {
         self.experiment.toolchains[1] = end;
         Ok(())
     }
+
+    pub fn progress(&self, db: &Database) -> Result<u8> {
+        let crates_len: u32 = db
+            .get_row(
+                "SELECT COUNT(*) AS count FROM experiment_crates \
+                 WHERE experiment = ?1 AND skipped = 0;",
+                &[&self.experiment.name.as_str()],
+                |r| r.get("count"),
+            )?
+            .unwrap();
+
+        let results_len: u32 = db
+            .get_row(
+                "SELECT COUNT(*) AS count FROM results WHERE experiment = ?1;",
+                &[&self.experiment.name.as_str()],
+                |r| r.get("count"),
+            )?
+            .unwrap();
+
+        Ok((results_len as f32 * 50.0 / crates_len as f32).ceil() as u8)
+    }
 }
 
 struct ExperimentDBRecord {
@@ -264,9 +285,10 @@ impl Experiments {
             )?;
 
             for krate in &crates {
+                let skipped = config.should_skip(krate) as i32;
                 transaction.execute(
-                    "INSERT INTO experiment_crates (experiment, crate) VALUES (?1, ?2);",
-                    &[&name, &serde_json::to_string(&krate)?],
+                    "INSERT INTO experiment_crates (experiment, crate, skipped) VALUES (?1, ?2, ?3);",
+                    &[&name, &serde_json::to_string(&krate)?, &skipped],
                 )?;
             }
 
@@ -292,6 +314,18 @@ impl Experiments {
         } else {
             Ok(None)
         }
+    }
+
+    pub fn all(&self) -> Result<Vec<ExperimentData>> {
+        let records = self.db.query(
+            "SELECT * FROM experiments ORDER BY priority DESC, created_at;",
+            &[],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+        records
+            .into_iter()
+            .map(|record| record.into_experiment_data(&self.db))
+            .collect::<Result<_>>()
     }
 
     pub fn run_by_agent(&self, agent: &str) -> Result<Option<ExperimentData>> {

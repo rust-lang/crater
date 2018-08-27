@@ -87,6 +87,20 @@ pub fn run(config: Config) -> Result<()> {
         auth_agent(routes::agent::heartbeat),
     );
 
+    server.add_route(Method::Get, "/", routes::ui::index);
+    server.add_route(Method::Get, "/agents", routes::ui::agents);
+
+    server.add_route(
+        Method::Get,
+        "/assets/ui.css",
+        routes::ui::StaticFile("ui.css"),
+    );
+    server.add_route(
+        Method::Get,
+        "/favicon.ico",
+        routes::ui::StaticFile("favicon.ico"),
+    );
+
     server.add_route(Method::Post, "/webhooks", routes::webhooks::handle);
 
     info!("running server...");

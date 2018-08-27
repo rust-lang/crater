@@ -66,6 +66,20 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
         ",
     ));
 
+    migrations.push((
+        "store_agents_revision",
+        "
+        ALTER TABLE agents ADD COLUMN git_revision TEXT;
+        ",
+    ));
+
+    migrations.push((
+        "store_skipped_crates",
+        "
+        ALTER TABLE experiment_crates ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0;
+        ",
+    ));
+
     migrations
 }
 

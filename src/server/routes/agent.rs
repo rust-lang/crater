@@ -77,6 +77,10 @@ api_endpoint!(record_progress: |body, data, auth: AuthDetails| -> bool {
 }, record_progress_inner);
 
 api_endpoint!(heartbeat: |_body, data, auth: AuthDetails| -> bool {
+    if let Some(rev) = auth.git_revision {
+        data.agents.set_git_revision(&auth.name, &rev)?;
+    }
+
     data.agents.record_heartbeat(&auth.name)?;
     Ok(ApiResponse::Success { result: true })
 }, heartbeat_inner);

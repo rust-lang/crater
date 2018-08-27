@@ -1,7 +1,8 @@
 use config::Config;
 use errors::*;
-use hyper::header::Authorization;
+use hyper::header::{Authorization, UserAgent};
 use hyper::server::{Request, Response};
+use regex::Regex;
 use server::api_types::{ApiResponse, CraterToken};
 use server::github::GitHubApi;
 use server::http::{Context, Handler, ResponseExt, ResponseFuture};
@@ -9,12 +10,18 @@ use server::Data;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
+lazy_static! {
+    static ref GIT_REVISION_RE: Regex =
+        Regex::new(r"^crater(-agent)?/(?P<sha>[a-f0-9]{7,40})$").unwrap();
+}
+
 enum TokenType {
     Agent,
 }
 
 pub struct AuthDetails {
     pub name: String,
+    pub git_revision: Option<String>,
 }
 
 pub struct AuthMiddleware<F>
@@ -30,6 +37,19 @@ where
     F: Fn(Request, Arc<Data>, Arc<Context>, AuthDetails) -> ResponseFuture,
 {
     fn handle(&self, req: Request, data: Arc<Data>, ctx: Arc<Context>) -> ResponseFuture {
+        let git_revision = {
+            let user_agent = req.headers().get::<UserAgent>();
+
+            let mut git_revision = None;
+            if let Some(ua) = user_agent {
+                if let Some(cap) = GIT_REVISION_RE.captures(&ua) {
+                    git_revision = Some(cap["sha"].to_string());
+                }
+            }
+
+            git_revision
+        };
+
         let provided_token = req
             .headers()
             .get::<Authorization<CraterToken>>()
@@ -47,7 +67,15 @@ where
         }
 
         if let Some(name) = authorized_as {
-            (self.func)(req, data, ctx, AuthDetails { name: name.clone() })
+            (self.func)(
+                req,
+                data,
+                ctx,
+                AuthDetails {
+                    name: name.clone(),
+                    git_revision,
+                },
+            )
         } else {
             let resp: ApiResponse<bool> = ApiResponse::Unauthorized;
             Response::api(resp).unwrap().as_future()

@@ -37,6 +37,7 @@ Crater executes malicious code that will destroy what you love.
 **Operations documentation:**
 
 * [Legacy operational workflow](docs/legacy-workflow.md)
+* [Setting up a new Crater agent machine](docs/agent-machine-setup.md)
 
 **Technical documentation:**
 

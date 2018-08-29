@@ -23,7 +23,7 @@ api_endpoint!(config: |_body, data, auth: AuthDetails| -> AgentConfig {
 
 api_endpoint!(next_ex: |_body, data, auth: AuthDetails| -> Option<Experiment> {
     let next = data.experiments.next(&auth.name)?;
-    if let Some((new, ex)) = next {
+    if let Some((new, mut ex)) = next {
         if new {
             if let Some(ref github_issue) = ex.server_data.github_issue {
                 Message::new()
@@ -39,6 +39,7 @@ api_endpoint!(next_ex: |_body, data, auth: AuthDetails| -> Option<Experiment> {
             }
         }
 
+        ex.remove_completed_crates(&data.db)?;
         Ok(ApiResponse::Success { result: Some(ex.experiment) })
     } else {
         Ok(ApiResponse::Success { result: None })

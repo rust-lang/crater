@@ -156,6 +156,31 @@ impl ExperimentData {
             Ok(0)
         }
     }
+
+    pub fn remove_completed_crates(&mut self, db: &Database) -> Result<()> {
+        // FIXME: optimize this
+        let mut new_crates = Vec::with_capacity(self.experiment.crates.len());
+        for krate in self.experiment.crates.drain(..) {
+            let results_len: u32 = db
+                .get_row(
+                    "SELECT COUNT(*) AS count FROM results \
+                     WHERE experiment = ?1 AND crate = ?2;",
+                    &[
+                        &self.experiment.name.as_str(),
+                        &serde_json::to_string(&krate)?,
+                    ],
+                    |r| r.get("count"),
+                )?
+                .unwrap();
+
+            if results_len < 2 {
+                new_crates.push(krate);
+            }
+        }
+
+        self.experiment.crates = new_crates;
+        Ok(())
+    }
 }
 
 struct ExperimentDBRecord {

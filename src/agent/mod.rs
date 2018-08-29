@@ -37,22 +37,15 @@ impl Agent {
         info!("asking the server for a new experiment...");
         let from_server = self.api.next_experiment()?;
 
-        match Experiment::load(&from_server.name) {
-            Ok(ex) => {
-                info!("loaded existing experiment: {}", from_server.name);
-                Ok(ex)
-            }
-            Err(err) => {
-                warn!("failed to load experiment locally: {}", err);
-
-                fs::create_dir_all(&ex::ex_dir(&from_server.name))?;
-                let json = serde_json::to_string(&from_server)?;
-                file::write_string(&ex::config_file(&from_server.name), &json)?;
-
-                info!("redefined experiment: {}", from_server.name);
-                Ok(Experiment::load(&from_server.name)?)
-            }
+        if Experiment::load(&from_server.name).is_ok() {
+            warn!("redefining existing experiment: {}", from_server.name);
         }
+
+        fs::create_dir_all(&ex::ex_dir(&from_server.name))?;
+        let json = serde_json::to_string(&from_server)?;
+        file::write_string(&ex::config_file(&from_server.name), &json)?;
+
+        Ok(Experiment::load(&from_server.name)?)
     }
 }
 

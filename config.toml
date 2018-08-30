@@ -2,10 +2,10 @@
 # The list of GitHub users allowed to interact with the GitHub bot
 # You can mix usernames and teams
 bot-acl = [
-    "pietroalbini",
-    "aidanhs",
-    "Mark-Simulacrum",
-    "alexcrichton",
+    "rust-lang/infra",
+    "rust-lang/release",
+    "rust-lang/compiler",
+    "rust-lang/libs",
 ]
 
 [server.labels]

@@ -1,6 +1,11 @@
 use config::Config;
-use hyper::header::Scheme;
-use hyper::StatusCode;
+use errors::*;
+use http::header::{HeaderValue, CONTENT_TYPE};
+use http::Response;
+use http::StatusCode;
+use hyper::Body;
+use reqwest::header::Scheme;
+use serde::Serialize;
 use std::fmt;
 use std::str::FromStr;
 
@@ -17,15 +22,43 @@ pub enum ApiResponse<T> {
     Success { result: T },
     InternalError { error: String },
     Unauthorized,
+    NotFound,
+}
+
+impl ApiResponse<()> {
+    pub(in server) fn internal_error(error: String) -> ApiResponse<()> {
+        ApiResponse::InternalError { error }
+    }
+
+    pub(in server) fn unauthorized() -> ApiResponse<()> {
+        ApiResponse::Unauthorized
+    }
+
+    pub(in server) fn not_found() -> ApiResponse<()> {
+        ApiResponse::NotFound
+    }
 }
 
 impl<T> ApiResponse<T> {
-    pub(in server) fn status_code(&self) -> StatusCode {
+    fn status_code(&self) -> StatusCode {
         match *self {
-            ApiResponse::Success { .. } => StatusCode::Ok,
-            ApiResponse::InternalError { .. } => StatusCode::InternalServerError,
-            ApiResponse::Unauthorized => StatusCode::Unauthorized,
+            ApiResponse::Success { .. } => StatusCode::OK,
+            ApiResponse::InternalError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+            ApiResponse::Unauthorized => StatusCode::UNAUTHORIZED,
+            ApiResponse::NotFound => StatusCode::NOT_FOUND,
         }
+    }
+}
+
+impl<T: Serialize> ApiResponse<T> {
+    pub(in server) fn into_response(self) -> Result<Response<Body>> {
+        let serialized = ::serde_json::to_vec(&self)?;
+
+        let mut resp = Response::new(serialized.into());
+        resp.headers_mut()
+            .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        *resp.status_mut() = self.status_code();
+        Ok(resp)
     }
 }
 

@@ -51,6 +51,20 @@ a:hover {
 }
 
 
+.http-error {
+    text-align: center;
+    font-size: 1.1em;
+    margin: 2em;
+}
+
+.http-error b {
+    display: block;
+    font-size: 3em;
+    font-weight: 400;
+    margin-bottom: 0.1em;
+}
+
+
 header {
     background: #fff;
     box-shadow: 0 0.2em 0.2em rgba(200, 200, 200, 0.1);

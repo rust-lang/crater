@@ -59,8 +59,11 @@ load_files! {
         "macros.html",
 
         "layout.html",
-        "index.html",
+        "queue.html",
         "agents.html",
+
+        "404.html",
+        "500.html",
 
         "report.html",
     ],

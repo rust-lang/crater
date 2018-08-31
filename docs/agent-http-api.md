@@ -22,9 +22,9 @@ If authentication fails the API returns a `403 Unauthorized` status code.
 Every valid endpoint of the Agent API returns a JSON payload as response. The
 payload contains the following keys:
 
-* `status`: the type of the response; can be `unauthorized`, `success` or
-  `internal-error` (compatibility note: expect more types to be added in the
-  future)
+* `status`: the type of the response; can be `unauthorized`, `success`,
+  `not-found` or `internal-error` (compatibility note: expect more types to be
+  added in the future)
 * `result`: the result of the request (only available if the status is `success`)
 * `error`: the error message (only available if the status is `internal-error`)
 

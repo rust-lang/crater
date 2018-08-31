@@ -1,6 +1,9 @@
 #![recursion_limit = "128"]
 #![deny(unused_extern_crates)]
+#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+
 extern crate base64;
+extern crate bytes;
 extern crate chrono;
 extern crate crates_index;
 extern crate crossbeam;
@@ -9,6 +12,7 @@ extern crate error_chain;
 extern crate flate2;
 extern crate futures;
 extern crate futures_cpupool;
+extern crate http;
 extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
@@ -65,6 +69,7 @@ extern crate toml;
 #[macro_use]
 extern crate url;
 extern crate walkdir;
+extern crate warp;
 #[cfg(windows)]
 extern crate winapi;
 

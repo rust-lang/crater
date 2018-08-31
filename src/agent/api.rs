@@ -34,6 +34,7 @@ impl ResponseExt for ::reqwest::Response {
             ApiResponse::Success { result } => Ok(result),
             ApiResponse::InternalError { error } => bail!("internal server error: {}", error),
             ApiResponse::Unauthorized => bail!("invalid authorization token provided"),
+            ApiResponse::NotFound => bail!("API endpoint not found"),
         }
     }
 }

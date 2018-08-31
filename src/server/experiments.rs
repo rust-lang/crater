@@ -26,6 +26,8 @@ pub struct GitHubIssue {
 pub struct ServerData {
     pub priority: i32,
     pub created_at: DateTime<Utc>,
+    pub started_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
     pub github_issue: Option<GitHubIssue>,
     pub status: Status,
     pub assigned_to: Option<String>,
@@ -42,6 +44,27 @@ impl ExperimentData {
             "UPDATE experiments SET status = ?1 WHERE name = ?2;",
             &[&status.to_str(), &self.experiment.name.as_str()],
         )?;
+
+        let now = Utc::now();
+
+        // Check if the new status is "running" and there is no starting date
+        if status == Status::Running && self.server_data.started_at.is_none() {
+            db.execute(
+                "UPDATE experiments SET started_at = ?1 WHERE name = ?2;",
+                &[&now, &self.experiment.name.as_str()],
+            )?;
+            self.server_data.started_at = Some(now);
+        // Check if the old status was "running" and there is no completed date
+        } else if self.server_data.status == Status::Running
+            && self.server_data.completed_at.is_none()
+        {
+            db.execute(
+                "UPDATE experiments SET completed_at = ?1 WHERE name = ?2;",
+                &[&now, &self.experiment.name.as_str()],
+            )?;
+            self.server_data.completed_at = Some(now);
+        }
+
         self.server_data.status = status;
         Ok(())
     }
@@ -191,6 +214,8 @@ struct ExperimentDBRecord {
     toolchain_end: String,
     priority: i32,
     created_at: DateTime<Utc>,
+    started_at: Option<DateTime<Utc>>,
+    completed_at: Option<DateTime<Utc>>,
     github_issue: Option<String>,
     github_issue_url: Option<String>,
     github_issue_number: Option<i32>,
@@ -208,6 +233,8 @@ impl ExperimentDBRecord {
             toolchain_end: row.get("toolchain_end"),
             priority: row.get("priority"),
             created_at: row.get("created_at"),
+            started_at: row.get("started_at"),
+            completed_at: row.get("completed_at"),
             status: row.get("status"),
             github_issue: row.get("github_issue"),
             github_issue_url: row.get("github_issue_url"),
@@ -243,6 +270,8 @@ impl ExperimentDBRecord {
             server_data: ServerData {
                 priority: self.priority,
                 created_at: self.created_at,
+                started_at: self.started_at,
+                completed_at: self.completed_at,
                 github_issue: if let (Some(api_url), Some(html_url), Some(number)) = (
                     self.github_issue,
                     self.github_issue_url,

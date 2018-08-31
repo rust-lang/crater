@@ -2,9 +2,9 @@ use errors::*;
 use ex::ExMode;
 use http::Response;
 use hyper::Body;
-use server::Data;
 use server::experiments::Status;
 use server::routes::ui::{render_template, LayoutContext};
+use server::Data;
 use std::sync::Arc;
 
 #[derive(Serialize)]

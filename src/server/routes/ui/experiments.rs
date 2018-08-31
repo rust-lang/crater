@@ -1,9 +1,10 @@
 use errors::*;
+use ex::ExMode;
 use http::Response;
 use hyper::Body;
+use server::Data;
 use server::experiments::Status;
 use server::routes::ui::{render_template, LayoutContext};
-use server::Data;
 use std::sync::Arc;
 
 #[derive(Serialize)]
@@ -11,6 +12,7 @@ struct ExperimentData {
     name: String,
     status_class: &'static str,
     status_pretty: &'static str,
+    mode: &'static str,
     assigned_to: Option<String>,
     progress: u8,
     priority: i32,
@@ -48,6 +50,12 @@ pub fn endpoint_queue(data: Arc<Data>) -> Result<Response<Body>> {
             name: experiment.experiment.name.clone(),
             status_class,
             status_pretty,
+            mode: match experiment.experiment.mode {
+                ExMode::BuildAndTest => "cargo test",
+                ExMode::BuildOnly => "cargo build",
+                ExMode::CheckOnly => "cargo check",
+                ExMode::UnstableFeatures => "unstable features",
+            },
             assigned_to: experiment.server_data.assigned_to.clone(),
             priority: experiment.server_data.priority,
             progress: experiment.progress(&data.db)?,

@@ -10,6 +10,7 @@
                     <tr>
                         <th>Name</th>
                         <th width="20%">Assigned to</th>
+                        <th width="15%"class="text-center">Mode</th>
                         <th width="1%" class="text-center">Priority</th>
                         <th width="1%" class="text-center">Progress</th>
                         <th width="20%" class="text-center">Status</th>
@@ -24,6 +25,7 @@
                                     -
                                 {% endif %}
                             </td>
+                            <td class="text-center">{{ experiment.mode }}</td>
                             <td class="text-center">{{ experiment.priority }}</td>
                             <td class="text-center">{{ experiment.progress }}%</td>
                             <td class="text-center {{ experiment.status_class }}">{{ experiment.status_pretty }}</td>

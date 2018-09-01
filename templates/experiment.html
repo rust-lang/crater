@@ -1,0 +1,106 @@
+{% extends "layout.html" %}
+{% import "macros.html" as macros %}
+
+{% block title -%} {{ experiment.name }} {%- endblock %}
+
+{% block content %}
+    <div class="wrapper">
+        <div class="title">
+            <h1>Experiment <b>{{ experiment.name }}</b></h1>
+            <div class="toolbar">
+                {% if experiment.report_url %}
+                <a rel="noopener" target="_blank" class="button" href="{{ experiment.report_url }}">
+                    Open full report
+                </a>
+                {% endif %}
+                {% if experiment.github_url %}
+                <a rel="noopener" target="_blank" class="button" href="{{ experiment.github_url }}">
+                    GitHub thread
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="columns">
+            <div class="col">
+                <div class="card">
+                    <table class="details">
+                        <tr>
+                            <th>Status:</th>
+                            <td class="{{ experiment.status_class }}">
+                                {{ experiment.status_pretty }}
+                                {% if experiment.progress != 0 and experiment.progress != 100 %}
+                                    ({{ experiment.progress }}%)
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Mode:</th>
+                            <td>{{ experiment.mode }}</td>
+                        </tr>
+                        {% if experiment.assigned_to %}
+                        <tr>
+                            <th>Assigned agent:</th>
+                            <td>{{ experiment.assigned_to }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Priority:</th>
+                            <td>{{ experiment.priority }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="card">
+                    <table class="details">
+                        <tr>
+                            <th>Created at:</th>
+                            <td>{{ macros::render_time(date=experiment.created_at) }}</td>
+                        </tr>
+                        {% if experiment.started_at %}
+                        <tr>
+                            <th>Started at:</th>
+                            <td>{{ macros::render_time(date=experiment.started_at) }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if experiment.completed_at %}
+                        <tr>
+                            <th>Completed at:</th>
+                            <td>{{ macros::render_time(date=experiment.completed_at) }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card">
+                    <table class="details">
+                        <tr>
+                            <th>Completed jobs:</th>
+                            <td>
+                                {{ experiment.completed_jobs }} /
+                                {{ experiment.total_jobs }}
+                            </td>
+                        </tr>
+                        {% if experiment.duration %}
+                        <tr>
+                            <th>Duration:</th>
+                            <td>{{ experiment.duration }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if experiment.estimated_end %}
+                        <tr>
+                            <th>Estimated end:</th>
+                            <td>{{ experiment.estimated_end }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if experiment.average_job_duration %}
+                        <tr>
+                            <th>Average job duration:</th>
+                            <td>{{ experiment.average_job_duration }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

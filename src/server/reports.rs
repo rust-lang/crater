@@ -85,6 +85,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
         let report_url = format!("{}/{}/index.html", base_url, name);
 
         ex.set_status(&data.db, Status::Completed)?;
+        ex.set_report_url(&data.db, &report_url)?;
         info!("report for the experiment {} generated successfully!", name);
 
         if let Some(ref github_issue) = ex.server_data.github_issue {

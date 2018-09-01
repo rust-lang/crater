@@ -91,6 +91,21 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
         ",
     ));
 
+    migrations.push((
+        "add_more_experiment_dates",
+        "
+        ALTER TABLE experiments ADD COLUMN started_at DATETIME;
+        ALTER TABLE experiments ADD COLUMN completed_at DATETIME;
+        ",
+    ));
+
+    migrations.push((
+        "store_report_url",
+        "
+        ALTER TABLE experiments ADD COLUMN report_url TEXT;
+        ",
+    ));
+
     migrations
 }
 

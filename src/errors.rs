@@ -28,6 +28,9 @@ error_chain! {
     }
 
     errors {
+        Error404 {
+            description("not found")
+        }
         Timeout(what: &'static str, when: u64) {
             description("the operation timed out")
             display("process killed after {} {}s", what, when)

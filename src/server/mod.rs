@@ -1,6 +1,3 @@
-#[macro_use]
-mod http;
-
 mod agents;
 pub mod api_types;
 mod auth;
@@ -15,13 +12,19 @@ mod tokens;
 
 use config::Config;
 use errors::*;
-use hyper::Method;
+use http::{self, header::HeaderValue, Response};
+use hyper::Body;
 use server::agents::Agents;
-use server::auth::auth_agent;
+use server::auth::ACL;
 use server::experiments::Experiments;
 use server::github::GitHubApi;
-use server::http::Server;
 use server::tokens::Tokens;
+use std::sync::Arc;
+use warp::{self, Filter};
+
+lazy_static! {
+    static ref SERVER_HEADER: String = format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
+}
 
 #[derive(Clone)]
 pub struct Data {
@@ -33,7 +36,7 @@ pub struct Data {
     pub experiments: Experiments,
     pub db: db::Database,
     pub reports_worker: reports::ReportsWorker,
-    pub acl: auth::ACL,
+    pub acl: ACL,
 }
 
 pub fn run(config: Config) -> Result<()> {
@@ -42,7 +45,7 @@ pub fn run(config: Config) -> Result<()> {
     let github = GitHubApi::new(&tokens);
     let agents = Agents::new(db.clone(), &tokens)?;
     let bot_username = github.username()?;
-    let acl = auth::ACL::new(&config, &github)?;
+    let acl = ACL::new(&config, &github)?;
 
     info!("bot username: {}", bot_username);
 
@@ -59,51 +62,29 @@ pub fn run(config: Config) -> Result<()> {
     };
 
     data.reports_worker.spawn(data.clone());
-    let mut server = Server::new(data)?;
-
-    server.add_route(
-        Method::Get,
-        "/agent-api/config",
-        auth_agent(routes::agent::config),
-    );
-    server.add_route(
-        Method::Get,
-        "/agent-api/next-experiment",
-        auth_agent(routes::agent::next_ex),
-    );
-    server.add_route(
-        Method::Post,
-        "/agent-api/complete-experiment",
-        auth_agent(routes::agent::complete_ex),
-    );
-    server.add_route(
-        Method::Post,
-        "/agent-api/record-progress",
-        auth_agent(routes::agent::record_progress),
-    );
-    server.add_route(
-        Method::Post,
-        "/agent-api/heartbeat",
-        auth_agent(routes::agent::heartbeat),
-    );
-
-    server.add_route(Method::Get, "/", routes::ui::index);
-    server.add_route(Method::Get, "/agents", routes::ui::agents);
-
-    server.add_route(
-        Method::Get,
-        "/assets/ui.css",
-        routes::ui::StaticFile("ui.css"),
-    );
-    server.add_route(
-        Method::Get,
-        "/favicon.ico",
-        routes::ui::StaticFile("favicon.ico"),
-    );
-
-    server.add_route(Method::Post, "/webhooks", routes::webhooks::handle);
 
     info!("running server...");
-    server.run()?;
+
+    let data = Arc::new(data);
+
+    let routes = warp::any()
+        .and(
+            warp::any()
+                .and(warp::path("webhooks").and(routes::webhooks::routes(data.clone())))
+                .or(warp::path("agent-api").and(routes::agent::routes(data.clone())))
+                .unify()
+                .or(routes::ui::routes(data.clone()))
+                .unify(),
+        )
+        .map(|mut resp: Response<Body>| {
+            resp.headers_mut().insert(
+                http::header::SERVER,
+                HeaderValue::from_static(&SERVER_HEADER),
+            );
+            resp
+        });
+
+    warp::serve(routes).run(([127, 0, 0, 1], 8000));
+
     Ok(())
 }

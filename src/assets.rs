@@ -57,10 +57,15 @@ macro_rules! load_files {
 load_files! {
     templates: [
         "macros.html",
-
         "layout.html",
-        "index.html",
+
         "agents.html",
+
+        "queue.html",
+        "experiment.html",
+
+        "404.html",
+        "500.html",
 
         "report.html",
     ],

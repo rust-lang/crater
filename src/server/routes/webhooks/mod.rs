@@ -1,20 +1,19 @@
 mod args;
 mod commands;
 
+use bytes::buf::Buf;
 use errors::*;
-use futures::future;
-use futures::prelude::*;
-use hyper::server::{Request, Response};
-use hyper::StatusCode;
+use http::{HeaderMap, Response, StatusCode};
+use hyper::Body;
 use ring;
 use serde_json;
 use server::github::{EventIssueComment, Issue};
-use server::http::{Context, ResponseExt, ResponseFuture};
 use server::messages::Message;
 use server::routes::webhooks::args::Command;
 use server::Data;
 use std::sync::Arc;
 use util;
+use warp::{self, filters::body::FullBody, Filter, Rejection};
 
 fn process_webhook(payload: &[u8], signature: &str, event: &str, data: &Data) -> Result<()> {
     if !verify_signature(&data.tokens.bot.webhooks_secret, payload, signature) {
@@ -149,44 +148,42 @@ fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
     ring::hmac::verify(&key, payload, &signature).is_ok()
 }
 
-macro_rules! headers {
-    ($req:expr => { $($ident:ident: $name:expr,)* }) => {
-        $(
-            let option = $req.headers()
-                .get_raw($name)
-                .and_then(|h| h.one())
-                .map(|s| String::from_utf8_lossy(s).to_string());
+fn receive_endpoint(data: Arc<Data>, headers: HeaderMap, body: FullBody) -> Result<()> {
+    let signature = headers
+        .get("X-Hub-Signature")
+        .and_then(|h| h.to_str().ok())
+        .ok_or("missing header X-Hub-Signature\n")?;
+    let event = headers
+        .get("X-GitHub-Event")
+        .and_then(|h| h.to_str().ok())
+        .ok_or("missing header X-GitHub-Event\n")?;
 
-            let $ident = if let Some(some) = option {
-                some
-            } else {
-                error!("missing header in the webhook: {}", $name);
-
-                return Response::json(&json!({
-                    "error": format!("missing header: {}", $name),
-                })).unwrap().with_status(StatusCode::BadRequest).as_future();
-            };
-        )*
-    }
+    process_webhook(body.bytes(), signature, event, &data)
 }
 
-pub fn handle(req: Request, data: Arc<Data>, ctx: Arc<Context>) -> ResponseFuture {
-    headers!(req => {
-        signature: "X-Hub-Signature",
-        event: "X-GitHub-Event",
-    });
+pub fn routes(
+    data: Arc<Data>,
+) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
+    let data_filter = warp::any().map(move || data.clone());
 
-    Box::new(req.body().concat2().and_then(move |body| {
-        let body = body.iter().cloned().collect::<Vec<u8>>();
+    warp::post2()
+        .and(warp::path::index())
+        .and(data_filter)
+        .and(warp::header::headers_cloned())
+        .and(warp::body::concat())
+        .map(|data: Arc<Data>, headers: HeaderMap, body: FullBody| {
+            let mut resp: Response<Body>;
+            match receive_endpoint(data, headers, body) {
+                Ok(()) => resp = Response::new("OK\n".into()),
+                Err(err) => {
+                    error!("error while processing webhook");
+                    ::util::report_error(&err);
 
-        ctx.handle.spawn(ctx.pool.spawn_fn(move || {
-            if let Err(err) = process_webhook(&body, &signature, &event, &data) {
-                error!("error while processing webhook: {}", err);
+                    resp = Response::new(format!("Error: {}\n", err).into());
+                    *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                }
             }
 
-            future::ok(())
-        }));
-
-        Response::text("OK\n").as_future()
-    }))
+            resp
+        })
 }

@@ -26,9 +26,12 @@ pub struct GitHubIssue {
 pub struct ServerData {
     pub priority: i32,
     pub created_at: DateTime<Utc>,
+    pub started_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
     pub github_issue: Option<GitHubIssue>,
     pub status: Status,
     pub assigned_to: Option<String>,
+    pub report_url: Option<String>,
 }
 
 pub struct ExperimentData {
@@ -42,6 +45,27 @@ impl ExperimentData {
             "UPDATE experiments SET status = ?1 WHERE name = ?2;",
             &[&status.to_str(), &self.experiment.name.as_str()],
         )?;
+
+        let now = Utc::now();
+
+        // Check if the new status is "running" and there is no starting date
+        if status == Status::Running && self.server_data.started_at.is_none() {
+            db.execute(
+                "UPDATE experiments SET started_at = ?1 WHERE name = ?2;",
+                &[&now, &self.experiment.name.as_str()],
+            )?;
+            self.server_data.started_at = Some(now);
+        // Check if the old status was "running" and there is no completed date
+        } else if self.server_data.status == Status::Running
+            && self.server_data.completed_at.is_none()
+        {
+            db.execute(
+                "UPDATE experiments SET completed_at = ?1 WHERE name = ?2;",
+                &[&now, &self.experiment.name.as_str()],
+            )?;
+            self.server_data.completed_at = Some(now);
+        }
+
         self.server_data.status = status;
         Ok(())
     }
@@ -131,7 +155,16 @@ impl ExperimentData {
         Ok(())
     }
 
-    pub fn progress(&self, db: &Database) -> Result<u8> {
+    pub fn set_report_url(&mut self, db: &Database, url: &str) -> Result<()> {
+        db.execute(
+            "UPDATE experiments SET report_url = ?1 WHERE name = ?2;",
+            &[&url, &self.experiment.name.as_str()],
+        )?;
+        self.server_data.report_url = Some(url.to_string());
+        Ok(())
+    }
+
+    pub fn raw_progress(&self, db: &Database) -> Result<(u32, u32)> {
         let results_len: u32 = db
             .get_row(
                 "SELECT COUNT(*) AS count FROM results WHERE experiment = ?1;",
@@ -140,18 +173,23 @@ impl ExperimentData {
             )?
             .unwrap();
 
-        // Avoid the second query if there are no results -- we already know the progress is 0%
-        if results_len > 0 {
-            let crates_len: u32 = db
-                .get_row(
-                    "SELECT COUNT(*) AS count FROM experiment_crates \
-                     WHERE experiment = ?1 AND skipped = 0;",
-                    &[&self.experiment.name.as_str()],
-                    |r| r.get("count"),
-                )?
-                .unwrap();
+        let crates_len: u32 = db
+            .get_row(
+                "SELECT COUNT(*) AS count FROM experiment_crates \
+                 WHERE experiment = ?1 AND skipped = 0;",
+                &[&self.experiment.name.as_str()],
+                |r| r.get("count"),
+            )?
+            .unwrap();
 
-            Ok((results_len as f32 * 50.0 / crates_len as f32).ceil() as u8)
+        Ok((results_len, crates_len * 2))
+    }
+
+    pub fn progress(&self, db: &Database) -> Result<u8> {
+        let (results_len, crates_len) = self.raw_progress(db)?;
+
+        if crates_len != 0 {
+            Ok((results_len as f32 * 100.0 / crates_len as f32).ceil() as u8)
         } else {
             Ok(0)
         }
@@ -191,11 +229,14 @@ struct ExperimentDBRecord {
     toolchain_end: String,
     priority: i32,
     created_at: DateTime<Utc>,
+    started_at: Option<DateTime<Utc>>,
+    completed_at: Option<DateTime<Utc>>,
     github_issue: Option<String>,
     github_issue_url: Option<String>,
     github_issue_number: Option<i32>,
     status: String,
     assigned_to: Option<String>,
+    report_url: Option<String>,
 }
 
 impl ExperimentDBRecord {
@@ -208,11 +249,14 @@ impl ExperimentDBRecord {
             toolchain_end: row.get("toolchain_end"),
             priority: row.get("priority"),
             created_at: row.get("created_at"),
+            started_at: row.get("started_at"),
+            completed_at: row.get("completed_at"),
             status: row.get("status"),
             github_issue: row.get("github_issue"),
             github_issue_url: row.get("github_issue_url"),
             github_issue_number: row.get("github_issue_number"),
             assigned_to: row.get("assigned_to"),
+            report_url: row.get("report_url"),
         }
     }
 
@@ -243,6 +287,8 @@ impl ExperimentDBRecord {
             server_data: ServerData {
                 priority: self.priority,
                 created_at: self.created_at,
+                started_at: self.started_at,
+                completed_at: self.completed_at,
                 github_issue: if let (Some(api_url), Some(html_url), Some(number)) = (
                     self.github_issue,
                     self.github_issue_url,
@@ -258,6 +304,7 @@ impl ExperimentDBRecord {
                 },
                 assigned_to: self.assigned_to,
                 status: self.status.parse()?,
+                report_url: self.report_url,
             },
         })
     }

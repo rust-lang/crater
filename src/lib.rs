@@ -5,6 +5,7 @@
 extern crate base64;
 extern crate bytes;
 extern crate chrono;
+extern crate chrono_humanize;
 extern crate crates_index;
 extern crate crossbeam;
 #[macro_use]

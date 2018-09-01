@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% import "macros.html" as macros %}
 
 {% block title -%} Agents {%- endblock %}
 
@@ -6,7 +7,7 @@
     <div class="wrapper">
         <div class="card">
             {% if agents|length %}
-                <table>
+                <table class="list">
                     <tr>
                         <th>Name</th>
                         <th>Status</th>
@@ -20,16 +21,16 @@
                             <td class="{{ agent.status_class }}">{{ agent.status_pretty }}</td>
                             <td>
                                 {% if agent.last_heartbeat %}
-                                    {{ agent.last_heartbeat | date }}
-                                    {{ agent.last_heartbeat | date(format="%H:%M:%S") }}
-                                    UTC
+                                    {{ macros::render_time(date=agent.last_heartbeat) }}
                                 {% else %}
                                     -
                                 {% endif %}
                             </td>
                             <td>
                                 {% if agent.assigned_experiment %}
-                                    {{ agent.assigned_experiment }}
+                                    <a href="/ex/{{ agent.assigned_experiment }}">
+                                        {{ agent.assigned_experiment }}
+                                    </a>
                                 {% else %}
                                     -
                                 {% endif %}

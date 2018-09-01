@@ -60,6 +60,7 @@ warp = "0.1.3"
 http = "0.1.10"
 hyper = "0.12.8"
 bytes = "0.4.9"
+chrono-humanize = "0.0.11"
 
 [build-dependencies]
 git2 = "0.6"

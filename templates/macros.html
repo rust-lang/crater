@@ -13,3 +13,9 @@
         {{ tc|json_encode }}
     {%- endif -%}
 {% endmacro %}
+
+{% macro render_time(date) %}
+    {{ date | date }}
+    {{ date | date(format="%H:%M:%S") }}
+    UTC
+{% endmacro %}

@@ -6,18 +6,17 @@
     <div class="wrapper">
         <div class="card">
             {% if experiments|length %}
-                <table>
+                <table class="list">
                     <tr>
                         <th>Name</th>
                         <th width="20%">Assigned to</th>
                         <th width="15%"class="text-center">Mode</th>
                         <th width="1%" class="text-center">Priority</th>
-                        <th width="1%" class="text-center">Progress</th>
                         <th width="20%" class="text-center">Status</th>
                     </tr>
                     {% for experiment in experiments %}
                         <tr>
-                            <td>{{ experiment.name }}</td>
+                            <td><a href="/ex/{{ experiment.name }}">{{ experiment.name }}</a></td>
                             <td>
                                 {% if experiment.assigned_to %}
                                     {{ experiment.assigned_to }}
@@ -27,8 +26,12 @@
                             </td>
                             <td class="text-center">{{ experiment.mode }}</td>
                             <td class="text-center">{{ experiment.priority }}</td>
-                            <td class="text-center">{{ experiment.progress }}%</td>
-                            <td class="text-center {{ experiment.status_class }}">{{ experiment.status_pretty }}</td>
+                            <td class="text-center {{ experiment.status_class }}">
+                                {{ experiment.status_pretty }}
+                                {% if experiment.progress != 0 and experiment.progress != 100 %}
+                                    ({{ experiment.progress }}%)
+                                {% endif %}
+                            </td>
                         </tr>
                     {% endfor %}
                 </table>

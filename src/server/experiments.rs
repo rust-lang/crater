@@ -164,7 +164,7 @@ impl ExperimentData {
         Ok(())
     }
 
-    pub fn progress(&self, db: &Database) -> Result<u8> {
+    pub fn raw_progress(&self, db: &Database) -> Result<(u32, u32)> {
         let results_len: u32 = db
             .get_row(
                 "SELECT COUNT(*) AS count FROM results WHERE experiment = ?1;",
@@ -173,18 +173,23 @@ impl ExperimentData {
             )?
             .unwrap();
 
-        // Avoid the second query if there are no results -- we already know the progress is 0%
-        if results_len > 0 {
-            let crates_len: u32 = db
-                .get_row(
-                    "SELECT COUNT(*) AS count FROM experiment_crates \
-                     WHERE experiment = ?1 AND skipped = 0;",
-                    &[&self.experiment.name.as_str()],
-                    |r| r.get("count"),
-                )?
-                .unwrap();
+        let crates_len: u32 = db
+            .get_row(
+                "SELECT COUNT(*) AS count FROM experiment_crates \
+                 WHERE experiment = ?1 AND skipped = 0;",
+                &[&self.experiment.name.as_str()],
+                |r| r.get("count"),
+            )?
+            .unwrap();
 
-            Ok((results_len as f32 * 50.0 / crates_len as f32).ceil() as u8)
+        Ok((results_len, crates_len * 2))
+    }
+
+    pub fn progress(&self, db: &Database) -> Result<u8> {
+        let (results_len, crates_len) = self.raw_progress(db)?;
+
+        if crates_len != 0 {
+            Ok((results_len as f32 * 100.0 / crates_len as f32).ceil() as u8)
         } else {
             Ok(0)
         }

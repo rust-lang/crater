@@ -29,10 +29,17 @@ pub fn routes(
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
     let data_filter = warp::any().map(move || data.clone());
 
-    let index = warp::get2()
+    let queue = warp::get2()
         .and(warp::path::index())
         .and(data_filter.clone())
         .map(experiments::endpoint_queue);
+
+    let experiment = warp::get2()
+        .and(warp::path("ex"))
+        .and(warp::path::param())
+        .and(warp::path::index())
+        .and(data_filter.clone())
+        .map(experiments::endpoint_experiment);
 
     let agents = warp::get2()
         .and(warp::path("agents"))
@@ -47,7 +54,15 @@ pub fn routes(
         .map(endpoint_assets);
 
     warp::any()
-        .and(index.or(agents).unify().or(assets).unify())
+        .and(
+            queue
+                .or(experiment)
+                .unify()
+                .or(agents)
+                .unify()
+                .or(assets)
+                .unify(),
+        )
         .map(handle_results)
         .recover(handle_errors)
         .unify()
@@ -108,7 +123,15 @@ fn error_500() -> Response<Body> {
 fn handle_results(resp: Result<Response<Body>>) -> Response<Body> {
     match resp {
         Ok(resp) => resp,
-        Err(err) => {
+        Err(mut err) => {
+            // Render a 404 page with ErrorKind::Error404
+            if let ErrorKind::Error404 = err.kind() {
+                match error_404() {
+                    Ok(content) => return content,
+                    Err(err404) => err = err404,
+                }
+            }
+
             ::util::report_error(&err);
             error_500()
         }

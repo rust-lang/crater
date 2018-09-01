@@ -41,7 +41,7 @@ a:hover {
 }
 
 .text-center {
-    text-align: center;
+    text-align: center !important;
 }
 
 .empty {
@@ -98,6 +98,49 @@ header ul li {
     margin-left: 0.7em;
 }
 
+
+div.title {
+    display: flex;
+    margin: 1.5em 0;
+    align-items: center;
+}
+
+div.title h1 {
+    flex: 1;
+    margin: 0;
+
+    font-weight: 400;
+    color: #444;
+}
+
+div.title h1 b {
+    font-weight: 400;
+    color: #000;
+}
+
+div.title div.toolbar {
+    flex: 0 content;
+}
+
+div.title div.toolbar a.button {
+    display: inline-block;
+    padding: 0.5em 0.7em;
+
+    border: 1px solid #00f;
+    border-radius: 0.2em;
+}
+
+div.title div.toolbar a.button + a.button {
+    margin-left: 0.5em;
+}
+
+div.title div.toolbar a.button:hover {
+    color: #fff;
+    background: #00f;
+    text-decoration: none;
+}
+
+
 div.card {
     display: block;
 
@@ -116,24 +159,91 @@ div.card > *:last-child {
     margin-bottom: 0 !important;
 }
 
+div.card ul {
+    margin: 1em 0;
+    padding: 0;
+    list-style: none;
+}
 
-table {
+div.card ul li {
+    margin: 0;
+    padding: 0;
+    margin-top: 0.4em;
+
+    color: #888;
+}
+
+div.card ul li:first-child {
+    margin-top: 0;
+}
+
+div.card ul li b {
+    color: #000;
+    font-weight: inherit;
+    display: inline-block;
+    margin-left: 0.5em;
+}
+
+
+div.columns {
+    display: flex;
+    margin: 0 -0.5em;
+}
+
+div.columns div.col {
+    flex: 1;
+    margin: 0 0.5em;
+}
+
+div.col > *:first-child {
+    margin-top: 0 !important;
+}
+
+div.col > *:last-child {
+    margin-bottom: 0 !important;
+}
+
+
+table.list {
     width: 63rem;
     border-collapse: collapse;
 }
 
-table tr th, table tr td {
+table.list tr th, table.list tr td {
     padding: 0.7em 0.5em;
 }
 
-table tr th {
+table.list tr th {
     font-weight: 400;
     text-align: left;
     color: #888;
 }
 
-table tr td {
+table.list tr td {
     border-top: 1px solid #eee;
+}
+
+
+table.details {
+    width: 100%;
+}
+
+table.details th {
+    font-weight: 400;
+    color: #888;
+    text-align: right;
+
+    width: 1%;
+    white-space: nowrap;
+    padding-right: 1em;
+}
+
+table.details tr th, table.details tr td {
+    padding-top: 0.1em;
+}
+
+table.details tr:first-child th, table.details tr:first-child td {
+    padding-top: 0;
 }
 
 
@@ -158,6 +268,11 @@ footer a {
     header ul {
         text-align: center;
         padding-bottom: 1em;
+    }
+
+
+    div.columns {
+        display: block;
     }
 
 

@@ -99,6 +99,13 @@ fn migrations() -> Vec<(&'static str, &'static str)> {
         ",
     ));
 
+    migrations.push((
+        "store_report_url",
+        "
+        ALTER TABLE experiments ADD COLUMN report_url TEXT;
+        ",
+    ));
+
     migrations
 }
 

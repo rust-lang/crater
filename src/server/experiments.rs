@@ -31,6 +31,7 @@ pub struct ServerData {
     pub github_issue: Option<GitHubIssue>,
     pub status: Status,
     pub assigned_to: Option<String>,
+    pub report_url: Option<String>,
 }
 
 pub struct ExperimentData {
@@ -154,6 +155,15 @@ impl ExperimentData {
         Ok(())
     }
 
+    pub fn set_report_url(&mut self, db: &Database, url: &str) -> Result<()> {
+        db.execute(
+            "UPDATE experiments SET report_url = ?1 WHERE name = ?2;",
+            &[&url, &self.experiment.name.as_str()],
+        )?;
+        self.server_data.report_url = Some(url.to_string());
+        Ok(())
+    }
+
     pub fn progress(&self, db: &Database) -> Result<u8> {
         let results_len: u32 = db
             .get_row(
@@ -221,6 +231,7 @@ struct ExperimentDBRecord {
     github_issue_number: Option<i32>,
     status: String,
     assigned_to: Option<String>,
+    report_url: Option<String>,
 }
 
 impl ExperimentDBRecord {
@@ -240,6 +251,7 @@ impl ExperimentDBRecord {
             github_issue_url: row.get("github_issue_url"),
             github_issue_number: row.get("github_issue_number"),
             assigned_to: row.get("assigned_to"),
+            report_url: row.get("report_url"),
         }
     }
 
@@ -287,6 +299,7 @@ impl ExperimentDBRecord {
                 },
                 assigned_to: self.assigned_to,
                 status: self.status.parse()?,
+                report_url: self.report_url,
             },
         })
     }

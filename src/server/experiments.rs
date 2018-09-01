@@ -281,7 +281,7 @@ impl ExperimentDBRecord {
             experiment: Experiment {
                 name: self.name,
                 crates,
-                toolchains: vec![self.toolchain_start.parse()?, self.toolchain_end.parse()?],
+                toolchains: [self.toolchain_start.parse()?, self.toolchain_end.parse()?],
                 cap_lints: self.cap_lints.parse()?,
                 mode: self.mode.parse()?,
             },
@@ -348,7 +348,7 @@ impl Experiments {
             Experiment {
                 name: name.to_string(),
                 crates: crates.clone(),
-                toolchains: vec![toolchain_start.clone(), toolchain_end.clone()],
+                toolchains: [toolchain_start.clone(), toolchain_end.clone()],
                 mode,
                 cap_lints,
             }.validate()?;
@@ -513,7 +513,7 @@ mod tests {
         assert_eq!(ex.experiment.name.as_str(), "test");
         assert_eq!(
             ex.experiment.toolchains,
-            vec![MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()]
+            [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()]
         );
         assert_eq!(ex.experiment.mode, ExMode::BuildAndTest);
         assert_eq!(ex.experiment.crates, ::ex::demo_list(&config).unwrap());

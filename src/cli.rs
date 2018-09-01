@@ -263,7 +263,7 @@ impl Crater {
                 ex::define(
                     ex::ExOpts {
                         name: ex.0.clone(),
-                        toolchains: vec![tc1.clone(), tc2.clone()],
+                        toolchains: [tc1.clone(), tc2.clone()],
                         mode: *mode,
                         crates: *crates,
                         cap_lints: *cap_lints,

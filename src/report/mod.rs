@@ -120,8 +120,6 @@ pub fn generate_report<DB: ReadResults>(
     ex: &Experiment,
 ) -> Result<TestResults> {
     let shas = db.load_all_shas(ex)?;
-    assert_eq!(ex.toolchains.len(), 2);
-
     let res = ex
         .crates
         .clone()
@@ -565,7 +563,7 @@ mod tests {
         let ex = Experiment {
             name: "foo".to_string(),
             crates: vec![gh.clone()],
-            toolchains: vec![MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
+            toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
             mode: ExMode::BuildAndTest,
             cap_lints: ExCapLints::Forbid,
         };

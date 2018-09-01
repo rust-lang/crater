@@ -56,14 +56,14 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 pub struct Experiment {
     pub name: String,
     pub crates: Vec<Crate>,
-    pub toolchains: Vec<Toolchain>,
+    pub toolchains: [Toolchain; 2],
     pub mode: ExMode,
     pub cap_lints: ExCapLints,
 }
 
 pub struct ExOpts {
     pub name: String,
-    pub toolchains: Vec<Toolchain>,
+    pub toolchains: [Toolchain; 2],
     pub mode: ExMode,
     pub crates: ExCrateSelect,
     pub cap_lints: ExCapLints,
@@ -141,7 +141,7 @@ fn top_100() -> Result<Vec<Crate>> {
 
 pub fn define_(
     ex_name: &str,
-    toolchains: Vec<Toolchain>,
+    toolchains: [Toolchain; 2],
     crates: Vec<Crate>,
     mode: ExMode,
     cap_lints: ExCapLints,
@@ -449,6 +449,7 @@ pub fn delete(ex_name: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::{ExCapLints, ExMode, Experiment};
+    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_validate_experiment() {
@@ -457,7 +458,7 @@ mod tests {
             Experiment {
                 name: "foo".to_string(),
                 crates: vec![],
-                toolchains: vec!["stable".parse().unwrap(), "beta".parse().unwrap()],
+                toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
                 mode: ExMode::BuildAndTest,
                 cap_lints: ExCapLints::Forbid,
             }.validate()
@@ -469,7 +470,7 @@ mod tests {
             Experiment {
                 name: "foo".to_string(),
                 crates: vec![],
-                toolchains: vec!["stable".parse().unwrap(), "stable".parse().unwrap()],
+                toolchains: [MAIN_TOOLCHAIN.clone(), MAIN_TOOLCHAIN.clone()],
                 mode: ExMode::BuildAndTest,
                 cap_lints: ExCapLints::Forbid,
             }.validate()

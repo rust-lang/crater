@@ -1,9 +1,12 @@
 use errors::*;
-use rusqlite::Connection;
+use rand::{self, Rng};
+use rusqlite::{Connection, Transaction};
+use serde_json;
 use std::collections::HashSet;
 
 enum MigrationKind {
     SQL(&'static str),
+    Code(Box<Fn(&Transaction) -> ::rusqlite::Result<()>>),
 }
 
 fn migrations() -> Vec<(&'static str, MigrationKind)> {
@@ -122,6 +125,62 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "stringify_toolchain_names",
+        MigrationKind::Code(Box::new(|t| {
+            #[derive(Deserialize)]
+            enum LegacyToolchain {
+                Dist(String),
+                TryBuild { sha: String },
+                Master { sha: String },
+            }
+
+            let fn_name = format!(
+                "crater_migration__{}",
+                rand::thread_rng()
+                    .gen_ascii_chars()
+                    .take(10)
+                    .collect::<String>()
+            );
+            t.create_scalar_function(&fn_name, 1, true, |ctx| {
+                let legacy = ctx.get::<String>(0)?;
+
+                if let Ok(parsed) = serde_json::from_str(&legacy) {
+                    Ok(match parsed {
+                        LegacyToolchain::Dist(name) => name,
+                        LegacyToolchain::TryBuild { sha } => format!("try#{}", sha),
+                        LegacyToolchain::Master { sha } => format!("master#{}", sha),
+                    })
+                } else {
+                    Ok(legacy)
+                }
+            })?;
+
+            t.execute("PRAGMA foreign_keys = OFF;", &[])?;
+            t.execute(
+                &format!(
+                    "UPDATE experiments SET toolchain_start = {}(toolchain_start);",
+                    fn_name
+                ),
+                &[],
+            )?;
+            t.execute(
+                &format!(
+                    "UPDATE experiments SET toolchain_end = {}(toolchain_end);",
+                    fn_name
+                ),
+                &[],
+            )?;
+            t.execute(
+                &format!("UPDATE results SET toolchain = {}(toolchain);", fn_name),
+                &[],
+            )?;
+            t.execute("PRAGMA foreign_keys = ON;", &[])?;
+
+            Ok(())
+        })),
+    ));
+
     migrations
 }
 
@@ -148,6 +207,7 @@ pub fn execute(db: &mut Connection) -> Result<()> {
             let t = db.transaction()?;
             match migration {
                 MigrationKind::SQL(sql) => t.execute_batch(sql),
+                MigrationKind::Code(code) => code(&t),
             }.chain_err(|| format!("error running migration: {}", name))?;
 
             t.execute("INSERT INTO migrations (name) VALUES (?1)", &[&name])?;

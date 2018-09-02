@@ -41,7 +41,7 @@ impl<'a> ResultsDB<'a> {
                     &[
                         &ex.name,
                         &serde_json::to_string(&result.krate)?,
-                        &serde_json::to_string(&result.toolchain)?,
+                        &result.toolchain.to_string(),
                         &result.result.to_str(),
                         &base64::decode(&result.log).chain_err(|| "invalid base64 log provided")?,
                     ],
@@ -93,7 +93,7 @@ impl<'a> ReadResults for ResultsDB<'a> {
              LIMIT 1;",
             &[
                 &ex.name,
-                &serde_json::to_string(toolchain)?,
+                &toolchain.to_string(),
                 &serde_json::to_string(krate)?,
             ],
             |row| row.get("log"),
@@ -114,7 +114,7 @@ impl<'a> ReadResults for ResultsDB<'a> {
                  LIMIT 1;",
                 &[
                     &ex.name,
-                    &serde_json::to_string(toolchain)?,
+                    &toolchain.to_string(),
                     &serde_json::to_string(krate)?,
                 ],
                 |row| row.get("result"),

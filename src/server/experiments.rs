@@ -138,7 +138,7 @@ impl ExperimentData {
         db.execute(
             "UPDATE experiments SET toolchain_start = ?1 WHERE name = ?2;",
             &[
-                &serde_json::to_string(&self.experiment.toolchains[0])?,
+                &self.experiment.toolchains[0].to_string(),
                 &self.experiment.name.as_str(),
             ],
         )?;
@@ -152,7 +152,7 @@ impl ExperimentData {
         db.execute(
             "UPDATE experiments SET toolchain_end = ?1 WHERE name = ?2;",
             &[
-                &serde_json::to_string(&self.experiment.toolchains[1])?,
+                &self.experiment.toolchains[1].to_string(),
                 &self.experiment.name.as_str(),
             ],
         )?;
@@ -281,10 +281,7 @@ impl ExperimentDBRecord {
             experiment: Experiment {
                 name: self.name,
                 crates,
-                toolchains: vec![
-                    serde_json::from_str(&self.toolchain_start)?,
-                    serde_json::from_str(&self.toolchain_end)?,
-                ],
+                toolchains: vec![self.toolchain_start.parse()?, self.toolchain_end.parse()?],
                 cap_lints: self.cap_lints.parse()?,
                 mode: self.mode.parse()?,
             },
@@ -365,8 +362,8 @@ impl Experiments {
                     &name,
                     &mode.to_str(),
                     &cap_lints.to_str(),
-                    &serde_json::to_string(&toolchain_start)?,
-                    &serde_json::to_string(&toolchain_end)?,
+                    &toolchain_start.to_string(),
+                    &toolchain_end.to_string(),
                     &priority,
                     &Utc::now(),
                     &"queued",

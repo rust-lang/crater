@@ -234,7 +234,7 @@ dependencies = [
  "minifier 0.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "r2d2_sqlite 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "r2d2_sqlite 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "ref_slice 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -242,7 +242,7 @@ dependencies = [
  "ring 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_core 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_s3 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rusqlite 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusqlite 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "scopeguard 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.70 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1171,11 +1171,11 @@ dependencies = [
 
 [[package]]
 name = "r2d2_sqlite"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "r2d2 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rusqlite 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusqlite 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1395,7 +1395,7 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2400,7 +2400,7 @@ dependencies = [
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum quote 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "e44651a0dc4cdd99f71c83b561e221f714912d11af1a4dff0631f923d53af035"
 "checksum r2d2 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f9078ca6a8a5568ed142083bb2f7dc9295b69d16f867ddcc9849e51b17d8db46"
-"checksum r2d2_sqlite 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "40a2a577eca774497be258ff0f9532f09ed5cec0f8e9cd06eb73c2b866636bbd"
+"checksum r2d2_sqlite 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d776a1bf225788bbe7f269c0ec574e467b1dfe50aee1541e88a193252cbc0d73"
 "checksum rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)" = "15a732abf9d20f0ad8eeb6f909bf6868722d9a06e1e50802b6a70351f40b4eb1"
 "checksum rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "eba5f8cb59cc50ed56be8880a5c7b496bfd9bd26394e176bc67884094145c2c5"
 "checksum rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)" = "e464cd887e869cddcae8792a4ee31d23c7edd516700695608f5b98c67ee0131c"
@@ -2421,7 +2421,7 @@ dependencies = [
 "checksum rusoto_core 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)" = "407a38db12e644205491a55ecd93a858c90b817bea7b310f681b28a5a43c3a8e"
 "checksum rusoto_credential 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "afb6ad8cb6cb8e4538011777deebe08e26958ade7f18513914c194ac32ca92fe"
 "checksum rusoto_s3 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5a0098ca4973610ccaf764e95feb626b450a55116cbdd41f7f7dd3e9ec7fb18f"
-"checksum rusqlite 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d9409d78a5a9646685688266e1833df8f08b71ffcae1b5db6c1bfb5970d8a80f"
+"checksum rusqlite 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c9d9118f1ce84d8d0b67f9779936432fb42bb620cef2122409d786892cce9a3c"
 "checksum rustc-demangle 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "76d7ba1feafada44f2d38eed812bd2489a03c0f5abb975799251518b68848649"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum safemem 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e27a8b19b835f7aea908818e871f5cc3a5a186550c30773be987e155e8163d8f"

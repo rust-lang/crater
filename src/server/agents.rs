@@ -151,7 +151,7 @@ mod tests {
     use server::db::Database;
     use server::experiments::Experiments;
     use server::tokens::Tokens;
-    use toolchain::Toolchain;
+    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_agents_synchronize() {
@@ -231,8 +231,8 @@ mod tests {
         experiments
             .create(
                 "test".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,

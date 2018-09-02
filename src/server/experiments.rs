@@ -132,26 +132,30 @@ impl ExperimentData {
     }
 
     pub fn set_start_toolchain(&mut self, db: &Database, start: Toolchain) -> Result<()> {
+        self.experiment.toolchains[0] = start;
+        self.experiment.validate()?;
+
         db.execute(
             "UPDATE experiments SET toolchain_start = ?1 WHERE name = ?2;",
             &[
-                &serde_json::to_string(&start)?,
+                &self.experiment.toolchains[0].to_string(),
                 &self.experiment.name.as_str(),
             ],
         )?;
-        self.experiment.toolchains[0] = start;
         Ok(())
     }
 
     pub fn set_end_toolchain(&mut self, db: &Database, end: Toolchain) -> Result<()> {
+        self.experiment.toolchains[1] = end;
+        self.experiment.validate()?;
+
         db.execute(
             "UPDATE experiments SET toolchain_end = ?1 WHERE name = ?2;",
             &[
-                &serde_json::to_string(&end)?,
+                &self.experiment.toolchains[1].to_string(),
                 &self.experiment.name.as_str(),
             ],
         )?;
-        self.experiment.toolchains[1] = end;
         Ok(())
     }
 
@@ -277,10 +281,7 @@ impl ExperimentDBRecord {
             experiment: Experiment {
                 name: self.name,
                 crates,
-                toolchains: vec![
-                    serde_json::from_str(&self.toolchain_start)?,
-                    serde_json::from_str(&self.toolchain_end)?,
-                ],
+                toolchains: [self.toolchain_start.parse()?, self.toolchain_end.parse()?],
                 cap_lints: self.cap_lints.parse()?,
                 mode: self.mode.parse()?,
             },
@@ -343,6 +344,15 @@ impl Experiments {
         self.db.transaction(|transaction| {
             let crates = ex::get_crates(crates, config)?;
 
+            // First of all, validate if the experiment is valid
+            Experiment {
+                name: name.to_string(),
+                crates: crates.clone(),
+                toolchains: [toolchain_start.clone(), toolchain_end.clone()],
+                mode,
+                cap_lints,
+            }.validate()?;
+
             transaction.execute(
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
@@ -352,8 +362,8 @@ impl Experiments {
                     &name,
                     &mode.to_str(),
                     &cap_lints.to_str(),
-                    &serde_json::to_string(&toolchain_start)?,
-                    &serde_json::to_string(&toolchain_end)?,
+                    &toolchain_start.to_string(),
+                    &toolchain_end.to_string(),
                     &priority,
                     &Utc::now(),
                     &"queued",
@@ -471,7 +481,7 @@ mod tests {
     use server::agents::Agents;
     use server::db::Database;
     use server::tokens::Tokens;
-    use toolchain::Toolchain;
+    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_experiment_creation() {
@@ -485,8 +495,8 @@ mod tests {
         experiments
             .create(
                 "test".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
@@ -503,10 +513,7 @@ mod tests {
         assert_eq!(ex.experiment.name.as_str(), "test");
         assert_eq!(
             ex.experiment.toolchains,
-            vec![
-                Toolchain::Dist("stable".into()),
-                Toolchain::Dist("beta".into()),
-            ]
+            [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()]
         );
         assert_eq!(ex.experiment.mode, ExMode::BuildAndTest);
         assert_eq!(ex.experiment.crates, ::ex::demo_list(&config).unwrap());
@@ -552,8 +559,8 @@ mod tests {
         experiments
             .create(
                 "test".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
@@ -567,8 +574,8 @@ mod tests {
         experiments
             .create(
                 "important".into(),
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,

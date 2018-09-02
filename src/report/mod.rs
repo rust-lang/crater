@@ -82,7 +82,11 @@ struct BuildTestResult {
 
 fn crate_to_path_fragment(toolchain: &Toolchain, krate: &Crate, encode: bool) -> PathBuf {
     let mut path = PathBuf::new();
-    path.push(toolchain.rustup_name());
+    if encode {
+        path.push(url_encode(&toolchain.to_string()));
+    } else {
+        path.push(toolchain.to_string());
+    }
 
     match *krate {
         Crate::Registry(ref details) => {
@@ -116,8 +120,6 @@ pub fn generate_report<DB: ReadResults>(
     ex: &Experiment,
 ) -> Result<TestResults> {
     let shas = db.load_all_shas(ex)?;
-    assert_eq!(ex.toolchains.len(), 2);
-
     let res = ex
         .crates
         .clone()
@@ -342,7 +344,7 @@ mod tests {
     use ex::{ExCapLints, ExMode, Experiment};
     use results::{DummyDB, TestResult};
     use std::collections::HashMap;
-    use toolchain::Toolchain;
+    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[derive(Default)]
     pub struct DummyWriter {
@@ -394,7 +396,6 @@ mod tests {
 
     #[test]
     fn test_crate_to_path_fragment() {
-        let tc = Toolchain::Dist("stable".into());
         let reg = Crate::Registry(RegistryCrate {
             name: "lazy_static".into(),
             version: "1.0".into(),
@@ -409,19 +410,19 @@ mod tests {
         });
 
         assert_eq!(
-            crate_to_path_fragment(&tc, &reg, false),
+            crate_to_path_fragment(&MAIN_TOOLCHAIN, &reg, false),
             PathBuf::from("stable/reg/lazy_static-1.0")
         );
         assert_eq!(
-            crate_to_path_fragment(&tc, &gh, false),
+            crate_to_path_fragment(&MAIN_TOOLCHAIN, &gh, false),
             PathBuf::from("stable/gh/brson.hello-rs")
         );
         assert_eq!(
-            crate_to_path_fragment(&tc, &plus, false),
+            crate_to_path_fragment(&MAIN_TOOLCHAIN, &plus, false),
             PathBuf::from("stable/reg/foo-1.0+bar")
         );
         assert_eq!(
-            crate_to_path_fragment(&tc, &plus, true),
+            crate_to_path_fragment(&MAIN_TOOLCHAIN, &plus, true),
             PathBuf::from("stable/reg/foo-1.0%2Bbar")
         );
     }
@@ -559,23 +560,40 @@ mod tests {
         };
         let gh = Crate::GitHub(repo.clone());
 
-        let stable = Toolchain::Dist("stable".to_string());
-        let beta = Toolchain::Dist("beta".to_string());
-
         let ex = Experiment {
             name: "foo".to_string(),
             crates: vec![gh.clone()],
-            toolchains: vec![stable.clone(), beta.clone()],
+            toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
             mode: ExMode::BuildAndTest,
             cap_lints: ExCapLints::Forbid,
         };
 
         let mut db = DummyDB::default();
         db.add_dummy_sha(&ex, repo.clone(), "f00".to_string());
-        db.add_dummy_result(&ex, gh.clone(), stable.clone(), TestResult::TestPass);
-        db.add_dummy_result(&ex, gh.clone(), beta.clone(), TestResult::BuildFail);
-        db.add_dummy_log(&ex, gh.clone(), stable.clone(), b"stable log".to_vec());
-        db.add_dummy_log(&ex, gh.clone(), beta.clone(), b"beta log".to_vec());
+        db.add_dummy_result(
+            &ex,
+            gh.clone(),
+            MAIN_TOOLCHAIN.clone(),
+            TestResult::TestPass,
+        );
+        db.add_dummy_result(
+            &ex,
+            gh.clone(),
+            TEST_TOOLCHAIN.clone(),
+            TestResult::BuildFail,
+        );
+        db.add_dummy_log(
+            &ex,
+            gh.clone(),
+            MAIN_TOOLCHAIN.clone(),
+            b"stable log".to_vec(),
+        );
+        db.add_dummy_log(
+            &ex,
+            gh.clone(),
+            TEST_TOOLCHAIN.clone(),
+            b"beta log".to_vec(),
+        );
 
         let writer = DummyWriter::default();
         gen(&db, &ex, &writer, &config).unwrap();

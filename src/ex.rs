@@ -56,14 +56,14 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 pub struct Experiment {
     pub name: String,
     pub crates: Vec<Crate>,
-    pub toolchains: Vec<Toolchain>,
+    pub toolchains: [Toolchain; 2],
     pub mode: ExMode,
     pub cap_lints: ExCapLints,
 }
 
 pub struct ExOpts {
     pub name: String,
-    pub toolchains: Vec<Toolchain>,
+    pub toolchains: [Toolchain; 2],
     pub mode: ExMode,
     pub crates: ExCrateSelect,
     pub cap_lints: ExCapLints,
@@ -141,7 +141,7 @@ fn top_100() -> Result<Vec<Crate>> {
 
 pub fn define_(
     ex_name: &str,
-    toolchains: Vec<Toolchain>,
+    toolchains: [Toolchain; 2],
     crates: Vec<Crate>,
     mode: ExMode,
     cap_lints: ExCapLints,
@@ -158,6 +158,9 @@ pub fn define_(
         mode,
         cap_lints,
     };
+
+    ex.validate()?;
+
     fs::create_dir_all(&ex_dir(&ex.name))?;
     let json = serde_json::to_string(&ex)?;
     info!("writing ex config to {}", config_file(ex_name).display());
@@ -166,6 +169,14 @@ pub fn define_(
 }
 
 impl Experiment {
+    pub fn validate(&self) -> Result<()> {
+        if self.toolchains[0] == self.toolchains[1] {
+            bail!("reusing the same toolchain isn't supported");
+        }
+
+        Ok(())
+    }
+
     pub fn fetch_repo_crates(&self) -> Result<()> {
         for repo in self.crates.iter().filter_map(|krate| krate.github()) {
             if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
@@ -433,4 +444,37 @@ pub fn delete(ex_name: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ExCapLints, ExMode, Experiment};
+    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
+
+    #[test]
+    fn test_validate_experiment() {
+        // Correct experiment
+        assert!(
+            Experiment {
+                name: "foo".to_string(),
+                crates: vec![],
+                toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
+                mode: ExMode::BuildAndTest,
+                cap_lints: ExCapLints::Forbid,
+            }.validate()
+                .is_ok()
+        );
+
+        // Experiment with the same toolchain
+        assert!(
+            Experiment {
+                name: "foo".to_string(),
+                crates: vec![],
+                toolchains: [MAIN_TOOLCHAIN.clone(), MAIN_TOOLCHAIN.clone()],
+                mode: ExMode::BuildAndTest,
+                cap_lints: ExCapLints::Forbid,
+            }.validate()
+                .is_err()
+        );
+    }
 }

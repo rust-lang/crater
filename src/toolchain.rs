@@ -25,24 +25,51 @@ pub enum CargoState {
     Unlocked,
 }
 
-/// A toolchain name, either a rustup channel identifier,
-/// or a URL+branch+sha: `https://github.com/rust-lang/rust+master+sha`
+lazy_static! {
+    /// This is the main toolchain used by Crater for everything not experiment-specific, such as
+    /// generating lockfiles or fetching dependencies.
+    pub static ref MAIN_TOOLCHAIN: Toolchain = Toolchain {
+        source: ToolchainSource::Dist {
+            name: "stable".to_string()
+        },
+    };
+}
+
+#[cfg(test)]
+lazy_static! {
+    /// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
+    pub static ref TEST_TOOLCHAIN: Toolchain = Toolchain {
+        source: ToolchainSource::Dist {
+            name: "beta".to_string()
+        },
+    };
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-pub enum Toolchain {
-    Dist(String), // rustup toolchain spec
-    TryBuild { sha: String },
-    Master { sha: String },
+#[serde(rename_all = "kebab-case", tag = "type")]
+pub enum ToolchainSource {
+    Dist {
+        name: String,
+    },
+    #[serde(rename = "ci")]
+    CI {
+        sha: String,
+        try: bool,
+    },
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
+pub struct Toolchain {
+    pub source: ToolchainSource,
 }
 
 impl Toolchain {
     pub fn prepare(&self) -> Result<()> {
         init_rustup()?;
 
-        match *self {
-            Toolchain::Dist(ref toolchain) => init_toolchain_from_dist(toolchain)?,
-            Toolchain::Master { ref sha } | Toolchain::TryBuild { ref sha } => {
-                init_toolchain_from_ci(true, sha)?
-            }
+        match self.source {
+            ToolchainSource::Dist { ref name } => init_toolchain_from_dist(name)?,
+            ToolchainSource::CI { ref sha, .. } => init_toolchain_from_ci(true, sha)?,
         }
 
         self.prep_offline_registry()?;
@@ -51,11 +78,9 @@ impl Toolchain {
     }
 
     pub fn rustup_name(&self) -> String {
-        match *self {
-            Toolchain::Dist(ref n) => n.to_string(),
-            Toolchain::TryBuild { ref sha } | Toolchain::Master { ref sha } => {
-                format!("{}-alt", sha)
-            }
+        match self.source {
+            ToolchainSource::Dist { ref name } => name.clone(),
+            ToolchainSource::CI { ref sha, .. } => format!("{}-alt", sha),
         }
     }
 
@@ -146,10 +171,13 @@ impl Toolchain {
 
 impl ToString for Toolchain {
     fn to_string(&self) -> String {
-        match *self {
-            Toolchain::Dist(ref s) => s.clone(),
-            Toolchain::TryBuild { ref sha } => format!("try#{}", sha),
-            Toolchain::Master { ref sha } => format!("master#{}", sha),
+        match self.source {
+            ToolchainSource::Dist { ref name } => name.clone(),
+            ToolchainSource::CI { ref sha, try } => if try {
+                format!("try#{}", sha)
+            } else {
+                format!("master#{}", sha)
+            },
         }
     }
 }
@@ -158,25 +186,28 @@ impl FromStr for Toolchain {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        fn get_sha(s: &str) -> Result<&str> {
-            if let Some(hash_idx) = s.find('#') {
-                let (_, sha) = s.split_at(hash_idx + 1);
-                Ok(sha)
-            } else {
-                Err("no sha for try toolchain".into())
+        let source = if let Some(hash_idx) = s.find('#') {
+            let (source_name, sha_with_hash) = s.split_at(hash_idx);
+
+            let sha = (&sha_with_hash[1..]).to_string();
+            if sha.is_empty() {
+                return Err(ErrorKind::EmptyToolchainName.into());
             }
-        }
-        if s.starts_with("try#") {
-            Ok(Toolchain::TryBuild {
-                sha: get_sha(s)?.into(),
-            })
-        } else if s.starts_with("master#") {
-            Ok(Toolchain::Master {
-                sha: get_sha(s)?.into(),
-            })
+
+            match source_name {
+                "try" => ToolchainSource::CI { sha, try: true },
+                "master" => ToolchainSource::CI { sha, try: false },
+                name => return Err(ErrorKind::InvalidToolchainSourceName(name.to_string()).into()),
+            }
+        } else if s.is_empty() {
+            return Err(ErrorKind::EmptyToolchainName.into());
         } else {
-            Ok(Toolchain::Dist(s.to_string()))
-        }
+            ToolchainSource::Dist {
+                name: s.to_string(),
+            }
+        };
+
+        Ok(Toolchain { source })
     }
 }
 
@@ -314,4 +345,57 @@ fn user_id() -> ::libc::uid_t {
 #[cfg(windows)]
 fn user_id() -> u32 {
     unimplemented!();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Toolchain, ToolchainSource};
+    use std::str::FromStr;
+
+    #[test]
+    fn test_string_repr() {
+        macro_rules! test_from_str {
+            ($($str:expr => $source:expr,)*) => {
+                $(
+                    test_from_str!($str => Toolchain {
+                        source: $source,
+                    });
+                )*
+            };
+            ($str:expr => $rust:expr) => {
+                // Test parsing from string to rust
+                assert_eq!(Toolchain::from_str($str).unwrap(), $rust);
+                // Test dumping from rust to string
+                assert_eq!(&$rust.to_string(), $str);
+                // Test dumping from rust to string to rust
+                assert_eq!(Toolchain::from_str($rust.to_string().as_ref()).unwrap(), $rust);
+            };
+        }
+
+        // Test valid reprs
+        test_from_str! {
+            "stable" => ToolchainSource::Dist {
+                name: "stable".into(),
+            },
+            "beta-1970-01-01" => ToolchainSource::Dist {
+                name: "beta-1970-01-01".into(),
+            },
+            "nightly-1970-01-01" => ToolchainSource::Dist {
+                name: "nightly-1970-01-01".into(),
+            },
+            "master#0000000000000000000000000000000000000000" => ToolchainSource::CI {
+                sha: "0000000000000000000000000000000000000000".into(),
+                try: false,
+            },
+            "try#0000000000000000000000000000000000000000" => ToolchainSource::CI {
+                sha: "0000000000000000000000000000000000000000".into(),
+                try: true,
+            },
+        };
+
+        // Test invalid reprs
+        assert!(Toolchain::from_str("").is_err());
+        assert!(Toolchain::from_str("master#").is_err());
+        assert!(Toolchain::from_str("foo#0000000000000000000000000000000000000000").is_err());
+    }
 }

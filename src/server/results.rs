@@ -41,7 +41,7 @@ impl<'a> ResultsDB<'a> {
                     &[
                         &ex.name,
                         &serde_json::to_string(&result.krate)?,
-                        &serde_json::to_string(&result.toolchain)?,
+                        &result.toolchain.to_string(),
                         &result.result.to_str(),
                         &base64::decode(&result.log).chain_err(|| "invalid base64 log provided")?,
                     ],
@@ -93,7 +93,7 @@ impl<'a> ReadResults for ResultsDB<'a> {
              LIMIT 1;",
             &[
                 &ex.name,
-                &serde_json::to_string(toolchain)?,
+                &toolchain.to_string(),
                 &serde_json::to_string(krate)?,
             ],
             |row| row.get("log"),
@@ -114,7 +114,7 @@ impl<'a> ReadResults for ResultsDB<'a> {
                  LIMIT 1;",
                 &[
                     &ex.name,
-                    &serde_json::to_string(toolchain)?,
+                    &toolchain.to_string(),
                     &serde_json::to_string(krate)?,
                 ],
                 |row| row.get("result"),
@@ -139,7 +139,7 @@ mod tests {
     use results::{ReadResults, TestResult};
     use server::db::Database;
     use server::experiments::Experiments;
-    use toolchain::Toolchain;
+    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_results_db() {
@@ -151,8 +151,8 @@ mod tests {
         experiments
             .create(
                 "test",
-                &Toolchain::Dist("stable".into()),
-                &Toolchain::Dist("beta".into()),
+                &MAIN_TOOLCHAIN,
+                &TEST_TOOLCHAIN,
                 ExMode::BuildAndTest,
                 ExCrateSelect::Demo,
                 ExCapLints::Forbid,
@@ -169,7 +169,6 @@ mod tests {
             name: "lazy_static".into(),
             version: "1".into(),
         });
-        let toolchain = Toolchain::Dist("stable".into());
 
         // Store a result and some SHAs
         results
@@ -178,7 +177,7 @@ mod tests {
                 &ProgressData {
                     results: vec![TaskResult {
                         krate: krate.clone(),
-                        toolchain: toolchain.clone(),
+                        toolchain: MAIN_TOOLCHAIN.clone(),
                         result: TestResult::TestPass,
                         log: base64::encode("foo"),
                     }],
@@ -203,11 +202,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            results.load_log(&ex, &toolchain, &krate).unwrap(),
+            results.load_log(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
             Some("foo".as_bytes().to_vec())
         );
         assert_eq!(
-            results.load_test_result(&ex, &toolchain, &krate).unwrap(),
+            results
+                .load_test_result(&ex, &MAIN_TOOLCHAIN, &krate)
+                .unwrap(),
             Some(TestResult::TestPass)
         );
     }

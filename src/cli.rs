@@ -22,7 +22,7 @@ use crater::report;
 use crater::results::FileDB;
 use crater::run_graph;
 use crater::server;
-use crater::toolchain::Toolchain;
+use crater::toolchain::{Toolchain, MAIN_TOOLCHAIN};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -246,8 +246,7 @@ impl Crater {
             Crater::CreateLists => lists::create_all_lists(true)?,
             Crater::PrepareLocal { ref env } => {
                 let docker_env = &env.0;
-                let stable_tc = Toolchain::Dist("stable".into());
-                stable_tc.prepare()?;
+                MAIN_TOOLCHAIN.prepare()?;
                 docker::build_container(docker_env)?;
                 lists::create_all_lists(false)?;
             }
@@ -264,7 +263,7 @@ impl Crater {
                 ex::define(
                     ex::ExOpts {
                         name: ex.0.clone(),
-                        toolchains: vec![tc1.clone(), tc2.clone()],
+                        toolchains: [tc1.clone(), tc2.clone()],
                         mode: *mode,
                         crates: *crates,
                         cap_lints: *cap_lints,

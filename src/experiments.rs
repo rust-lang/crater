@@ -3,7 +3,7 @@ use config::Config;
 use crates::Crate;
 use db::{Database, QueryUtils};
 use errors::*;
-use ex::{self, ExCapLints, ExCrateSelect, ExMode, Experiment};
+use ex::{ExCapLints, ExMode, Experiment};
 use rusqlite::Row;
 use serde_json;
 use toolchain::Toolchain;
@@ -40,6 +40,10 @@ pub struct ExperimentData {
 }
 
 impl ExperimentData {
+    pub fn exists(db: &Database, name: &str) -> Result<bool> {
+        db.exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])
+    }
+
     pub fn set_status(&mut self, db: &Database, status: Status) -> Result<()> {
         db.execute(
             "UPDATE experiments SET status = ?1 WHERE name = ?2;",
@@ -318,70 +322,6 @@ impl Experiments {
         Experiments { db }
     }
 
-    pub fn exists(&self, name: &str) -> Result<bool> {
-        self.db
-            .exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])
-    }
-
-    #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
-    pub fn create(
-        &self,
-        name: &str,
-        toolchain_start: &Toolchain,
-        toolchain_end: &Toolchain,
-        mode: ExMode,
-        crates: ExCrateSelect,
-        cap_lints: ExCapLints,
-        config: &Config,
-        github_issue: Option<&str>,
-        github_issue_url: Option<&str>,
-        github_issue_number: Option<i32>,
-        priority: i32,
-    ) -> Result<()> {
-        self.db.transaction(|transaction| {
-            let crates = ex::get_crates(crates, config)?;
-
-            // First of all, validate if the experiment is valid
-            Experiment {
-                name: name.to_string(),
-                crates: crates.clone(),
-                toolchains: [toolchain_start.clone(), toolchain_end.clone()],
-                mode,
-                cap_lints,
-            }.validate()?;
-
-            transaction.execute(
-                "INSERT INTO experiments \
-                 (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
-                 status, github_issue, github_issue_url, github_issue_number) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
-                &[
-                    &name,
-                    &mode.to_str(),
-                    &cap_lints.to_str(),
-                    &toolchain_start.to_string(),
-                    &toolchain_end.to_string(),
-                    &priority,
-                    &Utc::now(),
-                    &"queued",
-                    &github_issue,
-                    &github_issue_url,
-                    &github_issue_number,
-                ],
-            )?;
-
-            for krate in &crates {
-                let skipped = config.should_skip(krate) as i32;
-                transaction.execute(
-                    "INSERT INTO experiment_crates (experiment, crate, skipped) VALUES (?1, ?2, ?3);",
-                    &[&name, &serde_json::to_string(&krate)?, &skipped],
-                )?;
-            }
-
-            Ok(())
-        })
-    }
-
     pub fn delete(&self, name: &str) -> Result<()> {
         // This will also delete all the data related to this experiment
         self.db
@@ -473,70 +413,11 @@ impl Experiments {
 #[cfg(test)]
 mod tests {
     use super::{Experiments, Status};
+    use actions::CreateExperiment;
     use config::Config;
     use db::Database;
-    use ex::{ExCapLints, ExCrateSelect, ExMode};
     use server::agents::Agents;
     use server::tokens::Tokens;
-    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
-
-    #[test]
-    fn test_experiment_creation() {
-        let db = Database::temp().unwrap();
-        let experiments = Experiments::new(db.clone());
-
-        let api_url = "https://api.github.com/repos/example/example/issues/10";
-        let html_url = "https://github.com/example/example/issue/10";
-
-        let config = Config::default();
-        experiments
-            .create(
-                "test".into(),
-                &MAIN_TOOLCHAIN,
-                &TEST_TOOLCHAIN,
-                ExMode::BuildAndTest,
-                ExCrateSelect::Demo,
-                ExCapLints::Forbid,
-                &config,
-                Some(api_url),
-                Some(html_url),
-                Some(10),
-                5,
-            ).unwrap();
-
-        // Ensure all the data inserted for the experiment is correct
-        let ex = experiments.get("test").unwrap().unwrap();
-        assert_eq!(ex.experiment.name.as_str(), "test");
-        assert_eq!(
-            ex.experiment.toolchains,
-            [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()]
-        );
-        assert_eq!(ex.experiment.mode, ExMode::BuildAndTest);
-        assert_eq!(ex.experiment.crates, ::ex::demo_list(&config).unwrap());
-        assert_eq!(ex.experiment.cap_lints, ExCapLints::Forbid);
-        assert_eq!(
-            ex.server_data
-                .github_issue
-                .as_ref()
-                .unwrap()
-                .api_url
-                .as_str(),
-            api_url
-        );
-        assert_eq!(
-            ex.server_data
-                .github_issue
-                .as_ref()
-                .unwrap()
-                .html_url
-                .as_str(),
-            html_url
-        );
-        assert_eq!(ex.server_data.github_issue.as_ref().unwrap().number, 10);
-        assert_eq!(ex.server_data.priority, 5);
-        assert_eq!(ex.server_data.status, Status::Queued);
-        assert!(ex.server_data.assigned_to.is_none());
-    }
 
     #[test]
     fn test_assigning_experiment() {
@@ -552,34 +433,12 @@ mod tests {
         let _ = Agents::new(db.clone(), &tokens).unwrap();
 
         let config = Config::default();
-        experiments
-            .create(
-                "test".into(),
-                &MAIN_TOOLCHAIN,
-                &TEST_TOOLCHAIN,
-                ExMode::BuildAndTest,
-                ExCrateSelect::Demo,
-                ExCapLints::Forbid,
-                &config,
-                None,
-                None,
-                None,
-                0,
-            ).unwrap();
-        experiments
-            .create(
-                "important".into(),
-                &MAIN_TOOLCHAIN,
-                &TEST_TOOLCHAIN,
-                ExMode::BuildAndTest,
-                ExCrateSelect::Demo,
-                ExCapLints::Forbid,
-                &config,
-                None,
-                None,
-                None,
-                10,
-            ).unwrap();
+
+        CreateExperiment::dummy("test").apply(&db, &config).unwrap();
+
+        let mut create_important = CreateExperiment::dummy("important");
+        create_important.priority = 10;
+        create_important.apply(&db, &config).unwrap();
 
         // Test the important experiment is correctly assigned
         let (new, ex) = experiments.next("agent-1").unwrap().unwrap();

@@ -45,5 +45,13 @@ error_chain! {
             description("invalid toolchain flag")
             display("invalid toolchain flag: {}", name)
         }
+
+        ExperimentAlreadyExists(name: String) {
+            description("experiment already exists")
+            display("experiment '{}' already exists", name)
+        }
+        DuplicateToolchains {
+            description("duplicate toolchains provided")
+        }
     }
 }

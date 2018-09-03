@@ -145,12 +145,11 @@ impl Agents {
 #[cfg(test)]
 mod tests {
     use super::{AgentStatus, Agents};
+    use actions::CreateExperiment;
     use config::Config;
     use db::Database;
-    use ex::{ExCapLints, ExCrateSelect, ExMode};
     use experiments::Experiments;
     use server::tokens::Tokens;
-    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_agents_synchronize() {
@@ -215,7 +214,7 @@ mod tests {
         let experiments = Experiments::new(db.clone());
         let mut tokens = Tokens::default();
         tokens.agents.insert("token".into(), "agent".into());
-        let agents = Agents::new(db, &tokens).unwrap();
+        let agents = Agents::new(db.clone(), &tokens).unwrap();
 
         // When no heartbeat is recorded, the agent is unreachable
         let agent = agents.get("agent").unwrap().unwrap();
@@ -227,20 +226,9 @@ mod tests {
         assert_eq!(agent.status(), AgentStatus::Idle);
 
         // Create a new experiment and assign it to the agent
-        experiments
-            .create(
-                "test".into(),
-                &MAIN_TOOLCHAIN,
-                &TEST_TOOLCHAIN,
-                ExMode::BuildAndTest,
-                ExCrateSelect::Demo,
-                ExCapLints::Forbid,
-                &config,
-                None,
-                None,
-                None,
-                0,
-            ).unwrap();
+        CreateExperiment::dummy("dummy")
+            .apply(&db, &config)
+            .unwrap();
         experiments.next("agent").unwrap();
 
         // After an experiment is assigned to the agent, the agent is working

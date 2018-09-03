@@ -9,9 +9,11 @@
 //! application state employs ownership techniques to ensure that
 //! parallel access is consistent and race-free.
 
+use crater::actions;
 use crater::agent;
 use crater::config::Config;
 use crater::crates::Crate;
+use crater::db::Database;
 use crater::docker;
 use crater::errors::*;
 use crater::ex;
@@ -126,6 +128,13 @@ pub enum Crater {
             )
         )]
         cap_lints: ExCapLints,
+        #[structopt(
+            name = "priority",
+            long = "priority",
+            short = "p",
+            default_value = "0"
+        )]
+        priority: i32,
     },
 
     #[structopt(
@@ -265,19 +274,20 @@ impl Crater {
                 ref mode,
                 ref crates,
                 ref cap_lints,
+                ref priority,
             } => {
                 let config = Config::load()?;
+                let db = Database::open()?;
 
-                ex::define(
-                    ex::ExOpts {
-                        name: ex.0.clone(),
-                        toolchains: [tc1.clone(), tc2.clone()],
-                        mode: *mode,
-                        crates: *crates,
-                        cap_lints: *cap_lints,
-                    },
-                    &config,
-                )?;
+                actions::CreateExperiment {
+                    name: ex.0.clone(),
+                    toolchains: [tc1.clone(), tc2.clone()],
+                    mode: *mode,
+                    crates: *crates,
+                    cap_lints: *cap_lints,
+                    priority: *priority,
+                    github_issue: None,
+                }.apply(&db, &config)?;
             }
             Crater::CopyEx { ref ex1, ref ex2 } => {
                 ex::copy(&ex1.0, &ex2.0)?;

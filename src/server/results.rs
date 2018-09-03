@@ -130,37 +130,27 @@ impl<'a> ReadResults for ResultsDB<'a> {
 #[cfg(test)]
 mod tests {
     use super::{ProgressData, ResultsDB, TaskResult};
+    use actions::CreateExperiment;
     use base64;
     use config::Config;
     use crates::{Crate, GitHubRepo, RegistryCrate};
     use db::Database;
-    use ex::{ExCapLints, ExCrateSelect, ExMode};
     use experiments::Experiments;
     use results::{ReadResults, TestResult};
-    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
+    use toolchain::MAIN_TOOLCHAIN;
 
     #[test]
     fn test_results_db() {
         let db = Database::temp().unwrap();
         let experiments = Experiments::new(db.clone());
         let results = ResultsDB::new(&db);
+        let config = Config::default();
 
         // Create a dummy experiment to attach the results to
-        experiments
-            .create(
-                "test",
-                &MAIN_TOOLCHAIN,
-                &TEST_TOOLCHAIN,
-                ExMode::BuildAndTest,
-                ExCrateSelect::Demo,
-                ExCapLints::Forbid,
-                &Config::default(),
-                None,
-                None,
-                None,
-                0,
-            ).unwrap();
-        let ex = experiments.get("test").unwrap().unwrap().experiment;
+        CreateExperiment::dummy("dummy")
+            .apply(&db, &config)
+            .unwrap();
+        let ex = experiments.get("dummy").unwrap().unwrap().experiment;
 
         let krate = Crate::Registry(RegistryCrate {
             name: "lazy_static".into(),

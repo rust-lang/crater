@@ -73,6 +73,7 @@ extern crate warp;
 #[cfg(windows)]
 extern crate winapi;
 
+pub mod actions;
 pub mod agent;
 mod assets;
 #[macro_use]
@@ -81,7 +82,7 @@ pub mod log;
 pub mod util;
 pub mod config;
 pub mod crates;
-mod db;
+pub mod db;
 pub mod dirs;
 mod dl;
 pub mod docker;

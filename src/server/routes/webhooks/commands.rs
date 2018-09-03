@@ -1,7 +1,7 @@
 use db::{Database, QueryUtils};
 use errors::*;
 use ex::{self, ExCapLints, ExCrateSelect, ExMode};
-use experiments::Status;
+use experiments::{ExperimentData, GitHubIssue, Status};
 use server::github::Issue;
 use server::messages::{Label, Message};
 use server::routes::webhooks::args::{AbortArgs, EditArgs, RetryReportArgs, RunArgs};
@@ -18,23 +18,22 @@ pub fn ping(data: &Data, issue: &Issue) -> Result<()> {
 pub fn run(data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    if data.experiments.exists(&name)? {
-        bail!("an experiment named **`{}`** already exists!", name);
-    }
-
-    data.experiments.create(
-        &name,
-        &args.start.ok_or_else(|| "missing start toolchain")?,
-        &args.end.ok_or_else(|| "missing end toolchain")?,
-        args.mode.unwrap_or(ExMode::BuildAndTest),
-        args.crates.unwrap_or(ExCrateSelect::Full),
-        args.cap_lints.unwrap_or(ExCapLints::Forbid),
-        &data.config,
-        Some(&issue.url),
-        Some(&issue.html_url),
-        Some(issue.number),
-        args.priority.unwrap_or(0),
-    )?;
+    ::actions::CreateExperiment {
+        name: name.clone(),
+        toolchains: [
+            args.start.ok_or_else(|| "missing start toolchain")?,
+            args.end.ok_or_else(|| "missing end toolchain")?,
+        ],
+        mode: args.mode.unwrap_or(ExMode::BuildAndTest),
+        crates: args.crates.unwrap_or(ExCrateSelect::Full),
+        cap_lints: args.cap_lints.unwrap_or(ExCapLints::Forbid),
+        priority: args.priority.unwrap_or(0),
+        github_issue: Some(GitHubIssue {
+            api_url: issue.url.clone(),
+            html_url: issue.html_url.clone(),
+            number: issue.number,
+        }),
+    }.apply(&data.db, &data.config)?;
 
     Message::new()
         .line(
@@ -130,7 +129,7 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Result
 pub fn abort(data: &Data, issue: &Issue, args: AbortArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    if !data.experiments.exists(&name)? {
+    if !ExperimentData::exists(&data.db, &name)? {
         bail!("an experiment named **`{}`** doesn't exist!", name);
     }
 

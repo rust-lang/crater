@@ -1,22 +1,21 @@
-mod agents;
+pub mod agents;
 pub mod api_types;
 mod auth;
-mod db;
-mod experiments;
 mod github;
 mod messages;
 mod reports;
 mod results;
 mod routes;
-mod tokens;
+pub mod tokens;
 
 use config::Config;
+use db::Database;
 use errors::*;
+use experiments::Experiments;
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
 use server::agents::Agents;
 use server::auth::ACL;
-use server::experiments::Experiments;
 use server::github::GitHubApi;
 use server::tokens::Tokens;
 use std::sync::Arc;
@@ -34,13 +33,13 @@ pub struct Data {
     pub tokens: Tokens,
     pub agents: Agents,
     pub experiments: Experiments,
-    pub db: db::Database,
+    pub db: Database,
     pub reports_worker: reports::ReportsWorker,
     pub acl: ACL,
 }
 
 pub fn run(config: Config) -> Result<()> {
-    let db = db::Database::open()?;
+    let db = Database::open()?;
     let tokens = tokens::Tokens::load()?;
     let github = GitHubApi::new(&tokens);
     let agents = Agents::new(db.clone(), &tokens)?;

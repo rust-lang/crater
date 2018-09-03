@@ -1,7 +1,7 @@
+use db::{Database, QueryUtils};
 use errors::*;
 use ex::{self, ExCapLints, ExCrateSelect, ExMode};
-use server::db::{Database, QueryUtils};
-use server::experiments::Status;
+use experiments::Status;
 use server::github::Issue;
 use server::messages::{Label, Message};
 use server::routes::webhooks::args::{AbortArgs, EditArgs, RetryReportArgs, RunArgs};
@@ -194,7 +194,7 @@ fn default_experiment_name(db: &Database, issue: &Issue) -> Result<Option<String
 #[cfg(test)]
 mod tests {
     use super::{default_experiment_name, store_experiment_name};
-    use server::db::Database;
+    use db::Database;
     use server::github;
 
     #[test]

@@ -1,8 +1,8 @@
 use errors::*;
+use experiments::{ExperimentData, Status};
 use report;
 use rusoto_core::request::default_tls_client;
 use rusoto_s3::S3Client;
-use server::experiments::{ExperimentData, Status};
 use server::messages::{Label, Message};
 use server::results::ResultsDB;
 use server::Data;

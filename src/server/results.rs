@@ -1,10 +1,10 @@
 use base64;
 use crates::{Crate, GitHubRepo};
+use db::{Database, QueryUtils};
 use errors::*;
 use ex::Experiment;
 use results::{ReadResults, TestResult};
 use serde_json;
-use server::db::{Database, QueryUtils};
 use std::collections::HashMap;
 use toolchain::Toolchain;
 
@@ -133,10 +133,10 @@ mod tests {
     use base64;
     use config::Config;
     use crates::{Crate, GitHubRepo, RegistryCrate};
+    use db::Database;
     use ex::{ExCapLints, ExCrateSelect, ExMode};
+    use experiments::Experiments;
     use results::{ReadResults, TestResult};
-    use server::db::Database;
-    use server::experiments::Experiments;
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]

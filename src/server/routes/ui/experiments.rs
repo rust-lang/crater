@@ -2,9 +2,9 @@ use chrono::{Duration, SecondsFormat, Utc};
 use chrono_humanize::{Accuracy, HumanTime, Tense};
 use errors::*;
 use ex::ExMode;
+use experiments::Status;
 use http::Response;
 use hyper::Body;
-use server::experiments::Status;
 use server::routes::ui::{render_template, LayoutContext};
 use server::Data;
 use std::sync::Arc;
@@ -21,7 +21,7 @@ struct ExperimentData {
 }
 
 impl ExperimentData {
-    fn new(data: &Data, experiment: &::server::experiments::ExperimentData) -> Result<Self> {
+    fn new(data: &Data, experiment: &::experiments::ExperimentData) -> Result<Self> {
         let (status_class, status_pretty) = match experiment.server_data.status {
             Status::Queued => ("", "Queued"),
             Status::Running => ("orange", "Running"),

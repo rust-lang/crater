@@ -1,8 +1,8 @@
 use chrono::Duration;
 use chrono::{DateTime, Utc};
+use db::{Database, QueryUtils};
 use errors::*;
-use server::db::{Database, QueryUtils};
-use server::experiments::{ExperimentData, Experiments};
+use experiments::{ExperimentData, Experiments};
 use server::tokens::Tokens;
 use std::collections::HashSet;
 
@@ -146,9 +146,9 @@ impl Agents {
 mod tests {
     use super::{AgentStatus, Agents};
     use config::Config;
+    use db::Database;
     use ex::{ExCapLints, ExCrateSelect, ExMode};
-    use server::db::Database;
-    use server::experiments::Experiments;
+    use experiments::Experiments;
     use server::tokens::Tokens;
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 

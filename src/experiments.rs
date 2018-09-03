@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 use config::Config;
 use crates::Crate;
+use db::{Database, QueryUtils};
 use errors::*;
 use ex::{self, ExCapLints, ExCrateSelect, ExMode, Experiment};
 use rusqlite::Row;
 use serde_json;
-use server::db::{Database, QueryUtils};
 use toolchain::Toolchain;
 
 string_enum!(pub enum Status {
@@ -474,9 +474,9 @@ impl Experiments {
 mod tests {
     use super::{Experiments, Status};
     use config::Config;
+    use db::Database;
     use ex::{ExCapLints, ExCrateSelect, ExMode};
     use server::agents::Agents;
-    use server::db::Database;
     use server::tokens::Tokens;
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 

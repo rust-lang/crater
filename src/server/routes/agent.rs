@@ -1,9 +1,9 @@
 use errors::*;
+use experiments::Status;
 use http::{Response, StatusCode};
 use hyper::Body;
 use server::api_types::{AgentConfig, ApiResponse};
 use server::auth::{auth_filter, AuthDetails, TokenType};
-use server::experiments::Status;
 use server::messages::Message;
 use server::results::{ProgressData, ResultsDB};
 use server::Data;

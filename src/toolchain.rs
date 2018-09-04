@@ -169,7 +169,7 @@ impl Toolchain {
                     &self.rustup_name()
                 )
             });
-        // ignore the error untill 
+        // ignore the error untill
         // https://github.com/rust-lang/cargo/pull/5961
         // is ready
         Ok(())

@@ -159,7 +159,7 @@ impl Toolchain {
         // https://github.com/rust-lang/cargo/pull/5961
         // is ready
         let full_args = [&toolchain_arg, "install", "lazy_static"];
-        RunCommand::new(&installed_binary("cargo"), &full_args)
+        let _ = RunCommand::new(&installed_binary("cargo"), &full_args)
             .local_rustup()
             .quiet(true)
             .run()
@@ -168,7 +168,11 @@ impl Toolchain {
                     "unable to update the index for toolchain {}",
                     &self.rustup_name()
                 )
-            })
+            });
+        // ignore the error untill 
+        // https://github.com/rust-lang/cargo/pull/5961
+        // is ready
+        Ok(())
     }
 }
 

@@ -19,6 +19,7 @@ sudo yum install git htop docker gcc cmake openssl-devel
 sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 sudo yum install --enablerepo=epel byobu
 sudo systemctl start docker
+sudo systemctl enable docker
 sudo usermod -a -G docker ec2-user
 
 # Configure byobu to use Ctrl+Z instead of Ctrl+A

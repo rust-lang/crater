@@ -128,17 +128,23 @@ impl Agents {
     }
 
     pub fn record_heartbeat(&self, agent: &str) -> Result<()> {
-        self.db.execute(
+        let changes = self.db.execute(
             "UPDATE agents SET last_heartbeat = ?1 WHERE name = ?2;",
             &[&Utc::now(), &agent],
-        )
+        )?;
+        assert_eq!(changes, 1);
+
+        Ok(())
     }
 
     pub fn set_git_revision(&self, agent: &str, revision: &str) -> Result<()> {
-        self.db.execute(
+        let changes = self.db.execute(
             "UPDATE agents SET git_revision = ?1 WHERE name = ?2;",
             &[&revision, &agent],
-        )
+        )?;
+        assert_eq!(changes, 1);
+
+        Ok(())
     }
 }
 

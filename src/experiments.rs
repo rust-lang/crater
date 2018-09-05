@@ -325,7 +325,8 @@ impl Experiments {
     pub fn delete(&self, name: &str) -> Result<()> {
         // This will also delete all the data related to this experiment
         self.db
-            .execute("DELETE FROM experiments WHERE name = ?1;", &[&name])
+            .execute("DELETE FROM experiments WHERE name = ?1;", &[&name])?;
+        Ok(())
     }
 
     pub fn get(&self, name: &str) -> Result<Option<ExperimentData>> {

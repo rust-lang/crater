@@ -171,7 +171,8 @@ fn store_experiment_name(db: &Database, issue: &Issue, name: &str) -> Result<()>
     db.execute(
         "INSERT INTO saved_names (issue, experiment) VALUES (?1, ?2);",
         &[&issue.number, &name],
-    )
+    )?;
+    Ok(())
 }
 
 fn default_experiment_name(db: &Database, issue: &Issue) -> Result<Option<String>> {

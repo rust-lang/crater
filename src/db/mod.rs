@@ -101,11 +101,11 @@ pub trait QueryUtils {
         })
     }
 
-    fn execute(&self, sql: &str, params: &[&ToSql]) -> Result<()> {
+    fn execute(&self, sql: &str, params: &[&ToSql]) -> Result<usize> {
         self.with_conn(|conn| {
             let mut prepared = conn.prepare(sql)?;
-            prepared.execute(params)?;
-            Ok(())
+            let changes = prepared.execute(params)?;
+            Ok(changes)
         })
     }
 

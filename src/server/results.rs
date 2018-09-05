@@ -135,14 +135,13 @@ mod tests {
     use config::Config;
     use crates::{Crate, GitHubRepo, RegistryCrate};
     use db::Database;
-    use experiments::Experiments;
+    use experiments::ExperimentData;
     use results::{ReadResults, TestResult};
     use toolchain::MAIN_TOOLCHAIN;
 
     #[test]
     fn test_results_db() {
         let db = Database::temp().unwrap();
-        let experiments = Experiments::new(db.clone());
         let results = ResultsDB::new(&db);
         let config = Config::default();
 
@@ -150,7 +149,10 @@ mod tests {
         CreateExperiment::dummy("dummy")
             .apply(&db, &config)
             .unwrap();
-        let ex = experiments.get("dummy").unwrap().unwrap().experiment;
+        let ex = ExperimentData::get(&db, "dummy")
+            .unwrap()
+            .unwrap()
+            .experiment;
 
         let krate = Crate::Registry(RegistryCrate {
             name: "lazy_static".into(),

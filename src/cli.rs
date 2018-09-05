@@ -137,6 +137,36 @@ pub enum Crater {
         priority: i32,
     },
 
+    #[structopt(name = "edit", about = "edit an experiment configuration")]
+    Edit {
+        #[structopt(name = "name")]
+        name: String,
+        #[structopt(name = "toolchain-start", long = "start")]
+        tc1: Option<Toolchain>,
+        #[structopt(name = "toolchain-end", long = "end")]
+        tc2: Option<Toolchain>,
+        #[structopt(
+            name = "mode",
+            long = "mode",
+            possible_values_raw = "ExMode::possible_values()"
+        )]
+        mode: Option<ExMode>,
+        #[structopt(
+            name = "crates",
+            long = "crates",
+            possible_values_raw = "ExCrateSelect::possible_values()"
+        )]
+        crates: Option<ExCrateSelect>,
+        #[structopt(
+            name = "cap-lints",
+            long = "cap-lints",
+            possible_values_raw = "ExCapLints::possible_values()"
+        )]
+        cap_lints: Option<ExCapLints>,
+        #[structopt(name = "priority", long = "priority", short = "p",)]
+        priority: Option<i32>,
+    },
+
     #[structopt(
         name = "copy-ex",
         about = "copy all data from one experiment to another"
@@ -287,6 +317,27 @@ impl Crater {
                     cap_lints: *cap_lints,
                     priority: *priority,
                     github_issue: None,
+                }.apply(&db, &config)?;
+            }
+            Crater::Edit {
+                ref name,
+                ref tc1,
+                ref tc2,
+                ref mode,
+                ref crates,
+                ref cap_lints,
+                ref priority,
+            } => {
+                let config = Config::load()?;
+                let db = Database::open()?;
+
+                actions::EditExperiment {
+                    name: name.clone(),
+                    toolchains: [tc1.clone(), tc2.clone()],
+                    mode: *mode,
+                    crates: *crates,
+                    cap_lints: *cap_lints,
+                    priority: *priority,
                 }.apply(&db, &config)?;
             }
             Crater::CopyEx { ref ex1, ref ex2 } => {

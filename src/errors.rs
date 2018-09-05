@@ -46,12 +46,19 @@ error_chain! {
             display("invalid toolchain flag: {}", name)
         }
 
+        ExperimentNotFound(name: String) {
+            description("experiment not found")
+            display("experiment '{}' not found", name)
+        }
         ExperimentAlreadyExists(name: String) {
             description("experiment already exists")
             display("experiment '{}' already exists", name)
         }
         DuplicateToolchains {
             description("duplicate toolchains provided")
+        }
+        CanEditOnlyQueuedExperiments {
+            description("it's only possible to edit queued experiments")
         }
     }
 }

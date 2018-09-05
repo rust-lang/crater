@@ -86,7 +86,7 @@ mod tests {
     use db::Database;
     use errors::*;
     use ex::{ExCapLints, ExCrateSelect, ExMode};
-    use experiments::{Experiments, GitHubIssue, Status};
+    use experiments::{ExperimentData, GitHubIssue, Status};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
@@ -112,9 +112,7 @@ mod tests {
         }.apply(&db, &config)
         .unwrap();
 
-        let experiments = Experiments::new(db);
-
-        let ex = experiments.get("foo").unwrap().unwrap();
+        let ex = ExperimentData::get(&db, "foo").unwrap().unwrap();
         assert_eq!(ex.experiment.name.as_str(), "foo");
         assert_eq!(
             ex.experiment.toolchains,

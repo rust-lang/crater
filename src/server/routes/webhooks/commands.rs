@@ -1,6 +1,6 @@
 use db::{Database, QueryUtils};
 use errors::*;
-use ex::{self, ExCapLints, ExCrateSelect, ExMode};
+use ex::{ExCapLints, ExCrateSelect, ExMode};
 use experiments::{ExperimentData, GitHubIssue, Status};
 use server::github::Issue;
 use server::messages::{Label, Message};
@@ -48,61 +48,34 @@ pub fn run(data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
 pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    if let Some(mut experiment) = data.experiments.get(&name)? {
-        if experiment.server_data.status != Status::Queued {
-            bail!("the experiment **`{}`** can't be edited anymore.", name);
-        }
+    let changed = ::actions::EditExperiment {
+        name: name.clone(),
+        toolchains: [args.start, args.end],
+        crates: args.crates,
+        mode: args.mode,
+        cap_lints: args.cap_lints,
+        priority: args.priority,
+    }.apply(&data.db, &data.config)?;
 
-        let mut changed = false;
-
-        if let Some(start) = args.start {
-            experiment.set_start_toolchain(&data.db, start)?;
-            changed = true;
-        }
-        if let Some(end) = args.end {
-            experiment.set_end_toolchain(&data.db, end)?;
-            changed = true;
-        }
-        if let Some(mode) = args.mode {
-            experiment.set_mode(&data.db, mode)?;
-            changed = true;
-        }
-        if let Some(cap_lints) = args.cap_lints {
-            experiment.set_cap_lints(&data.db, cap_lints)?;
-            changed = true;
-        }
-        if let Some(crates) = args.crates {
-            let crates = ex::get_crates(crates, &data.config)?;
-            experiment.set_crates(&data.db, &data.config, crates)?;
-            changed = true;
-        }
-        if let Some(priority) = args.priority {
-            experiment.set_priority(&data.db, priority)?;
-            changed = true;
-        }
-
-        if changed {
-            Message::new()
-                .line(
-                    "memo",
-                    format!("Configuration of the **`{}`** experiment changed.", name),
-                ).send(&issue.url, data)?;
-        } else {
-            Message::new()
-                .line("warning", "No changes requested.")
-                .send(&issue.url, data)?;
-        }
-
-        Ok(())
+    if changed {
+        Message::new()
+            .line(
+                "memo",
+                format!("Configuration of the **`{}`** experiment changed.", name),
+            ).send(&issue.url, data)?;
     } else {
-        bail!("an experiment named **`{}`** doesn't exist!", name);
+        Message::new()
+            .line("warning", "No changes requested.")
+            .send(&issue.url, data)?;
     }
+
+    Ok(())
 }
 
 pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    if let Some(mut experiment) = data.experiments.get(&name)? {
+    if let Some(mut experiment) = ExperimentData::get(&data.db, &name)? {
         if experiment.server_data.status != Status::ReportFailed {
             bail!(
                 "generation of the report of the **`{}`** experiment didn't fail!",

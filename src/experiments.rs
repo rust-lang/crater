@@ -1,12 +1,10 @@
 use chrono::{DateTime, Utc};
-use config::Config;
 use crates::Crate;
 use db::{Database, QueryUtils};
 use errors::*;
-use ex::{ExCapLints, ExMode, Experiment};
+use ex::Experiment;
 use rusqlite::Row;
 use serde_json;
-use toolchain::Toolchain;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -42,6 +40,20 @@ pub struct ExperimentData {
 impl ExperimentData {
     pub fn exists(db: &Database, name: &str) -> Result<bool> {
         db.exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])
+    }
+
+    pub fn get(db: &Database, name: &str) -> Result<Option<ExperimentData>> {
+        let record = db.get_row(
+            "SELECT * FROM experiments WHERE name = ?1;",
+            &[&name],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+
+        if let Some(record) = record {
+            Ok(Some(record.into_experiment_data(db)?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn set_status(&mut self, db: &Database, status: Status) -> Result<()> {
@@ -80,86 +92,6 @@ impl ExperimentData {
             &[&assigned_to, &self.experiment.name.as_str()],
         )?;
         self.server_data.assigned_to = assigned_to;
-        Ok(())
-    }
-
-    pub fn set_mode(&mut self, db: &Database, mode: ExMode) -> Result<()> {
-        db.execute(
-            "UPDATE experiments SET mode = ?1 WHERE name = ?2;",
-            &[&mode.to_str(), &self.experiment.name.as_str()],
-        )?;
-        self.experiment.mode = mode;
-        Ok(())
-    }
-
-    pub fn set_cap_lints(&mut self, db: &Database, cap_lints: ExCapLints) -> Result<()> {
-        db.execute(
-            "UPDATE experiments SET cap_lints = ?1 WHERE name = ?2;",
-            &[&cap_lints.to_str(), &self.experiment.name.as_str()],
-        )?;
-        self.experiment.cap_lints = cap_lints;
-        Ok(())
-    }
-
-    pub fn set_priority(&mut self, db: &Database, priority: i32) -> Result<()> {
-        db.execute(
-            "UPDATE experiments SET priority = ?1 WHERE name = ?2;",
-            &[&priority, &self.experiment.name.as_str()],
-        )?;
-        self.server_data.priority = priority;
-        Ok(())
-    }
-
-    pub fn set_crates(&mut self, db: &Database, config: &Config, crates: Vec<Crate>) -> Result<()> {
-        db.transaction(|transaction| {
-            transaction.execute(
-                "DELETE FROM experiment_crates WHERE experiment = ?1;",
-                &[&self.experiment.name.as_str()],
-            )?;
-
-            for krate in &crates {
-                transaction.execute(
-                    "INSERT INTO experiment_crates (experiment, crate, skipped) \
-                     VALUES (?1, ?2, ?3);",
-                    &[
-                        &self.experiment.name.as_str(),
-                        &serde_json::to_string(&krate)?,
-                        &config.should_skip(krate),
-                    ],
-                )?;
-            }
-
-            Ok(())
-        })?;
-        self.experiment.crates = crates;
-        Ok(())
-    }
-
-    pub fn set_start_toolchain(&mut self, db: &Database, start: Toolchain) -> Result<()> {
-        self.experiment.toolchains[0] = start;
-        self.experiment.validate()?;
-
-        db.execute(
-            "UPDATE experiments SET toolchain_start = ?1 WHERE name = ?2;",
-            &[
-                &self.experiment.toolchains[0].to_string(),
-                &self.experiment.name.as_str(),
-            ],
-        )?;
-        Ok(())
-    }
-
-    pub fn set_end_toolchain(&mut self, db: &Database, end: Toolchain) -> Result<()> {
-        self.experiment.toolchains[1] = end;
-        self.experiment.validate()?;
-
-        db.execute(
-            "UPDATE experiments SET toolchain_end = ?1 WHERE name = ?2;",
-            &[
-                &self.experiment.toolchains[1].to_string(),
-                &self.experiment.name.as_str(),
-            ],
-        )?;
         Ok(())
     }
 
@@ -327,20 +259,6 @@ impl Experiments {
         self.db
             .execute("DELETE FROM experiments WHERE name = ?1;", &[&name])?;
         Ok(())
-    }
-
-    pub fn get(&self, name: &str) -> Result<Option<ExperimentData>> {
-        let record = self.db.get_row(
-            "SELECT * FROM experiments WHERE name = ?1;",
-            &[&name],
-            |r| ExperimentDBRecord::from_row(r),
-        )?;
-
-        if let Some(record) = record {
-            Ok(Some(record.into_experiment_data(&self.db)?))
-        } else {
-            Ok(None)
-        }
     }
 
     pub fn all(&self) -> Result<Vec<ExperimentData>> {

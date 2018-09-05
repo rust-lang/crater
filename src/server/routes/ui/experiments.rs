@@ -2,7 +2,7 @@ use chrono::{Duration, SecondsFormat, Utc};
 use chrono_humanize::{Accuracy, HumanTime, Tense};
 use errors::*;
 use ex::ExMode;
-use experiments::Status;
+use experiments::{ExperimentData as Experiment, Status};
 use http::Response;
 use hyper::Body;
 use server::routes::ui::{render_template, LayoutContext};
@@ -121,7 +121,7 @@ struct ExperimentContext {
 }
 
 pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Result<Response<Body>> {
-    if let Some(ex) = data.experiments.get(&name)? {
+    if let Some(ex) = Experiment::get(&data.db, &name)? {
         let (completed_jobs, total_jobs) = ex.raw_progress(&data.db)?;
 
         let (duration, estimated_end, average_job_duration) = if completed_jobs > 0

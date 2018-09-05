@@ -62,9 +62,16 @@ impl Database {
             transaction: conn.transaction()?,
         };
 
-        let result = f(&handle);
-        handle.commit()?;
-        result
+        match f(&handle) {
+            Ok(res) => {
+                handle.commit()?;
+                Ok(res)
+            }
+            Err(err) => {
+                handle.rollback()?;
+                Err(err)
+            }
+        }
     }
 }
 

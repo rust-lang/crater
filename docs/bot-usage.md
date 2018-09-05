@@ -37,9 +37,17 @@ third-party code, the first thing is to request a **try build** to get a valid
 toolchain. You can do that with the `@bors try` GitHub comment.
 
 Once the try build is done, you can get the SHA of the start and end commits.
-The end commit is the commit by bors used for the try build, and the start
-commit is the first parent of that (another merge commit by bors). You must
-prefix the start commit with `master#`, and the end commit with `try#`.
+Bors should have posted a comment like this in the thread:
+
+> ⌛ Trying commit XXXXXXX with merge YYYYYYY...
+
+The end commit is `YYYYYYY`, while the start commit is the first of its two
+parents (both should be merge commits by bors):
+
+![Where to look for the commits](images/pr-try-commit.png)
+
+You must prefix the start commit with `master#`, and the end commit with
+`try#`, and both of them should be written with the full 40-chars hash.
 
 Then, you choose the [experiment mode you want to use][h-experiment-modes], and
 type up the command in your GitHub PR:

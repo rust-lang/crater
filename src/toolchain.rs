@@ -155,8 +155,11 @@ impl Toolchain {
         // This nop cargo command is to update the registry
         // so we don't have to do it for each crate.
         let toolchain_arg = "+".to_string() + &self.rustup_name();
-        let full_args = [&toolchain_arg, "search", "lazy_static"];
-        RunCommand::new(&installed_binary("cargo"), &full_args)
+        // using `install` is a temporary solution until
+        // https://github.com/rust-lang/cargo/pull/5961
+        // is ready
+        let full_args = [&toolchain_arg, "install", "lazy_static"];
+        let _ = RunCommand::new(&installed_binary("cargo"), &full_args)
             .local_rustup()
             .quiet(true)
             .run()
@@ -165,7 +168,11 @@ impl Toolchain {
                     "unable to update the index for toolchain {}",
                     &self.rustup_name()
                 )
-            })
+            });
+        // ignore the error untill
+        // https://github.com/rust-lang/cargo/pull/5961
+        // is ready
+        Ok(())
     }
 }
 

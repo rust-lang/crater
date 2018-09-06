@@ -26,7 +26,7 @@ github-repos = ["brson/hello-rs"]
 
 [sandbox]
 # Maximum amount of RAM allowed during builds
-memory-limit = "2G"
+memory-limit = "1536M"  # 1.5G
 
 
 # These sections allows to customize how crater treats specific crates/repos

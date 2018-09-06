@@ -16,7 +16,8 @@ pub fn build_container(docker_env: &str) -> Result<()> {
     RunCommand::new(
         "docker",
         &["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"],
-    ).run()
+    ).enable_timeout(false)
+        .run()
 }
 
 #[derive(Copy, Clone)]

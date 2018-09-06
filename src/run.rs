@@ -22,6 +22,7 @@ pub struct RunCommand<'a, S: AsRef<OsStr> + 'a> {
     env: Vec<(&'a str, &'a str)>,
     cd: Option<&'a Path>,
     quiet: bool,
+    enable_timeout: bool,
 }
 
 impl<'a, S: AsRef<OsStr>> RunCommand<'a, S> {
@@ -32,6 +33,7 @@ impl<'a, S: AsRef<OsStr>> RunCommand<'a, S> {
             env: Vec::new(),
             cd: None,
             quiet: false,
+            enable_timeout: true,
         }
     }
 
@@ -47,6 +49,11 @@ impl<'a, S: AsRef<OsStr>> RunCommand<'a, S> {
 
     pub fn quiet(mut self, quiet: bool) -> Self {
         self.quiet = quiet;
+        self
+    }
+
+    pub fn enable_timeout(mut self, enable_timeout: bool) -> Self {
+        self.enable_timeout = enable_timeout;
         self
     }
 
@@ -80,7 +87,7 @@ impl<'a, S: AsRef<OsStr>> RunCommand<'a, S> {
         }
 
         info!("running `{}`", cmdstr);
-        let out = log_command(cmd, capture, self.quiet).map_err(|e| {
+        let out = log_command(cmd, capture, self.quiet, self.enable_timeout).map_err(|e| {
             info!("error running command: {}", e);
             e
         })?;
@@ -102,11 +109,31 @@ struct ProcessOutput {
 const MAX_TIMEOUT_SECS: u64 = 60 * 15;
 const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 5;
 
-fn log_command(mut cmd: Command, capture: bool, quiet: bool) -> Result<ProcessOutput> {
+fn log_command(
+    mut cmd: Command,
+    capture: bool,
+    quiet: bool,
+    enable_timeout: bool,
+) -> Result<ProcessOutput> {
+    let (max_timeout, heartbeat_timeout) = if enable_timeout {
+        let max_timeout = Duration::from_secs(MAX_TIMEOUT_SECS);
+        let heartbeat_timeout = if quiet {
+            // If the command is known to be slow, the heartbeat timeout is set to the same value as
+            // the max timeout, so it can't be triggered.
+            max_timeout
+        } else {
+            Duration::from_secs(HEARTBEAT_TIMEOUT_SECS)
+        };
+
+        (max_timeout, heartbeat_timeout)
+    } else {
+        // If timeouts are disabled just use a *really* long timeout
+        let max = Duration::from_secs(7 * 24 * 60 * 60);
+        (max, max)
+    };
+
     let mut core = Core::new().unwrap();
-    let timer = tokio_timer::wheel()
-        .max_timeout(Duration::from_secs(MAX_TIMEOUT_SECS * 2))
-        .build();
+    let timer = tokio_timer::wheel().max_timeout(max_timeout * 2).build();
     let mut child = cmd
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -117,15 +144,6 @@ fn log_command(mut cmd: Command, capture: bool, quiet: bool) -> Result<ProcessOu
 
     // Needed for killing after timeout
     let child_id = child.id();
-
-    let max_timeout = Duration::from_secs(MAX_TIMEOUT_SECS);
-    let heartbeat_timeout = if quiet {
-        // If the command is known to be slow, the heartbeat timeout is set to the same value as
-        // the max timeout, so it can't be triggered.
-        max_timeout
-    } else {
-        Duration::from_secs(HEARTBEAT_TIMEOUT_SECS)
-    };
 
     let logger = slog_scope::logger();
     let stdout = lines(BufReader::new(stdout)).map({

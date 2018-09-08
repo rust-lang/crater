@@ -60,5 +60,16 @@ error_chain! {
         CanEditOnlyQueuedExperiments {
             description("it's only possible to edit queued experiments")
         }
+
+        EmptyAssignee {
+            description("the assignee is empty")
+        }
+        InvalidAssigneeKind(name: String) {
+            description("invalid assignee kind")
+            display("invalid assignee kind: {}", name)
+        }
+        UnexpectedAssigneePayload {
+            description("unexpected assignee payload")
+        }
     }
 }

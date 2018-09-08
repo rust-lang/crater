@@ -5,6 +5,8 @@ use errors::*;
 use ex::Experiment;
 use rusqlite::Row;
 use serde_json;
+use std::fmt;
+use std::str::FromStr;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -14,6 +16,54 @@ string_enum!(pub enum Status {
     ReportFailed => "report-failed",
     Completed => "completed",
 });
+
+#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
+#[derive(Clone)]
+pub enum Assignee {
+    Agent(String),
+    CLI,
+}
+
+impl fmt::Display for Assignee {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Assignee::Agent(ref name) => write!(f, "agent:{}", name),
+            Assignee::CLI => write!(f, "cli"),
+        }
+    }
+}
+
+impl FromStr for Assignee {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self> {
+        if input.trim().is_empty() {
+            return Err(ErrorKind::EmptyAssignee.into());
+        }
+
+        let mut split = input.splitn(2, ':');
+        let kind = split.next().ok_or(ErrorKind::EmptyAssignee)?;
+
+        match kind {
+            "agent" => {
+                let name = split.next().ok_or(ErrorKind::EmptyAssignee)?;
+                if name.trim().is_empty() {
+                    return Err(ErrorKind::EmptyAssignee.into());
+                }
+
+                Ok(Assignee::Agent(name.to_string()))
+            }
+            "cli" => {
+                if split.next().is_some() {
+                    return Err(ErrorKind::UnexpectedAssigneePayload.into());
+                }
+
+                Ok(Assignee::CLI)
+            }
+            invalid => Err(ErrorKind::InvalidAssigneeKind(invalid.to_string()).into()),
+        }
+    }
+}
 
 pub struct GitHubIssue {
     pub api_url: String,
@@ -28,7 +78,7 @@ pub struct ServerData {
     pub completed_at: Option<DateTime<Utc>>,
     pub github_issue: Option<GitHubIssue>,
     pub status: Status,
-    pub assigned_to: Option<String>,
+    pub assigned_to: Option<Assignee>,
     pub report_url: Option<String>,
 }
 
@@ -86,12 +136,15 @@ impl ExperimentData {
         Ok(())
     }
 
-    pub fn set_assigned_to(&mut self, db: &Database, assigned_to: Option<String>) -> Result<()> {
+    pub fn set_assigned_to(&mut self, db: &Database, assigned_to: Option<&Assignee>) -> Result<()> {
         db.execute(
             "UPDATE experiments SET assigned_to = ?1 WHERE name = ?2;",
-            &[&assigned_to, &self.experiment.name.as_str()],
+            &[
+                &assigned_to.map(|a| a.to_string()),
+                &self.experiment.name.as_str(),
+            ],
         )?;
-        self.server_data.assigned_to = assigned_to;
+        self.server_data.assigned_to = assigned_to.cloned();
         Ok(())
     }
 
@@ -236,7 +289,11 @@ impl ExperimentDBRecord {
                 } else {
                     None
                 },
-                assigned_to: self.assigned_to,
+                assigned_to: if let Some(assignee) = self.assigned_to {
+                    Some(assignee.parse()?)
+                } else {
+                    None
+                },
                 status: self.status.parse()?,
                 report_url: self.report_url,
             },
@@ -273,11 +330,11 @@ impl Experiments {
             .collect::<Result<_>>()
     }
 
-    pub fn run_by_agent(&self, agent: &str) -> Result<Option<ExperimentData>> {
+    pub fn run_by(&self, assignee: &Assignee) -> Result<Option<ExperimentData>> {
         let record = self.db.get_row(
             "SELECT * FROM experiments \
-             WHERE status = \"running\" AND assigned_to = ?1;",
-            &[&agent],
+             WHERE status = ?1 AND assigned_to = ?2;",
+            &[&Status::Running.to_str(), &assignee.to_string()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
 
@@ -304,9 +361,9 @@ impl Experiments {
         }
     }
 
-    pub fn next(&self, agent: &str) -> Result<Option<(bool, ExperimentData)>> {
+    pub fn next(&self, assignee: &Assignee) -> Result<Option<(bool, ExperimentData)>> {
         // Avoid assigning two experiments to the same agent
-        if let Some(experiment) = self.run_by_agent(agent)? {
+        if let Some(experiment) = self.run_by(assignee)? {
             return Ok(Some((false, experiment)));
         }
 
@@ -321,7 +378,7 @@ impl Experiments {
         if let Some(record) = record {
             let mut experiment = record.into_experiment_data(&self.db)?;
             experiment.set_status(&self.db, Status::Running)?;
-            experiment.set_assigned_to(&self.db, Some(agent.into()))?;
+            experiment.set_assigned_to(&self.db, Some(assignee))?;
             Ok(Some((true, experiment)))
         } else {
             Ok(None)
@@ -331,12 +388,51 @@ impl Experiments {
 
 #[cfg(test)]
 mod tests {
-    use super::{Experiments, Status};
+    use super::{Assignee, Experiments, Status};
     use actions::CreateExperiment;
     use config::Config;
     use db::Database;
+    use errors::*;
     use server::agents::Agents;
     use server::tokens::Tokens;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_assignee_parsing() {
+        assert_eq!(
+            Assignee::Agent("foo".to_string()).to_string().as_str(),
+            "agent:foo"
+        );
+        assert_eq!(
+            Assignee::from_str("agent:foo").unwrap(),
+            Assignee::Agent("foo".to_string())
+        );
+
+        assert_eq!(Assignee::CLI.to_string().as_str(), "cli");
+        assert_eq!(Assignee::from_str("cli").unwrap(), Assignee::CLI);
+
+        for empty in &["", "agent:"] {
+            let err = Assignee::from_str(empty).unwrap_err();
+            match err.kind() {
+                ErrorKind::EmptyAssignee => {}
+                other => panic!("invalid error received for '{}': {}", empty, other),
+            }
+        }
+
+        let err = Assignee::from_str("foo").unwrap_err();
+        match err.kind() {
+            ErrorKind::InvalidAssigneeKind(kind) => assert_eq!(kind, "foo"),
+            other => panic!("invalid error received: {}", other),
+        }
+
+        for invalid in &["cli:", "cli:foo"] {
+            let err = Assignee::from_str(invalid).unwrap_err();
+            match err.kind() {
+                ErrorKind::UnexpectedAssigneePayload => {}
+                other => panic!("invalid error received for '{}': {}", invalid, other),
+            }
+        }
+    }
 
     #[test]
     fn test_assigning_experiment() {
@@ -347,6 +443,10 @@ mod tests {
         tokens.agents.insert("token1".into(), "agent-1".into());
         tokens.agents.insert("token2".into(), "agent-2".into());
         tokens.agents.insert("token3".into(), "agent-3".into());
+
+        let agent1 = Assignee::Agent("agent-1".to_string());
+        let agent2 = Assignee::Agent("agent-2".to_string());
+        let agent3 = Assignee::Agent("agent-3".to_string());
 
         // Populate the `agents` table
         let _ = Agents::new(db.clone(), &tokens).unwrap();
@@ -360,25 +460,25 @@ mod tests {
         create_important.apply(&db, &config).unwrap();
 
         // Test the important experiment is correctly assigned
-        let (new, ex) = experiments.next("agent-1").unwrap().unwrap();
+        let (new, ex) = experiments.next(&agent1).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.experiment.name.as_str(), "important");
         assert_eq!(ex.server_data.status, Status::Running);
-        assert_eq!(ex.server_data.assigned_to.unwrap().as_str(), "agent-1");
+        assert_eq!(ex.server_data.assigned_to.unwrap(), agent1);
 
         // Test the same experiment is returned to the agent
-        let (new, ex) = experiments.next("agent-1").unwrap().unwrap();
+        let (new, ex) = experiments.next(&agent1).unwrap().unwrap();
         assert!(!new);
         assert_eq!(ex.experiment.name.as_str(), "important");
 
         // Test the less important experiment is assigned to the next agent
-        let (new, ex) = experiments.next("agent-2").unwrap().unwrap();
+        let (new, ex) = experiments.next(&agent2).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.experiment.name.as_str(), "test");
         assert_eq!(ex.server_data.status, Status::Running);
-        assert_eq!(ex.server_data.assigned_to.unwrap().as_str(), "agent-2");
+        assert_eq!(ex.server_data.assigned_to.unwrap(), agent2);
 
         // Test no other experiment is available for the other agents
-        assert!(experiments.next("agent-3").unwrap().is_none());
+        assert!(experiments.next(&agent3).unwrap().is_none());
     }
 }

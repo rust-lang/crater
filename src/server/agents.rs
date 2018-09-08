@@ -2,7 +2,7 @@ use chrono::Duration;
 use chrono::{DateTime, Utc};
 use db::{Database, QueryUtils};
 use errors::*;
-use experiments::{ExperimentData, Experiments};
+use experiments::{Assignee, ExperimentData, Experiments};
 use server::tokens::Tokens;
 use std::collections::HashSet;
 
@@ -26,7 +26,7 @@ pub struct Agent {
 impl Agent {
     fn with_experiment(mut self, db: &Database) -> Result<Self> {
         let experiments = Experiments::new(db.clone());
-        self.experiment = experiments.run_by_agent(&self.name)?;
+        self.experiment = experiments.run_by(&Assignee::Agent(self.name.clone()))?;
         Ok(self)
     }
 
@@ -154,7 +154,7 @@ mod tests {
     use actions::CreateExperiment;
     use config::Config;
     use db::Database;
-    use experiments::Experiments;
+    use experiments::{Assignee, Experiments};
     use server::tokens::Tokens;
 
     #[test]
@@ -235,7 +235,9 @@ mod tests {
         CreateExperiment::dummy("dummy")
             .apply(&db, &config)
             .unwrap();
-        experiments.next("agent").unwrap();
+        experiments
+            .next(&Assignee::Agent("agent".to_string()))
+            .unwrap();
 
         // After an experiment is assigned to the agent, the agent is working
         let agent = agents.get("agent").unwrap().unwrap();

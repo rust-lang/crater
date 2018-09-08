@@ -41,7 +41,11 @@ impl ExperimentData {
                 ExMode::CheckOnly => "cargo check",
                 ExMode::UnstableFeatures => "unstable features",
             },
-            assigned_to: experiment.server_data.assigned_to.clone(),
+            assigned_to: experiment
+                .server_data
+                .assigned_to
+                .as_ref()
+                .map(|a| a.to_string()),
             priority: experiment.server_data.priority,
             progress: experiment.progress(&data.db)?,
         })

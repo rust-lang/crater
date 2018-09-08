@@ -181,6 +181,48 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         })),
     ));
 
+    migrations.push((
+        "migrate_agents_to_assignees_in_experiments",
+        MigrationKind::SQL(
+            "
+            CREATE TABLE experiments_new (
+                name TEXT PRIMARY KEY,
+                mode TEXT NOT NULL,
+                cap_lints TEXT NOT NULL,
+
+                toolchain_start TEXT NOT NULL,
+                toolchain_end TEXT NOT NULL,
+
+                created_at DATETIME NOT NULL,
+                started_at DATETIME,
+                completed_at DATETIME,
+
+                priority INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                report_url TEXT,
+                github_issue TEXT,
+                github_issue_url TEXT,
+                github_issue_number INTEGER,
+                assigned_to TEXT
+            );
+
+            INSERT INTO experiments_new (
+                name, mode, cap_lints, toolchain_start, toolchain_end, created_at, started_at,
+                completed_at, priority, status, report_url, github_issue, github_issue_url,
+                github_issue_number, assigned_to
+            ) SELECT
+                name, mode, cap_lints, toolchain_start, toolchain_end, created_at, started_at,
+                completed_at, priority, status, report_url, github_issue, github_issue_url,
+                github_issue_number,
+                CASE WHEN assigned_to IS NOT NULL THEN 'agent:' || assigned_to ELSE NULL END
+            FROM experiments;
+
+            DROP TABLE experiments;
+            ALTER TABLE experiments_new RENAME TO experiments;
+            ",
+        ),
+    ));
+
     migrations
 }
 

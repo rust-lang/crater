@@ -1,10 +1,10 @@
 use errors::*;
 use experiments::{ExperimentData, Status};
 use report;
+use results::DatabaseDB;
 use rusoto_core::request::default_tls_client;
 use rusoto_s3::S3Client;
 use server::messages::{Label, Message};
-use server::results::ResultsDB;
 use server::Data;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -14,7 +14,7 @@ use util;
 // Automatically wake up the reports generator thread every 10 minutes to check for new jobs
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
 
-fn generate_report(data: &Data, ex: &ExperimentData, results: &ResultsDB) -> Result<()> {
+fn generate_report(data: &Data, ex: &ExperimentData, results: &DatabaseDB) -> Result<()> {
     let client = S3Client::new(
         default_tls_client()?,
         data.tokens.reports_bucket.clone(),
@@ -33,7 +33,7 @@ fn generate_report(data: &Data, ex: &ExperimentData, results: &ResultsDB) -> Res
 
 fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
     let timeout = Duration::from_secs(AUTOMATIC_THREAD_WAKEUP);
-    let results = ResultsDB::new(&data.db);
+    let results = DatabaseDB::new(&data.db);
 
     loop {
         let mut ex = match data.experiments.first_by_status(Status::NeedsReport)? {

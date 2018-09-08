@@ -2,10 +2,10 @@ use errors::*;
 use experiments::{Assignee, Status};
 use http::{Response, StatusCode};
 use hyper::Body;
+use results::{DatabaseDB, ProgressData};
 use server::api_types::{AgentConfig, ApiResponse};
 use server::auth::{auth_filter, AuthDetails, TokenType};
 use server::messages::Message;
-use server::results::{ProgressData, ResultsDB};
 use server::Data;
 use std::sync::Arc;
 use warp::{self, Filter, Rejection};
@@ -134,7 +134,7 @@ fn endpoint_record_progress(
         experiment.experiment.name, auth.name,
     );
 
-    let db = ResultsDB::new(&data.db);
+    let db = DatabaseDB::new(&data.db);
     db.store(&experiment.experiment, &result)?;
 
     Ok(ApiResponse::Success { result: true }.into_response()?)

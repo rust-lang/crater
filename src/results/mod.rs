@@ -1,3 +1,4 @@
+mod db;
 #[cfg(test)]
 mod dummy;
 mod file;
@@ -7,7 +8,10 @@ use errors::*;
 use ex::Experiment;
 #[cfg(test)]
 pub use results::dummy::DummyDB;
-pub use results::file::FileDB;
+pub use results::{
+    db::{DatabaseDB, ProgressData},
+    file::FileDB,
+};
 use std::collections::HashMap;
 use toolchain::Toolchain;
 

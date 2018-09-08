@@ -4,7 +4,6 @@ mod auth;
 mod github;
 mod messages;
 mod reports;
-mod results;
 mod routes;
 pub mod tokens;
 

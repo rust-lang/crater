@@ -5,9 +5,9 @@ scratch, from an Amazon Linux image. To get a new one ask in `#rust-infra`.
 
 The machine type we're currently using is:
 
-* Instance: AWS `m3.2xlarge`
-* Storage: 1.5 Tb
-* OS: Amazon Linux
+* Instance: AWS `c5.2xlarge`
+* Storage: 2 Tb
+* OS: Amazon Linux 2
 
 Once they tell you the IP of the machine, ssh with the `ec2-user` user into it
 from the bastion server, and execute these commands:
@@ -18,10 +18,12 @@ source $HOME/.cargo/env
 sudo yum install git htop docker gcc cmake openssl-devel
 sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 sudo yum install --enablerepo=epel byobu
-sudo service docker start
+sudo systemctl start docker
+sudo systemctl enable docker
 sudo usermod -a -G docker ec2-user
 
 # Configure byobu to use Ctrl+Z instead of Ctrl+A
+mkdir ~/.byobu
 cat > ~/.byobu/keybindings.tmux << EOF
 unbind-key -n C-a
 unbind-key -n C-z

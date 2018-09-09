@@ -14,6 +14,8 @@ extern crate slog_scope;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
+#[macro_use]
+extern crate error_chain;
 
 extern crate crater;
 

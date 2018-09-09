@@ -17,11 +17,12 @@ use crater::db::Database;
 use crater::docker;
 use crater::errors::*;
 use crater::ex;
-use crater::ex::{ExCapLints, ExCrateSelect, ExMode, Experiment};
+use crater::ex::{ExCapLints, ExCrateSelect, ExMode};
 use crater::ex_run;
+use crater::experiments::{Assignee, ExperimentData, Status};
 use crater::lists;
 use crater::report;
-use crater::results::FileDB;
+use crater::results::{DatabaseDB, FileDB};
 use crater::run_graph;
 use crater::server;
 use crater::toolchain::{Toolchain, MAIN_TOOLCHAIN};
@@ -359,9 +360,29 @@ impl Crater {
             } => ex_run::delete_result(&ex.0, tc.as_ref(), krate)?,
             Crater::RunGraph { ref ex, threads } => {
                 let config = Config::load()?;
-                let experiment = Experiment::load(&ex.0)?;
-                let db = FileDB::default();
-                run_graph::run_ex(&experiment, &db, threads, &config)?;
+                let db = Database::open()?;
+
+                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
+                    // Ensure the experiment is properly assigned
+                    match experiment.server_data.assigned_to {
+                        None => experiment.set_assigned_to(&db, Some(&Assignee::CLI))?,
+                        Some(Assignee::CLI) => {}
+                        Some(a) => bail!("experiment {} is assigned to {}", ex.0, a),
+                    }
+
+                    // Update the status
+                    match experiment.server_data.status {
+                        Status::Queued => experiment.set_status(&db, Status::Running)?,
+                        Status::Running => {}
+                        other => bail!("can't run an experiment with status {}", other.to_str()),
+                    }
+
+                    let result_db = DatabaseDB::new(&db);
+                    run_graph::run_ex(&experiment.experiment, &result_db, threads, &config)?;
+                    experiment.set_status(&db, Status::NeedsReport)?;
+                } else {
+                    bail!("missing experiment {}", ex.0);
+                }
             }
             Crater::GenReport { ref ex, ref dest } => {
                 let config = Config::load()?;

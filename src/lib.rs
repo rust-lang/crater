@@ -89,7 +89,7 @@ pub mod docker;
 pub mod errors;
 pub mod ex;
 pub mod ex_run;
-mod experiments;
+pub mod experiments;
 mod file;
 mod gh;
 mod git;

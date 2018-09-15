@@ -5,11 +5,9 @@ use agent::api::AgentApi;
 use config::Config;
 use errors::*;
 use ex::{self, Experiment};
-use file;
 use run_graph;
-use serde_json;
+use std::thread;
 use std::time::Duration;
-use std::{fs, thread};
 use util;
 
 struct Agent {
@@ -35,17 +33,7 @@ impl Agent {
 
     fn experiment(&self) -> Result<Experiment> {
         info!("asking the server for a new experiment...");
-        let from_server = self.api.next_experiment()?;
-
-        if Experiment::load(&from_server.name).is_ok() {
-            warn!("redefining existing experiment: {}", from_server.name);
-        }
-
-        fs::create_dir_all(&ex::ex_dir(&from_server.name))?;
-        let json = serde_json::to_string(&from_server)?;
-        file::write_string(&ex::config_file(&from_server.name), &json)?;
-
-        Ok(Experiment::load(&from_server.name)?)
+        Ok(self.api.next_experiment()?)
     }
 }
 

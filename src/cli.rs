@@ -22,7 +22,7 @@ use crater::ex_run;
 use crater::experiments::{Assignee, ExperimentData, Status};
 use crater::lists;
 use crater::report;
-use crater::results::{DatabaseDB, FileDB};
+use crater::results::DatabaseDB;
 use crater::run_graph;
 use crater::server;
 use crater::toolchain::{Toolchain, MAIN_TOOLCHAIN};
@@ -386,20 +386,45 @@ impl Crater {
             }
             Crater::GenReport { ref ex, ref dest } => {
                 let config = Config::load()?;
-                let db = FileDB::default();
-                let ex = ex::Experiment::load(&ex.0)?;
-                report::gen(
-                    &db,
-                    &ex,
-                    &report::FileWriter::create(dest.0.clone())?,
-                    &config,
-                )?;
+                let db = Database::open()?;
+
+                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
+                    // Update the status
+                    match experiment.server_data.status {
+                        Status::NeedsReport | Status::ReportFailed => {
+                            experiment.set_status(&db, Status::GeneratingReport)?;
+                        }
+                        other => bail!(
+                            "can't generate the report of an experiment with status {}",
+                            other
+                        ),
+                    }
+
+                    let result_db = DatabaseDB::new(&db);
+                    let res = report::gen(
+                        &result_db,
+                        &experiment.experiment,
+                        &report::FileWriter::create(dest.0.clone())?,
+                        &config,
+                    );
+
+                    if let Err(err) = res {
+                        experiment.set_status(&db, Status::ReportFailed)?;
+                        return Err(err)?;
+                    } else {
+                        experiment.set_status(&db, Status::Completed)?;
+                    }
+                } else {
+                    bail!("missing experiment: {}", ex.0);
+                }
             }
             Crater::PublishReport {
                 ref ex,
                 ref s3_prefix,
             } => {
                 let config = Config::load()?;
+                let db = Database::open()?;
+
                 let s3_prefix = match *s3_prefix {
                     Some(ref prefix) => prefix.clone(),
                     None => {
@@ -408,15 +433,38 @@ impl Crater {
                         prefix
                     }
                 };
-                let db = FileDB::default();
-                let ex = ex::Experiment::load(&ex.0)?;
-                let client = report::get_client_for_bucket(&s3_prefix.bucket)?;
-                report::gen(
-                    &db,
-                    &ex,
-                    &report::S3Writer::create(client, s3_prefix)?,
-                    &config,
-                )?;
+
+                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
+                    // Update the status
+                    match experiment.server_data.status {
+                        Status::NeedsReport | Status::ReportFailed => {
+                            experiment.set_status(&db, Status::GeneratingReport)?;
+                        }
+                        other => bail!(
+                            "can't publish the report of an experiment with status {}",
+                            other
+                        ),
+                    }
+
+                    let result_db = DatabaseDB::new(&db);
+                    let client = report::get_client_for_bucket(&s3_prefix.bucket)?;
+
+                    let res = report::gen(
+                        &result_db,
+                        &experiment.experiment,
+                        &report::S3Writer::create(client, s3_prefix)?,
+                        &config,
+                    );
+
+                    if let Err(err) = res {
+                        experiment.set_status(&db, Status::ReportFailed)?;
+                        return Err(err)?;
+                    } else {
+                        experiment.set_status(&db, Status::Completed)?;
+                    }
+                } else {
+                    bail!("missing experiment: {}", ex.0);
+                }
             }
             Crater::Server => {
                 let config = Config::load()?;

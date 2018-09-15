@@ -479,7 +479,13 @@ impl Crater {
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
                 let config = Config::load()?;
-                run_graph::dump_dot(&ex.0, &config, dest)?;
+                let db = Database::open()?;
+
+                if let Some(experiment) = ExperimentData::get(&db, &ex.0)? {
+                    run_graph::dump_dot(&experiment.experiment, &config, dest)?;
+                } else {
+                    bail!("missing experiment: {}", ex.0);
+                }
             }
         }
 

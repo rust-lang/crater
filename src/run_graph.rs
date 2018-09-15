@@ -371,9 +371,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
     Ok(())
 }
 
-pub fn dump_dot(ex_name: &str, config: &Config, dest: &Path) -> Result<()> {
-    let ex = Experiment::load(ex_name)?;
-
+pub fn dump_dot(ex: &Experiment, config: &Config, dest: &Path) -> Result<()> {
     info!("computing the tasks graph...");
     let graph = build_graph(&ex, config);
 

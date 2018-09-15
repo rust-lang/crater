@@ -76,8 +76,7 @@ impl<'a> ReadResults for ResultsDB<'a> {
                         row.get("sha"),
                     )
                 },
-            )?
-            .into_iter()
+            )?.into_iter()
             .collect())
     }
 
@@ -118,8 +117,7 @@ impl<'a> ReadResults for ResultsDB<'a> {
                     &serde_json::to_string(krate)?,
                 ],
                 |row| row.get("result"),
-            )?
-            .pop();
+            )?.pop();
 
         if let Some(res) = result {
             Ok(Some(res.parse()?))
@@ -161,8 +159,7 @@ mod tests {
                 None,
                 None,
                 0,
-            )
-            .unwrap();
+            ).unwrap();
         let ex = experiments.get("test").unwrap().unwrap().experiment;
 
         let krate = Crate::Registry(RegistryCrate {
@@ -198,8 +195,7 @@ mod tests {
                         ),
                     ],
                 },
-            )
-            .unwrap();
+            ).unwrap();
 
         assert_eq!(
             results.load_log(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),

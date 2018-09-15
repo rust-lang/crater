@@ -300,8 +300,8 @@ fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
             &installed_binary("rustup"),
             &["toolchain", "install", toolchain],
         ).local_rustup()
-            .run()
-            .chain_err(|| format!("unable to install toolchain {} via rustup", toolchain))
+        .run()
+        .chain_err(|| format!("unable to install toolchain {} via rustup", toolchain))
     })
 }
 
@@ -315,8 +315,8 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
                 &installed_binary("cargo"),
                 &["install", "rustup-toolchain-install-master"],
             ).local_rustup()
-                .run()
-                .chain_err(|| "unable to install rustup-toolchain-install-master")
+            .run()
+            .chain_err(|| "unable to install rustup-toolchain-install-master")
         })?;
     }
 

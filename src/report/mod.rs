@@ -151,8 +151,7 @@ pub fn generate_report<DB: ReadResults>(
                 res: comp,
                 runs: [crate1, crate2],
             })
-        })
-        .collect::<Result<Vec<_>>>()?;
+        }).collect::<Result<Vec<_>>>()?;
 
     Ok(TestResults { crates: res })
 }

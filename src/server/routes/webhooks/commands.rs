@@ -40,8 +40,7 @@ pub fn run(data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
         .line(
             "ok_hand",
             format!("Experiment **`{}`** created and queued.", name),
-        )
-        .set_label(Label::ExperimentQueued)
+        ).set_label(Label::ExperimentQueued)
         .send(&issue.url, data)?;
 
     Ok(())
@@ -88,8 +87,7 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Result<()> {
                 .line(
                     "memo",
                     format!("Configuration of the **`{}`** experiment changed.", name),
-                )
-                .send(&issue.url, data)?;
+                ).send(&issue.url, data)?;
         } else {
             Message::new()
                 .line("warning", "No changes requested.")
@@ -120,8 +118,7 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Result
             .line(
                 "hammer_and_wrench",
                 format!("Generation of the report for **`{}`** queued again.", name),
-            )
-            .set_label(Label::ExperimentQueued)
+            ).set_label(Label::ExperimentQueued)
             .send(&issue.url, data)?;
 
         Ok(())

@@ -62,8 +62,7 @@ pub fn routes(
                 .unify()
                 .or(assets)
                 .unify(),
-        )
-        .map(handle_results)
+        ).map(handle_results)
         .recover(handle_errors)
         .unify()
 }

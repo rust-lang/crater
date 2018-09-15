@@ -12,7 +12,7 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
             "git",
             &["clone", "--depth", "1", &url, &dir.to_string_lossy()],
         ).run()
-            .chain_err(|| format!("unable to clone {}", url));
+        .chain_err(|| format!("unable to clone {}", url));
 
         if r.is_err() && dir.exists() {
             fs::remove_dir_all(dir)?;

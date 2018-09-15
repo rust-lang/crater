@@ -141,8 +141,7 @@ impl AgentApi {
                         },
                     ],
                     "shas": shas,
-                }))
-                .send()?
+                })).send()?
                 .to_api_response()?;
             Ok(())
         })

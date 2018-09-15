@@ -44,8 +44,7 @@ impl GitHubApi {
             .build_request(Method::Post, &format!("{}/comments", issue_url))
             .json(&json!({
                 "body": body,
-            }))
-            .send()?;
+            })).send()?;
 
         if response.status() == StatusCode::Created {
             Ok(())

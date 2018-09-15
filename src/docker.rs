@@ -17,7 +17,7 @@ pub fn build_container(docker_env: &str) -> Result<()> {
         "docker",
         &["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"],
     ).enable_timeout(false)
-        .run()
+    .run()
 }
 
 #[derive(Copy, Clone)]

@@ -3,7 +3,7 @@ use mime::Mime;
 use report::ReportWriter;
 use rusoto_core::request::default_tls_client;
 use rusoto_core::{DefaultCredentialsProvider, Region};
-use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3, S3Client};
+use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3Client, S3};
 use std::borrow::Cow;
 use std::fmt::{self, Display};
 use std::io;
@@ -63,8 +63,7 @@ pub fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
     let response = client
         .get_bucket_location(&GetBucketLocationRequest {
             bucket: bucket.into(),
-        })
-        .chain_err(|| "S3 failure to get bucket location")?;
+        }).chain_err(|| "S3 failure to get bucket location")?;
     let region = match response.location_constraint.as_ref() {
         Some(region) if region == "" => Region::UsEast1,
         Some(region) => region.parse().chain_err(|| "Unknown bucket region.")?,

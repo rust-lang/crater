@@ -174,8 +174,7 @@ impl ExperimentData {
                 "SELECT COUNT(*) AS count FROM results WHERE experiment = ?1;",
                 &[&self.experiment.name.as_str()],
                 |r| r.get("count"),
-            )?
-            .unwrap();
+            )?.unwrap();
 
         let crates_len: u32 = db
             .get_row(
@@ -183,8 +182,7 @@ impl ExperimentData {
                  WHERE experiment = ?1 AND skipped = 0;",
                 &[&self.experiment.name.as_str()],
                 |r| r.get("count"),
-            )?
-            .unwrap();
+            )?.unwrap();
 
         Ok((results_len, crates_len * 2))
     }
@@ -212,8 +210,7 @@ impl ExperimentData {
                         &serde_json::to_string(&krate)?,
                     ],
                     |r| r.get("count"),
-                )?
-                .unwrap();
+                )?.unwrap();
 
             if results_len < 2 {
                 new_crates.push(krate);
@@ -273,8 +270,7 @@ impl ExperimentDBRecord {
                     let value: String = r.get("crate");
                     Ok(serde_json::from_str(&value)?)
                 },
-            )?
-            .into_iter()
+            )?.into_iter()
             .collect::<Result<Vec<Crate>>>()?;
 
         Ok(ExperimentData {
@@ -505,8 +501,7 @@ mod tests {
                 Some(html_url),
                 Some(10),
                 5,
-            )
-            .unwrap();
+            ).unwrap();
 
         // Ensure all the data inserted for the experiment is correct
         let ex = experiments.get("test").unwrap().unwrap();
@@ -569,8 +564,7 @@ mod tests {
                 None,
                 None,
                 0,
-            )
-            .unwrap();
+            ).unwrap();
         experiments
             .create(
                 "important".into(),
@@ -584,8 +578,7 @@ mod tests {
                 None,
                 None,
                 10,
-            )
-            .unwrap();
+            ).unwrap();
 
         // Test the important experiment is correctly assigned
         let (new, ex) = experiments.next("agent-1").unwrap().unwrap();

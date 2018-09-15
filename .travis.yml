@@ -13,6 +13,10 @@ env:
 
 matrix:
   include:
+    # Lint only on stable
+    - env: TASK=lint
+      rust: stable
+
     # Tests on all the channels
     - env: TASK=test
       rust: stable
@@ -20,10 +24,6 @@ matrix:
       rust: beta
     - env: TASK=test
       rust: nightly
-
-    # Execute lints with the pinned nightly we know works.
-    - env: TASK=lint
-      rust: nightly-2018-07-17
 
   # Don't block CI if a nightly is faulty
   fast_finish: true

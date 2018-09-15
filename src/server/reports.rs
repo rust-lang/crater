@@ -62,16 +62,13 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
                     .line(
                         "rotating_light",
                         format!("Report generation of **`{}`** failed: {}", name, err),
-                    )
-                    .line(
+                    ).line(
                         "hammer_and_wrench",
                         "If the error is fixed use the `retry-report` command.",
-                    )
-                    .note(
+                    ).note(
                         "sos",
                         "Can someone from the infra team check in on this? @rust-lang/infra",
-                    )
-                    .send(&github_issue.api_url, data)?;
+                    ).send(&github_issue.api_url, data)?;
             }
 
             continue;

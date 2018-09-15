@@ -358,7 +358,6 @@ where
     env::var(name)
         .chain_err(|| {
             format!{"Need to specify {:?} in environment or `.env`.", name}
-        })?
-        .parse()
+        })?.parse()
         .chain_err(|| format!{"Couldn't parse {:?}.", name})
 }

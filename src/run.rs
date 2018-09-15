@@ -259,8 +259,7 @@ where
             .map(|i| match i {
                 future::Either::A(l) => (Some(l), None),
                 future::Either::B(r) => (None, Some(r)),
-            })
-            .fold((Vec::new(), Vec::new()), |mut v, i| {
+            }).fold((Vec::new(), Vec::new()), |mut v, i| {
                 if let Some(i) = i.0 {
                     v.0.push(i);
                 }

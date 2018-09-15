@@ -63,8 +63,7 @@ pub fn routes(
                 .unify()
                 .or(heartbeat)
                 .unify(),
-        )
-        .map(handle_results)
+        ).map(handle_results)
         .recover(handle_errors)
         .unify()
 }
@@ -91,8 +90,7 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Result<Respon
                             "Experiment **`{}`** is now **running** on agent `{}`.",
                             ex.experiment.name, auth.name,
                         ),
-                    )
-                    .send(&github_issue.api_url, &data)?;
+                    ).send(&github_issue.api_url, &data)?;
             }
         }
 

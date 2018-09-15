@@ -36,8 +36,7 @@ fn process_webhook(payload: &[u8], signature: &str, event: &str, data: &Data) ->
                     .note(
                         "sos",
                         "If you have any trouble with Crater please ping **`@rust-lang/infra`**!",
-                    )
-                    .send(&p.issue.url, data)?;
+                    ).send(&p.issue.url, data)?;
             }
         }
         e => bail!("invalid event received: {}", e),
@@ -63,20 +62,20 @@ fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Resu
                 .line(
                     "lock",
                     "**Error:** you're not allowed to interact with this bot.",
-                )
-                .note(
+                ).note(
                     "key",
                     "If you are a member of the Rust team and need access, [add yourself to \
                      the whitelist](\
                      https://github.com/rust-lang-nursery/crater/blob/master/config.toml).",
-                )
-                .send(&issue.url, data)?;
+                ).send(&issue.url, data)?;
             return Ok(());
         }
 
         info!("user @{} sent command: {}", sender, command);
 
-        let args: Command = command.parse().chain_err(|| "failed to parse the command")?;
+        let args: Command = command
+            .parse()
+            .chain_err(|| "failed to parse the command")?;
 
         match args {
             Command::Ping(_) => {

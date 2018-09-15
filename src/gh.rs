@@ -104,8 +104,7 @@ pub fn is_rust_app(name: &str) -> Result<bool> {
             response.read_to_string(&mut buf)?;
             // GitHub returns a successful result when the file doesn't exist
             Ok(!buf.contains("404: Not Found") && !buf.is_empty())
-        })
-        .unwrap_or(false);
+        }).unwrap_or(false);
 
     if is_app {
         info!("{} contains a root lockfile at {}", name, url);

@@ -79,8 +79,7 @@ fn split_crate_lines(lines: &[String]) -> Result<Vec<Crate>> {
         .filter_map(|line| {
             line.find(':')
                 .map(|i| (line[..i].to_string(), line[i + 1..].to_string()))
-        })
-        .map(|(name, version)| Crate::Registry(RegistryCrate { name, version }))
+        }).map(|(name, version)| Crate::Registry(RegistryCrate { name, version }))
         .collect())
 }
 

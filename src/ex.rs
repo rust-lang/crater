@@ -111,8 +111,7 @@ pub fn demo_list(config: &Config) -> Result<Vec<Crate>> {
 
                 found
             }
-        })
-        .collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
 
     assert_eq!(result.len(), expected_len);
     Ok(result)
@@ -462,7 +461,7 @@ mod tests {
                 mode: ExMode::BuildAndTest,
                 cap_lints: ExCapLints::Forbid,
             }.validate()
-                .is_ok()
+            .is_ok()
         );
 
         // Experiment with the same toolchain
@@ -474,7 +473,7 @@ mod tests {
                 mode: ExMode::BuildAndTest,
                 cap_lints: ExCapLints::Forbid,
             }.validate()
-                .is_err()
+            .is_err()
         );
     }
 }

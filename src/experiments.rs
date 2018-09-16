@@ -17,6 +17,27 @@ string_enum!(pub enum Status {
     Completed => "completed",
 });
 
+string_enum!(pub enum Mode {
+    BuildAndTest => "build-and-test",
+    BuildOnly => "build-only",
+    CheckOnly => "check-only",
+    UnstableFeatures => "unstable-features",
+});
+
+string_enum!(pub enum CrateSelect {
+    Full => "full",
+    Demo => "demo",
+    SmallRandom => "small-random",
+    Top100 => "top-100",
+});
+
+string_enum!(pub enum CapLints {
+    Allow => "allow",
+    Warn => "warn",
+    Deny => "deny",
+    Forbid => "forbid",
+});
+
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[derive(Clone)]
 pub enum Assignee {

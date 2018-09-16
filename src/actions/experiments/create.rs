@@ -2,16 +2,15 @@ use chrono::Utc;
 use config::Config;
 use db::{Database, QueryUtils};
 use errors::*;
-use ex::{ExCapLints, ExCrateSelect, ExMode};
-use experiments::{ExperimentData, GitHubIssue, Status};
+use experiments::{CapLints, CrateSelect, ExperimentData, GitHubIssue, Mode, Status};
 use toolchain::Toolchain;
 
 pub struct CreateExperiment {
     pub name: String,
     pub toolchains: [Toolchain; 2],
-    pub mode: ExMode,
-    pub crates: ExCrateSelect,
-    pub cap_lints: ExCapLints,
+    pub mode: Mode,
+    pub crates: CrateSelect,
+    pub cap_lints: CapLints,
     pub priority: i32,
     pub github_issue: Option<GitHubIssue>,
 }
@@ -24,9 +23,9 @@ impl CreateExperiment {
         CreateExperiment {
             name: name.to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
-            mode: ExMode::BuildAndTest,
-            crates: ExCrateSelect::Demo,
-            cap_lints: ExCapLints::Forbid,
+            mode: Mode::BuildAndTest,
+            crates: CrateSelect::Demo,
+            cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
         }
@@ -85,8 +84,7 @@ mod tests {
     use config::Config;
     use db::Database;
     use errors::*;
-    use ex::{ExCapLints, ExCrateSelect, ExMode};
-    use experiments::{ExperimentData, GitHubIssue, Status};
+    use experiments::{CapLints, CrateSelect, ExperimentData, GitHubIssue, Mode, Status};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
@@ -100,9 +98,9 @@ mod tests {
         CreateExperiment {
             name: "foo".to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
-            mode: ExMode::BuildAndTest,
-            crates: ExCrateSelect::Demo,
-            cap_lints: ExCapLints::Forbid,
+            mode: Mode::BuildAndTest,
+            crates: CrateSelect::Demo,
+            cap_lints: CapLints::Forbid,
             priority: 5,
             github_issue: Some(GitHubIssue {
                 api_url: api_url.to_string(),
@@ -118,9 +116,9 @@ mod tests {
             ex.experiment.toolchains,
             [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()]
         );
-        assert_eq!(ex.experiment.mode, ExMode::BuildAndTest);
-        assert_eq!(ex.experiment.crates, ::ex::demo_list(&config).unwrap());
-        assert_eq!(ex.experiment.cap_lints, ExCapLints::Forbid);
+        assert_eq!(ex.experiment.mode, Mode::BuildAndTest);
+        assert_eq!(ex.experiment.crates, ::lists::demo_list(&config).unwrap());
+        assert_eq!(ex.experiment.cap_lints, CapLints::Forbid);
         assert_eq!(
             ex.server_data
                 .github_issue
@@ -154,9 +152,9 @@ mod tests {
         let err = CreateExperiment {
             name: "foo".to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), MAIN_TOOLCHAIN.clone()],
-            mode: ExMode::BuildAndTest,
-            crates: ExCrateSelect::Demo,
-            cap_lints: ExCapLints::Forbid,
+            mode: Mode::BuildAndTest,
+            crates: CrateSelect::Demo,
+            cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
         }.apply(&db, &config)
@@ -177,9 +175,9 @@ mod tests {
         CreateExperiment {
             name: "foo".to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
-            mode: ExMode::BuildAndTest,
-            crates: ExCrateSelect::Demo,
-            cap_lints: ExCapLints::Forbid,
+            mode: Mode::BuildAndTest,
+            crates: CrateSelect::Demo,
+            cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
         }.apply(&db, &config)
@@ -189,9 +187,9 @@ mod tests {
         let err = CreateExperiment {
             name: "foo".to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
-            mode: ExMode::BuildAndTest,
-            crates: ExCrateSelect::Demo,
-            cap_lints: ExCapLints::Forbid,
+            mode: Mode::BuildAndTest,
+            crates: CrateSelect::Demo,
+            cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
         }.apply(&db, &config)

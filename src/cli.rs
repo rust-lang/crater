@@ -16,8 +16,7 @@ use crater::crates::Crate;
 use crater::db::Database;
 use crater::docker;
 use crater::errors::*;
-use crater::ex::{ExCapLints, ExCrateSelect, ExMode};
-use crater::experiments::{Assignee, ExperimentData, Status};
+use crater::experiments::{Assignee, CapLints, CrateSelect, ExperimentData, Mode, Status};
 use crater::lists;
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
@@ -104,29 +103,29 @@ pub enum Crater {
             name = "mode",
             long = "mode",
             raw(
-                default_value = "ExMode::BuildAndTest.to_str()",
-                possible_values = "ExMode::possible_values()"
+                default_value = "Mode::BuildAndTest.to_str()",
+                possible_values = "Mode::possible_values()"
             )
         )]
-        mode: ExMode,
+        mode: Mode,
         #[structopt(
             name = "crate-select",
             long = "crate-select",
             raw(
-                default_value = "ExCrateSelect::Demo.to_str()",
-                possible_values = "ExCrateSelect::possible_values()"
+                default_value = "CrateSelect::Demo.to_str()",
+                possible_values = "CrateSelect::possible_values()"
             )
         )]
-        crates: ExCrateSelect,
+        crates: CrateSelect,
         #[structopt(
             name = "level",
             long = "cap-lints",
             raw(
-                default_value = "ExCapLints::Forbid.to_str()",
-                possible_values = "ExCapLints::possible_values()"
+                default_value = "CapLints::Forbid.to_str()",
+                possible_values = "CapLints::possible_values()"
             )
         )]
-        cap_lints: ExCapLints,
+        cap_lints: CapLints,
         #[structopt(
             name = "priority",
             long = "priority",
@@ -147,21 +146,21 @@ pub enum Crater {
         #[structopt(
             name = "mode",
             long = "mode",
-            possible_values_raw = "ExMode::possible_values()"
+            possible_values_raw = "Mode::possible_values()"
         )]
-        mode: Option<ExMode>,
+        mode: Option<Mode>,
         #[structopt(
             name = "crates",
             long = "crates",
-            possible_values_raw = "ExCrateSelect::possible_values()"
+            possible_values_raw = "CrateSelect::possible_values()"
         )]
-        crates: Option<ExCrateSelect>,
+        crates: Option<CrateSelect>,
         #[structopt(
             name = "cap-lints",
             long = "cap-lints",
-            possible_values_raw = "ExCapLints::possible_values()"
+            possible_values_raw = "CapLints::possible_values()"
         )]
-        cap_lints: Option<ExCapLints>,
+        cap_lints: Option<CapLints>,
         #[structopt(name = "priority", long = "priority", short = "p",)]
         priority: Option<i32>,
     },

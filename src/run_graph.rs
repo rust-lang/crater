@@ -19,7 +19,8 @@
 use config::Config;
 use crossbeam_utils::thread::scope;
 use errors::*;
-use ex::{self, ExMode, Experiment};
+use ex::{self, Experiment};
+use experiments::Mode;
 use file;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
 use results::{TestResult, WriteResults};
@@ -234,25 +235,25 @@ fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
                 Task {
                     krate: krate.clone(),
                     step: match ex.mode {
-                        ExMode::BuildOnly => TaskStep::BuildOnly {
+                        Mode::BuildOnly => TaskStep::BuildOnly {
                             tc: tc.clone(),
                             quiet,
                         },
-                        ExMode::BuildAndTest if config.should_skip_tests(krate) => {
+                        Mode::BuildAndTest if config.should_skip_tests(krate) => {
                             TaskStep::BuildOnly {
                                 tc: tc.clone(),
                                 quiet,
                             }
                         }
-                        ExMode::BuildAndTest => TaskStep::BuildAndTest {
+                        Mode::BuildAndTest => TaskStep::BuildAndTest {
                             tc: tc.clone(),
                             quiet,
                         },
-                        ExMode::CheckOnly => TaskStep::CheckOnly {
+                        Mode::CheckOnly => TaskStep::CheckOnly {
                             tc: tc.clone(),
                             quiet,
                         },
-                        ExMode::UnstableFeatures => TaskStep::UnstableFeatures { tc: tc.clone() },
+                        Mode::UnstableFeatures => TaskStep::UnstableFeatures { tc: tc.clone() },
                     },
                 },
                 &[prepare_id],

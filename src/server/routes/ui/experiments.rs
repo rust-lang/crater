@@ -1,8 +1,7 @@
 use chrono::{Duration, SecondsFormat, Utc};
 use chrono_humanize::{Accuracy, HumanTime, Tense};
 use errors::*;
-use ex::ExMode;
-use experiments::{ExperimentData as Experiment, Status};
+use experiments::{ExperimentData as Experiment, Mode, Status};
 use http::Response;
 use hyper::Body;
 use server::routes::ui::{render_template, LayoutContext};
@@ -36,10 +35,10 @@ impl ExperimentData {
             status_class,
             status_pretty,
             mode: match experiment.experiment.mode {
-                ExMode::BuildAndTest => "cargo test",
-                ExMode::BuildOnly => "cargo build",
-                ExMode::CheckOnly => "cargo check",
-                ExMode::UnstableFeatures => "unstable features",
+                Mode::BuildAndTest => "cargo test",
+                Mode::BuildOnly => "cargo build",
+                Mode::CheckOnly => "cargo check",
+                Mode::UnstableFeatures => "unstable features",
             },
             assigned_to: experiment
                 .server_data

@@ -2,6 +2,7 @@ use config::Config;
 use crates::Crate;
 use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
+use experiments::{CapLints, Mode};
 use git;
 use results::WriteResults;
 use run::RunCommand;
@@ -10,27 +11,6 @@ use std::path::{Path, PathBuf};
 use toml_frobber;
 use toolchain::{CargoState, Toolchain};
 use util;
-
-string_enum!(pub enum ExMode {
-    BuildAndTest => "build-and-test",
-    BuildOnly => "build-only",
-    CheckOnly => "check-only",
-    UnstableFeatures => "unstable-features",
-});
-
-string_enum!(pub enum ExCrateSelect {
-    Full => "full",
-    Demo => "demo",
-    SmallRandom => "small-random",
-    Top100 => "top-100",
-});
-
-string_enum!(pub enum ExCapLints {
-    Allow => "allow",
-    Warn => "warn",
-    Deny => "deny",
-    Forbid => "forbid",
-});
 
 pub fn ex_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name)
@@ -49,8 +29,8 @@ pub struct Experiment {
     pub name: String,
     pub crates: Vec<Crate>,
     pub toolchains: [Toolchain; 2],
-    pub mode: ExMode,
-    pub cap_lints: ExCapLints,
+    pub mode: Mode,
+    pub cap_lints: CapLints,
 }
 
 impl Experiment {

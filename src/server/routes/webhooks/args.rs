@@ -1,4 +1,4 @@
-use ex::{ExCapLints, ExCrateSelect, ExMode};
+use experiments::{CapLints, CrateSelect, Mode};
 use toolchain::Toolchain;
 
 macro_rules! generate_parser {
@@ -92,9 +92,9 @@ generate_parser!(pub enum Command {
         name: Option<String> = "name",
         start: Option<Toolchain> = "start",
         end: Option<Toolchain> = "end",
-        mode: Option<ExMode> = "mode",
-        crates: Option<ExCrateSelect> = "crates",
-        cap_lints: Option<ExCapLints> = "cap-lints",
+        mode: Option<Mode> = "mode",
+        crates: Option<CrateSelect> = "crates",
+        cap_lints: Option<CapLints> = "cap-lints",
         priority: Option<i32> = "p",
     })
 
@@ -114,9 +114,9 @@ generate_parser!(pub enum Command {
         name: Option<String> = "name",
         start: Option<Toolchain> = "start",
         end: Option<Toolchain> = "end",
-        mode: Option<ExMode> = "mode",
-        crates: Option<ExCrateSelect> = "crates",
-        cap_lints: Option<ExCapLints> = "cap-lints",
+        mode: Option<Mode> = "mode",
+        crates: Option<CrateSelect> = "crates",
+        cap_lints: Option<CapLints> = "cap-lints",
         priority: Option<i32> = "p",
     })
 });

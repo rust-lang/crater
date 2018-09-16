@@ -340,7 +340,8 @@ mod tests {
     use super::*;
     use config::{Config, CrateConfig};
     use crates::{Crate, GitHubRepo, RegistryCrate};
-    use ex::{ExCapLints, ExMode, Experiment};
+    use ex::Experiment;
+    use experiments::{CapLints, Mode};
     use results::{DummyDB, TestResult};
     use std::collections::HashMap;
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
@@ -563,8 +564,8 @@ mod tests {
             name: "foo".to_string(),
             crates: vec![gh.clone()],
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
-            mode: ExMode::BuildAndTest,
-            cap_lints: ExCapLints::Forbid,
+            mode: Mode::BuildAndTest,
+            cap_lints: CapLints::Forbid,
         };
 
         let mut db = DummyDB::default();

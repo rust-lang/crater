@@ -1,7 +1,6 @@
 use db::{Database, QueryUtils};
 use errors::*;
-use ex::{ExCapLints, ExCrateSelect, ExMode};
-use experiments::{ExperimentData, GitHubIssue, Status};
+use experiments::{CapLints, CrateSelect, ExperimentData, GitHubIssue, Mode, Status};
 use server::github::Issue;
 use server::messages::{Label, Message};
 use server::routes::webhooks::args::{AbortArgs, EditArgs, RetryReportArgs, RunArgs};
@@ -24,9 +23,9 @@ pub fn run(data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
             args.start.ok_or_else(|| "missing start toolchain")?,
             args.end.ok_or_else(|| "missing end toolchain")?,
         ],
-        mode: args.mode.unwrap_or(ExMode::BuildAndTest),
-        crates: args.crates.unwrap_or(ExCrateSelect::Full),
-        cap_lints: args.cap_lints.unwrap_or(ExCapLints::Forbid),
+        mode: args.mode.unwrap_or(Mode::BuildAndTest),
+        crates: args.crates.unwrap_or(CrateSelect::Full),
+        cap_lints: args.cap_lints.unwrap_or(CapLints::Forbid),
         priority: args.priority.unwrap_or(0),
         github_issue: Some(GitHubIssue {
             api_url: issue.url.clone(),

@@ -3,7 +3,7 @@ use crates::{Crate, RegistryCrate};
 use crates_index::Crate as IndexCrate;
 use dirs::LIST_DIR;
 use errors::*;
-use ex::ExCrateSelect;
+use experiments::CrateSelect;
 use file;
 use gh;
 use rand::{thread_rng, Rng};
@@ -339,12 +339,12 @@ fn create_gh_app_list_from_cache() -> Result<()> {
     Ok(())
 }
 
-pub fn get_crates(crates: ExCrateSelect, config: &Config) -> Result<Vec<Crate>> {
+pub fn get_crates(crates: CrateSelect, config: &Config) -> Result<Vec<Crate>> {
     match crates {
-        ExCrateSelect::Full => read_all_lists(),
-        ExCrateSelect::Demo => demo_list(config),
-        ExCrateSelect::SmallRandom => small_random(),
-        ExCrateSelect::Top100 => top_100(),
+        CrateSelect::Full => read_all_lists(),
+        CrateSelect::Demo => demo_list(config),
+        CrateSelect::SmallRandom => small_random(),
+        CrateSelect::Top100 => top_100(),
     }
 }
 

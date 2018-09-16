@@ -1,16 +1,15 @@
 use config::Config;
 use db::{Database, QueryUtils};
 use errors::*;
-use ex::{ExCapLints, ExCrateSelect, ExMode};
-use experiments::{ExperimentData, Status};
+use experiments::{CapLints, CrateSelect, ExperimentData, Mode, Status};
 use toolchain::Toolchain;
 
 pub struct EditExperiment {
     pub name: String,
     pub toolchains: [Option<Toolchain>; 2],
-    pub crates: Option<ExCrateSelect>,
-    pub mode: Option<ExMode>,
-    pub cap_lints: Option<ExCapLints>,
+    pub crates: Option<CrateSelect>,
+    pub mode: Option<Mode>,
+    pub cap_lints: Option<CapLints>,
     pub priority: Option<i32>,
 }
 
@@ -135,8 +134,7 @@ mod tests {
     use config::Config;
     use db::Database;
     use errors::*;
-    use ex::{ExCapLints, ExCrateSelect, ExMode};
-    use experiments::{ExperimentData, Status};
+    use experiments::{CapLints, CrateSelect, ExperimentData, Mode, Status};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
@@ -161,9 +159,9 @@ mod tests {
         CreateExperiment {
             name: "foo".to_string(),
             toolchains: ["stable".parse().unwrap(), "beta".parse().unwrap()],
-            mode: ExMode::BuildAndTest,
-            crates: ExCrateSelect::SmallRandom,
-            cap_lints: ExCapLints::Forbid,
+            mode: Mode::BuildAndTest,
+            crates: CrateSelect::SmallRandom,
+            cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
         }.apply(&db, &config)
@@ -176,9 +174,9 @@ mod tests {
                 Some("nightly-1970-01-01".parse().unwrap()),
                 Some("nightly-1970-01-02".parse().unwrap()),
             ],
-            mode: Some(ExMode::CheckOnly),
-            crates: Some(ExCrateSelect::Demo),
-            cap_lints: Some(ExCapLints::Warn),
+            mode: Some(Mode::CheckOnly),
+            crates: Some(CrateSelect::Demo),
+            cap_lints: Some(CapLints::Warn),
             priority: Some(10),
         }.apply(&db, &config)
         .unwrap();
@@ -194,11 +192,11 @@ mod tests {
             ex.experiment.toolchains[1],
             "nightly-1970-01-02".parse().unwrap()
         );
-        assert_eq!(ex.experiment.mode, ExMode::CheckOnly);
-        assert_eq!(ex.experiment.cap_lints, ExCapLints::Warn);
+        assert_eq!(ex.experiment.mode, Mode::CheckOnly);
+        assert_eq!(ex.experiment.cap_lints, CapLints::Warn);
         assert_eq!(ex.server_data.priority, 10);
 
-        let demo = ::lists::get_crates(ExCrateSelect::Demo, &config).unwrap();
+        let demo = ::lists::get_crates(CrateSelect::Demo, &config).unwrap();
         assert_eq!(ex.experiment.crates, demo);
     }
 

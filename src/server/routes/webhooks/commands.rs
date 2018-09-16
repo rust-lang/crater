@@ -102,11 +102,7 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Result
 pub fn abort(data: &Data, issue: &Issue, args: AbortArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    if !ExperimentData::exists(&data.db, &name)? {
-        bail!("an experiment named **`{}`** doesn't exist!", name);
-    }
-
-    data.experiments.delete(&name)?;
+    ::actions::DeleteExperiment { name: name.clone() }.apply(&data.db, &data.config)?;
 
     Message::new()
         .line("wastebasket", format!("Experiment **`{}`** deleted!", name))

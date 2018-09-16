@@ -21,7 +21,7 @@ use crater::ex::{ExCapLints, ExCrateSelect, ExMode};
 use crater::experiments::{Assignee, ExperimentData, Status};
 use crater::lists;
 use crater::report;
-use crater::results::{DeleteResults, DatabaseDB};
+use crater::results::{DatabaseDB, DeleteResults};
 use crater::run_graph;
 use crater::server;
 use crater::toolchain::{Toolchain, MAIN_TOOLCHAIN};
@@ -344,7 +344,10 @@ impl Crater {
                 ex::copy(&ex1.0, &ex2.0)?;
             }
             Crater::DeleteEx { ref ex } => {
-                ex::delete(&ex.0)?;
+                let config = Config::load()?;
+                let db = Database::open()?;
+
+                actions::DeleteExperiment { name: ex.0.clone() }.apply(&db, &config)?;
             }
             Crater::DeleteAllTargetDirs { ref ex } => {
                 ex::delete_all_target_dirs(&ex.0)?;

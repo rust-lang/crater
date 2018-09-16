@@ -184,14 +184,19 @@ impl<'a> WriteResults for DatabaseDB<'a> {
 
 impl<'a> DeleteResults for DatabaseDB<'a> {
     fn delete_all_results(&self, ex: &Experiment) -> Result<()> {
-        self.db.execute("DELETE FROM results WHERE experiment = ?1;", &[&ex.name])?;
+        self.db
+            .execute("DELETE FROM results WHERE experiment = ?1;", &[&ex.name])?;
         Ok(())
     }
 
     fn delete_result(&self, ex: &Experiment, tc: &Toolchain, krate: &Crate) -> Result<()> {
         self.db.execute(
             "DELETE FROM results WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3;",
-            &[&ex.name, &tc.to_string(), &serde_json::to_string(krate).unwrap()],
+            &[
+                &ex.name,
+                &tc.to_string(),
+                &serde_json::to_string(krate).unwrap(),
+            ],
         )?;
         Ok(())
     }

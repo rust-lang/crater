@@ -311,13 +311,6 @@ impl Experiments {
         Experiments { db }
     }
 
-    pub fn delete(&self, name: &str) -> Result<()> {
-        // This will also delete all the data related to this experiment
-        self.db
-            .execute("DELETE FROM experiments WHERE name = ?1;", &[&name])?;
-        Ok(())
-    }
-
     pub fn all(&self) -> Result<Vec<ExperimentData>> {
         let records = self.db.query(
             "SELECT * FROM experiments ORDER BY priority DESC, created_at;",

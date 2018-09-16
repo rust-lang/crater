@@ -26,10 +26,16 @@ impl ResponseExt for ::reqwest::Response {
             | StatusCode::GatewayTimeout => {
                 return Err(ErrorKind::ServerUnavailable.into());
             }
+            StatusCode::PayloadTooLarge => bail!("payload to agent (misconfigured server?)"),
             _ => {}
         }
 
-        let result: ApiResponse<T> = self.json().chain_err(|| "failed to parse API response")?;
+        let result: ApiResponse<T> = self.json().chain_err(|| {
+            format!(
+                "failed to parse API response (status code {})",
+                self.status()
+            )
+        })?;
         match result {
             ApiResponse::Success { result } => Ok(result),
             ApiResponse::InternalError { error } => bail!("internal server error: {}", error),

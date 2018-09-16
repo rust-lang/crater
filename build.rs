@@ -18,4 +18,7 @@ fn main() {
         .unwrap()
         .write(sha.as_bytes())
         .unwrap();
+
+    // Avoid rebuilding everything when any file changes
+    println!("cargo:rerun-if-changed=build.rs");
 }

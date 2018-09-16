@@ -273,6 +273,23 @@ pub fn run_ex<DB: WriteResults + Sync>(
     threads_count: usize,
     config: &Config,
 ) -> Result<()> {
+    let res = run_ex_inner(ex, db, threads_count, config);
+
+    // Remove all the target dirs even if the experiment failed
+    let target_dir = &::toolchain::ex_target_dir(&ex.name);
+    if target_dir.exists() {
+        util::remove_dir_all(target_dir)?;
+    }
+
+    res
+}
+
+fn run_ex_inner<DB: WriteResults + Sync>(
+    ex: &Experiment,
+    db: &DB,
+    threads_count: usize,
+    config: &Config,
+) -> Result<()> {
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(ex, config));
 

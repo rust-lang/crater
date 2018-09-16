@@ -183,15 +183,6 @@ pub enum Crater {
     },
 
     #[structopt(
-        name = "delete-all-target-dirs",
-        about = "delete the cargo target dirs for an experiment"
-    )]
-    DeleteAllTargetDirs {
-        #[structopt(long = "ex", default_value = "default")]
-        ex: Ex,
-    },
-
-    #[structopt(
         name = "delete-all-results",
         about = "delete all results for an experiment"
     )]
@@ -348,9 +339,6 @@ impl Crater {
                 let db = Database::open()?;
 
                 actions::DeleteExperiment { name: ex.0.clone() }.apply(&db, &config)?;
-            }
-            Crater::DeleteAllTargetDirs { ref ex } => {
-                ex::delete_all_target_dirs(&ex.0)?;
             }
             Crater::DeleteAllResults { ref ex } => {
                 let db = Database::open()?;

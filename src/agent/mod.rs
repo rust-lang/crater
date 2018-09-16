@@ -4,7 +4,7 @@ mod results;
 use agent::api::AgentApi;
 use config::Config;
 use errors::*;
-use ex::{self, Experiment};
+use ex::Experiment;
 use run_graph;
 use std::thread;
 use std::time::Duration;
@@ -56,15 +56,7 @@ pub fn run(url: &str, token: &str, threads_count: usize) -> Result<()> {
 
     loop {
         let ex = agent.experiment()?;
-
-        let result = run_graph::run_ex(&ex, &db, threads_count, &agent.config);
-
-        // Ensure local data is cleaned up even if the run crashed
-        ex::delete_all_target_dirs(&ex.name)?;
-        ex::delete(&ex.name)?;
-
-        result?;
-
+        run_graph::run_ex(&ex, &db, threads_count, &agent.config)?;
         agent.api.complete_experiment()?;
     }
 }

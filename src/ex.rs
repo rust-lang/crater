@@ -12,7 +12,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml_frobber;
-use toolchain::{self, CargoState, Toolchain};
+use toolchain::{CargoState, Toolchain};
 use util;
 
 string_enum!(pub enum ExMode {
@@ -425,15 +425,6 @@ pub fn copy(ex1_name: &str, ex2_name: &str) -> Result<()> {
     }
 
     util::copy_dir(ex1_dir, ex2_dir)
-}
-
-pub fn delete_all_target_dirs(ex_name: &str) -> Result<()> {
-    let target_dir = &toolchain::ex_target_dir(ex_name);
-    if target_dir.exists() {
-        util::remove_dir_all(target_dir)?;
-    }
-
-    Ok(())
 }
 
 pub fn delete(ex_name: &str) -> Result<()> {

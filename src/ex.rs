@@ -1,14 +1,10 @@
 use config::Config;
-use crates::{Crate, RegistryCrate};
+use crates::Crate;
 use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
-use file;
 use git;
-use lists::{self, List};
 use results::WriteResults;
 use run::RunCommand;
-use serde_json;
-use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml_frobber;
@@ -40,10 +36,6 @@ pub fn ex_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name)
 }
 
-pub fn config_file(ex_name: &str) -> PathBuf {
-    EXPERIMENT_DIR.join(ex_name).join("config.json")
-}
-
 fn froml_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("fromls")
 }
@@ -61,121 +53,7 @@ pub struct Experiment {
     pub cap_lints: ExCapLints,
 }
 
-pub struct ExOpts {
-    pub name: String,
-    pub toolchains: [Toolchain; 2],
-    pub mode: ExMode,
-    pub crates: ExCrateSelect,
-    pub cap_lints: ExCapLints,
-}
-
-pub fn get_crates(crates: ExCrateSelect, config: &Config) -> Result<Vec<Crate>> {
-    match crates {
-        ExCrateSelect::Full => lists::read_all_lists(),
-        ExCrateSelect::Demo => demo_list(config),
-        ExCrateSelect::SmallRandom => small_random(),
-        ExCrateSelect::Top100 => top_100(),
-    }
-}
-
-pub fn define(opts: ExOpts, config: &Config) -> Result<()> {
-    delete(&opts.name)?;
-    define_(
-        &opts.name,
-        opts.toolchains,
-        get_crates(opts.crates, config)?,
-        opts.mode,
-        opts.cap_lints,
-    )
-}
-
-pub fn demo_list(config: &Config) -> Result<Vec<Crate>> {
-    let mut crates = config.demo_crates().crates.iter().collect::<HashSet<_>>();
-    let repos = &config.demo_crates().github_repos;
-    let expected_len = crates.len() + repos.len();
-
-    let result = lists::read_all_lists()?
-        .into_iter()
-        .filter(|c| match *c {
-            Crate::Registry(RegistryCrate { ref name, .. }) => crates.remove(name),
-            Crate::GitHub(ref repo) => {
-                let url = repo.url();
-
-                let mut found = false;
-                for repo in repos {
-                    if url.ends_with(repo) {
-                        found = true;
-                        break;
-                    }
-                }
-
-                found
-            }
-        }).collect::<Vec<_>>();
-
-    assert_eq!(result.len(), expected_len);
-    Ok(result)
-}
-
-fn small_random() -> Result<Vec<Crate>> {
-    use rand::{thread_rng, Rng};
-
-    const COUNT: usize = 20;
-
-    let mut crates = lists::read_all_lists()?;
-    let mut rng = thread_rng();
-    rng.shuffle(&mut crates);
-
-    crates.truncate(COUNT);
-    crates.sort();
-
-    Ok(crates)
-}
-
-fn top_100() -> Result<Vec<Crate>> {
-    let mut crates = lists::PopList::read()?;
-    crates.truncate(100);
-    Ok(crates)
-}
-
-pub fn define_(
-    ex_name: &str,
-    toolchains: [Toolchain; 2],
-    crates: Vec<Crate>,
-    mode: ExMode,
-    cap_lints: ExCapLints,
-) -> Result<()> {
-    info!(
-        "defining experiment {} for {} crates",
-        ex_name,
-        crates.len()
-    );
-    let ex = Experiment {
-        name: ex_name.to_string(),
-        crates,
-        toolchains,
-        mode,
-        cap_lints,
-    };
-
-    ex.validate()?;
-
-    fs::create_dir_all(&ex_dir(&ex.name))?;
-    let json = serde_json::to_string(&ex)?;
-    info!("writing ex config to {}", config_file(ex_name).display());
-    file::write_string(&config_file(ex_name), &json)?;
-    Ok(())
-}
-
 impl Experiment {
-    pub fn validate(&self) -> Result<()> {
-        if self.toolchains[0] == self.toolchains[1] {
-            bail!("reusing the same toolchain isn't supported");
-        }
-
-        Ok(())
-    }
-
     pub fn fetch_repo_crates(&self) -> Result<()> {
         for repo in self.crates.iter().filter_map(|krate| krate.github()) {
             if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
@@ -183,13 +61,6 @@ impl Experiment {
             }
         }
         Ok(())
-    }
-}
-
-impl Experiment {
-    pub fn load(ex_name: &str) -> Result<Self> {
-        let config = file::read_string(&config_file(ex_name))?;
-        Ok(serde_json::from_str(&config)?)
     }
 }
 
@@ -410,61 +281,4 @@ pub fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn copy(ex1_name: &str, ex2_name: &str) -> Result<()> {
-    let ex1_dir = &ex_dir(ex1_name);
-    let ex2_dir = &ex_dir(ex2_name);
-
-    if !ex1_dir.exists() {
-        bail!("experiment {} is not defined", ex1_name);
-    }
-
-    if ex2_dir.exists() {
-        bail!("experiment {} is already defined", ex2_name);
-    }
-
-    util::copy_dir(ex1_dir, ex2_dir)
-}
-
-pub fn delete(ex_name: &str) -> Result<()> {
-    let ex_dir = ex_dir(ex_name);
-    if ex_dir.exists() {
-        util::remove_dir_all(&ex_dir)?;
-    }
-
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{ExCapLints, ExMode, Experiment};
-    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
-
-    #[test]
-    fn test_validate_experiment() {
-        // Correct experiment
-        assert!(
-            Experiment {
-                name: "foo".to_string(),
-                crates: vec![],
-                toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
-                mode: ExMode::BuildAndTest,
-                cap_lints: ExCapLints::Forbid,
-            }.validate()
-            .is_ok()
-        );
-
-        // Experiment with the same toolchain
-        assert!(
-            Experiment {
-                name: "foo".to_string(),
-                crates: vec![],
-                toolchains: [MAIN_TOOLCHAIN.clone(), MAIN_TOOLCHAIN.clone()],
-                mode: ExMode::BuildAndTest,
-                cap_lints: ExCapLints::Forbid,
-            }.validate()
-            .is_err()
-        );
-    }
 }

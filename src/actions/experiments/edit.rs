@@ -63,7 +63,7 @@ impl EditExperiment {
 
             // Try to update the list of crates
             if let Some(crates) = self.crates {
-                let crates_vec = ::ex::get_crates(crates, config)?;
+                let crates_vec = ::lists::get_crates(crates, config)?;
 
                 // Recreate the list of crates without checking if it was the same
                 // This is done to allow reloading the list of crates in an existing experiment
@@ -198,7 +198,7 @@ mod tests {
         assert_eq!(ex.experiment.cap_lints, ExCapLints::Warn);
         assert_eq!(ex.server_data.priority, 10);
 
-        let demo = ::ex::get_crates(ExCrateSelect::Demo, &config).unwrap();
+        let demo = ::lists::get_crates(ExCrateSelect::Demo, &config).unwrap();
         assert_eq!(ex.experiment.crates, demo);
     }
 

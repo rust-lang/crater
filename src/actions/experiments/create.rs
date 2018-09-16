@@ -43,7 +43,7 @@ impl CreateExperiment {
             return Err(ErrorKind::DuplicateToolchains.into());
         }
 
-        let crates = ::ex::get_crates(self.crates, config)?;
+        let crates = ::lists::get_crates(self.crates, config)?;
 
         db.transaction(|transaction| {
             transaction.execute(

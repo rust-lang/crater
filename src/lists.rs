@@ -1,9 +1,12 @@
+use config::Config;
 use crates::{Crate, RegistryCrate};
 use crates_index::Crate as IndexCrate;
 use dirs::LIST_DIR;
 use errors::*;
+use ex::ExCrateSelect;
 use file;
 use gh;
+use rand::{thread_rng, Rng};
 use registry;
 use semver::{Version, VersionReq};
 use std::collections::{HashMap, HashSet};
@@ -336,6 +339,15 @@ fn create_gh_app_list_from_cache() -> Result<()> {
     Ok(())
 }
 
+pub fn get_crates(crates: ExCrateSelect, config: &Config) -> Result<Vec<Crate>> {
+    match crates {
+        ExCrateSelect::Full => read_all_lists(),
+        ExCrateSelect::Demo => demo_list(config),
+        ExCrateSelect::SmallRandom => small_random(),
+        ExCrateSelect::Top100 => top_100(),
+    }
+}
+
 pub fn read_all_lists() -> Result<Vec<Crate>> {
     let mut all = HashSet::new();
 
@@ -359,4 +371,51 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
     let mut all: Vec<_> = all.drain().collect();
     all.sort();
     Ok(all)
+}
+
+pub fn demo_list(config: &Config) -> Result<Vec<Crate>> {
+    let mut crates = config.demo_crates().crates.iter().collect::<HashSet<_>>();
+    let repos = &config.demo_crates().github_repos;
+    let expected_len = crates.len() + repos.len();
+
+    let result = read_all_lists()?
+        .into_iter()
+        .filter(|c| match *c {
+            Crate::Registry(RegistryCrate { ref name, .. }) => crates.remove(name),
+            Crate::GitHub(ref repo) => {
+                let url = repo.url();
+
+                let mut found = false;
+                for repo in repos {
+                    if url.ends_with(repo) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                found
+            }
+        }).collect::<Vec<_>>();
+
+    assert_eq!(result.len(), expected_len);
+    Ok(result)
+}
+
+fn small_random() -> Result<Vec<Crate>> {
+    const COUNT: usize = 20;
+
+    let mut crates = read_all_lists()?;
+    let mut rng = thread_rng();
+    rng.shuffle(&mut crates);
+
+    crates.truncate(COUNT);
+    crates.sort();
+
+    Ok(crates)
+}
+
+fn top_100() -> Result<Vec<Crate>> {
+    let mut crates = PopList::read()?;
+    crates.truncate(100);
+    Ok(crates)
 }

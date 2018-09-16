@@ -16,7 +16,6 @@ use crater::crates::Crate;
 use crater::db::Database;
 use crater::docker;
 use crater::errors::*;
-use crater::ex;
 use crater::ex::{ExCapLints, ExCrateSelect, ExMode};
 use crater::experiments::{Assignee, ExperimentData, Status};
 use crater::lists;
@@ -166,12 +165,6 @@ pub enum Crater {
         #[structopt(name = "priority", long = "priority", short = "p",)]
         priority: Option<i32>,
     },
-
-    #[structopt(
-        name = "copy-ex",
-        about = "copy all data from one experiment to another"
-    )]
-    CopyEx { ex1: Ex, ex2: Ex },
 
     #[structopt(
         name = "delete-ex",
@@ -330,9 +323,6 @@ impl Crater {
                     cap_lints: *cap_lints,
                     priority: *priority,
                 }.apply(&db, &config)?;
-            }
-            Crater::CopyEx { ref ex1, ref ex2 } => {
-                ex::copy(&ex1.0, &ex2.0)?;
             }
             Crater::DeleteEx { ref ex } => {
                 let config = Config::load()?;

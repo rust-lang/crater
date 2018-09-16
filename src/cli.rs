@@ -18,11 +18,10 @@ use crater::docker;
 use crater::errors::*;
 use crater::ex;
 use crater::ex::{ExCapLints, ExCrateSelect, ExMode};
-use crater::ex_run;
 use crater::experiments::{Assignee, ExperimentData, Status};
 use crater::lists;
 use crater::report;
-use crater::results::DatabaseDB;
+use crater::results::{DeleteResults, DatabaseDB};
 use crater::run_graph;
 use crater::server;
 use crater::toolchain::{Toolchain, MAIN_TOOLCHAIN};
@@ -351,13 +350,38 @@ impl Crater {
                 ex::delete_all_target_dirs(&ex.0)?;
             }
             Crater::DeleteAllResults { ref ex } => {
-                ex_run::delete_all_results(&ex.0)?;
+                let db = Database::open()?;
+                let result_db = DatabaseDB::new(&db);
+
+                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
+                    result_db.delete_all_results(&experiment.experiment)?;
+                    experiment.set_status(&db, Status::Queued)?;
+                } else {
+                    bail!("missing experiment {}", ex.0);
+                }
             }
             Crater::DeleteResult {
                 ref ex,
                 ref tc,
                 ref krate,
-            } => ex_run::delete_result(&ex.0, tc.as_ref(), krate)?,
+            } => {
+                let db = Database::open()?;
+                let result_db = DatabaseDB::new(&db);
+
+                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
+                    if let Some(tc) = tc {
+                        result_db.delete_result(&experiment.experiment, tc, krate)?;
+                    } else {
+                        for tc in &experiment.experiment.toolchains {
+                            result_db.delete_result(&experiment.experiment, tc, krate)?;
+                        }
+                    }
+
+                    experiment.set_status(&db, Status::Queued)?;
+                } else {
+                    bail!("missing experiment {}", ex.0);
+                }
+            }
             Crater::RunGraph { ref ex, threads } => {
                 let config = Config::load()?;
                 let db = Database::open()?;

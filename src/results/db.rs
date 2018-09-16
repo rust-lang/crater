@@ -3,7 +3,7 @@ use crates::{Crate, GitHubRepo};
 use db::{Database, QueryUtils};
 use errors::*;
 use ex::Experiment;
-use results::{ReadResults, TestResult, WriteResults};
+use results::{DeleteResults, ReadResults, TestResult, WriteResults};
 use serde_json;
 use std::collections::HashMap;
 use std::io::Read;
@@ -182,6 +182,21 @@ impl<'a> WriteResults for DatabaseDB<'a> {
     }
 }
 
+impl<'a> DeleteResults for DatabaseDB<'a> {
+    fn delete_all_results(&self, ex: &Experiment) -> Result<()> {
+        self.db.execute("DELETE FROM results WHERE experiment = ?1;", &[&ex.name])?;
+        Ok(())
+    }
+
+    fn delete_result(&self, ex: &Experiment, tc: &Toolchain, krate: &Crate) -> Result<()> {
+        self.db.execute(
+            "DELETE FROM results WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3;",
+            &[&ex.name, &tc.to_string(), &serde_json::to_string(krate).unwrap()],
+        )?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{DatabaseDB, ProgressData, TaskResult};
@@ -191,7 +206,7 @@ mod tests {
     use crates::{Crate, GitHubRepo, RegistryCrate};
     use db::Database;
     use experiments::ExperimentData;
-    use results::{ReadResults, TestResult, WriteResults};
+    use results::{DeleteResults, ReadResults, TestResult, WriteResults};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
@@ -319,6 +334,39 @@ mod tests {
         assert!(
             results
                 .load_log(&ex, &TEST_TOOLCHAIN, &krate)
+                .unwrap()
+                .is_none()
+        );
+
+        // Add another result
+        results
+            .record_result(&ex, &TEST_TOOLCHAIN, &krate, || {
+                info!("Another log message!");
+                Ok(TestResult::TestFail)
+            }).unwrap();
+        assert_eq!(
+            results.get_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap(),
+            Some(TestResult::TestFail)
+        );
+
+        // Test deleting the newly-added result
+        results.delete_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap();
+        assert!(
+            results
+                .get_result(&ex, &TEST_TOOLCHAIN, &krate)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            results.get_result(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
+            Some(TestResult::TestPass)
+        );
+
+        // Test deleting all the remaining results
+        results.delete_all_results(&ex).unwrap();
+        assert!(
+            results
+                .get_result(&ex, &MAIN_TOOLCHAIN, &krate)
                 .unwrap()
                 .is_none()
         );

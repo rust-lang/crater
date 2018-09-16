@@ -25,7 +25,6 @@ extern crate petgraph;
 extern crate r2d2;
 extern crate r2d2_sqlite;
 extern crate rand;
-extern crate ref_slice;
 extern crate regex;
 extern crate reqwest;
 extern crate ring;

@@ -3,29 +3,10 @@ use crates::Crate;
 use errors::*;
 use ex::*;
 use file;
-use ref_slice::ref_slice;
-use results::{DeleteResults, FileDB, TestResult, WriteResults};
+use results::{TestResult, WriteResults};
 use std::collections::HashSet;
 use std::path::Path;
 use toolchain::{CargoState, Toolchain};
-
-pub fn delete_all_results(ex_name: &str) -> Result<()> {
-    let ex = &Experiment::load(ex_name)?;
-    let db = FileDB::default();
-    db.delete_all_results(ex)
-}
-
-pub fn delete_result(ex_name: &str, tc: Option<&Toolchain>, krate: &Crate) -> Result<()> {
-    let ex = &Experiment::load(ex_name)?;
-    let db = FileDB::default();
-
-    let tcs = tc.map(ref_slice).unwrap_or(&ex.toolchains);
-    for tc in tcs {
-        db.delete_result(ex, tc, krate)?;
-    }
-
-    Ok(())
-}
 
 pub struct RunTestResult {
     pub result: TestResult,

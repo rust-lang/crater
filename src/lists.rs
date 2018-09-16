@@ -1,4 +1,5 @@
 use crates::{Crate, RegistryCrate};
+use crates_index::Crate as IndexCrate;
 use dirs::LIST_DIR;
 use errors::*;
 use file;
@@ -27,6 +28,24 @@ pub fn create_all_lists(full: bool) -> Result<()> {
     Ok(())
 }
 
+fn filter_crates<'a>(
+    crates: impl Iterator<Item = IndexCrate> + 'a,
+) -> impl Iterator<Item = (String, String)> + 'a {
+    crates.filter_map(|krate| {
+        // The versions() method returns the list of published versions starting from the
+        // first one, so its output is reversed to check the latest first
+        for version in krate.versions().iter().rev() {
+            // Try every version until we find a non-yanked one. If all the versions are
+            // yanked the crate is automatically skipped
+            if !version.is_yanked() {
+                return Some((krate.name().to_string(), version.version().to_string()));
+            }
+        }
+
+        None
+    })
+}
+
 pub trait List {
     fn create() -> Result<()>;
     fn read() -> Result<Vec<Crate>>;
@@ -40,13 +59,9 @@ impl List for RecentList {
         info!("creating recent list");
         fs::create_dir_all(&*LIST_DIR)?;
 
-        let crates = registry::crates_index_registry()?.crates().map(|crate_| {
-            (
-                crate_.name().to_owned(),
-                crate_.latest_version().version().to_owned(),
-            )
-        });
-        write_crate_list(&Self::path(), crates)?;
+        let crates = registry::crates_index_registry()?.crates();
+
+        write_crate_list(&Self::path(), filter_crates(crates))?;
         info!("recent crates written to {}", Self::path().display());
         Ok(())
     }
@@ -115,13 +130,8 @@ impl List for PopList {
             let count_b = counts.get(b.name()).cloned().unwrap_or(0);
             count_b.cmp(&count_a)
         });
-        let crates = crates.into_iter().map(|crate_| {
-            (
-                crate_.name().to_owned(),
-                crate_.latest_version().version().to_owned(),
-            )
-        });
-        write_crate_list(&Self::path(), crates)?;
+
+        write_crate_list(&Self::path(), filter_crates(crates.into_iter()))?;
         info!("pop crates written to {}", Self::path().display());
         Ok(())
     }
@@ -155,6 +165,7 @@ impl List for HotList {
                 .versions()
                 .iter()
                 .rev()
+                .filter(|v| !v.is_yanked())
                 .take(10)
                 .map(|v| (v.version().to_string(), 0))
                 .collect();
@@ -166,6 +177,10 @@ impl List for HotList {
         // semver
         for crate_ in index.crates() {
             for version in crate_.versions() {
+                if version.is_yanked() {
+                    continue;
+                }
+
                 for dependency in version.dependencies().iter() {
                     if let Some(ref mut dep_versions) = crate_map.get_mut(dependency.name()) {
                         let semver_req = VersionReq::parse(dependency.requirement());

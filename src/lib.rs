@@ -47,7 +47,6 @@ extern crate serde_regex;
     slog_log,
     slog_error,
     slog_warn,
-    slog_debug,
     slog_record,
     slog_record_static,
     slog_b,

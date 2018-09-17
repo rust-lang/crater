@@ -33,7 +33,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
     let results = DatabaseDB::new(&data.db);
 
     loop {
-        let mut ex = match data.experiments.first_by_status(Status::NeedsReport)? {
+        let mut ex = match Experiment::first_by_status(&data.db, Status::NeedsReport)? {
             Some(ex) => ex,
             None => {
                 // This will sleep AUTOMATIC_THREAD_WAKEUP seconds *or* until a wake is received

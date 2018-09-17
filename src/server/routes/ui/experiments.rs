@@ -60,7 +60,7 @@ pub fn endpoint_queue(data: Arc<Data>) -> Result<Response<Body>> {
     let mut generating_report = Vec::new();
     let mut report_failed = Vec::new();
 
-    for experiment in data.experiments.all()? {
+    for experiment in Experiment::all(&data.db)? {
         // Don't include completed experiments in the queue
         if experiment.status == Status::Completed {
             continue;

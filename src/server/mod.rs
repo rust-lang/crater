@@ -10,7 +10,6 @@ pub mod tokens;
 use config::Config;
 use db::Database;
 use errors::*;
-use experiments::Experiments;
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
 use server::agents::Agents;
@@ -31,7 +30,6 @@ pub struct Data {
     pub github: GitHubApi,
     pub tokens: Tokens,
     pub agents: Agents,
-    pub experiments: Experiments,
     pub db: Database,
     pub reports_worker: reports::ReportsWorker,
     pub acl: ACL,
@@ -53,7 +51,6 @@ pub fn run(config: Config) -> Result<()> {
         github,
         tokens,
         agents,
-        experiments: Experiments::new(db.clone()),
         db: db.clone(),
         reports_worker: reports::ReportsWorker::new(),
         acl,

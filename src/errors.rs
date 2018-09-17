@@ -21,10 +21,7 @@ error_chain! {
         Base64Decode(::base64::DecodeError);
         Tera(::tera::Error);
         Utf8(::std::string::FromUtf8Error);
-    }
-
-    links {
-        CratesIndexError(::crates_index::Error, ::crates_index::ErrorKind);
+        CratesIndex(::crates_index::Error);
     }
 
     errors {

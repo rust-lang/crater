@@ -10,7 +10,7 @@ opt-level = 0
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-crates-index = "0.10"
+crates-index = "0.12"
 crossbeam = "0.3"
 dotenv = "0.10.0"
 error-chain = "0.10"
@@ -63,4 +63,4 @@ bytes = "0.4.9"
 chrono-humanize = "0.0.11"
 
 [build-dependencies]
-git2 = "0.6"
+git2 = "0.7"

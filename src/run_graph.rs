@@ -19,8 +19,8 @@
 use config::Config;
 use crossbeam_utils::thread::scope;
 use errors::*;
-use ex::{self, Experiment};
-use experiments::Mode;
+use ex;
+use experiments::{Experiment, Mode};
 use file;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
 use results::{TestResult, WriteResults};

@@ -2,7 +2,7 @@ use base64;
 use crates::{Crate, GitHubRepo};
 use db::{Database, QueryUtils};
 use errors::*;
-use ex::Experiment;
+use experiments::Experiment;
 use results::{DeleteResults, ReadResults, TestResult, WriteResults};
 use serde_json;
 use std::collections::HashMap;
@@ -210,7 +210,7 @@ mod tests {
     use config::Config;
     use crates::{Crate, GitHubRepo, RegistryCrate};
     use db::Database;
-    use experiments::ExperimentData;
+    use experiments::Experiment;
     use results::{DeleteResults, ReadResults, TestResult, WriteResults};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
@@ -224,10 +224,7 @@ mod tests {
         CreateExperiment::dummy("dummy")
             .apply(&db, &config)
             .unwrap();
-        let ex = ExperimentData::get(&db, "dummy")
-            .unwrap()
-            .unwrap()
-            .experiment;
+        let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
 
         // Define some dummy GitHub repositories
         let repo1 = GitHubRepo {
@@ -286,10 +283,7 @@ mod tests {
         CreateExperiment::dummy("dummy")
             .apply(&db, &config)
             .unwrap();
-        let ex = ExperimentData::get(&db, "dummy")
-            .unwrap()
-            .unwrap()
-            .experiment;
+        let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
 
         let krate = Crate::Registry(RegistryCrate {
             name: "lazy_static".into(),
@@ -387,10 +381,7 @@ mod tests {
         CreateExperiment::dummy("dummy")
             .apply(&db, &config)
             .unwrap();
-        let ex = ExperimentData::get(&db, "dummy")
-            .unwrap()
-            .unwrap()
-            .experiment;
+        let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
 
         let krate = Crate::Registry(RegistryCrate {
             name: "lazy_static".into(),

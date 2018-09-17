@@ -1,6 +1,6 @@
 use crates::{Crate, GitHubRepo};
 use errors::*;
-use ex::Experiment;
+use experiments::Experiment;
 use results::{ReadResults, TestResult};
 use std::collections::HashMap;
 use toolchain::Toolchain;

@@ -1,7 +1,7 @@
 use config::Config;
 use db::{Database, QueryUtils};
 use errors::*;
-use experiments::ExperimentData;
+use experiments::Experiment;
 
 pub struct DeleteExperiment {
     pub name: String,
@@ -9,7 +9,7 @@ pub struct DeleteExperiment {
 
 impl DeleteExperiment {
     pub fn apply(self, db: &Database, _config: &Config) -> Result<()> {
-        if !ExperimentData::exists(db, &self.name)? {
+        if !Experiment::exists(db, &self.name)? {
             return Err(ErrorKind::ExperimentNotFound(self.name).into());
         }
 
@@ -28,7 +28,7 @@ mod tests {
     use config::Config;
     use db::Database;
     use errors::*;
-    use experiments::ExperimentData;
+    use experiments::Experiment;
 
     #[test]
     fn test_delete_missing_experiment() {
@@ -55,13 +55,13 @@ mod tests {
         CreateExperiment::dummy("dummy")
             .apply(&db, &config)
             .unwrap();
-        assert!(ExperimentData::exists(&db, "dummy").unwrap());
+        assert!(Experiment::exists(&db, "dummy").unwrap());
 
         // Delete it and make sure it doesn't exist anymore
         DeleteExperiment {
             name: "dummy".to_string(),
         }.apply(&db, &config)
         .unwrap();
-        assert!(!ExperimentData::exists(&db, "dummy").unwrap());
+        assert!(!Experiment::exists(&db, "dummy").unwrap());
     }
 }

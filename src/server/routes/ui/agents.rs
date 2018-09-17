@@ -40,9 +40,7 @@ pub fn endpoint_list(data: Arc<Data>) -> Result<Response<Body>> {
                 .last_heartbeat()
                 .map(|time| time.to_rfc3339_opts(SecondsFormat::Secs, true)),
             assigned_experiment: if show_assigned {
-                agent
-                    .assigned_experiment()
-                    .map(|ex| ex.experiment.name.clone())
+                agent.assigned_experiment().map(|ex| ex.name.clone())
             } else {
                 None
             },

@@ -1,5 +1,5 @@
 use errors::*;
-use experiments::{ExperimentData, Status};
+use experiments::{Experiment, Status};
 use report;
 use results::DatabaseDB;
 use rusoto_core::request::default_tls_client;
@@ -14,19 +14,16 @@ use util;
 // Automatically wake up the reports generator thread every 10 minutes to check for new jobs
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
 
-fn generate_report(data: &Data, ex: &ExperimentData, results: &DatabaseDB) -> Result<()> {
+fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Result<()> {
     let client = S3Client::new(
         default_tls_client()?,
         data.tokens.reports_bucket.clone(),
         data.tokens.reports_bucket.region.to_region()?,
     );
-    let dest = format!(
-        "s3://{}/{}",
-        data.tokens.reports_bucket.bucket, &ex.experiment.name
-    );
+    let dest = format!("s3://{}/{}", data.tokens.reports_bucket.bucket, &ex.name);
     let writer = report::S3Writer::create(Box::new(client), dest.parse()?)?;
 
-    report::gen(results, &ex.experiment, &writer, &data.config)?;
+    report::gen(results, &ex, &writer, &data.config)?;
 
     Ok(())
 }
@@ -47,7 +44,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
                 continue;
             }
         };
-        let name = ex.experiment.name.clone();
+        let name = ex.name.clone();
 
         info!("generating report for experiment {}...", name);
         ex.set_status(&data.db, Status::GeneratingReport)?;
@@ -57,7 +54,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
             error!("failed to generate the report of {}", name);
             util::report_error(&err);
 
-            if let Some(ref github_issue) = ex.server_data.github_issue {
+            if let Some(ref github_issue) = ex.github_issue {
                 Message::new()
                     .line(
                         "rotating_light",
@@ -85,7 +82,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
         ex.set_report_url(&data.db, &report_url)?;
         info!("report for the experiment {} generated successfully!", name);
 
-        if let Some(ref github_issue) = ex.server_data.github_issue {
+        if let Some(ref github_issue) = ex.github_issue {
             Message::new()
                 .line("tada", format!("Experiment **`{}`** is completed!", name))
                 .line("newspaper", format!("[Open the full report]({}).", report_url))

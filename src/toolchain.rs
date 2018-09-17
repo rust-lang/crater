@@ -3,7 +3,7 @@ use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR};
 use dl;
 use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
 use errors::*;
-use ex::Experiment;
+use experiments::Experiment;
 use run::RunCommand;
 use std::env::consts::EXE_SUFFIX;
 use std::fmt;

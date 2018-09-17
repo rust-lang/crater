@@ -1,6 +1,6 @@
 use db::{Database, QueryUtils};
 use errors::*;
-use experiments::{CapLints, CrateSelect, ExperimentData, GitHubIssue, Mode, Status};
+use experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
 use server::github::Issue;
 use server::messages::{Label, Message};
 use server::routes::webhooks::args::{AbortArgs, EditArgs, RetryReportArgs, RunArgs};
@@ -74,8 +74,8 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Result<()> {
 pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    if let Some(mut experiment) = ExperimentData::get(&data.db, &name)? {
-        if experiment.server_data.status != Status::ReportFailed {
+    if let Some(mut experiment) = Experiment::get(&data.db, &name)? {
+        if experiment.status != Status::ReportFailed {
             bail!(
                 "generation of the report of the **`{}`** experiment didn't fail!",
                 name

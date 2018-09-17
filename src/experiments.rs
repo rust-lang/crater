@@ -2,11 +2,11 @@ use chrono::{DateTime, Utc};
 use crates::Crate;
 use db::{Database, QueryUtils};
 use errors::*;
-use ex::Experiment;
 use rusqlite::Row;
 use serde_json;
 use std::fmt;
 use std::str::FromStr;
+use toolchain::Toolchain;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -39,7 +39,7 @@ string_enum!(pub enum CapLints {
 });
 
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Assignee {
     Agent(String),
     CLI,
@@ -86,13 +86,20 @@ impl FromStr for Assignee {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct GitHubIssue {
     pub api_url: String,
     pub html_url: String,
     pub number: i32,
 }
 
-pub struct ServerData {
+#[derive(Serialize, Deserialize)]
+pub struct Experiment {
+    pub name: String,
+    pub crates: Vec<Crate>,
+    pub toolchains: [Toolchain; 2],
+    pub mode: Mode,
+    pub cap_lints: CapLints,
     pub priority: i32,
     pub created_at: DateTime<Utc>,
     pub started_at: Option<DateTime<Utc>>,
@@ -103,17 +110,12 @@ pub struct ServerData {
     pub report_url: Option<String>,
 }
 
-pub struct ExperimentData {
-    pub server_data: ServerData,
-    pub experiment: Experiment,
-}
-
-impl ExperimentData {
+impl Experiment {
     pub fn exists(db: &Database, name: &str) -> Result<bool> {
         db.exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])
     }
 
-    pub fn get(db: &Database, name: &str) -> Result<Option<ExperimentData>> {
+    pub fn get(db: &Database, name: &str) -> Result<Option<Experiment>> {
         let record = db.get_row(
             "SELECT * FROM experiments WHERE name = ?1;",
             &[&name],
@@ -121,7 +123,7 @@ impl ExperimentData {
         )?;
 
         if let Some(record) = record {
-            Ok(Some(record.into_experiment_data(db)?))
+            Ok(Some(record.into_experiment(db)?))
         } else {
             Ok(None)
         }
@@ -130,51 +132,46 @@ impl ExperimentData {
     pub fn set_status(&mut self, db: &Database, status: Status) -> Result<()> {
         db.execute(
             "UPDATE experiments SET status = ?1 WHERE name = ?2;",
-            &[&status.to_str(), &self.experiment.name.as_str()],
+            &[&status.to_str(), &self.name.as_str()],
         )?;
 
         let now = Utc::now();
 
         // Check if the new status is "running" and there is no starting date
-        if status == Status::Running && self.server_data.started_at.is_none() {
+        if status == Status::Running && self.started_at.is_none() {
             db.execute(
                 "UPDATE experiments SET started_at = ?1 WHERE name = ?2;",
-                &[&now, &self.experiment.name.as_str()],
+                &[&now, &self.name.as_str()],
             )?;
-            self.server_data.started_at = Some(now);
+            self.started_at = Some(now);
         // Check if the old status was "running" and there is no completed date
-        } else if self.server_data.status == Status::Running
-            && self.server_data.completed_at.is_none()
-        {
+        } else if self.status == Status::Running && self.completed_at.is_none() {
             db.execute(
                 "UPDATE experiments SET completed_at = ?1 WHERE name = ?2;",
-                &[&now, &self.experiment.name.as_str()],
+                &[&now, &self.name.as_str()],
             )?;
-            self.server_data.completed_at = Some(now);
+            self.completed_at = Some(now);
         }
 
-        self.server_data.status = status;
+        self.status = status;
         Ok(())
     }
 
     pub fn set_assigned_to(&mut self, db: &Database, assigned_to: Option<&Assignee>) -> Result<()> {
         db.execute(
             "UPDATE experiments SET assigned_to = ?1 WHERE name = ?2;",
-            &[
-                &assigned_to.map(|a| a.to_string()),
-                &self.experiment.name.as_str(),
-            ],
+            &[&assigned_to.map(|a| a.to_string()), &self.name.as_str()],
         )?;
-        self.server_data.assigned_to = assigned_to.cloned();
+        self.assigned_to = assigned_to.cloned();
         Ok(())
     }
 
     pub fn set_report_url(&mut self, db: &Database, url: &str) -> Result<()> {
         db.execute(
             "UPDATE experiments SET report_url = ?1 WHERE name = ?2;",
-            &[&url, &self.experiment.name.as_str()],
+            &[&url, &self.name.as_str()],
         )?;
-        self.server_data.report_url = Some(url.to_string());
+        self.report_url = Some(url.to_string());
         Ok(())
     }
 
@@ -182,7 +179,7 @@ impl ExperimentData {
         let results_len: u32 = db
             .get_row(
                 "SELECT COUNT(*) AS count FROM results WHERE experiment = ?1;",
-                &[&self.experiment.name.as_str()],
+                &[&self.name.as_str()],
                 |r| r.get("count"),
             )?.unwrap();
 
@@ -190,7 +187,7 @@ impl ExperimentData {
             .get_row(
                 "SELECT COUNT(*) AS count FROM experiment_crates \
                  WHERE experiment = ?1 AND skipped = 0;",
-                &[&self.experiment.name.as_str()],
+                &[&self.name.as_str()],
                 |r| r.get("count"),
             )?.unwrap();
 
@@ -209,16 +206,13 @@ impl ExperimentData {
 
     pub fn remove_completed_crates(&mut self, db: &Database) -> Result<()> {
         // FIXME: optimize this
-        let mut new_crates = Vec::with_capacity(self.experiment.crates.len());
-        for krate in self.experiment.crates.drain(..) {
+        let mut new_crates = Vec::with_capacity(self.crates.len());
+        for krate in self.crates.drain(..) {
             let results_len: u32 = db
                 .get_row(
                     "SELECT COUNT(*) AS count FROM results \
                      WHERE experiment = ?1 AND crate = ?2;",
-                    &[
-                        &self.experiment.name.as_str(),
-                        &serde_json::to_string(&krate)?,
-                    ],
+                    &[&self.name.as_str(), &serde_json::to_string(&krate)?],
                     |r| r.get("count"),
                 )?.unwrap();
 
@@ -227,8 +221,7 @@ impl ExperimentData {
             }
         }
 
-        self.experiment.crates = new_crates;
-
+        self.crates = new_crates;
         Ok(())
     }
 }
@@ -272,7 +265,7 @@ impl ExperimentDBRecord {
         }
     }
 
-    fn into_experiment_data(self, db: &Database) -> Result<ExperimentData> {
+    fn into_experiment(self, db: &Database) -> Result<Experiment> {
         let crates = db
             .query(
                 "SELECT crate FROM experiment_crates WHERE experiment = ?1",
@@ -284,40 +277,36 @@ impl ExperimentDBRecord {
             )?.into_iter()
             .collect::<Result<Vec<Crate>>>()?;
 
-        Ok(ExperimentData {
-            experiment: Experiment {
-                name: self.name,
-                crates,
-                toolchains: [self.toolchain_start.parse()?, self.toolchain_end.parse()?],
-                cap_lints: self.cap_lints.parse()?,
-                mode: self.mode.parse()?,
+        Ok(Experiment {
+            name: self.name,
+            crates,
+            toolchains: [self.toolchain_start.parse()?, self.toolchain_end.parse()?],
+            cap_lints: self.cap_lints.parse()?,
+            mode: self.mode.parse()?,
+            priority: self.priority,
+            created_at: self.created_at,
+            started_at: self.started_at,
+            completed_at: self.completed_at,
+            github_issue: if let (Some(api_url), Some(html_url), Some(number)) = (
+                self.github_issue,
+                self.github_issue_url,
+                self.github_issue_number,
+            ) {
+                Some(GitHubIssue {
+                    api_url,
+                    html_url,
+                    number,
+                })
+            } else {
+                None
             },
-            server_data: ServerData {
-                priority: self.priority,
-                created_at: self.created_at,
-                started_at: self.started_at,
-                completed_at: self.completed_at,
-                github_issue: if let (Some(api_url), Some(html_url), Some(number)) = (
-                    self.github_issue,
-                    self.github_issue_url,
-                    self.github_issue_number,
-                ) {
-                    Some(GitHubIssue {
-                        api_url,
-                        html_url,
-                        number,
-                    })
-                } else {
-                    None
-                },
-                assigned_to: if let Some(assignee) = self.assigned_to {
-                    Some(assignee.parse()?)
-                } else {
-                    None
-                },
-                status: self.status.parse()?,
-                report_url: self.report_url,
+            assigned_to: if let Some(assignee) = self.assigned_to {
+                Some(assignee.parse()?)
+            } else {
+                None
             },
+            status: self.status.parse()?,
+            report_url: self.report_url,
         })
     }
 }
@@ -332,7 +321,7 @@ impl Experiments {
         Experiments { db }
     }
 
-    pub fn all(&self) -> Result<Vec<ExperimentData>> {
+    pub fn all(&self) -> Result<Vec<Experiment>> {
         let records = self.db.query(
             "SELECT * FROM experiments ORDER BY priority DESC, created_at;",
             &[],
@@ -340,11 +329,11 @@ impl Experiments {
         )?;
         records
             .into_iter()
-            .map(|record| record.into_experiment_data(&self.db))
+            .map(|record| record.into_experiment(&self.db))
             .collect::<Result<_>>()
     }
 
-    pub fn run_by(&self, assignee: &Assignee) -> Result<Option<ExperimentData>> {
+    pub fn run_by(&self, assignee: &Assignee) -> Result<Option<Experiment>> {
         let record = self.db.get_row(
             "SELECT * FROM experiments \
              WHERE status = ?1 AND assigned_to = ?2;",
@@ -353,13 +342,13 @@ impl Experiments {
         )?;
 
         if let Some(record) = record {
-            Ok(Some(record.into_experiment_data(&self.db)?))
+            Ok(Some(record.into_experiment(&self.db)?))
         } else {
             Ok(None)
         }
     }
 
-    pub fn first_by_status(&self, status: Status) -> Result<Option<ExperimentData>> {
+    pub fn first_by_status(&self, status: Status) -> Result<Option<Experiment>> {
         let record = self.db.get_row(
             "SELECT * FROM experiments \
              WHERE status = ?1 \
@@ -369,13 +358,13 @@ impl Experiments {
         )?;
 
         if let Some(record) = record {
-            Ok(Some(record.into_experiment_data(&self.db)?))
+            Ok(Some(record.into_experiment(&self.db)?))
         } else {
             Ok(None)
         }
     }
 
-    pub fn next(&self, assignee: &Assignee) -> Result<Option<(bool, ExperimentData)>> {
+    pub fn next(&self, assignee: &Assignee) -> Result<Option<(bool, Experiment)>> {
         // Avoid assigning two experiments to the same agent
         if let Some(experiment) = self.run_by(assignee)? {
             return Ok(Some((false, experiment)));
@@ -390,7 +379,7 @@ impl Experiments {
         )?;
 
         if let Some(record) = record {
-            let mut experiment = record.into_experiment_data(&self.db)?;
+            let mut experiment = record.into_experiment(&self.db)?;
             experiment.set_status(&self.db, Status::Running)?;
             experiment.set_assigned_to(&self.db, Some(assignee))?;
             Ok(Some((true, experiment)))
@@ -476,21 +465,21 @@ mod tests {
         // Test the important experiment is correctly assigned
         let (new, ex) = experiments.next(&agent1).unwrap().unwrap();
         assert!(new);
-        assert_eq!(ex.experiment.name.as_str(), "important");
-        assert_eq!(ex.server_data.status, Status::Running);
-        assert_eq!(ex.server_data.assigned_to.unwrap(), agent1);
+        assert_eq!(ex.name.as_str(), "important");
+        assert_eq!(ex.status, Status::Running);
+        assert_eq!(ex.assigned_to.unwrap(), agent1);
 
         // Test the same experiment is returned to the agent
         let (new, ex) = experiments.next(&agent1).unwrap().unwrap();
         assert!(!new);
-        assert_eq!(ex.experiment.name.as_str(), "important");
+        assert_eq!(ex.name.as_str(), "important");
 
         // Test the less important experiment is assigned to the next agent
         let (new, ex) = experiments.next(&agent2).unwrap().unwrap();
         assert!(new);
-        assert_eq!(ex.experiment.name.as_str(), "test");
-        assert_eq!(ex.server_data.status, Status::Running);
-        assert_eq!(ex.server_data.assigned_to.unwrap(), agent2);
+        assert_eq!(ex.name.as_str(), "test");
+        assert_eq!(ex.status, Status::Running);
+        assert_eq!(ex.assigned_to.unwrap(), agent2);
 
         // Test no other experiment is available for the other agents
         assert!(experiments.next(&agent3).unwrap().is_none());

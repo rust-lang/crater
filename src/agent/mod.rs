@@ -4,7 +4,7 @@ mod results;
 use agent::api::AgentApi;
 use config::Config;
 use errors::*;
-use ex::Experiment;
+use experiments::Experiment;
 use run_graph;
 use std::thread;
 use std::time::Duration;

@@ -1,7 +1,7 @@
 use config::Config;
 use db::{Database, QueryUtils};
 use errors::*;
-use experiments::{CapLints, CrateSelect, ExperimentData, Mode, Status};
+use experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
 use toolchain::Toolchain;
 
 pub struct EditExperiment {
@@ -27,13 +27,13 @@ impl EditExperiment {
     }
 
     pub fn apply(mut self, db: &Database, config: &Config) -> Result<bool> {
-        let mut ex = match ExperimentData::get(db, &self.name)? {
+        let mut ex = match Experiment::get(db, &self.name)? {
             Some(ex) => ex,
             None => return Err(ErrorKind::ExperimentNotFound(self.name).into()),
         };
 
         // Ensure no change is made to running or complete experiments
-        if ex.server_data.status != Status::Queued {
+        if ex.status != Status::Queued {
             return Err(ErrorKind::CanEditOnlyQueuedExperiments.into());
         }
 
@@ -43,16 +43,16 @@ impl EditExperiment {
             // Try to update both toolchains
             for (i, col) in ["toolchain_start", "toolchain_end"].iter().enumerate() {
                 if let Some(tc) = self.toolchains[i].take() {
-                    ex.experiment.toolchains[i] = tc;
+                    ex.toolchains[i] = tc;
 
                     // Ensure no duplicate toolchain is inserted
-                    if ex.experiment.toolchains[0] == ex.experiment.toolchains[1] {
+                    if ex.toolchains[0] == ex.toolchains[1] {
                         return Err(ErrorKind::DuplicateToolchains.into());
                     }
 
                     let changes = t.execute(
                         &format!("UPDATE experiments SET {} = ?1 WHERE name = ?2;", col),
-                        &[&ex.experiment.toolchains[i].to_string(), &self.name],
+                        &[&ex.toolchains[i].to_string(), &self.name],
                     )?;
                     assert_eq!(changes, 1);
 
@@ -82,7 +82,7 @@ impl EditExperiment {
                     )?;
                 }
 
-                ex.experiment.crates = crates_vec;
+                ex.crates = crates_vec;
                 has_changed = true;
             }
 
@@ -94,7 +94,7 @@ impl EditExperiment {
                 )?;
                 assert_eq!(changes, 1);
 
-                ex.experiment.mode = mode;
+                ex.mode = mode;
                 has_changed = true;
             }
 
@@ -106,7 +106,7 @@ impl EditExperiment {
                 )?;
                 assert_eq!(changes, 1);
 
-                ex.experiment.cap_lints = cap_lints;
+                ex.cap_lints = cap_lints;
                 has_changed = true;
             }
 
@@ -118,7 +118,7 @@ impl EditExperiment {
                 )?;
                 assert_eq!(changes, 1);
 
-                ex.server_data.priority = priority;
+                ex.priority = priority;
                 has_changed = true;
             }
 
@@ -134,7 +134,7 @@ mod tests {
     use config::Config;
     use db::Database;
     use errors::*;
-    use experiments::{CapLints, CrateSelect, ExperimentData, Mode, Status};
+    use experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
@@ -182,22 +182,16 @@ mod tests {
         .unwrap();
 
         // And get the experiment to make sure data is changed
-        let ex = ExperimentData::get(&db, "foo").unwrap().unwrap();
+        let ex = Experiment::get(&db, "foo").unwrap().unwrap();
 
-        assert_eq!(
-            ex.experiment.toolchains[0],
-            "nightly-1970-01-01".parse().unwrap()
-        );
-        assert_eq!(
-            ex.experiment.toolchains[1],
-            "nightly-1970-01-02".parse().unwrap()
-        );
-        assert_eq!(ex.experiment.mode, Mode::CheckOnly);
-        assert_eq!(ex.experiment.cap_lints, CapLints::Warn);
-        assert_eq!(ex.server_data.priority, 10);
+        assert_eq!(ex.toolchains[0], "nightly-1970-01-01".parse().unwrap());
+        assert_eq!(ex.toolchains[1], "nightly-1970-01-02".parse().unwrap());
+        assert_eq!(ex.mode, Mode::CheckOnly);
+        assert_eq!(ex.cap_lints, CapLints::Warn);
+        assert_eq!(ex.priority, 10);
 
         let demo = ::lists::get_crates(CrateSelect::Demo, &config).unwrap();
-        assert_eq!(ex.experiment.crates, demo);
+        assert_eq!(ex.crates, demo);
     }
 
     #[test]
@@ -242,7 +236,7 @@ mod tests {
 
         // Create an experiment and set it to running
         CreateExperiment::dummy("foo").apply(&db, &config).unwrap();
-        let mut ex = ExperimentData::get(&db, "foo").unwrap().unwrap();
+        let mut ex = Experiment::get(&db, "foo").unwrap().unwrap();
         ex.set_status(&db, Status::Running).unwrap();
 
         // Try to edit it

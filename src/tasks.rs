@@ -1,8 +1,9 @@
 use config::Config;
 use crates::{self, Crate};
 use errors::*;
-use ex::{self, Experiment};
+use ex;
 use ex_run;
+use experiments::Experiment;
 use git;
 use results::{TestResult, WriteResults};
 use std::fmt;

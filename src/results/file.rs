@@ -1,6 +1,7 @@
 use crates::{Crate, GitHubRepo};
 use errors::*;
-use ex::{ex_dir, Experiment};
+use ex::ex_dir;
+use experiments::Experiment;
 use file;
 use log;
 use results::{DeleteResults, ReadResults, TestResult, WriteResults};

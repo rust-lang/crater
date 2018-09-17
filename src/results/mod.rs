@@ -5,7 +5,7 @@ mod file;
 
 use crates::{Crate, GitHubRepo};
 use errors::*;
-use ex::Experiment;
+use experiments::Experiment;
 #[cfg(test)]
 pub use results::dummy::DummyDB;
 pub use results::{

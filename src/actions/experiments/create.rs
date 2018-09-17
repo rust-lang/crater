@@ -2,7 +2,7 @@ use chrono::Utc;
 use config::Config;
 use db::{Database, QueryUtils};
 use errors::*;
-use experiments::{CapLints, CrateSelect, ExperimentData, GitHubIssue, Mode, Status};
+use experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
 use toolchain::Toolchain;
 
 pub struct CreateExperiment {
@@ -33,7 +33,7 @@ impl CreateExperiment {
 
     pub fn apply(self, db: &Database, config: &Config) -> Result<()> {
         // Ensure no duplicate experiments are created
-        if ExperimentData::exists(db, &self.name)? {
+        if Experiment::exists(db, &self.name)? {
             return Err(ErrorKind::ExperimentAlreadyExists(self.name).into());
         }
 
@@ -84,7 +84,7 @@ mod tests {
     use config::Config;
     use db::Database;
     use errors::*;
-    use experiments::{CapLints, CrateSelect, ExperimentData, GitHubIssue, Mode, Status};
+    use experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
@@ -110,37 +110,24 @@ mod tests {
         }.apply(&db, &config)
         .unwrap();
 
-        let ex = ExperimentData::get(&db, "foo").unwrap().unwrap();
-        assert_eq!(ex.experiment.name.as_str(), "foo");
+        let ex = Experiment::get(&db, "foo").unwrap().unwrap();
+        assert_eq!(ex.name.as_str(), "foo");
         assert_eq!(
-            ex.experiment.toolchains,
+            ex.toolchains,
             [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()]
         );
-        assert_eq!(ex.experiment.mode, Mode::BuildAndTest);
-        assert_eq!(ex.experiment.crates, ::lists::demo_list(&config).unwrap());
-        assert_eq!(ex.experiment.cap_lints, CapLints::Forbid);
+        assert_eq!(ex.mode, Mode::BuildAndTest);
+        assert_eq!(ex.crates, ::lists::demo_list(&config).unwrap());
+        assert_eq!(ex.cap_lints, CapLints::Forbid);
+        assert_eq!(ex.github_issue.as_ref().unwrap().api_url.as_str(), api_url);
         assert_eq!(
-            ex.server_data
-                .github_issue
-                .as_ref()
-                .unwrap()
-                .api_url
-                .as_str(),
-            api_url
-        );
-        assert_eq!(
-            ex.server_data
-                .github_issue
-                .as_ref()
-                .unwrap()
-                .html_url
-                .as_str(),
+            ex.github_issue.as_ref().unwrap().html_url.as_str(),
             html_url
         );
-        assert_eq!(ex.server_data.github_issue.as_ref().unwrap().number, 10);
-        assert_eq!(ex.server_data.priority, 5);
-        assert_eq!(ex.server_data.status, Status::Queued);
-        assert!(ex.server_data.assigned_to.is_none());
+        assert_eq!(ex.github_issue.as_ref().unwrap().number, 10);
+        assert_eq!(ex.priority, 5);
+        assert_eq!(ex.status, Status::Queued);
+        assert!(ex.assigned_to.is_none());
     }
 
     #[test]

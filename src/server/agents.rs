@@ -2,7 +2,7 @@ use chrono::Duration;
 use chrono::{DateTime, Utc};
 use db::{Database, QueryUtils};
 use errors::*;
-use experiments::{Assignee, ExperimentData, Experiments};
+use experiments::{Assignee, Experiment, Experiments};
 use server::tokens::Tokens;
 use std::collections::HashSet;
 
@@ -18,7 +18,7 @@ pub enum AgentStatus {
 
 pub struct Agent {
     name: String,
-    experiment: Option<ExperimentData>,
+    experiment: Option<Experiment>,
     last_heartbeat: Option<DateTime<Utc>>,
     git_revision: Option<String>,
 }
@@ -38,7 +38,7 @@ impl Agent {
         &self.name
     }
 
-    pub fn assigned_experiment(&self) -> Option<&ExperimentData> {
+    pub fn assigned_experiment(&self) -> Option<&Experiment> {
         self.experiment.as_ref()
     }
 

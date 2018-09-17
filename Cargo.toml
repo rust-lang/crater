@@ -11,7 +11,7 @@ opt-level = 0
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 crates-index = "0.12"
-crossbeam = "0.3"
+crossbeam-utils = "0.5"
 dotenv = "0.13"
 error-chain = "0.12"
 flate2 = "1"

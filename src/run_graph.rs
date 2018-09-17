@@ -17,7 +17,7 @@
 //                                   +---+ tc2 <---+
 
 use config::Config;
-use crossbeam;
+use crossbeam_utils::thread::scope;
 use errors::*;
 use ex::{self, ExMode, Experiment};
 use file;
@@ -285,7 +285,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
     let parked_threads: Mutex<HashMap<thread::ThreadId, thread::Thread>> =
         Mutex::new(HashMap::new());
 
-    crossbeam::scope(|scope| -> Result<()> {
+    scope(|scope| -> Result<()> {
         let mut threads = Vec::new();
 
         for i in 0..threads_count {
@@ -341,11 +341,26 @@ pub fn run_ex<DB: WriteResults + Sync>(
             threads.push(join);
         }
 
+        let mut clean_exit = true;
         for thread in threads.drain(..) {
-            thread.join()?;
+            match thread.join() {
+                Ok(Ok(())) => {}
+                Ok(Err(err)) => {
+                    ::util::report_error(&err);
+                    clean_exit = false;
+                }
+                Err(panic) => {
+                    ::util::report_panic(&panic);
+                    clean_exit = false;
+                }
+            }
         }
 
-        Ok(())
+        if clean_exit {
+            Ok(())
+        } else {
+            Err("some threads returned an error".into())
+        }
     })?;
 
     // Only the root node must be present

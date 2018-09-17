@@ -7,7 +7,7 @@ extern crate bytes;
 extern crate chrono;
 extern crate chrono_humanize;
 extern crate crates_index;
-extern crate crossbeam;
+extern crate crossbeam_utils;
 #[macro_use]
 extern crate error_chain;
 extern crate flate2;

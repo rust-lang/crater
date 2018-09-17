@@ -1,5 +1,5 @@
 use errors::*;
-use experiments::{Assignee, Status};
+use experiments::{Assignee, Experiment, Status};
 use http::{Response, StatusCode};
 use hyper::Body;
 use results::{DatabaseDB, ProgressData};
@@ -78,7 +78,7 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Result<Response<Body>>
 }
 
 fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Result<Response<Body>> {
-    let next = data.experiments.next(&Assignee::Agent(auth.name.clone()))?;
+    let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
 
     let result = if let Some((new, mut ex)) = next {
         if new {
@@ -104,9 +104,7 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Result<Respon
 }
 
 fn endpoint_complete_experiment(data: Arc<Data>, auth: AuthDetails) -> Result<Response<Body>> {
-    let mut ex = data
-        .experiments
-        .run_by(&Assignee::Agent(auth.name.clone()))?
+    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or("no experiment run by this agent")?;
 
     ex.set_status(&data.db, Status::NeedsReport)?;
@@ -121,9 +119,7 @@ fn endpoint_record_progress(
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Result<Response<Body>> {
-    let experiment = data
-        .experiments
-        .run_by(&Assignee::Agent(auth.name.clone()))?
+    let experiment = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or("no experiment run by this agent")?;
 
     info!(

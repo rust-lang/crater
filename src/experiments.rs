@@ -115,6 +115,73 @@ impl Experiment {
         db.exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])
     }
 
+    pub fn all(db: &Database) -> Result<Vec<Experiment>> {
+        let records = db.query(
+            "SELECT * FROM experiments ORDER BY priority DESC, created_at;",
+            &[],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+        records
+            .into_iter()
+            .map(|record| record.into_experiment(db))
+            .collect::<Result<_>>()
+    }
+
+    pub fn run_by(db: &Database, assignee: &Assignee) -> Result<Option<Experiment>> {
+        let record = db.get_row(
+            "SELECT * FROM experiments \
+             WHERE status = ?1 AND assigned_to = ?2;",
+            &[&Status::Running.to_str(), &assignee.to_string()],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+
+        if let Some(record) = record {
+            Ok(Some(record.into_experiment(db)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn first_by_status(db: &Database, status: Status) -> Result<Option<Experiment>> {
+        let record = db.get_row(
+            "SELECT * FROM experiments \
+             WHERE status = ?1 \
+             ORDER BY priority DESC, created_at;",
+            &[&status.to_str()],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+
+        if let Some(record) = record {
+            Ok(Some(record.into_experiment(db)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn next(db: &Database, assignee: &Assignee) -> Result<Option<(bool, Experiment)>> {
+        // Avoid assigning two experiments to the same agent
+        if let Some(experiment) = Experiment::run_by(db, assignee)? {
+            return Ok(Some((false, experiment)));
+        }
+
+        let record = db.get_row(
+            "SELECT * FROM experiments \
+             WHERE status = \"queued\" \
+             ORDER BY priority DESC, created_at;",
+            &[],
+            |r| ExperimentDBRecord::from_row(r),
+        )?;
+
+        if let Some(record) = record {
+            let mut experiment = record.into_experiment(db)?;
+            experiment.set_status(&db, Status::Running)?;
+            experiment.set_assigned_to(&db, Some(assignee))?;
+            Ok(Some((true, experiment)))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn get(db: &Database, name: &str) -> Result<Option<Experiment>> {
         let record = db.get_row(
             "SELECT * FROM experiments WHERE name = ?1;",
@@ -311,87 +378,9 @@ impl ExperimentDBRecord {
     }
 }
 
-#[derive(Clone)]
-pub struct Experiments {
-    db: Database,
-}
-
-impl Experiments {
-    pub fn new(db: Database) -> Self {
-        Experiments { db }
-    }
-
-    pub fn all(&self) -> Result<Vec<Experiment>> {
-        let records = self.db.query(
-            "SELECT * FROM experiments ORDER BY priority DESC, created_at;",
-            &[],
-            |r| ExperimentDBRecord::from_row(r),
-        )?;
-        records
-            .into_iter()
-            .map(|record| record.into_experiment(&self.db))
-            .collect::<Result<_>>()
-    }
-
-    pub fn run_by(&self, assignee: &Assignee) -> Result<Option<Experiment>> {
-        let record = self.db.get_row(
-            "SELECT * FROM experiments \
-             WHERE status = ?1 AND assigned_to = ?2;",
-            &[&Status::Running.to_str(), &assignee.to_string()],
-            |r| ExperimentDBRecord::from_row(r),
-        )?;
-
-        if let Some(record) = record {
-            Ok(Some(record.into_experiment(&self.db)?))
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn first_by_status(&self, status: Status) -> Result<Option<Experiment>> {
-        let record = self.db.get_row(
-            "SELECT * FROM experiments \
-             WHERE status = ?1 \
-             ORDER BY priority DESC, created_at;",
-            &[&status.to_str()],
-            |r| ExperimentDBRecord::from_row(r),
-        )?;
-
-        if let Some(record) = record {
-            Ok(Some(record.into_experiment(&self.db)?))
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn next(&self, assignee: &Assignee) -> Result<Option<(bool, Experiment)>> {
-        // Avoid assigning two experiments to the same agent
-        if let Some(experiment) = self.run_by(assignee)? {
-            return Ok(Some((false, experiment)));
-        }
-
-        let record = self.db.get_row(
-            "SELECT * FROM experiments \
-             WHERE status = \"queued\" \
-             ORDER BY priority DESC, created_at;",
-            &[],
-            |r| ExperimentDBRecord::from_row(r),
-        )?;
-
-        if let Some(record) = record {
-            let mut experiment = record.into_experiment(&self.db)?;
-            experiment.set_status(&self.db, Status::Running)?;
-            experiment.set_assigned_to(&self.db, Some(assignee))?;
-            Ok(Some((true, experiment)))
-        } else {
-            Ok(None)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{Assignee, Experiments, Status};
+    use super::{Assignee, Experiment, Status};
     use actions::CreateExperiment;
     use config::Config;
     use db::Database;
@@ -440,7 +429,6 @@ mod tests {
     #[test]
     fn test_assigning_experiment() {
         let db = Database::temp().unwrap();
-        let experiments = Experiments::new(db.clone());
 
         let mut tokens = Tokens::default();
         tokens.agents.insert("token1".into(), "agent-1".into());
@@ -463,25 +451,25 @@ mod tests {
         create_important.apply(&db, &config).unwrap();
 
         // Test the important experiment is correctly assigned
-        let (new, ex) = experiments.next(&agent1).unwrap().unwrap();
+        let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.name.as_str(), "important");
         assert_eq!(ex.status, Status::Running);
         assert_eq!(ex.assigned_to.unwrap(), agent1);
 
         // Test the same experiment is returned to the agent
-        let (new, ex) = experiments.next(&agent1).unwrap().unwrap();
+        let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
         assert!(!new);
         assert_eq!(ex.name.as_str(), "important");
 
         // Test the less important experiment is assigned to the next agent
-        let (new, ex) = experiments.next(&agent2).unwrap().unwrap();
+        let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.name.as_str(), "test");
         assert_eq!(ex.status, Status::Running);
         assert_eq!(ex.assigned_to.unwrap(), agent2);
 
         // Test no other experiment is available for the other agents
-        assert!(experiments.next(&agent3).unwrap().is_none());
+        assert!(Experiment::next(&db, &agent3).unwrap().is_none());
     }
 }

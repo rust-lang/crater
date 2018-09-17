@@ -1,5 +1,5 @@
 use errors::*;
-use rand::{self, Rng};
+use rand::{self, distributions::Alphanumeric, Rng};
 use rusqlite::{Connection, Transaction};
 use serde_json;
 use std::collections::HashSet;
@@ -138,7 +138,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
             let fn_name = format!(
                 "crater_migration__{}",
                 rand::thread_rng()
-                    .gen_ascii_chars()
+                    .sample_iter(&Alphanumeric)
                     .take(10)
                     .collect::<String>()
             );

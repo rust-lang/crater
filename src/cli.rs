@@ -65,9 +65,11 @@ impl FromStr for Dest {
 #[structopt(
     name = "crater",
     about = "Kaboom!",
-    setting_raw = "AppSettings::VersionlessSubcommands",
-    setting_raw = "AppSettings::DeriveDisplayOrder",
-    setting_raw = "AppSettings::SubcommandRequiredElseHelp"
+    raw(
+        setting = "AppSettings::VersionlessSubcommands",
+        setting = "AppSettings::DeriveDisplayOrder",
+        setting = "AppSettings::SubcommandRequiredElseHelp"
+    )
 )]
 pub enum Crater {
     #[structopt(
@@ -100,22 +102,28 @@ pub enum Crater {
         #[structopt(
             name = "mode",
             long = "mode",
-            default_value_raw = "ExMode::BuildAndTest.to_str()",
-            possible_values_raw = "ExMode::possible_values()"
+            raw(
+                default_value = "ExMode::BuildAndTest.to_str()",
+                possible_values = "ExMode::possible_values()"
+            )
         )]
         mode: ExMode,
         #[structopt(
             name = "crate-select",
             long = "crate-select",
-            default_value_raw = "ExCrateSelect::Demo.to_str()",
-            possible_values_raw = "ExCrateSelect::possible_values()"
+            raw(
+                default_value = "ExCrateSelect::Demo.to_str()",
+                possible_values = "ExCrateSelect::possible_values()"
+            )
         )]
         crates: ExCrateSelect,
         #[structopt(
             name = "level",
             long = "cap-lints",
-            required,
-            possible_values_raw = "ExCapLints::possible_values()"
+            raw(
+                default_value = "ExCapLints::Forbid.to_str()",
+                possible_values = "ExCapLints::possible_values()"
+            )
         )]
         cap_lints: ExCapLints,
     },

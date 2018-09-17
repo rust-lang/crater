@@ -16,7 +16,7 @@ use crater::crates::Crate;
 use crater::db::Database;
 use crater::docker;
 use crater::errors::*;
-use crater::experiments::{Assignee, CapLints, CrateSelect, ExperimentData, Mode, Status};
+use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
 use crater::lists;
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
@@ -333,8 +333,8 @@ impl Crater {
                 let db = Database::open()?;
                 let result_db = DatabaseDB::new(&db);
 
-                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
-                    result_db.delete_all_results(&experiment.experiment)?;
+                if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
+                    result_db.delete_all_results(&experiment)?;
                     experiment.set_status(&db, Status::Queued)?;
                 } else {
                     bail!("missing experiment {}", ex.0);
@@ -348,12 +348,12 @@ impl Crater {
                 let db = Database::open()?;
                 let result_db = DatabaseDB::new(&db);
 
-                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
+                if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
                     if let Some(tc) = tc {
-                        result_db.delete_result(&experiment.experiment, tc, krate)?;
+                        result_db.delete_result(&experiment, tc, krate)?;
                     } else {
-                        for tc in &experiment.experiment.toolchains {
-                            result_db.delete_result(&experiment.experiment, tc, krate)?;
+                        for tc in &experiment.toolchains {
+                            result_db.delete_result(&experiment, tc, krate)?;
                         }
                     }
 
@@ -366,23 +366,23 @@ impl Crater {
                 let config = Config::load()?;
                 let db = Database::open()?;
 
-                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
+                if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
                     // Ensure the experiment is properly assigned
-                    match experiment.server_data.assigned_to {
+                    match experiment.assigned_to {
                         None => experiment.set_assigned_to(&db, Some(&Assignee::CLI))?,
                         Some(Assignee::CLI) => {}
                         Some(a) => bail!("experiment {} is assigned to {}", ex.0, a),
                     }
 
                     // Update the status
-                    match experiment.server_data.status {
+                    match experiment.status {
                         Status::Queued => experiment.set_status(&db, Status::Running)?,
                         Status::Running => {}
                         other => bail!("can't run an experiment with status {}", other.to_str()),
                     }
 
                     let result_db = DatabaseDB::new(&db);
-                    run_graph::run_ex(&experiment.experiment, &result_db, threads, &config)?;
+                    run_graph::run_ex(&experiment, &result_db, threads, &config)?;
                     experiment.set_status(&db, Status::NeedsReport)?;
                 } else {
                     bail!("missing experiment {}", ex.0);
@@ -392,9 +392,9 @@ impl Crater {
                 let config = Config::load()?;
                 let db = Database::open()?;
 
-                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
+                if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
                     // Update the status
-                    match experiment.server_data.status {
+                    match experiment.status {
                         Status::NeedsReport | Status::ReportFailed => {
                             experiment.set_status(&db, Status::GeneratingReport)?;
                         }
@@ -407,7 +407,7 @@ impl Crater {
                     let result_db = DatabaseDB::new(&db);
                     let res = report::gen(
                         &result_db,
-                        &experiment.experiment,
+                        &experiment,
                         &report::FileWriter::create(dest.0.clone())?,
                         &config,
                     );
@@ -438,9 +438,9 @@ impl Crater {
                     }
                 };
 
-                if let Some(mut experiment) = ExperimentData::get(&db, &ex.0)? {
+                if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
                     // Update the status
-                    match experiment.server_data.status {
+                    match experiment.status {
                         Status::NeedsReport | Status::ReportFailed => {
                             experiment.set_status(&db, Status::GeneratingReport)?;
                         }
@@ -455,7 +455,7 @@ impl Crater {
 
                     let res = report::gen(
                         &result_db,
-                        &experiment.experiment,
+                        &experiment,
                         &report::S3Writer::create(client, s3_prefix)?,
                         &config,
                     );
@@ -485,8 +485,8 @@ impl Crater {
                 let config = Config::load()?;
                 let db = Database::open()?;
 
-                if let Some(experiment) = ExperimentData::get(&db, &ex.0)? {
-                    run_graph::dump_dot(&experiment.experiment, &config, dest)?;
+                if let Some(experiment) = Experiment::get(&db, &ex.0)? {
+                    run_graph::dump_dot(&experiment, &config, dest)?;
                 } else {
                     bail!("missing experiment: {}", ex.0);
                 }

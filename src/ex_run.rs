@@ -2,6 +2,7 @@ use config::Config;
 use crates::Crate;
 use errors::*;
 use ex::*;
+use experiments::Experiment;
 use file;
 use results::{TestResult, WriteResults};
 use std::collections::HashSet;

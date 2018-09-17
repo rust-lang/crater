@@ -1,7 +1,7 @@
 use config::Config;
 use crates::{Crate, GitHubRepo};
 use errors::*;
-use ex::Experiment;
+use experiments::Experiment;
 use file;
 use mime::{self, Mime};
 use results::{ReadResults, TestResult};
@@ -340,8 +340,7 @@ mod tests {
     use super::*;
     use config::{Config, CrateConfig};
     use crates::{Crate, GitHubRepo, RegistryCrate};
-    use ex::Experiment;
-    use experiments::{CapLints, Mode};
+    use experiments::{CapLints, Experiment, Mode, Status};
     use results::{DummyDB, TestResult};
     use std::collections::HashMap;
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
@@ -566,6 +565,14 @@ mod tests {
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
             mode: Mode::BuildAndTest,
             cap_lints: CapLints::Forbid,
+            priority: 0,
+            created_at: ::chrono::Utc::now(),
+            started_at: None,
+            completed_at: None,
+            github_issue: None,
+            status: Status::GeneratingReport,
+            assigned_to: None,
+            report_url: None,
         };
 
         let mut db = DummyDB::default();

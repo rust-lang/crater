@@ -1,7 +1,7 @@
 use agent::api::AgentApi;
 use crates::{Crate, GitHubRepo};
 use errors::*;
-use ex::Experiment;
+use experiments::Experiment;
 use log;
 use results::{TestResult, WriteResults};
 use std::io::Read;

@@ -82,20 +82,20 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Result<Respon
 
     let result = if let Some((new, mut ex)) = next {
         if new {
-            if let Some(ref github_issue) = ex.server_data.github_issue {
+            if let Some(ref github_issue) = ex.github_issue {
                 Message::new()
                     .line(
                         "construction",
                         format!(
                             "Experiment **`{}`** is now **running** on agent `{}`.",
-                            ex.experiment.name, auth.name,
+                            ex.name, auth.name,
                         ),
                     ).send(&github_issue.api_url, &data)?;
             }
         }
 
         ex.remove_completed_crates(&data.db)?;
-        Some(ex.experiment)
+        Some(ex)
     } else {
         None
     };
@@ -110,10 +110,7 @@ fn endpoint_complete_experiment(data: Arc<Data>, auth: AuthDetails) -> Result<Re
         .ok_or("no experiment run by this agent")?;
 
     ex.set_status(&data.db, Status::NeedsReport)?;
-    info!(
-        "experiment {} completed, marked as needs-report",
-        ex.experiment.name
-    );
+    info!("experiment {} completed, marked as needs-report", ex.name);
     data.reports_worker.wake(); // Ensure the reports worker is awake
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
@@ -131,11 +128,11 @@ fn endpoint_record_progress(
 
     info!(
         "received progress on experiment {} from agent {}",
-        experiment.experiment.name, auth.name,
+        experiment.name, auth.name,
     );
 
     let db = DatabaseDB::new(&data.db);
-    db.store(&experiment.experiment, &result)?;
+    db.store(&experiment, &result)?;
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }

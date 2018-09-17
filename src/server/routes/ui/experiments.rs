@@ -1,7 +1,7 @@
 use chrono::{Duration, SecondsFormat, Utc};
 use chrono_humanize::{Accuracy, HumanTime, Tense};
 use errors::*;
-use experiments::{ExperimentData as Experiment, Mode, Status};
+use experiments::{Experiment, Mode, Status};
 use http::Response;
 use hyper::Body;
 use server::routes::ui::{render_template, LayoutContext};
@@ -20,8 +20,8 @@ struct ExperimentData {
 }
 
 impl ExperimentData {
-    fn new(data: &Data, experiment: &::experiments::ExperimentData) -> Result<Self> {
-        let (status_class, status_pretty) = match experiment.server_data.status {
+    fn new(data: &Data, experiment: &Experiment) -> Result<Self> {
+        let (status_class, status_pretty) = match experiment.status {
             Status::Queued => ("", "Queued"),
             Status::Running => ("orange", "Running"),
             Status::NeedsReport => ("orange", "Needs report"),
@@ -31,21 +31,17 @@ impl ExperimentData {
         };
 
         Ok(ExperimentData {
-            name: experiment.experiment.name.clone(),
+            name: experiment.name.clone(),
             status_class,
             status_pretty,
-            mode: match experiment.experiment.mode {
+            mode: match experiment.mode {
                 Mode::BuildAndTest => "cargo test",
                 Mode::BuildOnly => "cargo build",
                 Mode::CheckOnly => "cargo check",
                 Mode::UnstableFeatures => "unstable features",
             },
-            assigned_to: experiment
-                .server_data
-                .assigned_to
-                .as_ref()
-                .map(|a| a.to_string()),
-            priority: experiment.server_data.priority,
+            assigned_to: experiment.assigned_to.as_ref().map(|a| a.to_string()),
+            priority: experiment.priority,
             progress: experiment.progress(&data.db)?,
         })
     }
@@ -66,13 +62,13 @@ pub fn endpoint_queue(data: Arc<Data>) -> Result<Response<Body>> {
 
     for experiment in data.experiments.all()? {
         // Don't include completed experiments in the queue
-        if experiment.server_data.status == Status::Completed {
+        if experiment.status == Status::Completed {
             continue;
         }
 
         let ex = ExperimentData::new(&data, &experiment)?;
 
-        match experiment.server_data.status {
+        match experiment.status {
             Status::Queued => queued.push(ex),
             Status::Running => running.push(ex),
             Status::NeedsReport => needs_report.push(ex),
@@ -99,7 +95,7 @@ pub fn endpoint_queue(data: Arc<Data>) -> Result<Response<Body>> {
 }
 
 #[derive(Serialize)]
-struct ExperimentDataExt {
+struct ExperimentExt {
     #[serde(flatten)]
     common: ExperimentData,
 
@@ -119,7 +115,7 @@ struct ExperimentDataExt {
 
 #[derive(Serialize)]
 struct ExperimentContext {
-    experiment: ExperimentDataExt,
+    experiment: ExperimentExt,
     layout: LayoutContext,
 }
 
@@ -130,8 +126,8 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Result<Response<Bod
         let (duration, estimated_end, average_job_duration) = if completed_jobs > 0
             && total_jobs > 0
         {
-            if let Some(started_at) = ex.server_data.started_at {
-                let res = if let Some(completed_at) = ex.server_data.completed_at {
+            if let Some(started_at) = ex.started_at {
+                let res = if let Some(completed_at) = ex.completed_at {
                     let total = completed_at.signed_duration_since(started_at);
                     (
                         Some(total),
@@ -165,22 +161,17 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Result<Response<Bod
             (None, None, None)
         };
 
-        let experiment = ExperimentDataExt {
+        let experiment = ExperimentExt {
             common: ExperimentData::new(&data, &ex)?,
 
-            github_url: ex.server_data.github_issue.map(|i| i.html_url.clone()),
-            report_url: ex.server_data.report_url.clone(),
+            github_url: ex.github_issue.map(|i| i.html_url.clone()),
+            report_url: ex.report_url.clone(),
 
-            created_at: ex
-                .server_data
-                .created_at
-                .to_rfc3339_opts(SecondsFormat::Secs, true),
+            created_at: ex.created_at.to_rfc3339_opts(SecondsFormat::Secs, true),
             started_at: ex
-                .server_data
                 .started_at
                 .map(|t| t.to_rfc3339_opts(SecondsFormat::Secs, true)),
             completed_at: ex
-                .server_data
                 .completed_at
                 .map(|t| t.to_rfc3339_opts(SecondsFormat::Secs, true)),
 

@@ -1,6 +1,6 @@
 use assets;
 use errors::*;
-use ex::Experiment;
+use experiments::Experiment;
 use mime;
 use minifier;
 use report::{Comparison, CrateResult, ReportWriter, TestResults};

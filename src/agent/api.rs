@@ -1,7 +1,7 @@
 use base64;
 use crates::{Crate, GitHubRepo};
 use errors::*;
-use ex::Experiment;
+use experiments::Experiment;
 use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
 use results::TestResult;
 use serde::de::DeserializeOwned;

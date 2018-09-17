@@ -2,7 +2,7 @@ use config::Config;
 use crates::Crate;
 use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
-use experiments::{CapLints, Mode};
+use experiments::Experiment;
 use git;
 use results::WriteResults;
 use run::RunCommand;
@@ -22,15 +22,6 @@ fn froml_dir(ex_name: &str) -> PathBuf {
 
 fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
     froml_dir(ex_name).join(format!("{}-{}.Cargo.toml", name, vers))
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-pub struct Experiment {
-    pub name: String,
-    pub crates: Vec<Crate>,
-    pub toolchains: [Toolchain; 2],
-    pub mode: Mode,
-    pub cap_lints: CapLints,
 }
 
 impl Experiment {

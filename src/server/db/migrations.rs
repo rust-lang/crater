@@ -1,5 +1,5 @@
 use errors::*;
-use rand::{self, Rng, distributions::Alphanumeric};
+use rand::{self, distributions::Alphanumeric, Rng};
 use rusqlite::{Connection, Transaction};
 use serde_json;
 use std::collections::HashSet;

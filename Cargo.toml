@@ -49,7 +49,7 @@ url = "1.1"
 walkdir = "2"
 winapi = "0.3"
 regex = "1.0"
-ring = "0.12.1"
+ring = "0.13"
 rusqlite = { version = "0.14.0", features = ["chrono", "functions", "bundled"] }
 r2d2 = "0.8.2"
 r2d2_sqlite = "0.6.0"

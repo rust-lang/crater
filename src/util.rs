@@ -276,9 +276,44 @@ impl Serialize for Size {
     }
 }
 
+pub fn split_quoted(input: &str) -> Result<Vec<String>> {
+    let mut segments = Vec::new();
+    let mut buffer = String::new();
+
+    let mut is_quoted = false;
+    let mut is_escaped = false;
+    for chr in input.chars() {
+        match chr {
+            // Always add escaped chars
+            _ if is_escaped => {
+                buffer.push(chr);
+                is_escaped = false;
+            }
+            // When a \ is encountered, push the next char
+            '\\' => is_escaped = true,
+            // When a " is encountered, toggle quoting
+            '"' => is_quoted = !is_quoted,
+            // Split with spaces only if we're not inside a quote
+            ' ' | '\t' if !is_quoted => {
+                segments.push(buffer);
+                buffer = String::new();
+            }
+            // Otherwise push the char
+            _ => buffer.push(chr),
+        }
+    }
+
+    if is_quoted {
+        bail!("unbalanced quotes");
+    } else {
+        segments.push(buffer);
+        Ok(segments)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Size;
+    use super::{split_quoted, Size};
 
     #[test]
     fn test_size() {
@@ -310,5 +345,30 @@ mod tests {
         assert_eq!("1234TB".parse::<Size>().unwrap(), Size::Terabytes(1234));
         assert_eq!("1234Tb".parse::<Size>().unwrap(), Size::Terabytes(1234));
         assert_eq!(Size::Terabytes(1234).to_string(), "1234T");
+    }
+
+    #[test]
+    fn test_split_quoted() {
+        macro_rules! test_split_quoted {
+            ($($input:expr => [$($segment:expr),*],)*) => {
+                $(
+                    assert_eq!(split_quoted($input).unwrap(), vec![$($segment.to_string()),*]);
+                )*
+            }
+        }
+
+        // Valid syntaxes
+        test_split_quoted! {
+            "" => [""],
+            "     " => ["", "", "", "", "", ""],
+            "a b  c de " => ["a", "b", "", "c", "de", ""],
+            "a \\\" b" => ["a", "\"", "b"],
+            "a\\ b c" => ["a b", "c"],
+            "a \"b c \\\" d\" e" => ["a", "b c \" d", "e"],
+            "a b=\"c d e\" f" => ["a", "b=c d e", "f"],
+        };
+
+        // Unbalanced quotes
+        assert!(split_quoted("a b \" c").is_err());
     }
 }

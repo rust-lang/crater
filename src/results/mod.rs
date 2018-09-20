@@ -1,17 +1,13 @@
 mod db;
 #[cfg(test)]
 mod dummy;
-mod file;
 
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use experiments::Experiment;
+pub use results::db::{DatabaseDB, ProgressData};
 #[cfg(test)]
 pub use results::dummy::DummyDB;
-pub use results::{
-    db::{DatabaseDB, ProgressData},
-    file::FileDB,
-};
 use std::collections::HashMap;
 use toolchain::Toolchain;
 

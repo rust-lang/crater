@@ -86,7 +86,7 @@ pub mod dirs;
 mod dl;
 pub mod docker;
 pub mod errors;
-pub mod ex;
+mod ex_prepare;
 pub mod ex_run;
 pub mod experiments;
 mod file;

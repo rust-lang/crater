@@ -12,10 +12,6 @@ use toml_frobber;
 use toolchain::{CargoState, Toolchain};
 use util;
 
-pub fn ex_dir(ex_name: &str) -> PathBuf {
-    EXPERIMENT_DIR.join(ex_name)
-}
-
 fn froml_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("fromls")
 }
@@ -244,12 +240,4 @@ pub fn fetch_crate_deps(
 
         Ok(())
     })
-}
-
-pub fn prepare_all_toolchains(ex: &Experiment) -> Result<()> {
-    for tc in &ex.toolchains {
-        tc.prepare()?;
-    }
-
-    Ok(())
 }

@@ -1,7 +1,7 @@
 use config::Config;
 use crates::Crate;
 use errors::*;
-use ex::*;
+use ex_prepare::{with_captured_lockfile, with_frobbed_toml, with_work_crate};
 use experiments::Experiment;
 use file;
 use results::{TestResult, WriteResults};

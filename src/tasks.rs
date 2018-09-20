@@ -1,7 +1,7 @@
 use config::Config;
 use crates::{self, Crate};
 use errors::*;
-use ex;
+use ex_prepare;
 use ex_run;
 use experiments::Experiment;
 use git;
@@ -126,13 +126,13 @@ impl Task {
                 util::report_error(&e);
             }
 
-            ex::capture_shas(ex, &[self.krate.clone()], db)?;
+            ex_prepare::capture_shas(ex, &[self.krate.clone()], db)?;
         }
 
         crates::prepare_crate(&self.krate)?;
-        ex::frob_toml(ex, &self.krate)?;
-        ex::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
-        ex::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
+        ex_prepare::frob_toml(ex, &self.krate)?;
+        ex_prepare::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
+        ex_prepare::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
 
         Ok(())
     }

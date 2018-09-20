@@ -19,7 +19,6 @@
 use config::Config;
 use crossbeam_utils::thread::scope;
 use errors::*;
-use ex;
 use experiments::{Experiment, Mode};
 use file;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
@@ -295,7 +294,9 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     let graph = Mutex::new(build_graph(ex, config));
 
     info!("preparing the execution...");
-    ex::prepare_all_toolchains(ex)?;
+    for tc in &ex.toolchains {
+        tc.prepare()?;
+    }
 
     info!("running tasks in {} threads...", threads_count);
 

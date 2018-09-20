@@ -6,6 +6,12 @@
     {%- else -%}
         {{ tc.source|json_encode }}
     {%- endif -%}
+
+    <div class="flags">
+        {% if tc.rustflags %}
+            <span>rustflags: <code>{{ tc.rustflags }}</code></span>
+        {% endif %}
+    </div>
 {% endmacro %}
 
 {% macro render_time(date) %}

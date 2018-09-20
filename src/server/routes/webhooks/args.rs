@@ -10,6 +10,7 @@ macro_rules! generate_parser {
     }) => {
         use errors::*;
         use std::str::FromStr;
+        use util::split_quoted;
 
         $(
             #[cfg_attr(test, derive(Debug, PartialEq))]
@@ -34,10 +35,10 @@ macro_rules! generate_parser {
             type Err = Error;
 
             fn from_str(input: &str) -> Result<$enum> {
-                let mut parts = input.split(' ').peekable();
-                Ok(match parts.peek() {
+                let mut parts = split_quoted(input)?.into_iter().peekable();
+                Ok(match parts.peek().map(|s| s.as_str()) {
                     $(
-                        Some(&$command) => generate_parser!(@parser
+                        Some($command) => generate_parser!(@parser
                             parts.skip(1), $enum, $variant, $var_struct,
                             $($flag, $type, $name),*
                         ),
@@ -179,6 +180,12 @@ mod tests {
             "bar  arg3=foo=bar",
             TestCommand::Bar(BarArgs {
                 arg3: Some("foo=bar".into()),
+            })
+        );
+        test!(
+            "bar arg3=\"foo \\\" bar\"",
+            TestCommand::Bar(BarArgs {
+                arg3: Some("foo \" bar".into()),
             })
         );
         test!("arg4=42", TestCommand::Baz(BazArgs { arg4: Some(42) }));

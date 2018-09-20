@@ -93,6 +93,25 @@ header div.toolchains div.toolchain.toolchain-start div {
     text-align: right;
 }
 
+header div.toolchains div.toolchain div.flags {
+    margin-top: 0.2em;
+    font-size: 0.9em;
+    color: #999;
+}
+
+header div.toolchains div.toolchain div.flags span {
+    display: inline-block;
+    margin-left: 0.5em;
+}
+
+header div.toolchains div.toolchain div.flags span:first-child {
+    margin-left: 0;
+}
+
+header div.toolchains div.toolchain div.flags code {
+    color: #eee;
+}
+
 header div.toolchains div.arrow {
     flex: 0;
     height: 0;

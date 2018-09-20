@@ -41,5 +41,9 @@ error_chain! {
             description("invalid toolchain source name")
             display("invalid toolchain source name: {}", name)
         }
+        InvalidToolchainFlag(name: String) {
+            description("invalid toolchain flag")
+            display("invalid toolchain flag: {}", name)
+        }
     }
 }

@@ -6,6 +6,7 @@ use errors::*;
 use ex::Experiment;
 use run::RunCommand;
 use std::env::consts::EXE_SUFFIX;
+use std::fmt;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -32,6 +33,7 @@ lazy_static! {
         source: ToolchainSource::Dist {
             name: "stable".to_string()
         },
+        rustflags: None,
     };
 }
 
@@ -42,6 +44,7 @@ lazy_static! {
         source: ToolchainSource::Dist {
             name: "beta".to_string()
         },
+        rustflags: None,
     };
 }
 
@@ -61,6 +64,7 @@ pub enum ToolchainSource {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Toolchain {
     pub source: ToolchainSource,
+    pub rustflags: Option<String>,
 }
 
 impl Toolchain {
@@ -137,9 +141,16 @@ impl Toolchain {
             .env("CMD", full_args.join(" "))
             .env("CARGO_INCREMENTAL", "0".to_string())
             .env("RUST_BACKTRACE", "full".to_string())
-            .env("RUSTFLAGS", format!("--cap-lints={}", ex.cap_lints.to_str()))
             // Add some limits to the container
             .memory_limit(config.sandbox.memory_limit);
+
+        // Set the RUSTFLAGS environment variable
+        let mut rustflags = format!("--cap-lints={}", ex.cap_lints.to_str());
+        if let Some(ref tc_rustflags) = self.rustflags {
+            rustflags.push(' ');
+            rustflags.push_str(tc_rustflags);
+        }
+        container = container.env("RUSTFLAGS", rustflags);
 
         if enable_unstable_cargo_features {
             container = container.env(
@@ -176,25 +187,34 @@ impl Toolchain {
     }
 }
 
-impl ToString for Toolchain {
-    fn to_string(&self) -> String {
+impl fmt::Display for Toolchain {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.source {
-            ToolchainSource::Dist { ref name } => name.clone(),
+            ToolchainSource::Dist { ref name } => write!(f, "{}", name)?,
             ToolchainSource::CI { ref sha, try } => if try {
-                format!("try#{}", sha)
+                write!(f, "try#{}", sha)?;
             } else {
-                format!("master#{}", sha)
+                write!(f, "master#{}", sha)?;
             },
+        };
+
+        if let Some(ref flag) = self.rustflags {
+            write!(f, "+rustflags={}", flag)?;
         }
+
+        Ok(())
     }
 }
 
 impl FromStr for Toolchain {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self> {
-        let source = if let Some(hash_idx) = s.find('#') {
-            let (source_name, sha_with_hash) = s.split_at(hash_idx);
+    fn from_str(input: &str) -> Result<Self> {
+        let mut parts = input.split('+');
+
+        let raw_source = parts.next().ok_or(ErrorKind::EmptyToolchainName)?;
+        let source = if let Some(hash_idx) = raw_source.find('#') {
+            let (source_name, sha_with_hash) = raw_source.split_at(hash_idx);
 
             let sha = (&sha_with_hash[1..]).to_string();
             if sha.is_empty() {
@@ -206,15 +226,36 @@ impl FromStr for Toolchain {
                 "master" => ToolchainSource::CI { sha, try: false },
                 name => return Err(ErrorKind::InvalidToolchainSourceName(name.to_string()).into()),
             }
-        } else if s.is_empty() {
+        } else if raw_source.is_empty() {
             return Err(ErrorKind::EmptyToolchainName.into());
         } else {
             ToolchainSource::Dist {
-                name: s.to_string(),
+                name: raw_source.to_string(),
             }
         };
 
-        Ok(Toolchain { source })
+        let mut rustflags = None;
+        for part in parts {
+            if let Some(equal_idx) = part.find('=') {
+                let (flag, value_with_equal) = part.split_at(equal_idx);
+                let value = (&value_with_equal[1..]).to_string();
+
+                if value.is_empty() {
+                    return Err(ErrorKind::InvalidToolchainFlag(flag.to_string()).into());
+                }
+
+                match flag {
+                    "rustflags" => rustflags = Some(value),
+                    unknown => {
+                        return Err(ErrorKind::InvalidToolchainFlag(unknown.to_string()).into())
+                    }
+                }
+            } else {
+                return Err(ErrorKind::InvalidToolchainFlag(part.to_string()).into());
+            }
+        }
+
+        Ok(Toolchain { source, rustflags })
     }
 }
 
@@ -364,16 +405,26 @@ mod tests {
         macro_rules! test_from_str {
             ($($str:expr => $source:expr,)*) => {
                 $(
+                    // Test parsing without flags
                     test_from_str!($str => Toolchain {
                         source: $source,
+                        rustflags: None,
+                    });
+
+                    // Test parsing with flags
+                    test_from_str!(concat!($str, "+rustflags=foo bar") => Toolchain {
+                        source: $source,
+                        rustflags: Some("foo bar".to_string()),
                     });
                 )*
             };
             ($str:expr => $rust:expr) => {
                 // Test parsing from string to rust
                 assert_eq!(Toolchain::from_str($str).unwrap(), $rust);
+
                 // Test dumping from rust to string
                 assert_eq!(&$rust.to_string(), $str);
+
                 // Test dumping from rust to string to rust
                 assert_eq!(Toolchain::from_str($rust.to_string().as_ref()).unwrap(), $rust);
             };
@@ -404,5 +455,8 @@ mod tests {
         assert!(Toolchain::from_str("").is_err());
         assert!(Toolchain::from_str("master#").is_err());
         assert!(Toolchain::from_str("foo#0000000000000000000000000000000000000000").is_err());
+        assert!(Toolchain::from_str("stable+rustflags").is_err());
+        assert!(Toolchain::from_str("stable+rustflags=").is_err());
+        assert!(Toolchain::from_str("stable+donotusethisflag=ever").is_err())
     }
 }

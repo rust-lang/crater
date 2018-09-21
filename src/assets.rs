@@ -91,7 +91,11 @@ impl FileContent {
     fn load(&self) -> Result<Cow<[u8]>> {
         Ok(match *self {
             FileContent::Static(content) => Cow::Borrowed(content),
-            FileContent::Dynamic(ref path) => Cow::Owned(::std::fs::read(path)?),
+            FileContent::Dynamic(ref path) => {
+                Cow::Owned(::std::fs::read(path).chain_err(|| {
+                    format!("failed to load dynamic asset: {}", path.to_string_lossy())
+                })?)
+            }
         })
     }
 }

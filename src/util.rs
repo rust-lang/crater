@@ -94,6 +94,10 @@ pub fn report_error(e: &Error) {
     for e in e.iter().skip(1) {
         error!("caused by: {}", e)
     }
+
+    if let Some(backtrace) = e.backtrace() {
+        error!("{:?}", backtrace);
+    }
 }
 
 pub fn report_panic(e: &Any) {

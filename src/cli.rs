@@ -146,19 +146,19 @@ pub enum Crater {
         #[structopt(
             name = "mode",
             long = "mode",
-            possible_values_raw = "Mode::possible_values()"
+            raw(possible_values = "Mode::possible_values()")
         )]
         mode: Option<Mode>,
         #[structopt(
             name = "crates",
             long = "crates",
-            possible_values_raw = "CrateSelect::possible_values()"
+            raw(possible_values = "CrateSelect::possible_values()")
         )]
         crates: Option<CrateSelect>,
         #[structopt(
             name = "cap-lints",
             long = "cap-lints",
-            possible_values_raw = "CapLints::possible_values()"
+            raw(possible_values = "CapLints::possible_values()")
         )]
         cap_lints: Option<CapLints>,
         #[structopt(name = "priority", long = "priority", short = "p",)]

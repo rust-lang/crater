@@ -1,4 +1,4 @@
-#![recursion_limit = "128"]
+#![recursion_limit = "256"]
 #![deny(unused_extern_crates)]
 #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 

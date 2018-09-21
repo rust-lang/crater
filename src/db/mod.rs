@@ -9,7 +9,8 @@ use rusqlite::{Connection, Row, Transaction};
 use std::sync::Arc;
 use tempfile::NamedTempFile;
 
-static DATABASE_PATH: &'static str = "server.db";
+static LEGACY_DATABASE_PATHS: &[&str] = &["server.db"];
+static DATABASE_PATH: &str = "crater.db";
 
 #[derive(Debug)]
 struct ConnectionCustomizer;
@@ -30,6 +31,24 @@ pub struct Database {
 
 impl Database {
     pub fn open() -> Result<Self> {
+        let path = WORK_DIR.join(DATABASE_PATH);
+        if !path.exists() {
+            // If the database doesn't exist check if it's present in a legacy path
+            for legacy in LEGACY_DATABASE_PATHS {
+                let legacy = WORK_DIR.join(legacy);
+                if legacy.exists() {
+                    // Rename the legacy database so it's present in the new path
+                    ::std::fs::rename(&legacy, &path)?;
+                    info!(
+                        "Moved legacy database from {} to {}",
+                        legacy.to_string_lossy(),
+                        path.to_string_lossy()
+                    );
+                    break;
+                }
+            }
+        }
+
         let path = WORK_DIR.join(DATABASE_PATH);
         Database::new(SqliteConnectionManager::file(path), None)
     }

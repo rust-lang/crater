@@ -57,17 +57,18 @@ macro_rules! load_files {
 load_files! {
     templates: [
         "macros.html",
-        "layout.html",
 
-        "agents.html",
+        "ui/layout.html",
 
-        "queue.html",
-        "experiment.html",
+        "ui/agents.html",
 
-        "404.html",
-        "500.html",
+        "ui/queue.html",
+        "ui/experiment.html",
 
-        "report.html",
+        "ui/404.html",
+        "ui/500.html",
+
+        "report/results.html",
     ],
     assets: [
         "ui.css" => mime::TEXT_CSS,

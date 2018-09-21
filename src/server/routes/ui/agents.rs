@@ -49,7 +49,7 @@ pub fn endpoint_list(data: Arc<Data>) -> Result<Response<Body>> {
     }
 
     render_template(
-        "agents.html",
+        "ui/agents.html",
         &ListContext {
             layout: LayoutContext::new(),
             agents,

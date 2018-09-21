@@ -102,7 +102,7 @@ fn write_report<W: ReportWriter>(
     };
 
     info!("generating {}", to);
-    let html = minifier::html::minify(&assets::render_template("report.html", &context)?);
+    let html = minifier::html::minify(&assets::render_template("report/results.html", &context)?);
     dest.write_string(to, html.into(), &mime::TEXT_HTML)?;
 
     Ok(())

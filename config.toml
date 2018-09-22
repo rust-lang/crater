@@ -115,6 +115,7 @@ alpaca = { skip = true } #automatic
 alpm = { skip-tests = true } #automatic
 alpm-sys = { skip = true } #automatic
 alsa-sys = { skip = true } #automatic
+alumina = { skip = true } # flaky build
 ama = { skip = true } #automatic
 amber = { skip-tests = true } #automatic
 amcl = { skip-tests = true } #automatic
@@ -806,6 +807,7 @@ erlang_nif-sys = { skip = true } #automatic
 errorser = { skip = true } #automatic
 escapi = { skip = true } #automatic
 esent-sys = { skip = true } #automatic
+esprit = { broken = true } # broken Cargo.toml
 etcd = { skip-tests = true } #automatic
 etcommon-block-core = { skip = true } #automatic
 ethabi-cli = { skip-tests = true } #automatic
@@ -900,6 +902,7 @@ find-file = { skip-tests = true } #automatic
 find_mountpoint = { skip-tests = true } #automatic
 findshlibs = { skip = true } #automatic
 findup = { skip = true } #automatic
+fine_grained = { skip-tests = true } # flaky tests
 fingertree = { skip = true } #automatic
 firebase = { skip = true } #automatic
 fireplace_lib = { skip = true } #automatic
@@ -2260,6 +2263,7 @@ rdma-core-sys = { skip = true } #automatic
 reactive-streams = { skip = true } #automatic
 reactor = { skip = true } #automatic
 reactor-cache = { skip-tests = true } #automatic
+read-process-memory = { skip-tests = true } # flaky tests
 realize = { skip = true } #automatic
 rebar = { skip = true } #automatic
 recipe-reader = { skip-tests = true } #automatic
@@ -2620,6 +2624,7 @@ shush = { skip-tests = true } #automatic
 shuttle-core = { skip = true } #automatic
 shuttle-sdk = { skip = true } #automatic
 sigar = { skip = true } #automatic
+signatory-ring = { skip-tests = true } # flaky tests
 sigrok = { skip = true } #automatic
 sigrok-sys = { skip = true } #automatic
 silk = { slow = true } # tests slow to run
@@ -2654,6 +2659,7 @@ slog-html = { skip-tests = true } #automatic
 slog-journald = { skip = true } #automatic
 slog-retry = { skip = true } #automatic
 slog_kmsg = { skip-tests = true } #automatic
+slotmap = { skip-tests = true } # flaky tests
 sloword2vec = { skip = true } #automatic
 slwga-sys = { skip = true } #automatic
 small-deployer = { skip = true } #automatic
@@ -2818,6 +2824,7 @@ tapi32l-sys = { skip = true } #automatic
 tariff = { skip = true } #automatic
 taskpipe = { skip = true } #automatic
 taskpool = { skip = true } #automatic
+tasks-framework = { skip-tests = true } # flaky tests
 taskschd-sys = { skip = true } #automatic
 tba = { skip = true } #automatic
 tbs-sys = { skip = true } #automatic
@@ -2857,6 +2864,7 @@ tg-labstatus = { skip = true } #automatic
 tgaimage-sys = { skip = true } #automatic
 theban_db_interface = { skip = true } #automatic
 theban_db_server = { skip = true } #automatic
+theban_interval_tree = { skip-tests = true } # flaky tests
 theban_pass = { skip = true } #automatic
 theca = { skip-tests = true } #automatic
 thread_tryjoin = { skip-tests = true } #automatic
@@ -2895,6 +2903,7 @@ tokio-file = { skip = true } #automatic
 tokio-http2 = { skip = true } #automatic
 tokio-kinetic = { skip = true } #automatic
 tokio-memcache = { skip-tests = true } #automatic
+tokio-periodic = { skip-tests = true } # flaky tests
 tokio-postgres = { skip-tests = true } #automatic
 tokio-process = { skip-tests = true } #automatic
 tokio-rpc = { skip = true } #automatic
@@ -3009,6 +3018,7 @@ unrest_tmp_synom = { skip-tests = true } #automatic
 unsafe_ls = { skip = true } #automatic
 unwind = { skip = true } #automatic
 unwind-sys = { skip = true } #automatic
+update_rate = { skip-tests = true } # flaky tests
 uptime = { skip = true } #automatic
 urdf-viz = { skip = true } # flaky build
 urlmon-sys = { skip = true } #automatic
@@ -4283,6 +4293,7 @@ zyre-sys = { skip = true } #automatic
 "sometoby/theobot" = { skip = true } #automatic
 "sonald/sos2" = { skip = true } #automatic
 "sourcefrog/rdiff-rs" = { skip = true } #automatic
+"sozu-proxy/sozu" = { skip-tests = true } # flaky tests
 "sozu-proxy/tube-cheese" = { skip = true } #automatic
 "spacekookie/doppler" = { skip = true } #automatic
 "spearow/continuous-integration" = { skip = true } #automatic

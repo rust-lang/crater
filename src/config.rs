@@ -5,7 +5,7 @@ use serde_regex;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
-use utils::Size;
+use utils::size::Size;
 
 static CONFIG_FILE: &'static str = "config.toml";
 

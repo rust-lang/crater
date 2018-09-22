@@ -4,7 +4,7 @@ use std::env;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
-use utils::{self, Size};
+use utils::size::Size;
 
 pub static IMAGE_NAME: &'static str = "crater";
 
@@ -114,7 +114,7 @@ impl<'a> ContainerBuilder<'a> {
         // Ensure the container is properly deleted even if something panics
         defer! {{
             if let Err(err) = container.delete().chain_err(|| format!("failed to delete container {}", container.id)) {
-                utils::report_error(&err);
+                ::utils::report_error(&err);
             }
         }}
 

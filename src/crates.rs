@@ -91,6 +91,13 @@ impl Crate {
                 .join(format!("{}.{}", repo.org, repo.name)),
         }
     }
+
+    pub fn id(&self) -> String {
+        match *self {
+            Crate::Registry(ref details) => format!("reg/{}/{}", details.name, details.version),
+            Crate::GitHub(ref repo) => format!("gh/{}/{}", repo.org, repo.name),
+        }
+    }
 }
 
 impl fmt::Display for Crate {

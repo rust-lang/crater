@@ -19,6 +19,7 @@ use toolchain::Toolchain;
 use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
 use util;
 
+mod archives;
 mod html;
 mod s3;
 
@@ -71,6 +72,26 @@ impl Comparison {
             | Comparison::SameTestSkipped
             | Comparison::SameTestPass => false,
         }
+    }
+}
+
+impl Display for Comparison {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Comparison::Regressed => "regressed",
+                Comparison::Fixed => "fixed",
+                Comparison::Skipped => "skipped",
+                Comparison::Unknown => "unknown",
+                Comparison::Error => "error",
+                Comparison::SameBuildFail => "build-fail",
+                Comparison::SameTestFail => "test-fail",
+                Comparison::SameTestSkipped => "test-skipped",
+                Comparison::SameTestPass => "test-pass",
+            }
+        )
     }
 }
 
@@ -141,9 +162,14 @@ pub fn generate_report<DB: ReadResults>(
             });
             // Convert errors to Nones
             let mut crate_results = crate_results.map(|r| r.ok()).collect::<Vec<_>>();
-            let crate2 = crate_results.pop().expect("");
-            let crate1 = crate_results.pop().expect("");
-            let comp = compare(config, &krate, &crate1, &crate2);
+            let crate2 = crate_results.pop().unwrap();
+            let crate1 = crate_results.pop().unwrap();
+            let comp = compare(
+                config,
+                &krate,
+                crate1.as_ref().map(|b| b.res),
+                crate2.as_ref().map(|b| b.res),
+            );
 
             Ok(CrateResult {
                 name: crate_to_name(&krate, &shas)?,
@@ -215,8 +241,10 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
         &mime::APPLICATION_JSON,
     )?;
 
+    info!("writing archives");
+    let available_archives = archives::write_logs_archives(db, ex, dest, config)?;
     info!("writing html files");
-    html::write_html_report(ex, &res, dest)?;
+    html::write_html_report(ex, &res, available_archives, dest)?;
     info!("writing logs");
     write_logs(db, ex, dest, config)?;
 
@@ -255,32 +283,29 @@ fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String>
 fn compare(
     config: &Config,
     krate: &Crate,
-    r1: &Option<BuildTestResult>,
-    r2: &Option<BuildTestResult>,
+    r1: Option<TestResult>,
+    r2: Option<TestResult>,
 ) -> Comparison {
     use results::TestResult::*;
     match (r1, r2) {
-        (
-            &Some(BuildTestResult { res: ref res1, .. }),
-            &Some(BuildTestResult { res: ref res2, .. }),
-        ) => match (res1, res2) {
-            (&BuildFail, &BuildFail) => Comparison::SameBuildFail,
-            (&TestFail, &TestFail) => Comparison::SameTestFail,
-            (&TestSkipped, &TestSkipped) => Comparison::SameTestSkipped,
-            (&TestPass, &TestPass) => Comparison::SameTestPass,
-            (&BuildFail, &TestFail)
-            | (&BuildFail, &TestSkipped)
-            | (&BuildFail, &TestPass)
-            | (&TestFail, &TestPass) => Comparison::Fixed,
-            (&TestPass, &TestFail)
-            | (&TestPass, &BuildFail)
-            | (&TestSkipped, &BuildFail)
-            | (&TestFail, &BuildFail) => Comparison::Regressed,
-            (&Error, _) | (_, &Error) => Comparison::Error,
-            (&TestFail, &TestSkipped)
-            | (&TestPass, &TestSkipped)
-            | (&TestSkipped, &TestFail)
-            | (&TestSkipped, &TestPass) => {
+        (Some(res1), Some(res2)) => match (res1, res2) {
+            (BuildFail, BuildFail) => Comparison::SameBuildFail,
+            (TestFail, TestFail) => Comparison::SameTestFail,
+            (TestSkipped, TestSkipped) => Comparison::SameTestSkipped,
+            (TestPass, TestPass) => Comparison::SameTestPass,
+            (BuildFail, TestFail)
+            | (BuildFail, TestSkipped)
+            | (BuildFail, TestPass)
+            | (TestFail, TestPass) => Comparison::Fixed,
+            (TestPass, TestFail)
+            | (TestPass, BuildFail)
+            | (TestSkipped, BuildFail)
+            | (TestFail, BuildFail) => Comparison::Regressed,
+            (Error, _) | (_, Error) => Comparison::Error,
+            (TestFail, TestSkipped)
+            | (TestPass, TestSkipped)
+            | (TestSkipped, TestFail)
+            | (TestSkipped, TestPass) => {
                 panic!("can't compare {} and {}", res1, res2);
             }
         },
@@ -336,6 +361,58 @@ impl Display for FileWriter {
 }
 
 #[cfg(test)]
+#[derive(Default)]
+pub struct DummyWriter {
+    results: RefCell<HashMap<(PathBuf, Mime), Vec<u8>>>,
+}
+
+#[cfg(test)]
+impl DummyWriter {
+    pub fn get<P: AsRef<Path>>(&self, path: P, mime: &Mime) -> Vec<u8> {
+        self.results
+            .borrow()
+            .get(&(path.as_ref().to_path_buf(), mime.clone()))
+            .unwrap()
+            .clone()
+    }
+}
+
+#[cfg(test)]
+impl ReportWriter for DummyWriter {
+    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, mime: &Mime) -> Result<()> {
+        self.results
+            .borrow_mut()
+            .insert((path.as_ref().to_path_buf(), mime.clone()), b);
+        Ok(())
+    }
+
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()> {
+        self.results.borrow_mut().insert(
+            (path.as_ref().to_path_buf(), mime.clone()),
+            s.bytes().collect(),
+        );
+        Ok(())
+    }
+
+    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()> {
+        let mut buffer = Vec::new();
+        r.read_to_end(&mut buffer)?;
+
+        self.results
+            .borrow_mut()
+            .insert((path.as_ref().to_path_buf(), mime.clone()), buffer);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+impl Display for DummyWriter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, ":dummy:")
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use config::{Config, CrateConfig};
@@ -344,54 +421,6 @@ mod tests {
     use results::{DummyDB, TestResult};
     use std::collections::HashMap;
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
-
-    #[derive(Default)]
-    pub struct DummyWriter {
-        results: RefCell<HashMap<(PathBuf, Mime), Vec<u8>>>,
-    }
-
-    impl DummyWriter {
-        pub fn get<P: AsRef<Path>>(&self, path: P, mime: &Mime) -> Vec<u8> {
-            self.results
-                .borrow()
-                .get(&(path.as_ref().to_path_buf(), mime.clone()))
-                .unwrap()
-                .clone()
-        }
-    }
-
-    impl ReportWriter for DummyWriter {
-        fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, mime: &Mime) -> Result<()> {
-            self.results
-                .borrow_mut()
-                .insert((path.as_ref().to_path_buf(), mime.clone()), b);
-            Ok(())
-        }
-
-        fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()> {
-            self.results.borrow_mut().insert(
-                (path.as_ref().to_path_buf(), mime.clone()),
-                s.bytes().collect(),
-            );
-            Ok(())
-        }
-
-        fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()> {
-            let mut buffer = Vec::new();
-            r.read_to_end(&mut buffer)?;
-
-            self.results
-                .borrow_mut()
-                .insert((path.as_ref().to_path_buf(), mime.clone()), buffer);
-            Ok(())
-        }
-    }
-
-    impl Display for DummyWriter {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, ":dummy:")
-        }
-    }
 
     #[test]
     fn test_crate_to_path_fragment() {
@@ -485,14 +514,8 @@ mod tests {
                         $cmp(
                             $config,
                             $reg,
-                            &Some(BuildTestResult {
-                                res: TestResult::$a,
-                                log: String::with_capacity(0),
-                            }),
-                            &Some(BuildTestResult {
-                                res: TestResult::$b,
-                                log: String::with_capacity(0),
-                            }),
+                            Some(TestResult::$a),
+                            Some(TestResult::$b),
                         ),
                         Comparison::$c
                     );
@@ -534,7 +557,7 @@ mod tests {
             ]
         );
 
-        assert_eq!(compare(&config, &reg, &None, &None), Comparison::Unknown);
+        assert_eq!(compare(&config, &reg, None, None), Comparison::Unknown);
 
         config.crates.insert(
             "lazy_static".into(),
@@ -546,7 +569,7 @@ mod tests {
                 broken: false,
             },
         );
-        assert_eq!(compare(&config, &reg, &None, &None), Comparison::Skipped);
+        assert_eq!(compare(&config, &reg, None, None), Comparison::Skipped);
     }
 
     #[test]

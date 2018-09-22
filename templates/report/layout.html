@@ -1,0 +1,45 @@
+{%- import "macros.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>{% block title %}{% endblock %}</title>
+        <link rel="stylesheet" href="report.css">
+
+        {% block extra_head %}{% endblock %}
+    </head>
+    <body>
+        <header>
+            <div class="navbar">
+                <h1>Crater report for <b>{{ ex.name }}</b></h1>
+                <ul>
+                    {% for item in nav %}
+                        <li><a href="{{ nav.url }}" {% if nav.active %}class="active"{% endif %}>
+                            {{ nav.label }}
+                        </a></li>
+                    {% endfor %}
+                </ul>
+                <div class="count">{{ crates_count }} crates tested</div>
+            </div>
+            <div class="toolchains">
+                <div class="toolchain toolchain-start">
+                    <div>
+                        {{ macros::toolchain_name(tc=ex.toolchains[0]) }}
+                    </div>
+                </div>
+                <div class="arrow"></div>
+                <div class="toolchain">
+                    <div>
+                        {{ macros::toolchain_name(tc=ex.toolchains[1]) }}
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        {% block body %}{% endblock %}
+
+        <script src="report.js"></script>
+    </body>
+</html>
+

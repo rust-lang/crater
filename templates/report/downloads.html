@@ -1,0 +1,44 @@
+{% extends "report/layout.html" %}
+
+{% block title %} {{ ex.name }} - Crater report {% endblock %}
+
+{% block body %}
+    <div class="wrapper">
+        <p>
+            This page contains all the data available for download, which can
+            aid local triage of the experiment. Please note that the format of
+            the JSON exports is <b>not</b> stable and subject to change, so you
+            shouldn't rely on it in automated tools.
+        </p>
+    </div>
+
+    <div class="category">
+        <div class="header header-background toggle" data-toggle="#downloads-archives">
+            Build logs (tar.gz)
+        </div>
+        <div class="crates" id="downloads-archives">
+            {% for archive in available_archives %}
+                <div class="crate">
+                    <a href="{{ archive.path }}">{{ archive.name }}</a>
+                    <span><a href="{{ archive.path }}">Download</a></span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="category">
+        <div class="header header-background toggle" data-toggle="#downloads-json">
+            Data exports (JSON)
+        </div>
+        <div class="crates" id="downloads-json">
+            <div class="crate">
+                <a href="config.json">Experiment configuration</a>
+                <span><a href="config.json">Download</a></span>
+            </div>
+            <div class="crate">
+                <a href="results.json">Results</a>
+                <span><a href="results.json">Download</a></span>
+            </div>
+        </div>
+    </div>
+{% endblock %}

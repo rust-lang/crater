@@ -68,6 +68,8 @@ load_files! {
         "ui/404.html",
         "ui/500.html",
 
+        "report/layout.html",
+        "report/downloads.html",
         "report/results.html",
     ],
     assets: [

@@ -1,0 +1,214 @@
+use config::Config;
+use errors::*;
+use experiments::Experiment;
+use flate2::{write::GzEncoder, Compression};
+use report::{compare, ReportWriter};
+use results::ReadResults;
+use std::collections::HashMap;
+use tar::{Builder as TarBuilder, Header as TarHeader};
+
+#[derive(Serialize)]
+pub struct Archive {
+    name: String,
+    path: String,
+}
+
+pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
+    db: &DB,
+    ex: &Experiment,
+    dest: &W,
+    config: &Config,
+) -> Result<Vec<Archive>> {
+    let mut archives = Vec::new();
+    let mut all = TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()));
+    let mut by_comparison = HashMap::new();
+
+    for krate in &ex.crates {
+        if config.should_skip(krate) {
+            continue;
+        }
+
+        let res1 = db.load_test_result(ex, &ex.toolchains[0], krate)?;
+        let res2 = db.load_test_result(ex, &ex.toolchains[1], krate)?;
+        let comparison = compare(config, krate, res1, res2);
+
+        for tc in &ex.toolchains {
+            let log = db
+                .load_log(ex, tc, krate)
+                .and_then(|c| c.ok_or_else(|| "missing logs".into()))
+                .chain_err(|| format!("failed to read log of {} on {}", krate, tc));
+
+            let log_bytes: &[u8] = match log {
+                Ok(ref l) => l,
+                Err(e) => {
+                    ::util::report_error(&e);
+                    continue;
+                }
+            };
+
+            let mut header = TarHeader::new_gnu();
+            header.set_path(&format!("{}/{}/{}.txt", comparison, krate.id(), tc))?;
+            header.set_size(log_bytes.len() as u64);
+            header.set_cksum();
+
+            all.append(&header, log_bytes)?;
+            by_comparison
+                .entry(comparison)
+                .or_insert_with(|| {
+                    TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()))
+                }).append(&header, log_bytes)?;
+        }
+    }
+
+    let data = all.into_inner()?.finish()?;
+    dest.write_bytes(
+        "logs-archives/all.tar.gz",
+        data,
+        &"application/gzip".parse().unwrap(),
+    )?;
+
+    archives.push(Archive {
+        name: "All the crates".to_string(),
+        path: "logs-archives/all.tar.gz".to_string(),
+    });
+
+    for (comparison, archive) in by_comparison.drain() {
+        let data = archive.into_inner()?.finish()?;
+        dest.write_bytes(
+            &format!("logs-archives/{}.tar.gz", comparison),
+            data,
+            &"application/gzip".parse().unwrap(),
+        )?;
+
+        archives.push(Archive {
+            name: format!("{} crates", comparison),
+            path: format!("logs-archives/{}.tar.gz", comparison),
+        });
+    }
+
+    Ok(archives)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::write_logs_archives;
+    use config::Config;
+    use db::Database;
+    use experiments::Experiment;
+    use flate2::read::GzDecoder;
+    use mime::Mime;
+    use report::DummyWriter;
+    use results::{DatabaseDB, TestResult, WriteResults};
+    use std::io::Read;
+    use tar::Archive;
+
+    #[test]
+    fn test_logs_archives_generation() {
+        let config = Config::default();
+        let db = Database::temp().unwrap();
+        let writer = DummyWriter::default();
+
+        // Create a dummy experiment
+        ::actions::CreateExperiment::dummy("dummy")
+            .apply(&db, &config)
+            .unwrap();
+        let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
+        let crate1 = ex.crates[0].clone();
+        let crate2 = ex.crates[1].clone();
+
+        // Fill some dummy results into the database
+        let results = DatabaseDB::new(&db);
+        results
+            .record_result(&ex, &ex.toolchains[0], &crate1, || {
+                info!("tc1 crate1");
+                Ok(TestResult::TestPass)
+            }).unwrap();
+        results
+            .record_result(&ex, &ex.toolchains[1], &crate1, || {
+                info!("tc2 crate1");
+                Ok(TestResult::BuildFail)
+            }).unwrap();
+        results
+            .record_result(&ex, &ex.toolchains[0], &crate2, || {
+                info!("tc1 crate2");
+                Ok(TestResult::TestPass)
+            }).unwrap();
+        results
+            .record_result(&ex, &ex.toolchains[1], &crate2, || {
+                info!("tc2 crate2");
+                Ok(TestResult::TestPass)
+            }).unwrap();
+
+        // Generate all the archives
+        let archives = write_logs_archives(&results, &ex, &writer, &config).unwrap();
+
+        // Ensure the correct list of archives is returned
+        let mut archives_paths = archives.into_iter().map(|a| a.path).collect::<Vec<_>>();
+        archives_paths.sort();
+        assert_eq!(
+            &archives_paths,
+            &[
+                "logs-archives/all.tar.gz",
+                "logs-archives/regressed.tar.gz",
+                "logs-archives/test-pass.tar.gz",
+            ]
+        );
+
+        // Load the content of all the archives
+        let mime: Mime = "application/gzip".parse().unwrap();
+        let all_content = writer.get("logs-archives/all.tar.gz", &mime);
+        let mut all = Archive::new(GzDecoder::new(all_content.as_slice()));
+        let regressed_content = writer.get("logs-archives/regressed.tar.gz", &mime);
+        let mut regressed = Archive::new(GzDecoder::new(regressed_content.as_slice()));
+        let test_pass_content = writer.get("logs-archives/test-pass.tar.gz", &mime);
+        let mut test_pass = Archive::new(GzDecoder::new(test_pass_content.as_slice()));
+
+        macro_rules! check_content {
+            ($archive:ident: { $($file:expr => $match:expr,)* }) => {{
+                let mut count = 0;
+                for entry in $archive.entries().unwrap() {
+                    count += 1;
+                    let mut entry = entry.unwrap();
+
+                    let mut content = String::new();
+                    entry.read_to_string(&mut content).unwrap();
+
+                    let path = entry.path().unwrap();
+                    let path = path.to_string_lossy().to_owned();
+                    $(
+                        if &path == &$file {
+                            assert!(content.contains($match));
+                            continue;
+                        }
+                    )*
+
+                    panic!("unknown path in archive: {}", path);
+                }
+
+                let mut total = 0;
+                $(let _ = $match; total += 1;)*
+                assert_eq!(count, total);
+            }}
+        }
+
+        // Check all.tar.gz
+        check_content!(all: {
+            format!("regressed/{}/{}.txt", crate1.id(), ex.toolchains[0]) => "tc1 crate1",
+            format!("regressed/{}/{}.txt", crate1.id(), ex.toolchains[1]) => "tc2 crate1",
+            format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[0]) => "tc1 crate2",
+            format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[1]) => "tc2 crate2",
+        });
+
+        // Check regressed.tar.gz
+        check_content!(regressed: {
+            format!("regressed/{}/{}.txt", crate1.id(), ex.toolchains[0]) => "tc1 crate1",
+            format!("regressed/{}/{}.txt", crate1.id(), ex.toolchains[1]) => "tc2 crate1",
+        });
+
+        // Check test-pass.tar.gz
+        check_content!(test_pass: {
+            format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[0]) => "tc1 crate2",
+            format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[1]) => "tc2 crate2",
+        });
+    }
+}

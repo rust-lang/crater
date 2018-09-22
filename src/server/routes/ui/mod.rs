@@ -89,7 +89,7 @@ struct ErrorContext {
 
 fn error_404() -> Result<Response<Body>> {
     let mut resp = render_template(
-        "404.html",
+        "ui/404.html",
         &ErrorContext {
             layout: LayoutContext::new(),
         },
@@ -102,7 +102,7 @@ fn error_404() -> Result<Response<Body>> {
 fn error_500() -> Response<Body> {
     // Ensure the 500 error page always renders
     let mut resp = match render_template(
-        "500.html",
+        "ui/500.html",
         &ErrorContext {
             layout: LayoutContext::new(),
         },

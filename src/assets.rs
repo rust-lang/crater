@@ -57,17 +57,20 @@ macro_rules! load_files {
 load_files! {
     templates: [
         "macros.html",
-        "layout.html",
 
-        "agents.html",
+        "ui/layout.html",
 
-        "queue.html",
-        "experiment.html",
+        "ui/agents.html",
 
-        "404.html",
-        "500.html",
+        "ui/queue.html",
+        "ui/experiment.html",
 
-        "report.html",
+        "ui/404.html",
+        "ui/500.html",
+
+        "report/layout.html",
+        "report/downloads.html",
+        "report/results.html",
     ],
     assets: [
         "ui.css" => mime::TEXT_CSS,
@@ -90,7 +93,11 @@ impl FileContent {
     fn load(&self) -> Result<Cow<[u8]>> {
         Ok(match *self {
             FileContent::Static(content) => Cow::Borrowed(content),
-            FileContent::Dynamic(ref path) => Cow::Owned(::std::fs::read(path)?),
+            FileContent::Dynamic(ref path) => {
+                Cow::Owned(::std::fs::read(path).chain_err(|| {
+                    format!("failed to load dynamic asset: {}", path.to_string_lossy())
+                })?)
+            }
         })
     }
 }

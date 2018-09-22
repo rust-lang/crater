@@ -3,7 +3,7 @@ use errors::*;
 use experiments::Experiment;
 use mime;
 use minifier;
-use report::{Comparison, CrateResult, ReportWriter, TestResults};
+use report::{archives::Archive, Comparison, CrateResult, ReportWriter, TestResults};
 use results::TestResult;
 use std::collections::HashMap;
 
@@ -45,14 +45,60 @@ impl ResultColor for TestResult {
 }
 
 #[derive(Serialize)]
-struct Context<'a> {
+struct NavbarItem {
+    label: &'static str,
+    url: &'static str,
+    active: bool,
+}
+
+#[derive(PartialEq, Eq)]
+enum CurrentPage {
+    Summary,
+    Full,
+    Downloads,
+}
+
+impl CurrentPage {
+    fn navbar(&self) -> Vec<NavbarItem> {
+        vec![
+            NavbarItem {
+                label: "Summary",
+                url: "index.html",
+                active: *self == CurrentPage::Summary,
+            },
+            NavbarItem {
+                label: "Full report",
+                url: "full.html",
+                active: *self == CurrentPage::Full,
+            },
+            NavbarItem {
+                label: "Downloads",
+                url: "downloads.html",
+                active: *self == CurrentPage::Downloads,
+            },
+        ]
+    }
+}
+
+#[derive(Serialize)]
+struct ResultsContext<'a> {
     ex: &'a Experiment,
+    nav: Vec<NavbarItem>,
     categories: HashMap<Comparison, Vec<CrateResult>>,
     full: bool,
     crates_count: usize,
 
     comparison_colors: HashMap<Comparison, Color>,
     result_colors: HashMap<TestResult, Color>,
+}
+
+#[derive(Serialize)]
+struct DownloadsContext<'a> {
+    ex: &'a Experiment,
+    nav: Vec<NavbarItem>,
+    crates_count: usize,
+
+    available_archives: Vec<Archive>,
 }
 
 fn write_report<W: ReportWriter>(
@@ -91,19 +137,44 @@ fn write_report<W: ReportWriter>(
         category.push(result.clone());
     }
 
-    let context = Context {
+    let context = ResultsContext {
         ex,
+        nav: if full {
+            CurrentPage::Full
+        } else {
+            CurrentPage::Summary
+        }.navbar(),
         categories,
         full,
-        crates_count: res.crates.len(),
+        crates_count: ex.crates.len(),
 
         comparison_colors,
         result_colors,
     };
 
     info!("generating {}", to);
-    let html = minifier::html::minify(&assets::render_template("report.html", &context)?);
+    let html = minifier::html::minify(&assets::render_template("report/results.html", &context)?);
     dest.write_string(to, html.into(), &mime::TEXT_HTML)?;
+
+    Ok(())
+}
+
+fn write_downloads<W: ReportWriter>(
+    ex: &Experiment,
+    available_archives: Vec<Archive>,
+    dest: &W,
+) -> Result<()> {
+    let context = DownloadsContext {
+        ex,
+        nav: CurrentPage::Downloads.navbar(),
+        crates_count: ex.crates.len(),
+
+        available_archives,
+    };
+
+    info!("generating downloads.html");
+    let html = minifier::html::minify(&assets::render_template("report/downloads.html", &context)?);
+    dest.write_string("downloads.html", html.into(), &mime::TEXT_HTML)?;
 
     Ok(())
 }
@@ -111,12 +182,14 @@ fn write_report<W: ReportWriter>(
 pub fn write_html_report<W: ReportWriter>(
     ex: &Experiment,
     res: &TestResults,
+    available_archives: Vec<Archive>,
     dest: &W,
 ) -> Result<()> {
     let js_in = assets::load("report.js")?;
     let css_in = assets::load("report.css")?;
     write_report(ex, res, false, "index.html", dest)?;
     write_report(ex, res, true, "full.html", dest)?;
+    write_downloads(ex, available_archives, dest)?;
 
     info!("copying static assets");
     dest.write_bytes("report.js", js_in.content()?.into_owned(), js_in.mime())?;

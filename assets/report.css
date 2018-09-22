@@ -13,6 +13,10 @@ a {
     color: #eee;
 }
 
+p {
+    line-height: 1.4em;
+}
+
 .hidden {
     display: none;
 }
@@ -126,7 +130,7 @@ div.nothing {
     text-align: center;
 }
 
-div.category {
+div.category, div.wrapper {
     width: 70em;
     margin: 1em auto;
 }
@@ -141,6 +145,10 @@ div.category div.header {
     top: 0.5em;
 }
 
+div.category div.header.header-background {
+    background: #292929;
+}
+
 div.category div.crate {
     display: flex;
     padding: 0.8em;
@@ -151,6 +159,10 @@ div.category div.crate:first-child {
     border-top: 0;
 }
 
+div.category div.crate:last-child {
+    padding-bottom: 0;
+}
+
 div.category div.crate > a {
     flex: 1;
     text-decoration: none;
@@ -158,6 +170,7 @@ div.category div.crate > a {
 
 div.category div.crate > span {
     flex-basis: 10em;
+    text-align: center;
 }
 
 div.category div.crate > span > b {

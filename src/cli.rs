@@ -218,6 +218,8 @@ pub enum Crater {
         ex: Ex,
         #[structopt(name = "destination")]
         dest: Dest,
+        #[structopt(name = "force", long = "force")]
+        force: bool,
     },
 
     #[structopt(
@@ -238,6 +240,8 @@ pub enum Crater {
                     [default: $CARGOBOMB_REPORT_S3_PREFIX/<experiment>"
         )]
         s3_prefix: Option<report::S3Prefix>,
+        #[structopt(name = "force", long = "force")]
+        force: bool,
     },
 
     #[structopt(name = "server")]
@@ -388,18 +392,23 @@ impl Crater {
                     bail!("missing experiment {}", ex.0);
                 }
             }
-            Crater::GenReport { ref ex, ref dest } => {
+            Crater::GenReport {
+                ref ex,
+                ref dest,
+                force,
+            } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
 
                 if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
                     // Update the status
-                    match experiment.status {
-                        Status::NeedsReport | Status::ReportFailed => {
+                    match (experiment.status, force) {
+                        (Status::NeedsReport, _) | (Status::ReportFailed, _) | (_, true) => {
                             experiment.set_status(&db, Status::GeneratingReport)?;
                         }
-                        other => bail!(
-                            "can't generate the report of an experiment with status {}",
+                        (other, false) => bail!(
+                            "can't generate the report of an experiment with status {} \
+                             (use --force to override)",
                             other
                         ),
                     }
@@ -425,6 +434,7 @@ impl Crater {
             Crater::PublishReport {
                 ref ex,
                 ref s3_prefix,
+                force,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
@@ -440,12 +450,13 @@ impl Crater {
 
                 if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
                     // Update the status
-                    match experiment.status {
-                        Status::NeedsReport | Status::ReportFailed => {
+                    match (experiment.status, force) {
+                        (Status::NeedsReport, _) | (Status::ReportFailed, _) | (_, true) => {
                             experiment.set_status(&db, Status::GeneratingReport)?;
                         }
-                        other => bail!(
-                            "can't publish the report of an experiment with status {}",
+                        (other, false) => bail!(
+                            "can't publish the report of an experiment with status {} \
+                             (use --force to override)",
                             other
                         ),
                     }

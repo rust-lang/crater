@@ -86,7 +86,7 @@ pub fn endpoint_queue(data: Arc<Data>) -> Result<Response<Body>> {
     experiments.append(&mut queued);
 
     render_template(
-        "queue.html",
+        "ui/queue.html",
         &ListContext {
             layout: LayoutContext::new(),
             experiments,
@@ -183,7 +183,7 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Result<Response<Bod
         };
 
         render_template(
-            "experiment.html",
+            "ui/experiment.html",
             &ExperimentContext {
                 layout: LayoutContext::new(),
                 experiment,

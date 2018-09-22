@@ -10,7 +10,7 @@ macro_rules! generate_parser {
     }) => {
         use errors::*;
         use std::str::FromStr;
-        use utils::split_quoted;
+        use utils::string::split_quoted;
 
         $(
             #[cfg_attr(test, derive(Debug, PartialEq))]

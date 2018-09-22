@@ -78,7 +78,7 @@ mod assets;
 #[macro_use]
 pub mod log;
 #[macro_use]
-pub mod util;
+pub mod utils;
 pub mod config;
 pub mod crates;
 pub mod db;

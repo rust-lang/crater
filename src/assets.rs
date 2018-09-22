@@ -11,7 +11,7 @@ lazy_static! {
     static ref TERA_CACHE: Tera = match build_tera_cache() {
         Ok(tera) => tera,
         Err(err) => {
-            ::util::report_error(&err);
+            ::utils::report_error(&err);
             ::std::process::exit(1);
         }
     };

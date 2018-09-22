@@ -41,7 +41,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
             let log_bytes: &[u8] = match log {
                 Ok(ref l) => l,
                 Err(e) => {
-                    ::util::report_error(&e);
+                    ::utils::report_error(&e);
                     continue;
                 }
             };

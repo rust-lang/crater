@@ -12,7 +12,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use tempdir::TempDir;
-use util;
+use utils;
 
 const RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
 
@@ -280,7 +280,7 @@ fn install_rustup() -> Result<()> {
     let rustup_url = &format!(
         "{}/{}/rustup-init{}",
         RUSTUP_BASE_URL,
-        &util::this_target(),
+        &utils::this_target(),
         EXE_SUFFIX
     );
     let mut response = dl::download(rustup_url).chain_err(|| "unable to download rustup")?;
@@ -293,7 +293,7 @@ fn install_rustup() -> Result<()> {
         make_executable(installer)?;
     }
 
-    util::try_hard(|| {
+    utils::try_hard(|| {
         RunCommand::new(&installer.to_string_lossy(), &["-y", "--no-modify-path"])
             .local_rustup()
             .run()
@@ -326,7 +326,7 @@ pub fn make_executable(path: &Path) -> Result<()> {
 
 fn update_rustup() -> Result<()> {
     info!("updating rustup");
-    util::try_hard(|| {
+    utils::try_hard(|| {
         RunCommand::new(&installed_binary("rustup"), &["self", "update"])
             .local_rustup()
             .run()
@@ -336,7 +336,7 @@ fn update_rustup() -> Result<()> {
 
 fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
     info!("installing toolchain {}", toolchain);
-    util::try_hard(|| {
+    utils::try_hard(|| {
         RunCommand::new(
             &installed_binary("rustup"),
             &["toolchain", "install", toolchain],
@@ -351,7 +351,7 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
     let bin = installed_binary("rustup-toolchain-install-master");
     if !Path::new(&bin).exists() {
         info!("installing rustup-toolchain-install-master");
-        util::try_hard(|| {
+        utils::try_hard(|| {
             RunCommand::new(
                 &installed_binary("cargo"),
                 &["install", "rustup-toolchain-install-master"],
@@ -372,7 +372,7 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
         args.push("--alt");
     }
 
-    util::try_hard(|| {
+    utils::try_hard(|| {
         RunCommand::new(&bin, &args)
             .local_rustup()
             .run()

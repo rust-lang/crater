@@ -29,7 +29,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tasks::{Task, TaskStep};
-use util;
+use utils;
 
 pub enum Node {
     Task { task: Arc<Task>, running: bool },
@@ -278,7 +278,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
     // Remove all the target dirs even if the experiment failed
     let target_dir = &::toolchain::ex_target_dir(&ex.name);
     if target_dir.exists() {
-        util::remove_dir_all(target_dir)?;
+        utils::remove_dir_all(target_dir)?;
     }
 
     res
@@ -318,7 +318,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                             info!("running task: {:?}", task);
                             if let Err(e) = task.run(config, ex, db) {
                                 error!("task failed, marking childs as failed too: {:?}", task);
-                                util::report_error(&e);
+                                utils::report_error(&e);
 
                                 let result = if config.is_broken(&task.krate) {
                                     TestResult::BuildFail
@@ -365,11 +365,11 @@ fn run_ex_inner<DB: WriteResults + Sync>(
             match thread.join() {
                 Ok(Ok(())) => {}
                 Ok(Err(err)) => {
-                    ::util::report_error(&err);
+                    ::utils::report_error(&err);
                     clean_exit = false;
                 }
                 Err(panic) => {
-                    ::util::report_panic(&panic);
+                    ::utils::report_panic(&panic);
                     clean_exit = false;
                 }
             }

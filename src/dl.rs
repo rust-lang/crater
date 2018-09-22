@@ -1,6 +1,6 @@
 use errors::*;
 use reqwest::{Client, ClientBuilder, RedirectPolicy, Response, StatusCode};
-use util;
+use utils;
 
 const MAX_REDIRECTS: usize = 4;
 
@@ -16,11 +16,11 @@ fn setup_client() -> Client {
 }
 
 pub fn download(url: &str) -> Result<Response> {
-    util::try_hard(|| download_no_retry(url))
+    utils::try_hard(|| download_no_retry(url))
 }
 
 pub fn download_limit(url: &str, ms: usize) -> Result<Response> {
-    util::try_hard_limit(ms, || download_no_retry(url))
+    utils::try_hard_limit(ms, || download_no_retry(url))
 }
 
 pub fn download_no_retry(url: &str) -> Result<Response> {

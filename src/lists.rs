@@ -14,7 +14,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
-use util;
+use utils;
 
 pub fn create_all_lists(full: bool) -> Result<()> {
     RecentList::create()?;
@@ -353,15 +353,15 @@ pub fn read_all_lists() -> Result<Vec<Crate>> {
 
     match RecentList::read() {
         Ok(recent) => all.extend(recent.into_iter()),
-        Err(e) => util::report_error(&e),
+        Err(e) => utils::report_error(&e),
     }
     match HotList::read() {
         Ok(hot) => all.extend(hot.into_iter()),
-        Err(e) => util::report_error(&e),
+        Err(e) => utils::report_error(&e),
     }
     match GitHubAppList::read() {
         Ok(gh_apps) => all.extend(gh_apps.into_iter()),
-        Err(e) => util::report_error(&e),
+        Err(e) => utils::report_error(&e),
     }
 
     if all.is_empty() {

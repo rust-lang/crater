@@ -8,7 +8,7 @@ use git;
 use results::{TestResult, WriteResults};
 use std::fmt;
 use toolchain::{Toolchain, MAIN_TOOLCHAIN};
-use util;
+use utils;
 
 pub enum TaskStep {
     Prepare,
@@ -93,7 +93,7 @@ impl Task {
             | TaskStep::UnstableFeatures { ref tc } => {
                 db.record_result(ex, tc, &self.krate, || {
                     error!("this task or one of its parent failed!");
-                    util::report_error(err);
+                    utils::report_error(err);
                     Ok(result)
                 })?;
             }
@@ -123,7 +123,7 @@ impl Task {
         // Fetch repository data if it's a git repo
         if let Some(repo) = self.krate.github() {
             if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
-                util::report_error(&e);
+                utils::report_error(&e);
             }
 
             ex_prepare::capture_shas(ex, &[self.krate.clone()], db)?;

@@ -17,7 +17,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use toolchain::Toolchain;
 use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
-use util;
+use utils;
 
 mod archives;
 mod html;
@@ -210,7 +210,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
             let content = match content {
                 Ok(c) => c,
                 Err(e) => {
-                    util::report_error(&e);
+                    utils::report_error(&e);
                     continue;
                 }
             };

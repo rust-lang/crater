@@ -9,7 +9,7 @@ use server::Data;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use util;
+use utils;
 
 // Automatically wake up the reports generator thread every 10 minutes to check for new jobs
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
@@ -52,7 +52,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
         if let Err(err) = generate_report(data, &ex, &results) {
             ex.set_status(&data.db, Status::ReportFailed)?;
             error!("failed to generate the report of {}", name);
-            util::report_error(&err);
+            utils::report_error(&err);
 
             if let Some(ref github_issue) = ex.github_issue {
                 Message::new()
@@ -119,7 +119,7 @@ impl ReportsWorker {
                 let result = reports_thread(&data.clone(), &wake_recv)
                     .chain_err(|| "the reports generator thread crashed");
                 if let Err(e) = result {
-                    util::report_error(&e);
+                    utils::report_error(&e);
                 }
 
                 warn!("the reports generator thread will be respawned in one minute");

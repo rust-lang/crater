@@ -280,7 +280,7 @@ fn install_rustup() -> Result<()> {
     let rustup_url = &format!(
         "{}/{}/rustup-init{}",
         RUSTUP_BASE_URL,
-        &utils::this_target(),
+        ::HOST_TARGET,
         EXE_SUFFIX
     );
     let mut response = dl::download(rustup_url).chain_err(|| "unable to download rustup")?;

@@ -103,4 +103,5 @@ mod tasks;
 mod toml_frobber;
 pub mod toolchain;
 
-pub static GIT_REVISION: Option<&'static str> = include!(concat!(env!("OUT_DIR"), "/sha"));
+pub static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));
+pub static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));

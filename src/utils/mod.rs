@@ -106,26 +106,6 @@ pub fn report_panic(e: &Any) {
     }
 }
 
-pub fn this_target() -> String {
-    let os = if cfg!(target_os = "linux") {
-        "unknown-linux-gnu"
-    } else if cfg!(target_os = "windows") {
-        "pc-windows-msvc"
-    } else if cfg!(target_os = "macos") {
-        "apple-darwin"
-    } else {
-        panic!("unrecognized OS")
-    };
-
-    let arch = if cfg!(target_arch = "x86_64") {
-        "x86_64"
-    } else {
-        panic!("unrecognized arch")
-    };
-
-    format!("{}-{}", arch, os)
-}
-
 pub fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
     use walkdir::*;
 

@@ -46,17 +46,18 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
                 }
             };
 
+            let path = format!("{}/{}/{}.txt", comparison, krate.id(), tc);
+
             let mut header = TarHeader::new_gnu();
-            header.set_path(&format!("{}/{}/{}.txt", comparison, krate.id(), tc))?;
             header.set_size(log_bytes.len() as u64);
             header.set_cksum();
 
-            all.append(&header, log_bytes)?;
+            all.append_data(&mut header, &path, log_bytes)?;
             by_comparison
                 .entry(comparison)
                 .or_insert_with(|| {
                     TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()))
-                }).append(&header, log_bytes)?;
+                }).append_data(&mut header, &path, log_bytes)?;
         }
     }
 

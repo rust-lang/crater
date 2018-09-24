@@ -22,7 +22,7 @@ extern crate crater;
 mod cli;
 
 use crater::errors::*;
-use crater::{log, util};
+use crater::{log, utils};
 use std::panic;
 use std::process;
 use structopt::StructOpt;
@@ -35,11 +35,11 @@ fn main() {
     let success = match panic::catch_unwind(main_) {
         Ok(Ok(())) => true,
         Ok(Err(e)) => {
-            util::report_error(&e);
+            utils::report_error(&e);
             false
         }
         Err(e) => {
-            util::report_panic(&*e);
+            utils::report_panic(&*e);
             false
         }
     };

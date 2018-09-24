@@ -8,7 +8,7 @@ use experiments::Experiment;
 use run_graph;
 use std::thread;
 use std::time::Duration;
-use util;
+use utils;
 
 struct Agent {
     api: AgentApi,
@@ -42,7 +42,7 @@ fn run_heartbeat(url: &str, token: &str) {
 
     thread::spawn(move || loop {
         if let Err(e) = api.heartbeat().chain_err(|| "failed to send heartbeat") {
-            util::report_error(&e);
+            utils::report_error(&e);
         }
         thread::sleep(Duration::from_secs(60));
     });

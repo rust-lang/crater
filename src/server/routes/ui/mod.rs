@@ -110,7 +110,7 @@ fn error_500() -> Response<Body> {
         Ok(resp) => resp,
         Err(err) => {
             error!("failed to render 500 error page!");
-            ::util::report_error(&err);
+            ::utils::report_error(&err);
             Response::new("500: Internal Server Error\n".into())
         }
     };
@@ -131,7 +131,7 @@ fn handle_results(resp: Result<Response<Body>>) -> Response<Body> {
                 }
             }
 
-            ::util::report_error(&err);
+            ::utils::report_error(&err);
             error_500()
         }
     }
@@ -143,7 +143,7 @@ fn handle_errors(err: Rejection) -> ::std::result::Result<Response<Body>, Reject
             Ok(resp) => Ok(resp),
             Err(err) => {
                 error!("failed to render 404 page!");
-                ::util::report_error(&err);
+                ::utils::report_error(&err);
                 Ok(error_500())
             }
         },

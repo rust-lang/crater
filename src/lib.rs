@@ -78,18 +78,16 @@ mod assets;
 #[macro_use]
 pub mod log;
 #[macro_use]
-pub mod util;
+pub mod utils;
 pub mod config;
 pub mod crates;
 pub mod db;
 pub mod dirs;
-mod dl;
 pub mod docker;
 pub mod errors;
 mod ex_prepare;
 pub mod ex_run;
 pub mod experiments;
-mod file;
 mod gh;
 mod git;
 pub mod lists;
@@ -103,4 +101,5 @@ mod tasks;
 mod toml_frobber;
 pub mod toolchain;
 
-pub static GIT_REVISION: Option<&'static str> = include!(concat!(env!("OUT_DIR"), "/sha"));
+pub static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));
+pub static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));

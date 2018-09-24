@@ -12,7 +12,6 @@ use server::messages::Message;
 use server::routes::webhooks::args::Command;
 use server::Data;
 use std::sync::Arc;
-use util;
 use warp::{self, filters::body::FullBody, Filter, Rejection};
 
 fn process_webhook(payload: &[u8], signature: &str, event: &str, data: &Data) -> Result<()> {
@@ -126,7 +125,7 @@ fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
         .join("=");
 
     // Convert the signature from hex
-    let signature = if let Ok(converted) = util::from_hex(&hex_signature) {
+    let signature = if let Ok(converted) = ::utils::hex::from_hex(&hex_signature) {
         converted
     } else {
         // This is not hex
@@ -176,7 +175,7 @@ pub fn routes(
                 Ok(()) => resp = Response::new("OK\n".into()),
                 Err(err) => {
                     error!("error while processing webhook");
-                    ::util::report_error(&err);
+                    ::utils::report_error(&err);
 
                     resp = Response::new(format!("Error: {}\n", err).into());
                     *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;

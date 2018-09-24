@@ -1,5 +1,4 @@
 use dirs::{CRATES_DIR, GH_MIRRORS_DIR};
-use dl;
 use errors::*;
 use flate2::read::GzDecoder;
 use std::fmt;
@@ -9,7 +8,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 use tar::Archive;
-use util;
 
 const CRATES_ROOT: &str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
@@ -146,7 +144,7 @@ pub fn prepare_crate(krate: &Crate) -> Result<()> {
                 repo.slug(),
                 dir.display()
             );
-            util::copy_dir(&repo.mirror_dir(), &dir)?;
+            ::utils::fs::copy_dir(&repo.mirror_dir(), &dir)?;
         }
     }
 
@@ -165,7 +163,7 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     }
     info!("downloading crate {}-{} to {}", name, vers, dir.display());
     let url = format!("{0}/{1}/{1}-{2}.crate", CRATES_ROOT, name, vers);
-    let bin = dl::download(&url).chain_err(|| format!("unable to download {}", url))?;
+    let bin = ::utils::http::get(&url).chain_err(|| format!("unable to download {}", url))?;
 
     fs::create_dir_all(&dir)?;
 
@@ -173,7 +171,7 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     let r = unpack_without_first_dir(&mut tar, dir).chain_err(|| "unable to unpack crate tarball");
 
     if r.is_err() {
-        let _ = util::remove_dir_all(dir);
+        let _ = ::utils::fs::remove_dir_all(dir);
     }
 
     r

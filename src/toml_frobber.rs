@@ -1,18 +1,18 @@
 use errors::*;
-use file;
 use std::path::Path;
 use toml::value::Table;
 use toml::{self, Value};
 
 pub fn frob_toml(dir: &Path, name: &str, vers: &str, out: &Path) -> Result<()> {
     info!("frobbing {}-{}", name, vers);
-    let toml_str = file::read_string(&dir.join("Cargo.toml")).chain_err(|| "no cargo.toml?")?;
+    let toml_str =
+        ::std::fs::read_to_string(&dir.join("Cargo.toml")).chain_err(|| "no cargo.toml?")?;
     let mut toml: Table = toml::from_str(&toml_str)
         .chain_err(|| Error::from(format!("unable to parse Cargo.toml at {}", dir.display())))?;
 
     if frob_table(&mut toml, name, vers) {
         let toml = Value::Table(toml);
-        file::write_string(out, &format!("{}", toml))?;
+        ::std::fs::write(out, toml.to_string().as_bytes())?;
 
         info!("frobbed toml written to {}", out.display());
     }

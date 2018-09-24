@@ -1,4 +1,3 @@
-use dl;
 use errors::*;
 use reqwest;
 use std::collections::HashSet;
@@ -55,11 +54,8 @@ pub fn get_candidate_repos() -> Result<Vec<String>> {
             let url = format!("{}&page={}", q, page);
             info!("downloading {}", url);
 
-            let mut response = if page < 20 {
-                dl::download_limit(&url, 10_000)
-            } else {
-                dl::download_no_retry(&url)
-            }.chain_err(|| "unable to query github for rust repos")?;
+            let mut response =
+                ::utils::http::get(&url).chain_err(|| "unable to query github for rust repos")?;
 
             // After some point, errors indicate the end of available results
             if page > 20 && response.status() == reqwest::StatusCode::UnprocessableEntity {
@@ -98,7 +94,7 @@ pub fn is_rust_app(name: &str) -> Result<bool> {
     );
     info!("testing {}", url);
 
-    let is_app = dl::download_no_retry(&url)
+    let is_app = ::utils::http::get(&url)
         .and_then(|mut response| {
             let mut buf = String::new();
             response.read_to_string(&mut buf)?;

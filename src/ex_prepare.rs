@@ -10,7 +10,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use toml_frobber;
 use toolchain::{CargoState, Toolchain};
-use utils;
 
 fn froml_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("fromls")
@@ -24,7 +23,7 @@ impl Experiment {
     pub fn fetch_repo_crates(&self) -> Result<()> {
         for repo in self.crates.iter().filter_map(|krate| krate.github()) {
             if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
-                utils::report_error(&e);
+                ::utils::report_error(&e);
             }
         }
         Ok(())
@@ -132,9 +131,9 @@ where
         dest_dir.display()
     );
 
-    utils::copy_dir(&src_dir, &dest_dir)?;
+    ::utils::fs::copy_dir(&src_dir, &dest_dir)?;
     let r = f(&dest_dir);
-    utils::remove_dir_all(&dest_dir)?;
+    ::utils::fs::remove_dir_all(&dest_dir)?;
     r
 }
 

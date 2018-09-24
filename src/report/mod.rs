@@ -2,7 +2,6 @@ use config::Config;
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use experiments::Experiment;
-use file;
 use mime::{self, Mime};
 use results::{ReadResults, TestResult};
 use serde_json;
@@ -13,7 +12,7 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt::{self, Display};
 use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use toolchain::Toolchain;
 use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
@@ -338,13 +337,14 @@ impl FileWriter {
 impl ReportWriter for FileWriter {
     fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, _: &Mime) -> Result<()> {
         self.create_prefix(path.as_ref())?;
-        File::create(self.0.join(path.as_ref()))?.write_all(&b)?;
+        fs::write(&self.0.join(path.as_ref()), &b)?;
         Ok(())
     }
 
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Result<()> {
         self.create_prefix(path.as_ref())?;
-        file::write_string(&self.0.join(path.as_ref()), s.as_ref())
+        fs::write(&self.0.join(path.as_ref()), s.as_ref().as_bytes())?;
+        Ok(())
     }
 
     fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, _: &Mime) -> Result<()> {

@@ -3,7 +3,6 @@ use crates::Crate;
 use errors::*;
 use ex_prepare::{with_captured_lockfile, with_frobbed_toml, with_work_crate};
 use experiments::Experiment;
-use file;
 use results::{TestResult, WriteResults};
 use std::collections::HashSet;
 use std::path::Path;
@@ -214,7 +213,7 @@ pub fn test_find_unstable_features(
 
 fn parse_features(path: &Path) -> Result<Vec<String>> {
     let mut features = Vec::new();
-    let contents = file::read_string(path)?;
+    let contents = ::std::fs::read_to_string(path)?;
     for (hash_idx, _) in contents.match_indices('#') {
         let contents = &contents[hash_idx + 1..];
         let contents = eat_token(Some(contents), "!").or_else(|| Some(contents));

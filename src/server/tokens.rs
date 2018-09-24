@@ -1,6 +1,5 @@
 use chrono::{TimeZone, Utc};
 use errors::*;
-use file;
 use rusoto_core::Region;
 use rusoto_core::{AwsCredentials, CredentialsError, ProvideAwsCredentials};
 use std::collections::HashMap;
@@ -91,7 +90,7 @@ impl Default for Tokens {
 
 impl Tokens {
     pub fn load() -> Result<Tokens> {
-        let content = file::read_string(Path::new(TOKENS_PATH))?;
+        let content = ::std::fs::read_to_string(Path::new(TOKENS_PATH))?;
         let res = ::toml::from_str(&content)?;
         Ok(res)
     }

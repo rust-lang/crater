@@ -89,7 +89,6 @@ pub mod errors;
 mod ex_prepare;
 pub mod ex_run;
 pub mod experiments;
-mod file;
 mod gh;
 mod git;
 pub mod lists;

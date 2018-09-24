@@ -4,7 +4,6 @@ use crates_index::Crate as IndexCrate;
 use dirs::LIST_DIR;
 use errors::*;
 use experiments::CrateSelect;
-use file;
 use gh;
 use rand::{thread_rng, Rng};
 use registry;
@@ -15,6 +14,20 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 use utils;
+
+fn write_lines(path: &Path, lines: &[String]) -> Result<()> {
+    ::std::fs::write(path, (lines.join("\n") + "\n").as_bytes())?;
+    Ok(())
+}
+
+fn read_lines(path: &Path) -> Result<Vec<String>> {
+    let contents = ::std::fs::read_to_string(path)?;
+    Ok(contents
+        .lines()
+        .map(|l| l.to_string())
+        .filter(|l| !l.chars().all(|c| c.is_whitespace()))
+        .collect())
+}
 
 pub fn create_all_lists(full: bool) -> Result<()> {
     RecentList::create()?;
@@ -70,7 +83,7 @@ impl List for RecentList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines = file::read_lines(&Self::path())
+        let lines = read_lines(&Self::path())
             .chain_err(|| "unable to read recent list. run `crater create-lists`?")?;
         split_crate_lines(&lines)
     }
@@ -88,7 +101,7 @@ where
     let strings = crates
         .map(|(name, version)| format!("{}:{}", name, version))
         .collect::<Vec<_>>();
-    file::write_lines(path, &strings)
+    write_lines(path, &strings)
 }
 
 fn split_crate_lines(lines: &[String]) -> Result<Vec<Crate>> {
@@ -140,7 +153,7 @@ impl List for PopList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines = file::read_lines(&Self::path())
+        let lines = read_lines(&Self::path())
             .chain_err(|| "unable to read pop list. run `crater create-lists`?")?;
         split_crate_lines(&lines)
     }
@@ -227,7 +240,7 @@ impl List for HotList {
     }
 
     fn read() -> Result<Vec<Crate>> {
-        let lines = file::read_lines(&Self::path())
+        let lines = read_lines(&Self::path())
             .chain_err(|| "unable to read hot list. run `crater create-lists`?")?;
         split_crate_lines(&lines)
     }
@@ -245,13 +258,13 @@ impl List for GitHubCandidateList {
         fs::create_dir_all(&*LIST_DIR)?;
 
         let candidates = gh::get_candidate_repos()?;
-        file::write_lines(&Self::path(), &candidates)?;
+        write_lines(&Self::path(), &candidates)?;
         info!("candidate repos written to {}", Self::path().display());
         Ok(())
     }
 
     fn read() -> Result<Vec<Crate>> {
-        Ok(file::read_lines(&Self::path())
+        Ok(read_lines(&Self::path())
             .chain_err(|| "unable to read gh-candidates list. run `crater create-lists`?")?
             .into_iter()
             .map(|line| line.parse().map(Crate::GitHub))
@@ -305,13 +318,13 @@ impl List for GitHubAppList {
             thread::sleep(Duration::from_millis(delay as u64));
         }
 
-        file::write_lines(&Self::path(), &apps)?;
+        write_lines(&Self::path(), &apps)?;
         info!("rust apps written to {}", Self::path().display());
         Ok(())
     }
 
     fn read() -> Result<Vec<Crate>> {
-        Ok(file::read_lines(&GitHubAppList::path())
+        Ok(read_lines(&GitHubAppList::path())
             .chain_err(|| "unable to read gh-app list. run `crater create-lists`?")?
             .into_iter()
             .map(|line| line.parse().map(Crate::GitHub))

@@ -20,7 +20,6 @@ use config::Config;
 use crossbeam_utils::thread::scope;
 use errors::*;
 use experiments::{Experiment, Mode};
-use file;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
 use results::{TestResult, WriteResults};
 use std::collections::HashMap;
@@ -278,7 +277,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
     // Remove all the target dirs even if the experiment failed
     let target_dir = &::toolchain::ex_target_dir(&ex.name);
     if target_dir.exists() {
-        utils::remove_dir_all(target_dir)?;
+        utils::fs::remove_dir_all(target_dir)?;
     }
 
     res
@@ -395,7 +394,7 @@ pub fn dump_dot(ex: &Experiment, config: &Config, dest: &Path) -> Result<()> {
     let graph = build_graph(&ex, config);
 
     info!("dumping the tasks graph...");
-    file::write_string(dest, &format!("{:?}", Dot::new(&graph.graph)))?;
+    ::std::fs::write(dest, format!("{:?}", Dot::new(&graph.graph)).as_bytes())?;
 
     info!("tasks graph available in {}", dest.to_string_lossy());
 

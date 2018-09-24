@@ -50,6 +50,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
 
             let mut header = TarHeader::new_gnu();
             header.set_size(log_bytes.len() as u64);
+            header.set_mode(0o644);
             header.set_cksum();
 
             all.append_data(&mut header, &path, log_bytes)?;
@@ -170,6 +171,9 @@ mod tests {
                 for entry in $archive.entries().unwrap() {
                     count += 1;
                     let mut entry = entry.unwrap();
+
+                    // Ensure the contained files are readable
+                    assert_eq!(entry.header().mode().unwrap(), 0o644);
 
                     let mut content = String::new();
                     entry.read_to_string(&mut content).unwrap();

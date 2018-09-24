@@ -1,6 +1,5 @@
 use config::Config;
 use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR};
-use dl;
 use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
 use errors::*;
 use experiments::Experiment;
@@ -283,7 +282,7 @@ fn install_rustup() -> Result<()> {
         ::HOST_TARGET,
         EXE_SUFFIX
     );
-    let mut response = dl::download(rustup_url).chain_err(|| "unable to download rustup")?;
+    let mut response = ::utils::http::get(rustup_url).chain_err(|| "unable to download rustup")?;
 
     let tempdir = TempDir::new("crater")?;
     let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));

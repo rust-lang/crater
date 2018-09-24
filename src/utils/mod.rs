@@ -5,6 +5,7 @@ use std::time::Duration;
 
 pub(crate) mod fs;
 pub(crate) mod hex;
+pub(crate) mod http;
 pub mod size;
 pub(crate) mod string;
 

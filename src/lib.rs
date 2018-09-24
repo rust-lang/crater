@@ -83,7 +83,6 @@ pub mod config;
 pub mod crates;
 pub mod db;
 pub mod dirs;
-mod dl;
 pub mod docker;
 pub mod errors;
 mod ex_prepare;

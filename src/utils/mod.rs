@@ -11,17 +11,11 @@ mod macros;
 pub mod size;
 pub(crate) mod string;
 
-pub fn try_hard<F, R>(f: F) -> Result<R>
-where
-    F: Fn() -> Result<R>,
-{
+pub(crate) fn try_hard<F: Fn() -> Result<R>, R>(f: F) -> Result<R> {
     try_hard_limit(1000, f)
 }
 
-pub fn try_hard_limit<F, R>(ms: usize, f: F) -> Result<R>
-where
-    F: Fn() -> Result<R>,
-{
+pub(crate) fn try_hard_limit<F: Fn() -> Result<R>, R>(ms: usize, f: F) -> Result<R> {
     let mut r;
     for i in 1..3 {
         r = f();

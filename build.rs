@@ -1,23 +1,37 @@
-extern crate git2;
+use std::process::Command;
 
-fn main() {
-    let mut sha = "None".to_string();
-    if let Ok(repo) = git2::Repository::open(".") {
-        if let Ok(rev) = repo.revparse_single("HEAD") {
-            if let Ok(sha_buf) = rev.short_id() {
-                if let Some(sha_str) = sha_buf.as_str() {
-                    sha = format!("Some(\"{}\")", sha_str.to_string());
-                }
-            }
+fn cmd(args: &[&str]) -> Option<String> {
+    if let Ok(out) = Command::new(args[0]).args(&args[1..]).output() {
+        if out.status.success() {
+            return Some(String::from_utf8_lossy(&out.stdout).trim().to_string());
         }
     }
 
+    None
+}
+
+fn get_git_sha() -> Option<String> {
+    if let Some(sha) = cmd(&["git", "rev-parse", "--short", "HEAD"]) {
+        let symbolic = cmd(&["git", "rev-parse", "--symbolic", "HEAD"]).unwrap();
+        let symbolic_full = cmd(&["git", "rev-parse", "--symbolic-full-name", "HEAD"]).unwrap();
+
+        println!("cargo:rerun-if-changed=.git/{}", symbolic);
+        if symbolic != symbolic_full {
+            println!("cargo:rerun-if-changed=.git/{}", symbolic_full);
+        }
+
+        Some(sha)
+    } else {
+        println!("cargo:warning=failed to get crater sha");
+        None
+    }
+}
+
+fn main() {
+    let sha = format!("{:?}", get_git_sha());
     let target = std::env::var("TARGET").unwrap();
 
     let output = std::env::var("OUT_DIR").unwrap();
     ::std::fs::write(format!("{}/sha", output), sha.as_bytes()).unwrap();
     ::std::fs::write(format!("{}/target", output), target.as_bytes()).unwrap();
-
-    // Avoid rebuilding everything when any file changes
-    println!("cargo:rerun-if-changed=build.rs");
 }

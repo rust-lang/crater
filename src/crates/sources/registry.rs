@@ -1,8 +1,15 @@
-use crates::{lists::List, Crate, RegistryCrate};
+use crates::{lists::List, Crate};
 use crates_index::Index;
 use dirs::LOCAL_DIR;
 use errors::*;
+use flate2::read::GzDecoder;
 use std::collections::HashMap;
+use std::fs;
+use std::io::Read;
+use std::path::Path;
+use tar::Archive;
+
+static CRATES_ROOT: &str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
 
 pub(crate) struct RegistryList;
 
@@ -51,4 +58,66 @@ impl List for RegistryList {
 
         Ok(list)
     }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
+pub struct RegistryCrate {
+    pub name: String,
+    pub version: String,
+}
+
+impl RegistryCrate {
+    pub(in crates) fn prepare(&self, dest: &Path) -> Result<()> {
+        dl_registry(&self.name, &self.version, &dest)
+            .chain_err(|| format!("unable to download {} version {}", self.name, self.version))?;
+        Ok(())
+    }
+}
+
+fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
+    if dir.exists() {
+        info!(
+            "crate {}-{} exists at {}. skipping",
+            name,
+            vers,
+            dir.display()
+        );
+        return Ok(());
+    }
+    info!("downloading crate {}-{} to {}", name, vers, dir.display());
+    let url = format!("{0}/{1}/{1}-{2}.crate", CRATES_ROOT, name, vers);
+    let bin = ::utils::http::get(&url).chain_err(|| format!("unable to download {}", url))?;
+
+    fs::create_dir_all(&dir)?;
+
+    let mut tar = Archive::new(GzDecoder::new(bin));
+    let r = unpack_without_first_dir(&mut tar, dir).chain_err(|| "unable to unpack crate tarball");
+
+    if r.is_err() {
+        let _ = ::utils::fs::remove_dir_all(dir);
+    }
+
+    r
+}
+
+fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> Result<()> {
+    let entries = archive.entries()?;
+    for entry in entries {
+        let mut entry = entry?;
+        let relpath = {
+            let path = entry.path();
+            let path = path?;
+            path.into_owned()
+        };
+        let mut components = relpath.components();
+        // Throw away the first path component
+        components.next();
+        let full_path = path.join(&components.as_path());
+        if let Some(parent) = full_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        entry.unpack(&full_path)?;
+    }
+
+    Ok(())
 }

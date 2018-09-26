@@ -98,5 +98,6 @@ mod tasks;
 mod toml_frobber;
 pub mod toolchain;
 
-pub static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));
-pub static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));
+pub(crate) static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));
+pub(crate) static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));
+pub(crate) static CRATER_REPO_URL: &str = "https://github.com/rust-lang-nursery/crater";

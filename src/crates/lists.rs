@@ -7,7 +7,7 @@ use experiments::CrateSelect;
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 
-pub(crate) use crates::sources::{github::GitHubList, registry::RegistryList};
+pub(crate) use crates::sources::{github::GitHubList, local::LocalList, registry::RegistryList};
 
 const SMALL_RANDOM_COUNT: usize = 20;
 
@@ -86,6 +86,7 @@ pub(crate) fn get_crates(
                 let add = match krate {
                     Crate::Registry(RegistryCrate { ref name, .. }) => demo_registry.remove(name),
                     Crate::GitHub(ref repo) => demo_github.remove(&repo.slug()),
+                    Crate::Local(_) => false, // Never include local crates in the demo set
                 };
 
                 if add {
@@ -113,6 +114,9 @@ pub(crate) fn get_crates(
             crates.append(&mut RegistryList::get(db)?);
             crates.truncate(100);
         }
+        CrateSelect::Local => {
+            crates.append(&mut LocalList::get(db)?);
+        }
     }
 
     crates.sort();
@@ -121,5 +125,9 @@ pub(crate) fn get_crates(
 
 #[cfg(test)]
 pub(crate) fn setup_test_lists(db: &Database, config: &Config) -> Result<()> {
-    ::actions::UpdateLists::default().apply(db, config)
+    ::actions::UpdateLists {
+        github: false,
+        registry: false,
+        local: true,
+    }.apply(db, config)
 }

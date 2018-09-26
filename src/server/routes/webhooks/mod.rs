@@ -63,9 +63,11 @@ fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Resu
                     "**Error:** you're not allowed to interact with this bot.",
                 ).note(
                     "key",
-                    "If you are a member of the Rust team and need access, [add yourself to \
-                     the whitelist](\
-                     https://github.com/rust-lang-nursery/crater/blob/master/config.toml).",
+                    format!(
+                        "If you are a member of the Rust team and need access, [add yourself to \
+                         the whitelist]({}/blob/master/config.toml).",
+                        ::CRATER_REPO_URL,
+                    ),
                 ).send(&issue.url, data)?;
             return Ok(());
         }

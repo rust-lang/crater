@@ -1,11 +1,12 @@
 use config::Config;
-use crates::lists::{GitHubList, List, RegistryList};
+use crates::lists::{GitHubList, List, LocalList, RegistryList};
 use db::Database;
 use errors::*;
 
 pub struct UpdateLists {
     pub github: bool,
     pub registry: bool,
+    pub local: bool,
 }
 
 impl Default for UpdateLists {
@@ -13,6 +14,7 @@ impl Default for UpdateLists {
         UpdateLists {
             github: true,
             registry: true,
+            local: true,
         }
     }
 }
@@ -27,6 +29,11 @@ impl UpdateLists {
         if self.registry {
             info!("updating crates.io crates list");
             RegistryList.update(db)?;
+        }
+
+        if self.local {
+            info!("updating local crates list");
+            LocalList::default().update(db)?;
         }
 
         Ok(())

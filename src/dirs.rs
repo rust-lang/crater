@@ -29,4 +29,6 @@ lazy_static! {
 
     pub static ref EXPERIMENT_DIR: PathBuf = WORK_DIR.join("ex");
     pub static ref LOG_DIR: PathBuf = WORK_DIR.join("logs");
+
+    pub static ref LOCAL_CRATES_DIR: PathBuf = "local-crates".into();
 }

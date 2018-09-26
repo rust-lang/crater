@@ -101,7 +101,8 @@ fn lockfile_dir(ex_name: &str) -> PathBuf {
 fn lockfile(ex_name: &str, krate: &Crate) -> Result<PathBuf> {
     let name = match *krate {
         Crate::Registry(ref details) => format!("reg-{}-{}.lock", details.name, details.version),
-        Crate::GitHub(ref repo) => format!("reg-{}-{}.lock", repo.org, repo.name),
+        Crate::GitHub(ref repo) => format!("gh-{}-{}.lock", repo.org, repo.name),
+        Crate::Local(ref name) => format!("local-{}.lock", name),
     };
     Ok(lockfile_dir(ex_name).join(name))
 }

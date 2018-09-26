@@ -24,7 +24,7 @@ impl CreateExperiment {
             name: name.to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
             mode: Mode::BuildAndTest,
-            crates: CrateSelect::Demo,
+            crates: CrateSelect::Local,
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
@@ -101,7 +101,7 @@ mod tests {
             name: "foo".to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
             mode: Mode::BuildAndTest,
-            crates: CrateSelect::Demo,
+            crates: CrateSelect::Local,
             cap_lints: CapLints::Forbid,
             priority: 5,
             github_issue: Some(GitHubIssue {
@@ -121,7 +121,7 @@ mod tests {
         assert_eq!(ex.mode, Mode::BuildAndTest);
         assert_eq!(
             ex.crates,
-            ::crates::lists::get_crates(CrateSelect::Demo, &db, &config).unwrap()
+            ::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
         );
         assert_eq!(ex.cap_lints, CapLints::Forbid);
         assert_eq!(ex.github_issue.as_ref().unwrap().api_url.as_str(), api_url);
@@ -147,7 +147,7 @@ mod tests {
             name: "foo".to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), MAIN_TOOLCHAIN.clone()],
             mode: Mode::BuildAndTest,
-            crates: CrateSelect::Demo,
+            crates: CrateSelect::Local,
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
@@ -172,7 +172,7 @@ mod tests {
             name: "foo".to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
             mode: Mode::BuildAndTest,
-            crates: CrateSelect::Demo,
+            crates: CrateSelect::Local,
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
@@ -184,7 +184,7 @@ mod tests {
             name: "foo".to_string(),
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
             mode: Mode::BuildAndTest,
-            crates: CrateSelect::Demo,
+            crates: CrateSelect::Local,
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,

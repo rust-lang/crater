@@ -1,7 +1,7 @@
 pub(crate) mod lists;
 mod sources;
 
-use dirs::{CRATES_DIR, GH_MIRRORS_DIR};
+use dirs::{CRATES_DIR, GH_MIRRORS_DIR, LOCAL_CRATES_DIR};
 use errors::*;
 use flate2::read::GzDecoder;
 use std::fmt;
@@ -63,6 +63,7 @@ pub struct RegistryCrate {
 pub enum Crate {
     Registry(RegistryCrate),
     GitHub(GitHubRepo),
+    Local(String),
 }
 
 impl Crate {
@@ -90,6 +91,7 @@ impl Crate {
             Crate::GitHub(ref repo) => CRATES_DIR
                 .join("gh")
                 .join(format!("{}.{}", repo.org, repo.name)),
+            Crate::Local(ref name) => CRATES_DIR.join("local").join(name),
         }
     }
 
@@ -97,6 +99,7 @@ impl Crate {
         match *self {
             Crate::Registry(ref details) => format!("reg/{}/{}", details.name, details.version),
             Crate::GitHub(ref repo) => format!("gh/{}/{}", repo.org, repo.name),
+            Crate::Local(ref name) => format!("local/{}", name),
         }
     }
 }
@@ -109,6 +112,7 @@ impl fmt::Display for Crate {
             match *self {
                 Crate::Registry(ref krate) => format!("{}-{}", krate.name, krate.version),
                 Crate::GitHub(ref repo) => repo.slug(),
+                Crate::Local(ref name) => format!("{} (local)", name),
             }
         )
     }
@@ -148,6 +152,9 @@ pub fn prepare_crate(krate: &Crate) -> Result<()> {
                 dir.display()
             );
             ::utils::fs::copy_dir(&repo.mirror_dir(), &dir)?;
+        }
+        Crate::Local(ref name) => {
+            ::utils::fs::copy_dir(&LOCAL_CRATES_DIR.join(name), &dir)?;
         }
     }
 

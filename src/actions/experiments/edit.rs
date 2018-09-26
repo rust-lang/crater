@@ -179,7 +179,7 @@ mod tests {
                 Some("nightly-1970-01-02".parse().unwrap()),
             ],
             mode: Some(Mode::CheckOnly),
-            crates: Some(CrateSelect::Demo),
+            crates: Some(CrateSelect::Local),
             cap_lints: Some(CapLints::Warn),
             priority: Some(10),
         }.apply(&db, &config)
@@ -196,7 +196,7 @@ mod tests {
 
         assert_eq!(
             ex.crates,
-            ::crates::lists::get_crates(CrateSelect::Demo, &db, &config).unwrap()
+            ::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
         );
     }
 

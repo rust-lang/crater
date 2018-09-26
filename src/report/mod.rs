@@ -129,6 +129,10 @@ fn crate_to_path_fragment(toolchain: &Toolchain, krate: &Crate, encode: bool) ->
                 path.push(name);
             }
         }
+        Crate::Local(ref name) => {
+            path.push("local");
+            path.push(name);
+        }
     }
 
     path
@@ -260,6 +264,7 @@ fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String
                 format!("{}.{}", repo.org, repo.name)
             }
         }
+        Crate::Local(ref name) => format!("{} (local)", name),
     })
 }
 
@@ -275,6 +280,9 @@ fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String>
             } else {
                 format!("https://github.com/{}/{}", repo.org, repo.name)
             }
+        }
+        Crate::Local(ref name) => {
+            format!("{}/tree/master/local-crates/{}", ::CRATER_REPO_URL, name)
         }
     })
 }

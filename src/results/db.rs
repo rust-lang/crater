@@ -220,6 +220,8 @@ mod tests {
         let results = DatabaseDB::new(&db);
         let config = Config::default();
 
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+
         // Create a dummy experiment to attach the results to
         CreateExperiment::dummy("dummy")
             .apply(&db, &config)
@@ -278,6 +280,8 @@ mod tests {
         let db = Database::temp().unwrap();
         let results = DatabaseDB::new(&db);
         let config = Config::default();
+
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
         CreateExperiment::dummy("dummy")
@@ -376,6 +380,8 @@ mod tests {
         let db = Database::temp().unwrap();
         let results = DatabaseDB::new(&db);
         let config = Config::default();
+
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
         CreateExperiment::dummy("dummy")

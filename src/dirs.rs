@@ -27,9 +27,6 @@ lazy_static! {
     // Where crates.io sources are stores
     pub static ref CRATES_DIR: PathBuf = WORK_DIR.join("shared/crates");
 
-    // Lists of crates
-    pub static ref LIST_DIR: PathBuf = WORK_DIR.join("shared/lists");
-
     pub static ref EXPERIMENT_DIR: PathBuf = WORK_DIR.join("ex");
     pub static ref LOG_DIR: PathBuf = WORK_DIR.join("logs");
 }

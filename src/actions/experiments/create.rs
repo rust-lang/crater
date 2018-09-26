@@ -42,7 +42,7 @@ impl CreateExperiment {
             return Err(ErrorKind::DuplicateToolchains.into());
         }
 
-        let crates = ::lists::get_crates(self.crates, config)?;
+        let crates = ::crates::lists::get_crates(self.crates, db, config)?;
 
         db.transaction(|transaction| {
             transaction.execute(
@@ -92,6 +92,8 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+
         let api_url = "https://api.github.com/repos/example/example/issues/10";
         let html_url = "https://github.com/example/example/issue/10";
 
@@ -117,7 +119,10 @@ mod tests {
             [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()]
         );
         assert_eq!(ex.mode, Mode::BuildAndTest);
-        assert_eq!(ex.crates, ::lists::demo_list(&config).unwrap());
+        assert_eq!(
+            ex.crates,
+            ::crates::lists::get_crates(CrateSelect::Demo, &db, &config).unwrap()
+        );
         assert_eq!(ex.cap_lints, CapLints::Forbid);
         assert_eq!(ex.github_issue.as_ref().unwrap().api_url.as_str(), api_url);
         assert_eq!(
@@ -134,6 +139,8 @@ mod tests {
     fn test_duplicate_toolchains() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Ensure an experiment with duplicate toolchains can't be created
         let err = CreateExperiment {
@@ -157,6 +164,8 @@ mod tests {
     fn test_duplicate_name() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // The first experiment can be created successfully
         CreateExperiment {

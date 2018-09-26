@@ -429,6 +429,9 @@ mod tests {
     #[test]
     fn test_assigning_experiment() {
         let db = Database::temp().unwrap();
+        let config = Config::load().unwrap();
+
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         let mut tokens = Tokens::default();
         tokens.agents.insert("token1".into(), "agent-1".into());

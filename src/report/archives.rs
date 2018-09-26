@@ -110,6 +110,8 @@ mod tests {
         let db = Database::temp().unwrap();
         let writer = DummyWriter::default();
 
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+
         // Create a dummy experiment
         ::actions::CreateExperiment::dummy("dummy")
             .apply(&db, &config)

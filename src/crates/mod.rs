@@ -1,3 +1,6 @@
+pub(crate) mod lists;
+mod sources;
+
 use dirs::{CRATES_DIR, GH_MIRRORS_DIR};
 use errors::*;
 use flate2::read::GzDecoder;

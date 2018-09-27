@@ -1549,7 +1549,6 @@ liquidfun = { skip = true } #automatic
 liste = { skip = true } #automatic
 lit = { skip-tests = true } #automatic
 live2d = { broken = true } # dependency yanked
-livesplit-core = { skip = true } #automatic
 llang = { skip = true } #automatic
 lldb = { skip = true } #automatic
 lldb-sys = { skip = true } #automatic

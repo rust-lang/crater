@@ -17,7 +17,6 @@ use crater::db::Database;
 use crater::docker;
 use crater::errors::*;
 use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
-use crater::lists;
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
 use crater::run_graph;
@@ -277,12 +276,20 @@ pub enum Crater {
 impl Crater {
     pub fn run(&self) -> Result<()> {
         match *self {
-            Crater::CreateLists => lists::create_all_lists(true)?,
+            Crater::CreateLists => {
+                let config = Config::load()?;
+                let db = Database::open()?;
+
+                actions::UpdateLists::default().apply(&db, &config)?;
+            }
             Crater::PrepareLocal { ref env } => {
+                let config = Config::load()?;
+                let db = Database::open()?;
+
                 let docker_env = &env.0;
                 MAIN_TOOLCHAIN.prepare()?;
                 docker::build_container(docker_env)?;
-                lists::create_all_lists(false)?;
+                actions::UpdateLists::default().apply(&db, &config)?;
             }
             Crater::DefineEx {
                 ref ex,

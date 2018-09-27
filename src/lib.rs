@@ -8,6 +8,7 @@ extern crate chrono;
 extern crate chrono_humanize;
 extern crate crates_index;
 extern crate crossbeam_utils;
+extern crate csv;
 #[macro_use]
 extern crate error_chain;
 extern crate flate2;
@@ -33,7 +34,6 @@ extern crate rusoto_s3;
 extern crate rusqlite;
 #[macro_use]
 extern crate scopeguard;
-extern crate semver;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -88,10 +88,7 @@ pub mod errors;
 mod ex_prepare;
 pub mod ex_run;
 pub mod experiments;
-mod gh;
 mod git;
-pub mod lists;
-mod registry;
 pub mod report;
 pub mod results;
 mod run;
@@ -101,5 +98,6 @@ mod tasks;
 mod toml_frobber;
 pub mod toolchain;
 
-pub static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));
-pub static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));
+pub(crate) static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));
+pub(crate) static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));
+pub(crate) static CRATER_REPO_URL: &str = "https://github.com/rust-lang-nursery/crater";

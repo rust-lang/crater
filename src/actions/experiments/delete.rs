@@ -51,6 +51,8 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+
         // Create a dummy experiment and make sure it exists
         CreateExperiment::dummy("dummy")
             .apply(&db, &config)

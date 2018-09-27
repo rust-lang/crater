@@ -3,7 +3,6 @@ use crates::Crate;
 use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
 use experiments::Experiment;
-use git;
 use results::WriteResults;
 use run::RunCommand;
 use std::fs;
@@ -17,17 +16,6 @@ fn froml_dir(ex_name: &str) -> PathBuf {
 
 fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
     froml_dir(ex_name).join(format!("{}-{}.Cargo.toml", name, vers))
-}
-
-impl Experiment {
-    pub fn fetch_repo_crates(&self) -> Result<()> {
-        for repo in self.crates.iter().filter_map(|krate| krate.github()) {
-            if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
-                ::utils::report_error(&e);
-            }
-        }
-        Ok(())
-    }
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
@@ -101,7 +89,8 @@ fn lockfile_dir(ex_name: &str) -> PathBuf {
 fn lockfile(ex_name: &str, krate: &Crate) -> Result<PathBuf> {
     let name = match *krate {
         Crate::Registry(ref details) => format!("reg-{}-{}.lock", details.name, details.version),
-        Crate::GitHub(ref repo) => format!("reg-{}-{}.lock", repo.org, repo.name),
+        Crate::GitHub(ref repo) => format!("gh-{}-{}.lock", repo.org, repo.name),
+        Crate::Local(ref name) => format!("local-{}.lock", name),
     };
     Ok(lockfile_dir(ex_name).join(name))
 }

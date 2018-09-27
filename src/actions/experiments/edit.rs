@@ -62,7 +62,7 @@ impl EditExperiment {
 
             // Try to update the list of crates
             if let Some(crates) = self.crates {
-                let crates_vec = ::lists::get_crates(crates, config)?;
+                let crates_vec = ::crates::lists::get_crates(crates, db, config)?;
 
                 // Recreate the list of crates without checking if it was the same
                 // This is done to allow reloading the list of crates in an existing experiment
@@ -142,6 +142,8 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+
         // Create a dummy experiment to edit
         CreateExperiment::dummy("foo").apply(&db, &config).unwrap();
 
@@ -154,6 +156,8 @@ mod tests {
     fn test_edit_with_every_change() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create an experiment with the data we're going to change
         CreateExperiment {
@@ -175,7 +179,7 @@ mod tests {
                 Some("nightly-1970-01-02".parse().unwrap()),
             ],
             mode: Some(Mode::CheckOnly),
-            crates: Some(CrateSelect::Demo),
+            crates: Some(CrateSelect::Local),
             cap_lints: Some(CapLints::Warn),
             priority: Some(10),
         }.apply(&db, &config)
@@ -190,14 +194,18 @@ mod tests {
         assert_eq!(ex.cap_lints, CapLints::Warn);
         assert_eq!(ex.priority, 10);
 
-        let demo = ::lists::get_crates(CrateSelect::Demo, &config).unwrap();
-        assert_eq!(ex.crates, demo);
+        assert_eq!(
+            ex.crates,
+            ::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
+        );
     }
 
     #[test]
     fn test_duplicate_toolchains() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // First create an experiment
         let mut dummy = CreateExperiment::dummy("foo");
@@ -220,6 +228,8 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+
         let err = EditExperiment::dummy("foo")
             .apply(&db, &config)
             .unwrap_err();
@@ -233,6 +243,8 @@ mod tests {
     fn test_editing_running_experiment() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create an experiment and set it to running
         CreateExperiment::dummy("foo").apply(&db, &config).unwrap();

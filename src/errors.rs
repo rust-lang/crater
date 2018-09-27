@@ -16,6 +16,7 @@ error_chain! {
         Tera(::tera::Error);
         Utf8(::std::string::FromUtf8Error);
         CratesIndex(::crates_index::Error);
+        Csv(::csv::Error);
     }
 
     errors {

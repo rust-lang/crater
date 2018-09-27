@@ -223,6 +223,23 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "create_crates_table",
+        MigrationKind::SQL(
+            "
+            CREATE TABLE crates (
+                crate TEXT NOT NULL,
+                list TEXT NOT NULL,
+                loaded_at DATETIME NOT NULL,
+
+                PRIMARY KEY (crate, list) ON CONFLICT REPLACE
+            );
+
+            CREATE INDEX crates__list ON crates (list);
+            ",
+        ),
+    ));
+
     migrations
 }
 

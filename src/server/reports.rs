@@ -85,13 +85,17 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
         if let Some(ref github_issue) = ex.github_issue {
             Message::new()
                 .line("tada", format!("Experiment **`{}`** is completed!", name))
-                .line("newspaper", format!("[Open the full report]({}).", report_url))
-                .note(
+                .line(
+                    "newspaper",
+                    format!("[Open the full report]({}).", report_url),
+                ).note(
                     "warning",
-                    "If you notice any spurious failure [please add them to the \
-                    blacklist](https://github.com/rust-lang-nursery/crater/blob/master/config.toml)!",
-                )
-                .set_label(Label::ExperimentCompleted)
+                    format!(
+                        "If you notice any spurious failure [please add them to the \
+                         blacklist]({}/blob/master/config.toml)!",
+                        ::CRATER_REPO_URL,
+                    ),
+                ).set_label(Label::ExperimentCompleted)
                 .send(&github_issue.api_url, data)?;
         }
     }

@@ -220,6 +220,8 @@ mod tests {
         tokens.agents.insert("token".into(), "agent".into());
         let agents = Agents::new(db.clone(), &tokens).unwrap();
 
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+
         // When no heartbeat is recorded, the agent is unreachable
         let agent = agents.get("agent").unwrap().unwrap();
         assert_eq!(agent.status(), AgentStatus::Unreachable);

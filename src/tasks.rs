@@ -1,10 +1,9 @@
 use config::Config;
-use crates::{self, Crate};
+use crates::Crate;
 use errors::*;
 use ex_prepare;
 use ex_run;
 use experiments::Experiment;
-use git;
 use results::{TestResult, WriteResults};
 use std::fmt;
 use toolchain::{Toolchain, MAIN_TOOLCHAIN};
@@ -120,16 +119,13 @@ impl Task {
         ex: &Experiment,
         db: &DB,
     ) -> Result<()> {
-        // Fetch repository data if it's a git repo
-        if let Some(repo) = self.krate.github() {
-            if let Err(e) = git::shallow_clone_or_pull(&repo.url(), &repo.mirror_dir()) {
-                utils::report_error(&e);
-            }
+        self.krate.prepare()?;
 
+        // Fetch repository data if it's a git repo
+        if let Crate::GitHub(_) = self.krate {
             ex_prepare::capture_shas(ex, &[self.krate.clone()], db)?;
         }
 
-        crates::prepare_crate(&self.krate)?;
         ex_prepare::frob_toml(ex, &self.krate)?;
         ex_prepare::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
         ex_prepare::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;

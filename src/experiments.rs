@@ -29,6 +29,7 @@ string_enum!(pub enum CrateSelect {
     Demo => "demo",
     SmallRandom => "small-random",
     Top100 => "top-100",
+    Local => "local",
 });
 
 string_enum!(pub enum CapLints {
@@ -429,6 +430,9 @@ mod tests {
     #[test]
     fn test_assigning_experiment() {
         let db = Database::temp().unwrap();
+        let config = Config::load().unwrap();
+
+        ::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         let mut tokens = Tokens::default();
         tokens.agents.insert("token1".into(), "agent-1".into());

@@ -134,7 +134,7 @@ pub fn capture_lockfile(
 ) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    if !config.should_update_lockfile(krate) && krate.dir().join("Cargo.lock").exists() {
+    if !config.should_update_lockfile(krate) && krate.is_repo() && krate.dir().join("Cargo.lock").exists() {
         info!("crate {} has a lockfile. skipping", krate);
         return Ok(());
     }
@@ -193,7 +193,7 @@ pub fn with_captured_lockfile(
     let dst_lockfile = &path.join("Cargo.lock");
 
     // Only use the local lockfile if it wasn't overridden
-    if !config.should_update_lockfile(krate) && dst_lockfile.exists() {
+    if !config.should_update_lockfile(krate) && krate.is_repo() && dst_lockfile.exists() {
         return Ok(());
     }
 

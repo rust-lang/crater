@@ -32,6 +32,7 @@ impl<'a> TomlFrobber<'a> {
         info!("started frobbing {}", self.krate);
 
         self.remove_workspaces();
+        self.remove_unwanted_cargo_features();
         self.remove_dependencies();
 
         info!("finished frobbing {}", self.krate);
@@ -48,6 +49,43 @@ impl<'a> TomlFrobber<'a> {
         if let Some(&mut Value::Table(ref mut package)) = self.table.get_mut("package") {
             if package.remove("workspace").is_some() {
                 info!("removed parent workspace from {}", krate);
+            }
+        }
+    }
+
+    fn remove_unwanted_cargo_features(&mut self) {
+        let krate = self.krate.to_string();
+
+        // Remove the unwanted features from the main list
+        let mut has_publish_lockfile = false;
+        let mut has_default_run = false;
+        if let Some(&mut Value::Array(ref mut vec)) = self.table.get_mut("cargo-features") {
+            vec.retain(|key| {
+                if let Value::String(key) = key {
+                    match key.as_str() {
+                        "publish-lockfile" => has_publish_lockfile = true,
+                        "default-run" => has_default_run = true,
+                        _ => return true,
+                    }
+                }
+
+                false
+            });
+        }
+
+        // Strip the 'publish-lockfile' key from [package]
+        if has_publish_lockfile {
+            info!("disabled cargo feature 'publish-lockfile' from {}", krate);
+            if let Some(&mut Value::Table(ref mut package)) = self.table.get_mut("package") {
+                package.remove("publish-lockfile");
+            }
+        }
+
+        // Strip the 'default-run' key from [package]
+        if has_default_run {
+            info!("disabled cargo feature 'default-run' from {}", krate);
+            if let Some(&mut Value::Table(ref mut package)) = self.table.get_mut("package") {
+                package.remove("default-run");
             }
         }
     }
@@ -107,6 +145,8 @@ mod tests {
     #[test]
     fn test_frob_table_noop() {
         let toml = toml! {
+            cargo-features = ["foobar"]
+
             [package]
             name = "foo"
             version = "1.0"
@@ -133,10 +173,14 @@ mod tests {
     #[test]
     fn test_frob_table_changes() {
         let toml = toml! {
+            cargo-features = ["foobar", "publish-lockfile", "default-run"]
+
             [package]
             name = "foo"
             version = "1.0"
             workspace = ".."
+            publish-lockfile = true
+            default-run = "foo"
 
             [dependencies]
             bar = { version = "1.0", path = "../bar" }
@@ -152,6 +196,8 @@ mod tests {
         };
 
         let result = toml! {
+            cargo-features = ["foobar"]
+
             [package]
             name = "foo"
             version = "1.0"

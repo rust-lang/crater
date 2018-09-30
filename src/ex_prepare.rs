@@ -7,7 +7,7 @@ use results::WriteResults;
 use run::RunCommand;
 use std::fs;
 use std::path::{Path, PathBuf};
-use toml_frobber;
+use toml_frobber::TomlFrobber;
 use toolchain::{CargoState, Toolchain};
 
 fn froml_dir(ex_name: &str) -> PathBuf {
@@ -22,8 +22,12 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 pub fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
     if let Crate::Registry(ref details) = *krate {
         fs::create_dir_all(&froml_dir(&ex.name))?;
+        let source = krate.dir();
         let out = froml_path(&ex.name, &details.name, &details.version);
-        toml_frobber::frob_toml(&krate.dir(), &details.name, &details.version, &out)?;
+
+        let mut frobber = TomlFrobber::new(krate, &source)?;
+        frobber.frob();
+        frobber.save(&out)?;
     }
 
     Ok(())
@@ -134,7 +138,10 @@ pub fn capture_lockfile(
 ) -> Result<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
-    if !config.should_update_lockfile(krate) && krate.dir().join("Cargo.lock").exists() {
+    if !config.should_update_lockfile(krate)
+        && krate.is_repo()
+        && krate.dir().join("Cargo.lock").exists()
+    {
         info!("crate {} has a lockfile. skipping", krate);
         return Ok(());
     }
@@ -193,7 +200,7 @@ pub fn with_captured_lockfile(
     let dst_lockfile = &path.join("Cargo.lock");
 
     // Only use the local lockfile if it wasn't overridden
-    if !config.should_update_lockfile(krate) && dst_lockfile.exists() {
+    if !config.should_update_lockfile(krate) && krate.is_repo() && dst_lockfile.exists() {
         return Ok(());
     }
 

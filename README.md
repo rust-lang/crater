@@ -28,6 +28,9 @@ Crater executes malicious code that will destroy what you love.
 
 ## Documentation
 
+Want to contribute to Crater? Check out [the contribution
+guide](CONTRIBUTING.md).
+
 **User documentation:**
 
 * [Local/CLI usage](docs/cli-usage.md)

@@ -1,7 +1,6 @@
-use chrono::{TimeZone, Utc};
 use errors::*;
 use rusoto_core::Region;
-use rusoto_core::{AwsCredentials, CredentialsError, ProvideAwsCredentials};
+use rusoto_credential::StaticProvider;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -43,18 +42,9 @@ pub struct ReportsBucket {
     pub secret_key: String,
 }
 
-impl ProvideAwsCredentials for ReportsBucket {
-    fn credentials(&self) -> ::std::result::Result<AwsCredentials, CredentialsError> {
-        // Let's just hope this code is not used after year 5138
-        // - Pietro, 2018
-        let expiry = Utc.timestamp(100_000_000_000, 0);
-
-        Ok(AwsCredentials::new(
-            self.access_key.clone(),
-            self.secret_key.clone(),
-            None,
-            expiry,
-        ))
+impl ReportsBucket {
+    pub(crate) fn to_aws_credentials(&self) -> StaticProvider {
+        StaticProvider::new_minimal(self.access_key.clone(), self.secret_key.clone())
     }
 }
 

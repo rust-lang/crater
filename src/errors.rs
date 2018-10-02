@@ -8,9 +8,9 @@ error_chain! {
         Hyper(::hyper::Error);
         ParseInt(::std::num::ParseIntError);
         Parse(::std::string::ParseError);
-        RusotoTls(::rusoto_core::TlsError);
-        RusotoParseRegion(::rusoto_core::ParseRegionError);
         Rusqlite(::rusqlite::Error);
+        RusotoTls(::rusoto_core::request::TlsError);
+        RusotoParseRegion(::rusoto_core::region::ParseRegionError);
         R2D2(::r2d2::Error);
         Base64Decode(::base64::DecodeError);
         Tera(::tera::Error);

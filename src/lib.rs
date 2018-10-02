@@ -30,6 +30,7 @@ extern crate regex;
 extern crate reqwest;
 extern crate ring;
 extern crate rusoto_core;
+extern crate rusoto_credential;
 extern crate rusoto_s3;
 extern crate rusqlite;
 #[macro_use]

@@ -1,7 +1,7 @@
 use errors::*;
 use mime::Mime;
 use report::ReportWriter;
-use rusoto_core::request::default_tls_client;
+use rusoto_core::request::HttpClient;
 use rusoto_core::{DefaultCredentialsProvider, Region};
 use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3Client, S3};
 use std::borrow::Cow;
@@ -55,22 +55,23 @@ pub struct S3Writer {
 }
 
 pub fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
-    let make_client = |region| {
+    let make_client = |region| -> Result<S3Client> {
         let credentials = DefaultCredentialsProvider::new().unwrap();
-        S3Client::new(default_tls_client().unwrap(), credentials, region)
+        Ok(S3Client::new_with(HttpClient::new()?, credentials, region))
     };
-    let client = make_client(Region::UsEast1);
+    let client = make_client(Region::UsEast1)?;
     let response = client
-        .get_bucket_location(&GetBucketLocationRequest {
+        .get_bucket_location(GetBucketLocationRequest {
             bucket: bucket.into(),
-        }).chain_err(|| "S3 failure to get bucket location")?;
+        }).sync()
+        .chain_err(|| "S3 failure to get bucket location")?;
     let region = match response.location_constraint.as_ref() {
         Some(region) if region == "" => Region::UsEast1,
         Some(region) => region.parse().chain_err(|| "Unknown bucket region.")?,
         None => bail!{"Couldn't determine bucket region"},
     };
 
-    Ok(Box::new(make_client(region)))
+    Ok(Box::new(make_client(region)?))
 }
 
 const S3RETRIES: u64 = 4;
@@ -84,21 +85,21 @@ impl S3Writer {
 impl ReportWriter for S3Writer {
     fn write_bytes<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {
         let mut retry = 0;
-        let req = PutObjectRequest {
-            acl: Some("public-read".into()),
-            body: Some(s),
-            bucket: self.prefix.bucket.clone(),
-            key: self
-                .prefix
-                .prefix
-                .join(path.as_ref())
-                .to_string_lossy()
-                .into(),
-            content_type: Some(mime.to_string()),
-            ..Default::default()
-        };
         loop {
-            match self.client.put_object(&req) {
+            let req = PutObjectRequest {
+                acl: Some("public-read".into()),
+                body: Some(s.clone().into()),
+                bucket: self.prefix.bucket.clone(),
+                key: self
+                    .prefix
+                    .prefix
+                    .join(path.as_ref())
+                    .to_string_lossy()
+                    .into(),
+                content_type: Some(mime.to_string()),
+                ..Default::default()
+            };
+            match self.client.put_object(req).sync() {
                 Err(_) if retry < S3RETRIES => {
                     retry += 1;
                     thread::sleep(Duration::from_secs(2 * retry));

@@ -2,7 +2,7 @@ use errors::*;
 use experiments::{Experiment, Status};
 use report;
 use results::DatabaseDB;
-use rusoto_core::request::default_tls_client;
+use rusoto_core::request::HttpClient;
 use rusoto_s3::S3Client;
 use server::messages::{Label, Message};
 use server::Data;
@@ -15,9 +15,9 @@ use utils;
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
 
 fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Result<()> {
-    let client = S3Client::new(
-        default_tls_client()?,
-        data.tokens.reports_bucket.clone(),
+    let client = S3Client::new_with(
+        HttpClient::new()?,
+        data.tokens.reports_bucket.to_aws_credentials(),
         data.tokens.reports_bucket.region.to_region()?,
     );
     let dest = format!("s3://{}/{}", data.tokens.reports_bucket.bucket, &ex.name);

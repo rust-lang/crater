@@ -14,7 +14,7 @@ use server::Data;
 use std::sync::Arc;
 use warp::{self, filters::body::FullBody, Filter, Rejection};
 
-fn process_webhook(payload: &[u8], signature: &str, event: &str, data: &Data) -> Result<()> {
+fn process_webhook(payload: &[u8], host: &str, signature: &str, event: &str, data: &Data) -> Result<()> {
     if !verify_signature(&data.tokens.bot.webhooks_secret, payload, signature) {
         bail!("invalid signature for the webhook!");
     }
@@ -29,7 +29,7 @@ fn process_webhook(payload: &[u8], signature: &str, event: &str, data: &Data) ->
                 return Ok(());
             }
 
-            if let Err(e) = process_command(&p.sender.login, &p.comment.body, &p.issue, data) {
+            if let Err(e) = process_command(host, &p.sender.login, &p.comment.body, &p.issue, data) {
                 Message::new()
                     .line("rotating_light", format!("**Error:** {}", e))
                     .note(
@@ -44,7 +44,7 @@ fn process_webhook(payload: &[u8], signature: &str, event: &str, data: &Data) ->
     Ok(())
 }
 
-fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Result<()> {
+fn process_command(host: &str, sender: &str, body: &str, issue: &Issue, data: &Data) -> Result<()> {
     let start = format!("@{} ", data.bot_username);
     for line in body.lines() {
         if !line.starts_with(&start) {
@@ -84,15 +84,15 @@ fn process_command(sender: &str, body: &str, issue: &Issue, data: &Data) -> Resu
             }
 
             Command::Run(args) => {
-                commands::run(data, issue, args)?;
+                commands::run(host, data, issue, args)?;
             }
 
             Command::Edit(args) => {
-                commands::edit(data, issue, args)?;
+                commands::edit(host, data, issue, args)?;
             }
 
             Command::RetryReport(args) => {
-                commands::retry_report(data, issue, args)?;
+                commands::retry_report(host, data, issue, args)?;
             }
 
             Command::Abort(args) => {
@@ -157,8 +157,12 @@ fn receive_endpoint(data: Arc<Data>, headers: HeaderMap, body: FullBody) -> Resu
         .get("X-GitHub-Event")
         .and_then(|h| h.to_str().ok())
         .ok_or("missing header X-GitHub-Event\n")?;
+    let host = headers
+        .get("Host")
+        .and_then(|h| h.to_str().ok())
+        .ok_or("mission header Host\n")?;
 
-    process_webhook(body.bytes(), signature, event, &data)
+    process_webhook(body.bytes(), host, signature, event, &data)
 }
 
 pub fn routes(

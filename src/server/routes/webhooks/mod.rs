@@ -88,11 +88,11 @@ fn process_command(host: &str, sender: &str, body: &str, issue: &Issue, data: &D
             }
 
             Command::Edit(args) => {
-                commands::edit(host, data, issue, args)?;
+                commands::edit(data, issue, args)?;
             }
 
             Command::RetryReport(args) => {
-                commands::retry_report(host, data, issue, args)?;
+                commands::retry_report(data, issue, args)?;
             }
 
             Command::Abort(args) => {

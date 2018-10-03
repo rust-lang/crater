@@ -16,7 +16,7 @@ pub fn ping(data: &Data, issue: &Issue) -> Result<()> {
 
 pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
-
+    
     ::actions::CreateExperiment {
         name: name.clone(),
         toolchains: [
@@ -37,14 +37,14 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Result<()> 
     Message::new()
         .line(
             "ok_hand",
-            format!("Experiment **`[{}]({})`** created and queued.", name, host),
+            format!("Experiment [**`{}`**](http://{}/ex/{0}) created and queued.", name, host),
         ).set_label(Label::ExperimentQueued)
         .send(&issue.url, data)?;
 
     Ok(())
 }
 
-pub fn edit(host: &str, data: &Data, issue: &Issue, args: EditArgs) -> Result<()> {
+pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
     let changed = ::actions::EditExperiment {
@@ -60,7 +60,7 @@ pub fn edit(host: &str, data: &Data, issue: &Issue, args: EditArgs) -> Result<()
         Message::new()
             .line(
                 "memo",
-                format!("Configuration of the **`[{}]({})`** experiment changed.", name, host),
+                format!("Configuration of the **`{}`** experiment changed.", name),
             ).send(&issue.url, data)?;
     } else {
         Message::new()
@@ -71,14 +71,14 @@ pub fn edit(host: &str, data: &Data, issue: &Issue, args: EditArgs) -> Result<()
     Ok(())
 }
 
-pub fn retry_report(host: &str, data: &Data, issue: &Issue, args: RetryReportArgs) -> Result<()> {
+pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
     if let Some(mut experiment) = Experiment::get(&data.db, &name)? {
         if experiment.status != Status::ReportFailed {
             bail!(
-                "generation of the report of the **`[{}]({})`** experiment didn't fail!",
-                name, host
+                "generation of the report of the **`{}`** experiment didn't fail!",
+                name
             );
         }
 
@@ -88,7 +88,7 @@ pub fn retry_report(host: &str, data: &Data, issue: &Issue, args: RetryReportArg
         Message::new()
             .line(
                 "hammer_and_wrench",
-                format!("Generation of the report for **`[{}]({})`** queued again.", name, host),
+                format!("Generation of the report for **`{}`** queued again.", name),
             ).set_label(Label::ExperimentQueued)
             .send(&issue.url, data)?;
 

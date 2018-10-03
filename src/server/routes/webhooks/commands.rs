@@ -38,8 +38,13 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Result<()> 
         .line(
             "ok_hand",
             format!(
-                "Experiment [**`{}`**](https://{}/ex/{0}) created and queued.",
-                name, host
+                "Experiment **`{}`** created and queued.", name
+            ),
+        )
+        .line(
+            "mag",
+            format!(
+                "You can check out [the queue](https://{}) and [this experiment's details](https://{0}/ex/{1}).", host, name
             ),
         ).set_label(Label::ExperimentQueued)
         .send(&issue.url, data)?;

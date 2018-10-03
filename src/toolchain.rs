@@ -3,6 +3,7 @@ use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR};
 use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
 use errors::*;
 use experiments::Experiment;
+use native;
 use run::RunCommand;
 use std::env::consts::EXE_SUFFIX;
 use std::fmt;
@@ -136,7 +137,7 @@ impl Toolchain {
             .mount(Path::new(&*CARGO_HOME).into(), "/cargo-home", perm)
             .mount(Path::new(&*RUSTUP_HOME).into(), "/rustup-home", MountPerms::ReadOnly)
             // Add environment variables
-            .env("USER_ID", user_id().to_string())
+            .env("USER_ID", native::current_user().to_string())
             .env("CMD", full_args.join(" "))
             .env("CARGO_INCREMENTAL", "0".to_string())
             .env("RUST_BACKTRACE", "full".to_string())
@@ -289,7 +290,7 @@ fn install_rustup() -> Result<()> {
     {
         let mut file = File::create(installer)?;
         io::copy(&mut response, &mut file)?;
-        make_executable(installer)?;
+        native::make_executable(installer)?;
     }
 
     utils::try_hard(|| {
@@ -298,29 +299,6 @@ fn install_rustup() -> Result<()> {
             .run()
             .chain_err(|| "unable to run rustup-init")
     })
-}
-
-pub fn make_executable(path: &Path) -> Result<()> {
-    #[cfg(windows)]
-    fn inner(_: &Path) -> Result<()> {
-        Ok(())
-    }
-    #[cfg(not(windows))]
-    fn inner(path: &Path) -> Result<()> {
-        use std::os::unix::fs::PermissionsExt;
-
-        let metadata = fs::metadata(path)?;
-
-        let mut perms = metadata.permissions();
-        let new_mode = (perms.mode() & !0o777) | 0o755;
-        perms.set_mode(new_mode);
-
-        fs::set_permissions(path, perms)?;
-
-        Ok(())
-    }
-
-    inner(path)
 }
 
 fn update_rustup() -> Result<()> {
@@ -382,16 +360,6 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
                 )
             })
     })
-}
-
-#[cfg(unix)]
-fn user_id() -> ::libc::uid_t {
-    unsafe { ::libc::geteuid() }
-}
-
-#[cfg(windows)]
-fn user_id() -> u32 {
-    unimplemented!();
 }
 
 #[cfg(test)]

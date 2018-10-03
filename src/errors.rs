@@ -72,5 +72,10 @@ error_chain! {
         UnexpectedAssigneePayload {
             description("unexpected assignee payload")
         }
+
+        KillProcessFailed(reason: String) {
+            description("killing a process failed")
+            display("killing a process failed: {}", reason)
+        }
     }
 }

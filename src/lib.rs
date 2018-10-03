@@ -18,10 +18,10 @@ extern crate http;
 extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
-#[cfg(not(windows))]
-extern crate libc;
 extern crate mime;
 extern crate minifier;
+#[cfg(unix)]
+extern crate nix;
 extern crate petgraph;
 extern crate r2d2;
 extern crate r2d2_sqlite;
@@ -90,6 +90,7 @@ mod ex_prepare;
 pub mod ex_run;
 pub mod experiments;
 mod git;
+mod native;
 pub mod report;
 pub mod results;
 mod run;

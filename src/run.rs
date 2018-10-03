@@ -4,6 +4,7 @@ use dirs::{CARGO_HOME, RUSTUP_HOME};
 use errors::*;
 use futures::{future, Future, Stream};
 use futures_cpupool::CpuPool;
+use native;
 use slog_scope;
 use std::convert::AsRef;
 use std::ffi::OsStr;
@@ -166,11 +167,13 @@ fn log_command(
         .timeout_stream(output, heartbeat_timeout)
         .map_err(move |e| {
             if e.kind() == io::ErrorKind::TimedOut {
-                kill_process(child_id);
-                Error::from(ErrorKind::Timeout(
-                    "not generating output for ",
-                    heartbeat_timeout.as_secs(),
-                ))
+                match native::kill_process(child_id) {
+                    Err(err) => err,
+                    Ok(()) => Error::from(ErrorKind::Timeout(
+                        "not generating output for ",
+                        heartbeat_timeout.as_secs(),
+                    )),
+                }
             } else {
                 e.into()
             }
@@ -188,32 +191,12 @@ fn log_command(
     let pool = CpuPool::new(1);
     let output = pool.spawn(output);
 
-    #[cfg(unix)]
-    fn kill_process(id: u32) {
-        use libc::{kill, pid_t, SIGKILL};
-        let r = unsafe { kill(id as pid_t, SIGKILL) };
-        if r != 0 {
-            // Something went wrong...
-        }
-    }
-    #[cfg(windows)]
-    fn kill_process(id: u32) {
-        unsafe {
-            use winapi::um::handleapi::CloseHandle;
-            use winapi::um::processthreadsapi::{OpenProcess, TerminateProcess};
-            use winapi::um::winnt::PROCESS_TERMINATE;
-            let handle = OpenProcess(PROCESS_TERMINATE, 0, id);
-            TerminateProcess(handle, 101);
-            if CloseHandle(handle) == 0 {
-                panic!("CloseHandle for process {} failed", id);
-            }
-        };
-    }
-
     let child = timer.timeout(child, max_timeout).map_err(move |e| {
         if e.kind() == io::ErrorKind::TimedOut {
-            kill_process(child_id);
-            ErrorKind::Timeout("max time of", MAX_TIMEOUT_SECS).into()
+            match native::kill_process(child_id) {
+                Err(err) => err,
+                Ok(()) => ErrorKind::Timeout("max time of", MAX_TIMEOUT_SECS).into(),
+            }
         } else {
             e.into()
         }

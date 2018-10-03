@@ -14,7 +14,13 @@ use server::Data;
 use std::sync::Arc;
 use warp::{self, filters::body::FullBody, Filter, Rejection};
 
-fn process_webhook(payload: &[u8], host: &str, signature: &str, event: &str, data: &Data) -> Result<()> {
+fn process_webhook(
+    payload: &[u8],
+    host: &str,
+    signature: &str,
+    event: &str,
+    data: &Data,
+) -> Result<()> {
     if !verify_signature(&data.tokens.bot.webhooks_secret, payload, signature) {
         bail!("invalid signature for the webhook!");
     }
@@ -29,7 +35,8 @@ fn process_webhook(payload: &[u8], host: &str, signature: &str, event: &str, dat
                 return Ok(());
             }
 
-            if let Err(e) = process_command(host, &p.sender.login, &p.comment.body, &p.issue, data) {
+            if let Err(e) = process_command(host, &p.sender.login, &p.comment.body, &p.issue, data)
+            {
                 Message::new()
                     .line("rotating_light", format!("**Error:** {}", e))
                     .note(
@@ -160,7 +167,7 @@ fn receive_endpoint(data: Arc<Data>, headers: HeaderMap, body: FullBody) -> Resu
     let host = headers
         .get("Host")
         .and_then(|h| h.to_str().ok())
-        .ok_or("mission header Host\n")?;
+        .ok_or("missing header Host\n")?;
 
     process_webhook(body.bytes(), host, signature, event, &data)
 }

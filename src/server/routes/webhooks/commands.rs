@@ -16,7 +16,7 @@ pub fn ping(data: &Data, issue: &Issue) -> Result<()> {
 
 pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
     let name = get_name(&data.db, issue, args.name)?;
-    
+
     ::actions::CreateExperiment {
         name: name.clone(),
         toolchains: [
@@ -37,7 +37,10 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Result<()> 
     Message::new()
         .line(
             "ok_hand",
-            format!("Experiment [**`{}`**](http://{}/ex/{0}) created and queued.", name, host),
+            format!(
+                "Experiment [**`{}`**](https://{}/ex/{0}) created and queued.",
+                name, host
+            ),
         ).set_label(Label::ExperimentQueued)
         .send(&issue.url, data)?;
 

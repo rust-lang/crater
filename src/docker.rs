@@ -52,6 +52,7 @@ pub struct ContainerBuilder<'a> {
     mounts: Vec<MountConfig<'a>>,
     env: Vec<(&'static str, String)>,
     memory_limit: Option<Size>,
+    networking_disabled: bool
 }
 
 impl<'a> ContainerBuilder<'a> {
@@ -61,6 +62,7 @@ impl<'a> ContainerBuilder<'a> {
             mounts: Vec::new(),
             env: Vec::new(),
             memory_limit: None,
+            networking_disabled: false
         }
     }
 
@@ -83,6 +85,11 @@ impl<'a> ContainerBuilder<'a> {
         self
     }
 
+    pub fn disable_networking(mut self) -> Self {
+        self.networking_disabled = true;
+        self
+    }
+
     pub fn create(self) -> Result<Container> {
         let mut args: Vec<String> = vec!["create".into()];
 
@@ -100,6 +107,10 @@ impl<'a> ContainerBuilder<'a> {
         if let Some(limit) = self.memory_limit {
             args.push("-m".into());
             args.push(limit.to_string());
+        }
+
+        if self.networking_disabled {
+            args.push("--network none".into());
         }
 
         args.push(self.image.into());

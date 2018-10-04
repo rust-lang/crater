@@ -110,6 +110,7 @@ impl Toolchain {
         cargo_state: CargoState,
         quiet: bool,
         unstable_cargo: bool,
+        networking_disabled: bool
     ) -> Result<()> {
         let toolchain_name = self.rustup_name();
         let ex_target_dir = self.target_dir(&ex.name);
@@ -143,6 +144,10 @@ impl Toolchain {
             .env("RUST_BACKTRACE", "full".to_string())
             // Add some limits to the container
             .memory_limit(config.sandbox.memory_limit);
+
+        if networking_disabled {
+            container = container.disable_networking();
+        }
 
         // Set the RUSTFLAGS environment variable
         let mut rustflags = format!("--cap-lints={}", ex.cap_lints.to_str());

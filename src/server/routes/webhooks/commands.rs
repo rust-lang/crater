@@ -161,7 +161,14 @@ fn default_experiment_name(db: &Database, issue: &Issue) -> Result<Option<String
     Ok(if let Some(name) = name {
         Some(name)
     } else if issue.pull_request.is_some() {
-        Some(format!("pr-{}", issue.number))
+        let mut default_name = format!("pr-{}", issue.number);
+        let mut idx = 1u64;
+        while Experiment::exists(db, &default_name)? {
+            default_name = format!("pr-{}-{}", issue.number, idx);
+            idx = idx.checked_add(1)
+                .expect("too many similarly-named pull requests");
+        }
+        Some(default_name)
     } else {
         None
     })
@@ -197,9 +204,16 @@ mod tests {
                 html_url: String::new(),
             }),
         };
+        let pr_default_name = default_experiment_name(&db, &pr).unwrap().unwrap();
+        assert_eq!(&pr_default_name, "pr-2");
+
+        // Repeat PRs should have a unique name
+        ::actions::CreateExperiment::dummy(&pr_default_name)
+            .apply(&db, &::config::Config::default())
+            .expect("failure to create default pr experiment");
         assert_eq!(
-            default_experiment_name(&db, &pr).unwrap().unwrap().as_str(),
-            "pr-2"
+            &default_experiment_name(&db, &pr).unwrap().unwrap(),
+            "pr-2-1"
         );
 
         // With a saved experiment name that name should be returned

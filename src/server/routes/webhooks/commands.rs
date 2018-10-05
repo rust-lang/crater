@@ -165,7 +165,8 @@ fn default_experiment_name(db: &Database, issue: &Issue) -> Result<Option<String
         let mut idx = 1u64;
         while Experiment::exists(db, &default_name)? {
             default_name = format!("pr-{}-{}", issue.number, idx);
-            idx = idx.checked_add(1)
+            idx = idx
+                .checked_add(1)
                 .expect("too many similarly-named pull requests");
         }
         Some(default_name)

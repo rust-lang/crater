@@ -67,6 +67,7 @@ fn build(
         CargoState::Locked,
         quiet,
         false,
+        true,
     )?;
     toolchain.run_cargo(
         config,
@@ -76,6 +77,7 @@ fn build(
         CargoState::Locked,
         quiet,
         false,
+        true,
     )?;
     Ok(())
 }
@@ -95,6 +97,7 @@ fn test(
         CargoState::Locked,
         quiet,
         false,
+        true,
     )
 }
 
@@ -150,6 +153,7 @@ pub fn test_check_only(
         CargoState::Locked,
         quiet,
         false,
+        true,
     );
 
     if r.is_ok() {

@@ -52,7 +52,7 @@ pub struct ContainerBuilder<'a> {
     mounts: Vec<MountConfig<'a>>,
     env: Vec<(&'static str, String)>,
     memory_limit: Option<Size>,
-    networking_disabled: bool
+    networking_disabled: bool,
 }
 
 impl<'a> ContainerBuilder<'a> {
@@ -62,7 +62,7 @@ impl<'a> ContainerBuilder<'a> {
             mounts: Vec::new(),
             env: Vec::new(),
             memory_limit: None,
-            networking_disabled: false
+            networking_disabled: false,
         }
     }
 

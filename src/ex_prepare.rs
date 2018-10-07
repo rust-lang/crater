@@ -168,8 +168,16 @@ fn capture_lockfile_inner(
         "-Zno-index-update",
     ];
     toolchain
-        .run_cargo(config, ex, path, args, CargoState::Unlocked, false, false, false)
-        .chain_err(|| format!("unable to generate lockfile for {}", krate))?;
+        .run_cargo(
+            config,
+            ex,
+            path,
+            args,
+            CargoState::Unlocked,
+            false,
+            false,
+            false,
+        ).chain_err(|| format!("unable to generate lockfile for {}", krate))?;
 
     let src_lockfile = &path.join("Cargo.lock");
     let dst_lockfile = &lockfile(&ex.name, krate)?;
@@ -230,8 +238,16 @@ pub fn fetch_crate_deps(
 
         let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
         toolchain
-            .run_cargo(config, ex, path, args, CargoState::Unlocked, false, true, false)
-            .chain_err(|| format!("unable to fetch deps for {}", krate))?;
+            .run_cargo(
+                config,
+                ex,
+                path,
+                args,
+                CargoState::Unlocked,
+                false,
+                true,
+                false,
+            ).chain_err(|| format!("unable to fetch deps for {}", krate))?;
 
         Ok(())
     })

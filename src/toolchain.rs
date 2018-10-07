@@ -110,7 +110,7 @@ impl Toolchain {
         cargo_state: CargoState,
         quiet: bool,
         unstable_cargo: bool,
-        networking_disabled: bool
+        networking_disabled: bool,
     ) -> Result<()> {
         let toolchain_name = self.rustup_name();
         let ex_target_dir = self.target_dir(&ex.name);

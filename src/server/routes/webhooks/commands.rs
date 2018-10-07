@@ -15,7 +15,7 @@ pub fn ping(data: &Data, issue: &Issue) -> Result<()> {
 }
 
 pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
-    let name = get_name(&data.db, issue, args.name)?;
+    let name = auto_increment_experiment_name(&data.db, &get_name(&data.db, issue, args.name)?)?;
 
     ::actions::CreateExperiment {
         name: name.clone(),
@@ -161,23 +161,30 @@ fn default_experiment_name(db: &Database, issue: &Issue) -> Result<Option<String
     Ok(if let Some(name) = name {
         Some(name)
     } else if issue.pull_request.is_some() {
-        let mut default_name = format!("pr-{}", issue.number);
-        let mut idx = 1u64;
-        while Experiment::exists(db, &default_name)? {
-            default_name = format!("pr-{}-{}", issue.number, idx);
-            idx = idx
-                .checked_add(1)
-                .expect("too many similarly-named pull requests");
-        }
-        Some(default_name)
+        Some(format!("pr-{}", issue.number))
     } else {
         None
     })
 }
 
+/// automatically increment experiment name to the first one which does not exist.  E.g. if this
+/// function is passed the name `"pr-12345"`, and experiment `pr-12345` exists, then this command
+/// returns Ok("pr-12345-1")
+fn auto_increment_experiment_name(db: &Database, name: &str) -> Result<String> {
+    let mut new_name = name.to_owned();
+    let mut idx = 1u16;
+    while Experiment::exists(db, &new_name)? {
+        new_name = format!("{}-{}", name, idx);
+        idx = idx
+            .checked_add(1)
+            .expect("too many similarly-named pull requests");
+    }
+    Ok(new_name)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{default_experiment_name, store_experiment_name};
+    use super::{auto_increment_experiment_name, default_experiment_name, store_experiment_name};
     use db::Database;
     use server::github;
 
@@ -205,16 +212,9 @@ mod tests {
                 html_url: String::new(),
             }),
         };
-        let pr_default_name = default_experiment_name(&db, &pr).unwrap().unwrap();
-        assert_eq!(&pr_default_name, "pr-2");
-
-        // Repeat PRs should have a unique name
-        ::actions::CreateExperiment::dummy(&pr_default_name)
-            .apply(&db, &::config::Config::default())
-            .expect("failure to create default pr experiment");
         assert_eq!(
-            &default_experiment_name(&db, &pr).unwrap().unwrap(),
-            "pr-2-1"
+            default_experiment_name(&db, &pr).unwrap().unwrap().as_str(),
+            "pr-2"
         );
 
         // With a saved experiment name that name should be returned
@@ -222,6 +222,26 @@ mod tests {
         assert_eq!(
             default_experiment_name(&db, &pr).unwrap().unwrap().as_str(),
             "foo"
+        );
+    }
+
+    #[test]
+    fn test_auto_increment_experiment_name() {
+        let db = Database::temp().unwrap();
+        let name = "pr-12345";
+
+        ::actions::CreateExperiment::dummy(name)
+            .apply(&db, &::config::Config::default())
+            .expect("failure to create default pr experiment");
+        let new_name = auto_increment_experiment_name(&db, &name).unwrap();
+        assert_eq!(new_name, "pr-12345-1");
+
+        ::actions::CreateExperiment::dummy(&new_name)
+            .apply(&db, &::config::Config::default())
+            .expect("failure to create default pr experiment");
+        assert_eq!(
+            &auto_increment_experiment_name(&db, &name).unwrap(),
+            "pr-12345-2"
         );
     }
 }

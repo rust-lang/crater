@@ -110,7 +110,8 @@ impl<'a> ContainerBuilder<'a> {
         }
 
         if self.networking_disabled {
-            args.push("--network none".into());
+            args.push("--network".into());
+            args.push("none".into());
         }
 
         args.push(self.image.into());

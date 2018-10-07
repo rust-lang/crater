@@ -67,7 +67,7 @@ fn build(
         CargoState::Locked,
         quiet,
         false,
-        false,
+        true,
     )?;
     toolchain.run_cargo(
         config,

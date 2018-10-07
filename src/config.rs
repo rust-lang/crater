@@ -2,7 +2,7 @@ use crates::Crate;
 use errors::*;
 use regex::Regex;
 use serde_regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 use utils::size::Size;
@@ -69,10 +69,16 @@ pub struct Config {
 
 impl Config {
     pub fn load() -> Result<Self> {
-        let mut buffer = String::new();
-        File::open(CONFIG_FILE)?.read_to_string(&mut buffer)?;
+        let buffer = Self::load_as_string(CONFIG_FILE)?;
 
         Ok(::toml::from_str(&buffer)?)
+    }
+
+    fn load_as_string(filename: &str) -> Result<String> {
+        let mut buffer = String::new();
+        File::open(filename)?.read_to_string(&mut buffer)?;
+
+        Ok(buffer)
     }
 
     fn crate_config(&self, c: &Crate) -> Option<&CrateConfig> {
@@ -107,6 +113,104 @@ impl Config {
 
     pub fn demo_crates(&self) -> &DemoCrates {
         &self.demo_crates
+    }
+
+    pub fn check(file: &Option<String>) -> Result<()> {
+        if let Some(file) = file {
+            Self::check_all(&file)
+        } else {
+            Self::check_all(CONFIG_FILE)
+        }
+    }
+
+    fn check_all(filename: &str) -> Result<()> {
+        use experiments::CrateSelect;
+
+        let buffer = Self::load_as_string(filename)?;
+        let mut has_errors = Self::check_for_dup_keys(&buffer).is_err();
+        let cfg: Self = ::toml::from_str(&buffer)?;
+        let db = ::db::Database::open()?;
+        let crates = ::crates::lists::get_crates(CrateSelect::Full, &db, &cfg)?;
+        has_errors |= cfg.check_for_missing_crates(&crates).is_err();
+        has_errors |= cfg.check_for_missing_repos(&crates).is_err();
+        if has_errors {
+            bail!("the config file contains errors");
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_for_dup_keys(buffer: &str) -> Result<()> {
+        if let Err(e) = ::toml::from_str::<::toml::Value>(&buffer) {
+            error!("got error parsing the config-file: {}", e);
+            Err(e.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_for_missing_crates(&self, crates: &[Crate]) -> Result<()> {
+        if self.crates.is_empty() {
+            return Ok(());
+        }
+
+        let mut list_of_crates: HashSet<String> = HashSet::new();
+        for krate in crates {
+            let name = if let Crate::Registry(ref details) = krate {
+                details.name.clone()
+            } else {
+                continue;
+            };
+            list_of_crates.insert(name);
+        }
+
+        let mut any_missing = false;
+        for crate_name in self.crates.keys() {
+            if !list_of_crates.contains(&*crate_name) {
+                error!(
+                    "check-config failed: crate `{}` is not available.",
+                    crate_name
+                );
+                any_missing = true;
+            }
+        }
+        if any_missing {
+            Err(ErrorKind::BadConfig.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_for_missing_repos(&self, crates: &[Crate]) -> Result<()> {
+        if self.github_repos.is_empty() {
+            return Ok(());
+        }
+
+        let mut list_of_crates: HashSet<String> = HashSet::new();
+        for krate in crates {
+            let name = if let Crate::GitHub(ref details) = krate {
+                format!("{}/{}", details.org, details.name)
+            } else {
+                continue;
+            };
+            list_of_crates.insert(name);
+        }
+
+        let mut any_missing = false;
+        for repo_name in self.github_repos.keys() {
+            if !list_of_crates.contains(&*repo_name) {
+                error!(
+                    "check-config failed: GitHub repo `{}` is missing",
+                    repo_name
+                );
+                any_missing = true;
+            }
+        }
+        if any_missing {
+            Err(ErrorKind::BadConfig.into())
+        } else {
+            Ok(())
+        }
     }
 }
 

@@ -271,6 +271,15 @@ pub enum Crater {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
     },
+
+    #[structopt(
+        name = "check-config",
+        about = "check if the config.toml file is valid"
+    )]
+    CheckConfig {
+        #[structopt(name = "file")]
+        filename: Option<String>,
+    },
 }
 
 impl Crater {
@@ -507,6 +516,11 @@ impl Crater {
                     run_graph::dump_dot(&experiment, &config, dest)?;
                 } else {
                     bail!("missing experiment: {}", ex.0);
+                }
+            }
+            Crater::CheckConfig { ref filename } => {
+                if let Err(ref e) = Config::check(filename) {
+                    bail!("check-config failed: {}", e);
                 }
             }
         }

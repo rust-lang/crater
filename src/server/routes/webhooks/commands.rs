@@ -15,7 +15,20 @@ pub fn ping(data: &Data, issue: &Issue) -> Result<()> {
 }
 
 pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
-    let name = auto_increment_experiment_name(&data.db, &get_name(&data.db, issue, args.name)?)?;
+    let name = {
+        let name_supplied = args.name.is_some();
+        let name = get_name(&data.db, issue, args.name)?;
+        if name_supplied {
+            name
+        } else {
+            let new_name = auto_increment_experiment_name(
+                &data.db,
+                &name,
+            )?;
+            store_experiment_name(&data.db, issue, &new_name)?;
+            new_name
+        }
+    };
 
     ::actions::CreateExperiment {
         name: name.clone(),

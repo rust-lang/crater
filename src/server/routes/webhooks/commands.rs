@@ -21,10 +21,7 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Result<()> 
         if name_supplied {
             name
         } else {
-            let new_name = auto_increment_experiment_name(
-                &data.db,
-                &name,
-            )?;
+            let new_name = auto_increment_experiment_name(&data.db, &name)?;
             store_experiment_name(&data.db, issue, &new_name)?;
             new_name
         }

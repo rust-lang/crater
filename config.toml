@@ -52,12 +52,10 @@ afl = { broken = true } # dependency yanked
 ai = { skip-tests = true } # may fail due to randomness
 alumina = { skip = true } # flaky build
 astrup = { slow = true } # build time close to 2 minutes
-atomic-queue = { skip-tests = true } # flaky test
 autograd = { skip-tests = true } # may fail due to randomness
 caesarlib = { skip-tests = true } # flaky test
 cassandra-sys = { broken = true } # dependency yanked
 cc = { skip-tests = true } # flaky test
-cldap = { skip = true } # flaky test
 coinnect = { skip-tests = true } # flaky test
 conc = { skip-tests = true } # test timeout
 cpp_demangle = { broken = true } # dependency yanked
@@ -93,7 +91,6 @@ ipc-channel = { slow = true } # tests slow to run
 libbreakpad-client-sys = { broken = true } # broken tarball
 libfoo-test = { broken = true } # dependency yanked
 libfuzzy-sys = { skip = true } # flaky build
-live2d = { broken = true } # dependency yanked
 loadconf = { skip-tests = true } # flaky test
 loaded_dice = { skip-tests = true } # may fail due to randomness
 lockless = { skip-tests = true } # test timeout
@@ -126,7 +123,6 @@ sacn = { skip-tests = true } # "Tests just fail if RUST_TEST_THREADS > 1" -autho
 scram = { broken = true } # dependency yanked
 scroll = { broken = true } # dependency yanked
 sgxs = { broken = true } # dependency yanked
-sheesy-extract = { broken = true } # dependency yanked
 signatory-ring = { skip-tests = true } # flaky tests
 silk = { slow = true } # tests slow to run
 simd = { broken = true } # missing feature
@@ -169,11 +165,10 @@ yup-hyper-mock = { slow = true } # tests slow to run
 "jswrenn/beep" = { update-lockfile = true } # outdated lockfile
 "max6cn/Kaleidoscope.rs" = { update-lockfile = true } # outdated lockfile
 "megamsys/megam_api.rs" = { update-lockfile = true } # outdated lockfile
-"mmacedoeu/csvtoredis" = { update-lockfile = true } # outdated lockfile
 "mmacedoeu/csvtoredis.rs" = { update-lockfile = true } # outdated lockfile
 "olegakbarov/cali" = { update-lockfile = true } # outdated lockfile
 "pdpi/synth.rs" = { update-lockfile = true } # outdated lockfile
-"rustoscript.js/rs-parser" = { update-lockfile = true } # outdated lockfile
+"rustoscript/js.rs-parser" = { update-lockfile = true } # outdated lockfile
 "sozu-proxy/sozu" = { skip-tests = true } # flaky tests
 "steveklabnik/rustdoc" = { update-lockfile = true } # outdated lockfile
 "ttacon/github.rs" = { update-lockfile = true } # outdated lockfile

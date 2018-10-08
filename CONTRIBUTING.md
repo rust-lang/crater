@@ -143,8 +143,8 @@ This project makes use of [`rustfmt`](https://github.com/rust-lang-nursery/rustf
 ### Linting your code
 To install rustfmt, you should follow the [quick start instructions](https://github.com/rust-lang-nursery/rustfmt#quick-start) to install it using the [`rustup`](https://rustup.rs/) tool.
 
-To install clippy, you should follow the [usage instruction](https://github.com/rust-lang-nursery/rust-clippy#usage) to install it, either using the [`rustup`](https://rustup.rs/) tool, or using it without installing it.
+To install clippy, you should follow the [usage instruction](https://github.com/rust-lang-nursery/rust-clippy#usage) to install it using the [`rustup`](https://rustup.rs/) tool.
 
-To lint the code, run `cargo fmt` to format your code and either `cargo clippy` to catch common mistakes and improve your code.
+To lint the code, run `cargo fmt` to format your code and `cargo clippy` to catch common mistakes and improve your code.
 
 [Go back to the TOC][h-toc]

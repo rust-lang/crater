@@ -13,6 +13,7 @@ the [`#crater` channel on the rust-lang Discord][discord]!
 * [Choosing an issue to work on][h-choosing]
 * [Setting up a local Crater environment][h-initial-setup]
 * [Setting up a personal craterbot instance][h-craterbot-setup]
+* [Submitting your pull request][h-submitting-pr]
 
 ## Choosing an issue to work on
 
@@ -130,3 +131,20 @@ cargo run -- agent http://127.0.0.1:8000 token
 [ngrok]: https://ngrok.com/download
 [minio-play]: https://play.minio.io:9000/
 [minio-client]: https://www.minio.io/downloads.html#download-client
+
+## Submitting your pull request
+
+[h-submitting-pr]: #submitting-your-pull-request
+
+Before submitting your pull request, you need to lint the code in the project, as otherwise the continuous integration builds will fail.
+
+This project makes use of [`rustfmt`](https://github.com/rust-lang-nursery/rustfmt) and [`clippy`](https://github.com/rust-lang-nursery/rust-clippy) to format the code, and catch common mistakes respectively.
+
+### Linting your code
+To install rustfmt, you should follow the [quick start instructions](https://github.com/rust-lang-nursery/rustfmt#quick-start) to install it using the [`rustup`](https://rustup.rs/) tool.
+
+To install clippy, you should follow the [usage instruction](https://github.com/rust-lang-nursery/rust-clippy#usage) to install it using the [`rustup`](https://rustup.rs/) tool.
+
+To lint the code, run `cargo fmt` to format your code and `cargo clippy` to catch common mistakes and improve your code.
+
+[Go back to the TOC][h-toc]

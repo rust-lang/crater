@@ -1,12 +1,45 @@
 use config::Config;
 use crates::Crate;
+use docker::MountPerms;
 use errors::*;
 use ex_prepare::{with_captured_lockfile, with_frobbed_toml, with_work_crate};
 use experiments::Experiment;
 use results::{TestResult, WriteResults};
+use run::RunCommand;
 use std::collections::HashSet;
 use std::path::Path;
-use toolchain::{CargoState, Toolchain};
+use toolchain::Toolchain;
+
+fn run_cargo(
+    config: &Config,
+    ex: &Experiment,
+    source_path: &Path,
+    toolchain: &Toolchain,
+    quiet: bool,
+    args: &[&str],
+) -> Result<()> {
+    let target_dir = toolchain.target_dir(&ex.name);
+    ::std::fs::create_dir_all(&target_dir)?;
+
+    let mut rustflags = format!("--cap-lints={}", ex.cap_lints.to_str());
+    if let Some(ref tc_rustflags) = toolchain.rustflags {
+        rustflags.push(' ');
+        rustflags.push_str(tc_rustflags);
+    }
+
+    RunCommand::new(toolchain.cargo())
+        .args(args)
+        .quiet(quiet)
+        .cd(source_path)
+        .env("CARGO_TARGET_DIR", "/target")
+        .env("CARGO_INCREMENTAL", "0")
+        .env("RUST_BACKTRACE", "full")
+        .env("RUSTFLAGS", rustflags)
+        .sandboxed()
+        .mount(target_dir, "/target", MountPerms::ReadWrite)
+        .memory_limit(Some(config.sandbox.memory_limit))
+        .run()
+}
 
 pub struct RunTestResult {
     pub result: TestResult,
@@ -59,25 +92,21 @@ fn build(
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Result<()> {
-    toolchain.run_cargo(
+    run_cargo(
         config,
         ex,
         source_path,
+        toolchain,
+        quiet,
         &["build", "--frozen"],
-        CargoState::Locked,
-        quiet,
-        false,
-        true,
     )?;
-    toolchain.run_cargo(
+    run_cargo(
         config,
         ex,
         source_path,
-        &["test", "--frozen", "--no-run"],
-        CargoState::Locked,
+        toolchain,
         quiet,
-        false,
-        true,
+        &["test", "--frozen", "--no-run"],
     )?;
     Ok(())
 }
@@ -89,15 +118,13 @@ fn test(
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Result<()> {
-    toolchain.run_cargo(
+    run_cargo(
         config,
         ex,
         source_path,
-        &["test", "--frozen"],
-        CargoState::Locked,
+        toolchain,
         quiet,
-        false,
-        true,
+        &["test", "--frozen"],
     )
 }
 
@@ -145,18 +172,15 @@ pub fn test_check_only(
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Result<TestResult> {
-    let r = toolchain.run_cargo(
+    if run_cargo(
         config,
         ex,
         source_path,
-        &["check", "--frozen", "--all", "--all-targets"],
-        CargoState::Locked,
+        toolchain,
         quiet,
-        false,
-        true,
-    );
-
-    if r.is_ok() {
+        &["check", "--frozen", "--all", "--all-targets"],
+    ).is_ok()
+    {
         Ok(TestResult::TestPass)
     } else {
         Ok(TestResult::BuildFail)

@@ -13,11 +13,10 @@ pub static IMAGE_NAME: &'static str = "crater";
 /// to exist in the `docker` directory, at runtime.
 pub fn build_container(docker_env: &str) -> Result<()> {
     let dockerfile = format!("docker/Dockerfile.{}", docker_env);
-    RunCommand::new(
-        "docker",
-        &["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"],
-    ).enable_timeout(false)
-    .run()
+    RunCommand::new("docker")
+        .args(&["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"])
+        .enable_timeout(false)
+        .run()
 }
 
 #[derive(Copy, Clone)]
@@ -26,13 +25,13 @@ pub enum MountPerms {
     ReadOnly,
 }
 
-struct MountConfig<'a> {
+struct MountConfig {
     host_path: PathBuf,
-    container_path: &'a str,
+    container_path: PathBuf,
     perm: MountPerms,
 }
 
-impl<'a> MountConfig<'a> {
+impl MountConfig {
     fn to_arg(&self) -> String {
         let perm = match self.perm {
             MountPerms::ReadWrite => "rw",
@@ -40,53 +39,58 @@ impl<'a> MountConfig<'a> {
         };
         format!(
             "{}:{}:{},Z",
-            absolute(&self.host_path).display(),
-            self.container_path,
+            absolute(&self.host_path).to_string_lossy(),
+            self.container_path.to_string_lossy(),
             perm
         )
     }
 }
 
-pub struct ContainerBuilder<'a> {
-    image: &'a str,
-    mounts: Vec<MountConfig<'a>>,
-    env: Vec<(&'static str, String)>,
+pub struct ContainerBuilder {
+    image: String,
+    mounts: Vec<MountConfig>,
+    env: Vec<(String, String)>,
     memory_limit: Option<Size>,
-    networking_disabled: bool,
+    enable_networking: bool,
 }
 
-impl<'a> ContainerBuilder<'a> {
-    pub fn new(image: &'a str) -> Self {
+impl ContainerBuilder {
+    pub fn new<S: Into<String>>(image: S) -> Self {
         ContainerBuilder {
-            image,
+            image: image.into(),
             mounts: Vec::new(),
             env: Vec::new(),
             memory_limit: None,
-            networking_disabled: false,
+            enable_networking: true,
         }
     }
 
-    pub fn mount(mut self, host_path: PathBuf, container_path: &'a str, perm: MountPerms) -> Self {
+    pub fn mount<P1: Into<PathBuf>, P2: Into<PathBuf>>(
+        mut self,
+        host_path: P1,
+        container_path: P2,
+        perm: MountPerms,
+    ) -> Self {
         self.mounts.push(MountConfig {
-            host_path,
-            container_path,
+            host_path: host_path.into(),
+            container_path: container_path.into(),
             perm,
         });
         self
     }
 
-    pub fn env(mut self, key: &'static str, value: String) -> Self {
-        self.env.push((key, value));
+    pub fn env<S1: Into<String>, S2: Into<String>>(mut self, key: S1, value: S2) -> Self {
+        self.env.push((key.into(), value.into()));
         self
     }
 
-    pub fn memory_limit(mut self, limit: Size) -> Self {
-        self.memory_limit = Some(limit);
+    pub fn memory_limit(mut self, limit: Option<Size>) -> Self {
+        self.memory_limit = limit;
         self
     }
 
-    pub fn disable_networking(mut self) -> Self {
-        self.networking_disabled = true;
+    pub fn enable_networking(mut self, enable: bool) -> Self {
+        self.enable_networking = enable;
         self
     }
 
@@ -99,7 +103,7 @@ impl<'a> ContainerBuilder<'a> {
             args.push(mount.to_arg())
         }
 
-        for &(var, ref value) in &self.env {
+        for &(ref var, ref value) in &self.env {
             args.push("-e".into());
             args.push(format!{"{}={}", var, value})
         }
@@ -109,14 +113,14 @@ impl<'a> ContainerBuilder<'a> {
             args.push(limit.to_string());
         }
 
-        if self.networking_disabled {
+        if !self.enable_networking {
             args.push("--network".into());
             args.push("none".into());
         }
 
-        args.push(self.image.into());
+        args.push(self.image);
 
-        let (out, _) = RunCommand::new("docker", &*args).run_capture()?;
+        let (out, _) = RunCommand::new("docker").args(&*args).run_capture()?;
         Ok(Container { id: out[0].clone() })
     }
 
@@ -158,12 +162,15 @@ impl Display for Container {
 
 impl Container {
     pub fn run(&self, quiet: bool) -> Result<()> {
-        RunCommand::new("docker", &["start", "-a", &self.id])
+        RunCommand::new("docker")
+            .args(&["start", "-a", &self.id])
             .quiet(quiet)
             .run()
     }
 
     pub fn delete(&self) -> Result<()> {
-        RunCommand::new("docker", &["rm", "-f", &self.id]).run()
+        RunCommand::new("docker")
+            .args(&["rm", "-f", &self.id])
+            .run()
     }
 }

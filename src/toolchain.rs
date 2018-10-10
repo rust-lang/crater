@@ -1,10 +1,7 @@
-use config::Config;
 use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR};
-use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
 use errors::*;
-use experiments::Experiment;
 use native;
-use run::RunCommand;
+use run::{Binary, RunCommand, Runnable};
 use std::env::consts::EXE_SUFFIX;
 use std::fmt;
 use std::fs::{self, File};
@@ -18,12 +15,6 @@ const RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
 
 pub fn ex_target_dir(ex_name: &str) -> PathBuf {
     TARGET_DIR.join(ex_name)
-}
-
-#[derive(Copy, Clone)]
-pub enum CargoState {
-    Locked,
-    Unlocked,
 }
 
 lazy_static! {
@@ -100,91 +91,25 @@ impl Toolchain {
         dir.join(self.to_string())
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
-    pub fn run_cargo(
-        &self,
-        config: &Config,
-        ex: &Experiment,
-        source_dir: &Path,
-        args: &[&str],
-        cargo_state: CargoState,
-        quiet: bool,
-        unstable_cargo: bool,
-        networking_disabled: bool,
-    ) -> Result<()> {
-        let toolchain_name = self.rustup_name();
-        let ex_target_dir = self.target_dir(&ex.name);
-
-        fs::create_dir_all(&ex_target_dir)?;
-
-        let toolchain_arg = "+".to_string() + &toolchain_name;
-        let mut full_args = vec!["cargo", &*toolchain_arg];
-        full_args.extend_from_slice(args);
-
-        info!("running: {}", full_args.join(" "));
-
-        let enable_unstable_cargo_features = !toolchain_name.starts_with("nightly-")
-            && (unstable_cargo || args.iter().any(|a| a.starts_with("-Z")));
-
-        let perm = match cargo_state {
-            CargoState::Locked => MountPerms::ReadOnly,
-            CargoState::Unlocked => MountPerms::ReadWrite,
-        };
-
-        let mut container = ContainerBuilder::new(IMAGE_NAME)
-            // Setup all the mount points
-            .mount(source_dir.into(), "/source", perm)
-            .mount(ex_target_dir, "/target", MountPerms::ReadWrite)
-            .mount(Path::new(&*CARGO_HOME).into(), "/cargo-home", perm)
-            .mount(Path::new(&*RUSTUP_HOME).into(), "/rustup-home", MountPerms::ReadOnly)
-            // Add environment variables
-            .env("USER_ID", native::current_user().to_string())
-            .env("CMD", full_args.join(" "))
-            .env("CARGO_INCREMENTAL", "0".to_string())
-            .env("RUST_BACKTRACE", "full".to_string())
-            // Add some limits to the container
-            .memory_limit(config.sandbox.memory_limit);
-
-        if networking_disabled {
-            container = container.disable_networking();
+    pub(crate) fn cargo(&self) -> RunnableCargo {
+        RunnableCargo {
+            toolchain: self.rustup_name(),
+            unstable_features: false,
         }
-
-        // Set the RUSTFLAGS environment variable
-        let mut rustflags = format!("--cap-lints={}", ex.cap_lints.to_str());
-        if let Some(ref tc_rustflags) = self.rustflags {
-            rustflags.push(' ');
-            rustflags.push_str(tc_rustflags);
-        }
-        container = container.env("RUSTFLAGS", rustflags);
-
-        if enable_unstable_cargo_features {
-            container = container.env(
-                "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS",
-                "nightly".to_string(),
-            );
-        }
-
-        container.run(quiet)
     }
 
     pub fn prep_offline_registry(&self) -> Result<()> {
         // This nop cargo command is to update the registry
         // so we don't have to do it for each crate.
-        let toolchain_arg = "+".to_string() + &self.rustup_name();
         // using `install` is a temporary solution until
         // https://github.com/rust-lang/cargo/pull/5961
         // is ready
-        let full_args = [&toolchain_arg, "install", "lazy_static"];
-        let _ = RunCommand::new(&installed_binary("cargo"), &full_args)
-            .local_rustup()
+
+        let _ = RunCommand::new(self.cargo())
+            .args(&["install", "lazy_static"])
             .quiet(true)
-            .run()
-            .chain_err(|| {
-                format!(
-                    "unable to update the index for toolchain {}",
-                    &self.rustup_name()
-                )
-            });
+            .run();
+
         // ignore the error untill
         // https://github.com/rust-lang/cargo/pull/5961
         // is ready
@@ -264,6 +189,36 @@ impl FromStr for Toolchain {
     }
 }
 
+pub(crate) struct RunnableCargo {
+    toolchain: String,
+    unstable_features: bool,
+}
+
+impl RunnableCargo {
+    pub(crate) fn unstable_features(mut self, enable: bool) -> RunnableCargo {
+        self.unstable_features = enable;
+        self
+    }
+}
+
+impl Runnable for RunnableCargo {
+    fn binary(&self) -> Binary {
+        Binary::InstalledByCrater("cargo".into())
+    }
+
+    fn prepare_command(&self, mut cmd: RunCommand) -> RunCommand {
+        cmd = cmd
+            .args(&[format!("+{}", self.toolchain)])
+            .local_rustup(true);
+
+        if self.unstable_features {
+            cmd = cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
+        }
+
+        cmd
+    }
+}
+
 fn init_rustup() -> Result<()> {
     fs::create_dir_all(&*CARGO_HOME)?;
     fs::create_dir_all(&*RUSTUP_HOME)?;
@@ -276,7 +231,7 @@ fn init_rustup() -> Result<()> {
     Ok(())
 }
 
-fn installed_binary(name: &str) -> String {
+pub(crate) fn installed_binary(name: &str) -> String {
     format!("{}/bin/{}{}", *CARGO_HOME, name, EXE_SUFFIX)
 }
 
@@ -299,8 +254,9 @@ fn install_rustup() -> Result<()> {
     }
 
     utils::try_hard(|| {
-        RunCommand::new(&installer.to_string_lossy(), &["-y", "--no-modify-path"])
-            .local_rustup()
+        RunCommand::new(installer.to_string_lossy().as_ref())
+            .args(&["-y", "--no-modify-path"])
+            .local_rustup(true)
             .run()
             .chain_err(|| "unable to run rustup-init")
     })
@@ -309,8 +265,9 @@ fn install_rustup() -> Result<()> {
 fn update_rustup() -> Result<()> {
     info!("updating rustup");
     utils::try_hard(|| {
-        RunCommand::new(&installed_binary("rustup"), &["self", "update"])
-            .local_rustup()
+        RunCommand::new(&installed_binary("rustup"))
+            .args(&["self", "update"])
+            .local_rustup(true)
             .run()
             .chain_err(|| "unable to run rustup self-update")
     })
@@ -319,12 +276,11 @@ fn update_rustup() -> Result<()> {
 fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
     info!("installing toolchain {}", toolchain);
     utils::try_hard(|| {
-        RunCommand::new(
-            &installed_binary("rustup"),
-            &["toolchain", "install", toolchain],
-        ).local_rustup()
-        .run()
-        .chain_err(|| format!("unable to install toolchain {} via rustup", toolchain))
+        RunCommand::new(&installed_binary("rustup"))
+            .args(&["toolchain", "install", toolchain])
+            .local_rustup(true)
+            .run()
+            .chain_err(|| format!("unable to install toolchain {} via rustup", toolchain))
     })
 }
 
@@ -334,12 +290,11 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
     if !Path::new(&bin).exists() {
         info!("installing rustup-toolchain-install-master");
         utils::try_hard(|| {
-            RunCommand::new(
-                &installed_binary("cargo"),
-                &["install", "rustup-toolchain-install-master"],
-            ).local_rustup()
-            .run()
-            .chain_err(|| "unable to install rustup-toolchain-install-master")
+            RunCommand::new(&installed_binary("cargo"))
+                .args(&["install", "rustup-toolchain-install-master"])
+                .local_rustup(true)
+                .run()
+                .chain_err(|| "unable to install rustup-toolchain-install-master")
         })?;
     }
 
@@ -355,8 +310,9 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
     }
 
     utils::try_hard(|| {
-        RunCommand::new(&bin, &args)
-            .local_rustup()
+        RunCommand::new(&bin)
+            .args(&args)
+            .local_rustup(true)
             .run()
             .chain_err(|| {
                 format!(

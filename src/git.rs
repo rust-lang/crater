@@ -8,11 +8,10 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
 
     if !dir.exists() {
         info!("cloning {} into {}", url, dir.display());
-        let r = RunCommand::new(
-            "git",
-            &["clone", "--depth", "1", &url, &dir.to_string_lossy()],
-        ).run()
-        .chain_err(|| format!("unable to clone {}", url));
+        let r = RunCommand::new("git")
+            .args(&["clone", "--depth", "1", &url, &dir.to_string_lossy()])
+            .run()
+            .chain_err(|| format!("unable to clone {}", url));
 
         if r.is_err() && dir.exists() {
             fs::remove_dir_all(dir)?;
@@ -21,8 +20,12 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
         r
     } else {
         info!("pulling existing url {} into {}", url, dir.display());
-        RunCommand::new("git", &["fetch", "--all"]).cd(dir).run()?;
-        RunCommand::new("git", &["reset", "--hard", "@{upstream}"])
+        RunCommand::new("git")
+            .args(&["fetch", "--all"])
+            .cd(dir)
+            .run()?;
+        RunCommand::new("git")
+            .args(&["reset", "--hard", "@{upstream}"])
             .cd(dir)
             .run()
             .chain_err(|| format!("unable to pull {}", url))

@@ -1,89 +1,135 @@
-#![deny(unused_must_use)]
-
 use dirs::{CARGO_HOME, RUSTUP_HOME};
+use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
 use errors::*;
 use futures::{future, Future, Stream};
 use futures_cpupool::CpuPool;
 use native;
 use slog_scope;
 use std::convert::AsRef;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::io::{self, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::time::Duration;
 use tokio_core::reactor::Core;
 use tokio_io::io::lines;
 use tokio_process::CommandExt;
 use tokio_timer;
+use utils::size::Size;
 
-pub struct RunCommand<'a, S: AsRef<OsStr> + 'a> {
-    name: &'a str,
-    args: &'a [S],
-    env: Vec<(&'a str, &'a str)>,
-    cd: Option<&'a Path>,
-    quiet: bool,
-    enable_timeout: bool,
+pub(crate) enum Binary {
+    Global(PathBuf),
+    InstalledByCrater(PathBuf),
 }
 
-impl<'a, S: AsRef<OsStr>> RunCommand<'a, S> {
-    pub fn new(name: &'a str, args: &'a [S]) -> Self {
-        RunCommand {
-            name,
-            args,
+pub(crate) trait Runnable {
+    fn binary(&self) -> Binary;
+
+    fn prepare_command(&self, cmd: RunCommand) -> RunCommand {
+        cmd
+    }
+}
+
+impl<T: AsRef<str>> Runnable for T {
+    fn binary(&self) -> Binary {
+        Binary::Global(PathBuf::from(self.as_ref()))
+    }
+}
+
+pub(crate) struct RunCommand {
+    binary: Binary,
+    args: Vec<OsString>,
+    env: Vec<(OsString, OsString)>,
+    cd: Option<PathBuf>,
+    quiet: bool,
+    enable_timeout: bool,
+    local_rustup: bool,
+}
+
+impl RunCommand {
+    pub(crate) fn new<R: Runnable>(runnable: R) -> Self {
+        runnable.prepare_command(RunCommand {
+            binary: runnable.binary(),
+            args: Vec::new(),
             env: Vec::new(),
             cd: None,
             quiet: false,
             enable_timeout: true,
+            local_rustup: false,
+        })
+    }
+
+    pub(crate) fn args<S: AsRef<OsStr>>(mut self, args: &[S]) -> Self {
+        for arg in args {
+            self.args.push(arg.as_ref().to_os_string());
         }
-    }
 
-    pub fn env(mut self, key: &'a str, value: &'a str) -> Self {
-        self.env.push((key, value));
         self
     }
 
-    pub fn cd(mut self, path: &'a Path) -> Self {
-        self.cd = Some(path);
+    pub(crate) fn env<S1: AsRef<OsStr>, S2: AsRef<OsStr>>(mut self, key: S1, value: S2) -> Self {
+        self.env
+            .push((key.as_ref().to_os_string(), value.as_ref().to_os_string()));
         self
     }
 
-    pub fn quiet(mut self, quiet: bool) -> Self {
+    pub(crate) fn cd<P: AsRef<Path>>(mut self, path: P) -> Self {
+        self.cd = Some(path.as_ref().to_path_buf());
+        self
+    }
+
+    pub(crate) fn quiet(mut self, quiet: bool) -> Self {
         self.quiet = quiet;
         self
     }
 
-    pub fn enable_timeout(mut self, enable_timeout: bool) -> Self {
+    pub(crate) fn enable_timeout(mut self, enable_timeout: bool) -> Self {
         self.enable_timeout = enable_timeout;
         self
     }
 
-    pub fn local_rustup(self) -> Self {
-        self.env("CARGO_HOME", &*CARGO_HOME)
-            .env("RUSTUP_HOME", &*RUSTUP_HOME)
+    pub(crate) fn local_rustup(mut self, local_rustup: bool) -> Self {
+        self.local_rustup = local_rustup;
+        self
     }
 
-    pub fn run(self) -> Result<()> {
+    pub(crate) fn sandboxed(self) -> SandboxedCommand {
+        SandboxedCommand::new(self)
+    }
+
+    pub(crate) fn run(self) -> Result<()> {
         self.run_inner(false)?;
         Ok(())
     }
 
-    pub fn run_capture(self) -> Result<(Vec<String>, Vec<String>)> {
+    pub(crate) fn run_capture(self) -> Result<(Vec<String>, Vec<String>)> {
         let out = self.run_inner(true)?;
         Ok((out.stdout, out.stderr))
     }
 
-    fn run_inner(&self, capture: bool) -> Result<ProcessOutput> {
-        let mut cmd = Command::new(self.name);
+    fn run_inner(self, capture: bool) -> Result<ProcessOutput> {
+        let name = match self.binary {
+            Binary::Global(path) => path,
+            Binary::InstalledByCrater(path) => ::utils::fs::try_canonicalize(
+                ::toolchain::installed_binary(path.to_string_lossy().as_ref()),
+            ),
+        };
 
-        cmd.args(self.args);
-        for &(k, v) in &self.env {
+        let mut cmd = Command::new(&name);
+
+        cmd.args(&self.args);
+
+        if self.local_rustup {
+            cmd.env("CARGO_HOME", ::utils::fs::try_canonicalize(&*CARGO_HOME));
+            cmd.env("RUSTUP_HOME", ::utils::fs::try_canonicalize(&*RUSTUP_HOME));
+        }
+        for &(ref k, ref v) in &self.env {
             cmd.env(k, v);
         }
 
         let cmdstr = format!("{:?}", cmd);
 
-        if let Some(cd) = self.cd {
+        if let Some(ref cd) = self.cd {
             cmd.current_dir(cd);
         }
 
@@ -98,6 +144,80 @@ impl<'a, S: AsRef<OsStr>> RunCommand<'a, S> {
         } else {
             Err(format!("command `{}` failed", cmdstr).into())
         }
+    }
+}
+
+pub(crate) struct SandboxedCommand {
+    command: RunCommand,
+    container: ContainerBuilder,
+}
+
+impl SandboxedCommand {
+    fn new(command: RunCommand) -> Self {
+        let container = ContainerBuilder::new(IMAGE_NAME)
+            .env("USER_ID", native::current_user().to_string())
+            .enable_networking(false);
+
+        SandboxedCommand { command, container }
+    }
+
+    pub(crate) fn memory_limit(mut self, limit: Option<Size>) -> Self {
+        self.container = self.container.memory_limit(limit);
+        self
+    }
+
+    pub(crate) fn mount<P1: Into<PathBuf>, P2: Into<PathBuf>>(
+        mut self,
+        host_path: P1,
+        container_path: P2,
+        perm: MountPerms,
+    ) -> Self {
+        self.container = self.container.mount(host_path, container_path, perm);
+        self
+    }
+
+    pub(crate) fn run(mut self) -> Result<()> {
+        // Build the full CLI
+        let mut cmd = match self.command.binary {
+            Binary::Global(path) => path,
+            Binary::InstalledByCrater(path) => path,
+        }.to_string_lossy()
+        .as_ref()
+        .to_string();
+        for arg in self.command.args {
+            cmd.push(' ');
+            cmd.push_str(arg.to_string_lossy().as_ref());
+        }
+
+        let source_dir = match self.command.cd {
+            Some(path) => path,
+            None => PathBuf::from("."),
+        };
+
+        self.container = self
+            .container
+            .mount(source_dir, "/source", MountPerms::ReadOnly)
+            .env("SOURCE_DIR", "/source")
+            .env("USER_ID", native::current_user().to_string())
+            .env("CMD", cmd);
+
+        for (key, value) in self.command.env {
+            self.container = self.container.env(
+                key.to_string_lossy().as_ref(),
+                value.to_string_lossy().as_ref(),
+            );
+        }
+
+        if self.command.local_rustup {
+            self.container = self
+                .container
+                .mount(&*CARGO_HOME, "/cargo-home", MountPerms::ReadOnly)
+                .mount(&*RUSTUP_HOME, "/rustup-home", MountPerms::ReadOnly)
+                .env("CARGO_HOME", "/cargo-home")
+                .env("RUSTUP_HOME", "/rustup-home");
+        }
+
+        self.container.run(self.command.quiet)
     }
 }
 

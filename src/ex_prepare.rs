@@ -8,7 +8,7 @@ use run::RunCommand;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml_frobber::TomlFrobber;
-use toolchain::{CargoState, Toolchain};
+use toolchain::Toolchain;
 
 fn froml_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("fromls")
@@ -37,7 +37,8 @@ pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB
     for krate in crates {
         if let Crate::GitHub(ref repo) = *krate {
             let dir = repo.mirror_dir();
-            let r = RunCommand::new("git", &["rev-parse", "HEAD"])
+            let r = RunCommand::new("git")
+                .args(&["rev-parse", "HEAD"])
                 .cd(&dir)
                 .run_capture();
 
@@ -148,36 +149,26 @@ pub fn capture_lockfile(
 
     with_work_crate(ex, toolchain, krate, |path| {
         with_frobbed_toml(ex, krate, path)?;
-        capture_lockfile_inner(config, ex, krate, path, toolchain)
+        capture_lockfile_inner(ex, krate, path, toolchain)
     }).chain_err(|| format!("failed to generate lockfile for {}", krate))?;
 
     Ok(())
 }
 
 fn capture_lockfile_inner(
-    config: &Config,
     ex: &Experiment,
     krate: &Crate,
     path: &Path,
     toolchain: &Toolchain,
 ) -> Result<()> {
-    let args = &[
-        "generate-lockfile",
-        "--manifest-path",
-        "Cargo.toml",
-        "-Zno-index-update",
-    ];
-    toolchain
-        .run_cargo(
-            config,
-            ex,
-            path,
-            args,
-            CargoState::Unlocked,
-            false,
-            false,
-            false,
-        ).chain_err(|| format!("unable to generate lockfile for {}", krate))?;
+    RunCommand::new(toolchain.cargo().unstable_features(true))
+        .args(&[
+            "generate-lockfile",
+            "--manifest-path",
+            "Cargo.toml",
+            "-Zno-index-update",
+        ]).cd(path)
+        .run()?;
 
     let src_lockfile = &path.join("Cargo.lock");
     let dst_lockfile = &lockfile(&ex.name, krate)?;
@@ -236,18 +227,10 @@ pub fn fetch_crate_deps(
         with_frobbed_toml(ex, krate, path)?;
         with_captured_lockfile(config, ex, krate, path)?;
 
-        let args = &["fetch", "--locked", "--manifest-path", "Cargo.toml"];
-        toolchain
-            .run_cargo(
-                config,
-                ex,
-                path,
-                args,
-                CargoState::Unlocked,
-                false,
-                true,
-                false,
-            ).chain_err(|| format!("unable to fetch deps for {}", krate))?;
+        RunCommand::new(toolchain.cargo())
+            .args(&["fetch", "--locked", "--manifest-path", "Cargo.toml"])
+            .cd(path)
+            .run()?;
 
         Ok(())
     })

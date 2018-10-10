@@ -4,6 +4,10 @@ use std::path::{Path, PathBuf};
 use utils::try_hard_limit;
 use walkdir::{DirEntry, WalkDir};
 
+pub(crate) fn try_canonicalize<P: AsRef<Path>>(path: P) -> PathBuf {
+    fs::canonicalize(&path).unwrap_or_else(|_| path.as_ref().to_path_buf())
+}
+
 pub(crate) fn remove_dir_all(dir: &Path) -> Result<()> {
     try_hard_limit(10, || {
         fs::remove_dir_all(dir)?;

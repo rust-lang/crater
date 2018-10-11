@@ -189,7 +189,7 @@ fn generate_new_experiment_name(db: &Database, issue: &Issue) -> Result<String> 
         name = format!("pr-{}-{}", issue.number, idx);
         idx = idx
             .checked_add(1)
-            .ok_or::<Error>("too many similarly-named pull requests".into())?;
+            .ok_or_else::<Error, _>(|| "too many similarly-named pull requests".into())?;
     }
     Ok(name)
 }

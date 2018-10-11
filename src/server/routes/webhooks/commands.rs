@@ -15,7 +15,7 @@ pub fn ping(data: &Data, issue: &Issue) -> Result<()> {
 }
 
 pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Result<()> {
-    let name = get_name(&data.db, issue, args.name)?;
+    let name = setup_run_name(&data.db, issue, args.name)?;
 
     ::actions::CreateExperiment {
         name: name.clone(),
@@ -167,11 +167,56 @@ fn default_experiment_name(db: &Database, issue: &Issue) -> Result<Option<String
     })
 }
 
+/// Set up the name for a new run's experiment, including auto-incrementing generated names and
+/// storing experiment names in the database.
+fn setup_run_name(db: &Database, issue: &Issue, name: Option<String>) -> Result<String> {
+    let name = if let Some(name) = name {
+        name
+    } else {
+        generate_new_experiment_name(&db, &issue)?
+    };
+    store_experiment_name(&db, issue, &name)?;
+    Ok(name)
+}
+
+/// Automatically generate experiment name, auto-incrementing to the first one which does not
+/// exist.  E.g. if this function is passed the an issue `12345`, and experiment `pr-12345`
+/// exists, then this command returns Ok("pr-12345-1"). Does not store the result in the database.
+fn generate_new_experiment_name(db: &Database, issue: &Issue) -> Result<String> {
+    let mut name = format!("pr-{}", issue.number);
+    let mut idx = 1u16;
+    while Experiment::exists(&db, &name)? {
+        name = format!("pr-{}-{}", issue.number, idx);
+        idx = idx
+            .checked_add(1)
+            .ok_or_else::<Error, _>(|| "too many similarly-named pull requests".into())?;
+    }
+    Ok(name)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{default_experiment_name, store_experiment_name};
+    use super::{
+        default_experiment_name, generate_new_experiment_name, get_name, setup_run_name,
+        store_experiment_name,
+    };
     use db::Database;
+    use errors::*;
     use server::github;
+
+    /// Simulate to the `run` command, and return experiment name
+    fn dummy_run(db: &Database, issue: &github::Issue, name: Option<String>) -> Result<String> {
+        let name = setup_run_name(db, issue, name)?;
+        ::actions::CreateExperiment::dummy(&name).apply(&db, &::config::Config::default())?;
+        Ok(name)
+    }
+
+    /// Simulate to the `edit` command, and return experiment name
+    fn dummy_edit(db: &Database, issue: &github::Issue, name: Option<String>) -> Result<String> {
+        let name = get_name(db, issue, name)?;
+        ::actions::EditExperiment::dummy(&name).apply(&db, &::config::Config::default())?;
+        Ok(name)
+    }
 
     #[test]
     fn test_default_experiment_name() {
@@ -207,6 +252,147 @@ mod tests {
         assert_eq!(
             default_experiment_name(&db, &pr).unwrap().unwrap().as_str(),
             "foo"
+        );
+    }
+
+    #[test]
+    fn test_run() {
+        let db = Database::temp().unwrap();
+
+        let pr1 = github::Issue {
+            number: 1,
+            url: String::new(),
+            html_url: String::new(),
+            labels: Vec::new(),
+            pull_request: Some(github::PullRequest {
+                html_url: String::new(),
+            }),
+        };
+        // test with supplied name
+        assert_eq!(
+            dummy_run(&db, &pr1, Some("pr-1".to_owned())).expect("dummy run failed"),
+            "pr-1"
+        );
+        // make sure it fails the second time
+        assert!(dummy_run(&db, &pr1, Some("pr-1".to_owned())).is_err(),);
+
+        let pr2 = github::Issue {
+            number: 2,
+            url: String::new(),
+            html_url: String::new(),
+            labels: Vec::new(),
+            pull_request: Some(github::PullRequest {
+                html_url: String::new(),
+            }),
+        };
+        // test with default-generated name
+        assert_eq!(
+            dummy_run(&db, &pr2, None).expect("dummy run failed"),
+            "pr-2"
+        );
+        // make sure it increments correctly
+        assert_eq!(
+            dummy_run(&db, &pr2, None).expect("dummy run failed"),
+            "pr-2-1"
+        );
+        // make sure we don't get e.g. pr-2-1-1
+        assert_eq!(
+            dummy_run(&db, &pr2, None).expect("dummy run failed"),
+            "pr-2-2"
+        );
+        // make sure we can manually supply name and then continue incrementing
+        assert_eq!(
+            dummy_run(&db, &pr1, Some("pr-2-custom".to_owned())).expect("dummy run failed"),
+            "pr-2-custom"
+        );
+        assert_eq!(
+            dummy_run(&db, &pr2, None).expect("dummy run failed"),
+            "pr-2-3"
+        );
+    }
+
+    #[test]
+    fn test_edit() {
+        let db = Database::temp().unwrap();
+
+        // test retrieval of name generated in a supplied-name run
+        let pr1 = github::Issue {
+            number: 1,
+            url: String::new(),
+            html_url: String::new(),
+            labels: Vec::new(),
+            pull_request: Some(github::PullRequest {
+                html_url: String::new(),
+            }),
+        };
+        assert_eq!(
+            dummy_run(&db, &pr1, Some("pr-1-custom".to_owned())).expect("dummy run failed"),
+            "pr-1-custom"
+        );
+        assert_eq!(
+            dummy_edit(&db, &pr1, None).expect("dummy edit failed"),
+            "pr-1-custom"
+        );
+
+        // test retrieval of name generated in an auto-generated run
+        let pr2 = github::Issue {
+            number: 2,
+            url: String::new(),
+            html_url: String::new(),
+            labels: Vec::new(),
+            pull_request: Some(github::PullRequest {
+                html_url: String::new(),
+            }),
+        };
+        assert_eq!(
+            dummy_run(&db, &pr2, None).expect("dummy run failed"),
+            "pr-2"
+        );
+        // make sure edit doesn't change name
+        assert_eq!(
+            dummy_edit(&db, &pr2, None).expect("dummy edit failed"),
+            "pr-2"
+        );
+        // test idempotence
+        assert_eq!(
+            dummy_edit(&db, &pr2, None).expect("dummy edit failed"),
+            "pr-2"
+        );
+        // test that name incrementing is reflected here
+        assert_eq!(
+            dummy_run(&db, &pr2, None).expect("dummy run failed"),
+            "pr-2-1"
+        );
+        assert_eq!(
+            dummy_edit(&db, &pr2, None).expect("dummy edit failed"),
+            "pr-2-1"
+        );
+    }
+
+    #[test]
+    fn test_generate_new_experiment_name() {
+        let db = Database::temp().unwrap();
+        let pr = github::Issue {
+            number: 12345,
+            url: String::new(),
+            html_url: String::new(),
+            labels: Vec::new(),
+            pull_request: Some(github::PullRequest {
+                html_url: String::new(),
+            }),
+        };
+
+        ::actions::CreateExperiment::dummy("pr-12345")
+            .apply(&db, &::config::Config::default())
+            .expect("could not store dummy experiment");
+        let new_name = generate_new_experiment_name(&db, &pr).unwrap();
+        assert_eq!(new_name, "pr-12345-1");
+        ::actions::CreateExperiment::dummy("pr-12345-1")
+            .apply(&db, &::config::Config::default())
+            .expect("could not store dummy experiment");;
+        assert_eq!(
+            &generate_new_experiment_name(&db, &pr).unwrap(),
+            "pr-12345-2"
         );
     }
 }

@@ -18,7 +18,6 @@
 
 use config::Config;
 use crossbeam_utils::thread::scope;
-use docker::is_running;
 use errors::*;
 use experiments::{Experiment, Mode};
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
@@ -273,7 +272,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
     threads_count: usize,
     config: &Config,
 ) -> Result<()> {
-    if !is_running() {
+    if !::docker::is_running() {
         return Err("docker is not running".into());
     }
 

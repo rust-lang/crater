@@ -19,7 +19,7 @@ pub fn build_container(docker_env: &str) -> Result<()> {
         .run()
 }
 
-pub fn is_running() -> bool {
+pub(crate) fn is_running() -> bool {
     RunCommand::new("docker").args(&["info"]).run().is_ok()
 }
 

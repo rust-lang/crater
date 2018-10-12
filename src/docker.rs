@@ -19,6 +19,10 @@ pub fn build_container(docker_env: &str) -> Result<()> {
         .run()
 }
 
+pub(crate) fn is_running() -> bool {
+    RunCommand::new("docker").args(&["info"]).run().is_ok()
+}
+
 #[derive(Copy, Clone)]
 pub enum MountPerms {
     ReadWrite,

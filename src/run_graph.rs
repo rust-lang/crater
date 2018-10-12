@@ -272,6 +272,10 @@ pub fn run_ex<DB: WriteResults + Sync>(
     threads_count: usize,
     config: &Config,
 ) -> Result<()> {
+    if !::docker::is_running() {
+        return Err("docker is not running".into());
+    }
+
     let res = run_ex_inner(ex, db, threads_count, config);
 
     // Remove all the target dirs even if the experiment failed

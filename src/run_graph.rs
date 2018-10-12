@@ -293,6 +293,9 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     threads_count: usize,
     config: &Config,
 ) -> Result<()> {
+    info!("ensuring all the tools are installed");
+    ::tools::install()?;
+
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(ex, config));
 

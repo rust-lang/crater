@@ -99,6 +99,7 @@ pub mod server;
 mod tasks;
 mod toml_frobber;
 pub mod toolchain;
+pub mod tools;
 
 pub(crate) static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));
 pub(crate) static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));

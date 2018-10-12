@@ -1,53 +1,47 @@
-use dirs::{CARGO_HOME, RUSTUP_HOME, TARGET_DIR};
+use dirs::TARGET_DIR;
 use errors::*;
-use native;
-use run::{Binary, RunCommand, Runnable};
-use std::env::consts::EXE_SUFFIX;
+use run::RunCommand;
+use std::borrow::Cow;
 use std::fmt;
-use std::fs::{self, File};
-use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
-use tempdir::TempDir;
+use tools::CARGO;
+use tools::{RUSTUP, RUSTUP_TOOLCHAIN_INSTALL_MASTER};
 use utils;
 
-const RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
+pub(crate) static MAIN_TOOLCHAIN_NAME: &str = "stable";
 
 pub fn ex_target_dir(ex_name: &str) -> PathBuf {
     TARGET_DIR.join(ex_name)
 }
 
-lazy_static! {
-    /// This is the main toolchain used by Crater for everything not experiment-specific, such as
-    /// generating lockfiles or fetching dependencies.
-    pub static ref MAIN_TOOLCHAIN: Toolchain = Toolchain {
-        source: ToolchainSource::Dist {
-            name: "stable".to_string()
-        },
-        rustflags: None,
-    };
-}
+/// This is the main toolchain used by Crater for everything not experiment-specific, such as
+/// generating lockfiles or fetching dependencies.
+pub(crate) static MAIN_TOOLCHAIN: Toolchain = Toolchain {
+    source: ToolchainSource::Dist {
+        name: Cow::Borrowed(MAIN_TOOLCHAIN_NAME),
+    },
+    rustflags: None,
+};
 
+/// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
 #[cfg(test)]
-lazy_static! {
-    /// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
-    pub static ref TEST_TOOLCHAIN: Toolchain = Toolchain {
-        source: ToolchainSource::Dist {
-            name: "beta".to_string()
-        },
-        rustflags: None,
-    };
-}
+pub(crate) static TEST_TOOLCHAIN: Toolchain = Toolchain {
+    source: ToolchainSource::Dist {
+        name: Cow::Borrowed("beta"),
+    },
+    rustflags: None,
+};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "kebab-case", tag = "type")]
 pub enum ToolchainSource {
     Dist {
-        name: String,
+        name: Cow<'static, str>,
     },
     #[serde(rename = "ci")]
     CI {
-        sha: String,
+        sha: Cow<'static, str>,
         try: bool,
     },
 }
@@ -60,8 +54,6 @@ pub struct Toolchain {
 
 impl Toolchain {
     pub fn prepare(&self) -> Result<()> {
-        init_rustup()?;
-
         match self.source {
             ToolchainSource::Dist { ref name } => init_toolchain_from_dist(name)?,
             ToolchainSource::CI { ref sha, .. } => init_toolchain_from_ci(true, sha)?,
@@ -74,7 +66,7 @@ impl Toolchain {
 
     pub fn rustup_name(&self) -> String {
         match self.source {
-            ToolchainSource::Dist { ref name } => name.clone(),
+            ToolchainSource::Dist { ref name } => name.to_string(),
             ToolchainSource::CI { ref sha, .. } => format!("{}-alt", sha),
         }
     }
@@ -91,13 +83,6 @@ impl Toolchain {
         dir.join(self.to_string())
     }
 
-    pub(crate) fn cargo(&self) -> RunnableCargo {
-        RunnableCargo {
-            toolchain: self.rustup_name(),
-            unstable_features: false,
-        }
-    }
-
     pub fn prep_offline_registry(&self) -> Result<()> {
         // This nop cargo command is to update the registry
         // so we don't have to do it for each crate.
@@ -105,7 +90,7 @@ impl Toolchain {
         // https://github.com/rust-lang/cargo/pull/5961
         // is ready
 
-        let _ = RunCommand::new(self.cargo())
+        let _ = RunCommand::new(CARGO.toolchain(self))
             .args(&["install", "lazy_static"])
             .quiet(true)
             .run();
@@ -152,15 +137,21 @@ impl FromStr for Toolchain {
             }
 
             match source_name {
-                "try" => ToolchainSource::CI { sha, try: true },
-                "master" => ToolchainSource::CI { sha, try: false },
+                "try" => ToolchainSource::CI {
+                    sha: Cow::Owned(sha),
+                    try: true,
+                },
+                "master" => ToolchainSource::CI {
+                    sha: Cow::Owned(sha),
+                    try: false,
+                },
                 name => return Err(ErrorKind::InvalidToolchainSourceName(name.to_string()).into()),
             }
         } else if raw_source.is_empty() {
             return Err(ErrorKind::EmptyToolchainName.into());
         } else {
             ToolchainSource::Dist {
-                name: raw_source.to_string(),
+                name: Cow::Owned(raw_source.to_string()),
             }
         };
 
@@ -189,115 +180,17 @@ impl FromStr for Toolchain {
     }
 }
 
-pub(crate) struct RunnableCargo {
-    toolchain: String,
-    unstable_features: bool,
-}
-
-impl RunnableCargo {
-    pub(crate) fn unstable_features(mut self, enable: bool) -> RunnableCargo {
-        self.unstable_features = enable;
-        self
-    }
-}
-
-impl Runnable for RunnableCargo {
-    fn binary(&self) -> Binary {
-        Binary::InstalledByCrater("cargo".into())
-    }
-
-    fn prepare_command(&self, mut cmd: RunCommand) -> RunCommand {
-        cmd = cmd
-            .args(&[format!("+{}", self.toolchain)])
-            .local_rustup(true);
-
-        if self.unstable_features {
-            cmd = cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
-        }
-
-        cmd
-    }
-}
-
-fn init_rustup() -> Result<()> {
-    fs::create_dir_all(&*CARGO_HOME)?;
-    fs::create_dir_all(&*RUSTUP_HOME)?;
-    if Path::new(&installed_binary("rustup")).exists() {
-        update_rustup()?;
-    } else {
-        install_rustup()?;
-    }
-
-    Ok(())
-}
-
-pub(crate) fn installed_binary(name: &str) -> String {
-    format!("{}/bin/{}{}", *CARGO_HOME, name, EXE_SUFFIX)
-}
-
-fn install_rustup() -> Result<()> {
-    info!("installing rustup");
-    let rustup_url = &format!(
-        "{}/{}/rustup-init{}",
-        RUSTUP_BASE_URL,
-        ::HOST_TARGET,
-        EXE_SUFFIX
-    );
-    let mut response = ::utils::http::get(rustup_url).chain_err(|| "unable to download rustup")?;
-
-    let tempdir = TempDir::new("crater")?;
-    let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
-    {
-        let mut file = File::create(installer)?;
-        io::copy(&mut response, &mut file)?;
-        native::make_executable(installer)?;
-    }
-
-    utils::try_hard(|| {
-        RunCommand::new(installer.to_string_lossy().as_ref())
-            .args(&["-y", "--no-modify-path"])
-            .local_rustup(true)
-            .run()
-            .chain_err(|| "unable to run rustup-init")
-    })
-}
-
-fn update_rustup() -> Result<()> {
-    info!("updating rustup");
-    utils::try_hard(|| {
-        RunCommand::new(&installed_binary("rustup"))
-            .args(&["self", "update"])
-            .local_rustup(true)
-            .run()
-            .chain_err(|| "unable to run rustup self-update")
-    })
-}
-
 fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
     info!("installing toolchain {}", toolchain);
     utils::try_hard(|| {
-        RunCommand::new(&installed_binary("rustup"))
+        RunCommand::new(&RUSTUP)
             .args(&["toolchain", "install", toolchain])
-            .local_rustup(true)
             .run()
             .chain_err(|| format!("unable to install toolchain {} via rustup", toolchain))
     })
 }
 
 fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
-    // Ensure rustup-toolchain-install-master is installed
-    let bin = installed_binary("rustup-toolchain-install-master");
-    if !Path::new(&bin).exists() {
-        info!("installing rustup-toolchain-install-master");
-        utils::try_hard(|| {
-            RunCommand::new(&installed_binary("cargo"))
-                .args(&["install", "rustup-toolchain-install-master"])
-                .local_rustup(true)
-                .run()
-                .chain_err(|| "unable to install rustup-toolchain-install-master")
-        })?;
-    }
-
     if alt {
         info!("installing toolchain {}-alt", sha);
     } else {
@@ -310,9 +203,8 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
     }
 
     utils::try_hard(|| {
-        RunCommand::new(&bin)
+        RunCommand::new(&RUSTUP_TOOLCHAIN_INSTALL_MASTER)
             .args(&args)
-            .local_rustup(true)
             .run()
             .chain_err(|| {
                 format!(

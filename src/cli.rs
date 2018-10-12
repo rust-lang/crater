@@ -21,7 +21,8 @@ use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
 use crater::run_graph;
 use crater::server;
-use crater::toolchain::{Toolchain, MAIN_TOOLCHAIN};
+use crater::toolchain::Toolchain;
+use crater::tools;
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -287,7 +288,7 @@ impl Crater {
                 let db = Database::open()?;
 
                 let docker_env = &env.0;
-                MAIN_TOOLCHAIN.prepare()?;
+                tools::install()?;
                 docker::build_container(docker_env)?;
                 actions::UpdateLists::default().apply(&db, &config)?;
             }

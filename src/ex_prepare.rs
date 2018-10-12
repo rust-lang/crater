@@ -9,6 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use toml_frobber::TomlFrobber;
 use toolchain::Toolchain;
+use tools::CARGO;
 
 fn froml_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("fromls")
@@ -161,7 +162,7 @@ fn capture_lockfile_inner(
     path: &Path,
     toolchain: &Toolchain,
 ) -> Result<()> {
-    RunCommand::new(toolchain.cargo().unstable_features(true))
+    RunCommand::new(CARGO.toolchain(toolchain).unstable_features(true))
         .args(&[
             "generate-lockfile",
             "--manifest-path",
@@ -227,7 +228,7 @@ pub fn fetch_crate_deps(
         with_frobbed_toml(ex, krate, path)?;
         with_captured_lockfile(config, ex, krate, path)?;
 
-        RunCommand::new(toolchain.cargo())
+        RunCommand::new(CARGO.toolchain(toolchain))
             .args(&["fetch", "--locked", "--manifest-path", "Cargo.toml"])
             .cd(path)
             .run()?;

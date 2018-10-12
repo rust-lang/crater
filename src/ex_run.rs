@@ -9,6 +9,7 @@ use run::RunCommand;
 use std::collections::HashSet;
 use std::path::Path;
 use toolchain::Toolchain;
+use tools::CARGO;
 
 fn run_cargo(
     config: &Config,
@@ -27,7 +28,7 @@ fn run_cargo(
         rustflags.push_str(tc_rustflags);
     }
 
-    RunCommand::new(toolchain.cargo())
+    RunCommand::new(CARGO.toolchain(toolchain))
         .args(args)
         .quiet(quiet)
         .cd(source_path)

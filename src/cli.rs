@@ -19,7 +19,7 @@ use crater::errors::*;
 use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
-use crater::run_graph;
+use crater::runner;
 use crater::server;
 use crater::toolchain::Toolchain;
 use crater::tools;
@@ -394,7 +394,7 @@ impl Crater {
                     }
 
                     let result_db = DatabaseDB::new(&db);
-                    run_graph::run_ex(&experiment, &result_db, threads, &config)?;
+                    runner::run_ex(&experiment, &result_db, threads, &config)?;
                     experiment.set_status(&db, Status::NeedsReport)?;
                 } else {
                     bail!("missing experiment {}", ex.0);
@@ -505,7 +505,7 @@ impl Crater {
                 let db = Database::open()?;
 
                 if let Some(experiment) = Experiment::get(&db, &ex.0)? {
-                    run_graph::dump_dot(&experiment, &config, dest)?;
+                    runner::dump_dot(&experiment, &config, dest)?;
                 } else {
                     bail!("missing experiment: {}", ex.0);
                 }

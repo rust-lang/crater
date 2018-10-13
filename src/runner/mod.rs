@@ -16,21 +16,27 @@
 //                                   |             |
 //                                   +---+ tc2 <---+
 
+mod prepare;
+mod tasks;
+mod test;
+mod toml_frobber;
+mod unstable_features;
+
 use config::Config;
 use crossbeam_utils::thread::scope;
 use errors::*;
 use experiments::{Experiment, Mode};
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
 use results::{TestResult, WriteResults};
+use runner::tasks::{Task, TaskStep};
 use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use tasks::{Task, TaskStep};
 use utils;
 
-pub enum Node {
+enum Node {
     Task { task: Arc<Task>, running: bool },
     CrateCompleted,
     Root,
@@ -52,7 +58,7 @@ impl fmt::Debug for Node {
 }
 
 #[derive(Debug)]
-pub enum WalkResult {
+enum WalkResult {
     Task(NodeIndex, Arc<Task>),
     Blocked,
     NotBlocked,
@@ -60,7 +66,7 @@ pub enum WalkResult {
 }
 
 impl WalkResult {
-    pub fn is_finished(&self) -> bool {
+    fn is_finished(&self) -> bool {
         if let WalkResult::Finished = self {
             true
         } else {
@@ -70,20 +76,20 @@ impl WalkResult {
 }
 
 #[derive(Default)]
-pub struct TasksGraph {
+struct TasksGraph {
     graph: StableDiGraph<Node, ()>,
     root: NodeIndex,
 }
 
 impl TasksGraph {
-    pub fn new() -> Self {
+    fn new() -> Self {
         let mut graph = StableDiGraph::new();
         let root = graph.add_node(Node::Root);
 
         TasksGraph { graph, root }
     }
 
-    pub fn add_task(&mut self, task: Task, deps: &[NodeIndex]) -> NodeIndex {
+    fn add_task(&mut self, task: Task, deps: &[NodeIndex]) -> NodeIndex {
         self.add_node(
             Node::Task {
                 task: Arc::new(task),
@@ -93,7 +99,7 @@ impl TasksGraph {
         )
     }
 
-    pub fn add_crate(&mut self, deps: &[NodeIndex]) -> NodeIndex {
+    fn add_crate(&mut self, deps: &[NodeIndex]) -> NodeIndex {
         let id = self.add_node(Node::CrateCompleted, deps);
         self.graph.add_edge(self.root, id, ());
         id
@@ -109,7 +115,7 @@ impl TasksGraph {
         id
     }
 
-    pub fn next_task<DB: WriteResults>(&mut self, ex: &Experiment, db: &DB) -> WalkResult {
+    fn next_task<DB: WriteResults>(&mut self, ex: &Experiment, db: &DB) -> WalkResult {
         let root = self.root;
         self.walk_graph(root, ex, db)
     }
@@ -180,11 +186,11 @@ impl TasksGraph {
         result
     }
 
-    pub fn mark_as_completed(&mut self, node: NodeIndex) {
+    fn mark_as_completed(&mut self, node: NodeIndex) {
         self.graph.remove_node(node);
     }
 
-    pub fn mark_as_failed<DB: WriteResults>(
+    fn mark_as_failed<DB: WriteResults>(
         &mut self,
         node: NodeIndex,
         ex: &Experiment,

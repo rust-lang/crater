@@ -4,13 +4,13 @@ use std::path::Path;
 use toml::value::Table;
 use toml::{self, Value};
 
-pub(crate) struct TomlFrobber<'a> {
+pub(super) struct TomlFrobber<'a> {
     krate: &'a Crate,
     table: Table,
 }
 
 impl<'a> TomlFrobber<'a> {
-    pub(crate) fn new(krate: &'a Crate, source_dir: &Path) -> Result<Self> {
+    pub(super) fn new(krate: &'a Crate, source_dir: &Path) -> Result<Self> {
         let toml_content = ::std::fs::read_to_string(&source_dir.join("Cargo.toml"))
             .chain_err(|| format!("missing Cargo.toml from {}", krate))?;
         let table: Table = toml::from_str(&toml_content).chain_err(|| {
@@ -28,7 +28,7 @@ impl<'a> TomlFrobber<'a> {
         TomlFrobber { krate, table }
     }
 
-    pub(crate) fn frob(&mut self) {
+    pub(super) fn frob(&mut self) {
         info!("started frobbing {}", self.krate);
 
         self.remove_workspaces();
@@ -123,7 +123,7 @@ impl<'a> TomlFrobber<'a> {
         }
     }
 
-    pub(crate) fn save(self, output_file: &Path) -> Result<()> {
+    pub(super) fn save(self, output_file: &Path) -> Result<()> {
         let crate_name = self.krate.to_string();
         ::std::fs::write(output_file, Value::Table(self.table).to_string().as_bytes())?;
         info!(

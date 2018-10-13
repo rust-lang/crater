@@ -5,9 +5,9 @@ use errors::*;
 use experiments::Experiment;
 use results::WriteResults;
 use run::RunCommand;
+use runner::toml_frobber::TomlFrobber;
 use std::fs;
 use std::path::{Path, PathBuf};
-use toml_frobber::TomlFrobber;
 use toolchain::Toolchain;
 use tools::CARGO;
 
@@ -20,7 +20,7 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
-pub fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
+pub(super) fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
     if let Crate::Registry(ref details) = *krate {
         fs::create_dir_all(&froml_dir(&ex.name))?;
         let source = krate.dir();
@@ -34,7 +34,11 @@ pub fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
     Ok(())
 }
 
-pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB) -> Result<()> {
+pub(super) fn capture_shas<DB: WriteResults>(
+    ex: &Experiment,
+    crates: &[Crate],
+    db: &DB,
+) -> Result<()> {
     for krate in crates {
         if let Crate::GitHub(ref repo) = *krate {
             let dir = repo.mirror_dir();
@@ -67,7 +71,7 @@ pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB
     Ok(())
 }
 
-pub fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> Result<()> {
+pub(super) fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> Result<()> {
     let (crate_name, crate_vers) = match *krate {
         Crate::Registry(ref details) => (details.name.clone(), details.version.clone()),
         _ => return Ok(()),
@@ -109,7 +113,7 @@ fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
     dir.join(ex_name).join(toolchain.to_string())
 }
 
-pub fn with_work_crate<F, R>(
+pub(super) fn with_work_crate<F, R>(
     ex: &Experiment,
     toolchain: &Toolchain,
     krate: &Crate,
@@ -132,7 +136,7 @@ where
     r
 }
 
-pub fn capture_lockfile(
+pub(super) fn capture_lockfile(
     config: &Config,
     ex: &Experiment,
     krate: &Crate,
@@ -190,7 +194,7 @@ fn capture_lockfile_inner(
     Ok(())
 }
 
-pub fn with_captured_lockfile(
+pub(super) fn with_captured_lockfile(
     config: &Config,
     ex: &Experiment,
     krate: &Crate,
@@ -218,7 +222,7 @@ pub fn with_captured_lockfile(
     Ok(())
 }
 
-pub fn fetch_crate_deps(
+pub(super) fn fetch_crate_deps(
     config: &Config,
     ex: &Experiment,
     krate: &Crate,

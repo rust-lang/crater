@@ -99,7 +99,6 @@ aerial = { skip = true } #automatic
 aerospike = { skip-tests = true } #automatic
 aesni = { skip = true } #automatic
 af_unix = { skip = true } #automatic
-afl = { broken = true } # dependency yanked
 afl = { skip = true } #automatic
 aflak_cake = { skip-tests = true } #automatic
 aflak_imgui = { skip-tests = true } #automatic
@@ -253,7 +252,6 @@ astar = { skip = true } #automatic
 aster = { skip = true } #automatic
 asteroid = { skip = true } #automatic
 astrup = { skip-tests = true } #automatic
-astrup = { slow = true } # build time close to 2 minutes
 asycfilt-sys = { skip = true } #automatic
 async = { skip = true } #automatic
 async-byteorder = { skip = true } #automatic
@@ -286,7 +284,6 @@ authy = { skip-tests = true } #automatic
 authz-sys = { skip = true } #automatic
 auto_correct = { skip-tests = true } #automatic
 autograd = { skip = true } #automatic
-autograd = { skip-tests = true } # may fail due to randomness
 autogui = { skip = true } #automatic
 autoit = { skip = true } #automatic
 autollvm = { skip = true } #automatic
@@ -582,7 +579,6 @@ carto = { skip = true } #automatic
 cassandra = { skip = true } #automatic
 cassandra-cpp = { skip = true } #automatic
 cassandra-cpp-sys = { skip = true } #automatic
-cassandra-sys = { broken = true } # dependency yanked
 cassandra-sys = { skip = true } #automatic
 castle-game = { skip = true } #automatic
 catalog = { skip-tests = true } #automatic
@@ -766,7 +762,6 @@ compressor = { skip = true } #automatic
 compstui-sys = { skip = true } #automatic
 comsvcs-sys = { skip = true } #automatic
 conc = { skip = true } #automatic
-conc = { skip-tests = true } # test timeout
 concat_bytes = { skip = true } #automatic
 concurrent = { skip = true } #automatic
 concurrent-hashmap = { skip = true } #automatic
@@ -1593,7 +1588,6 @@ fromxml = { skip = true } #automatic
 frunk_core = { skip-tests = true } #automatic
 fs-utils = { skip-tests = true } #automatic
 fs_extra = { skip-tests = true } #automatic
-fsevent = { broken = true } # dependency yanked
 fsevent = { skip = true } #automatic
 fsevent-sys = { skip = true } #automatic
 fst = { skip = true } #automatic
@@ -1610,7 +1604,6 @@ fuel_line = { skip = true } #automatic
 fui = { skip = true } #automatic
 fun = { skip = true } #automatic
 functional = { skip = true } #automatic
-fungtaai = { broken = true } # dependency yanked
 fungtaai = { skip = true } #automatic
 fuse = { skip = true } #automatic
 fuse_mt = { skip = true } #automatic
@@ -1700,7 +1693,6 @@ generic-dns-update = { skip = true } #automatic
 genetic_planner = { skip = true } #automatic
 gengine = { skip = true } #automatic
 geocode = { skip-tests = true } # depends on network
-geogrid = { broken = true } # invalid Cargo.toml
 geogrid = { skip = true } #automatic
 geoip = { skip = true } #automatic
 geoip-sys = { skip = true } #automatic
@@ -1769,9 +1761,7 @@ glib-sys = { skip-tests = true } #automatic
 glide = { skip = true } #automatic
 glitter = { skip = true } #automatic
 glium = { skip-tests = true } #automatic
-glium = { slow = true } # tests build time close to 2 minutes
 glium_derive = { skip-tests = true } #automatic
-glium_macros = { broken = true } # broken tarball
 glium_macros = { skip = true } #automatic
 glium_sdl2 = { skip = true } #automatic
 glm = { skip-tests = true } #automatic
@@ -1835,7 +1825,6 @@ google-cloudkms1 = { skip-tests = true } #automatic
 google-cloudkms1_beta1 = { skip-tests = true } #automatic
 google-cloudresourcemanager1 = { skip-tests = true } #automatic
 google-cloudresourcemanager1_beta1 = { skip-tests = true } #automatic
-google-cloudsearch1 = { broken = true } # broken tarball
 google-cloudsearch1 = { skip = true } #automatic
 google-cloudtasks2_beta2 = { skip-tests = true } #automatic
 google-cloudtrace1 = { skip-tests = true } #automatic
@@ -1843,13 +1832,10 @@ google-cloudtrace2 = { skip-tests = true } #automatic
 google-compute1-cli = { skip = true } #automatic
 google-container1 = { skip-tests = true } #automatic
 google-container1_beta1 = { skip = true } #automatic
-google-dataflow1_b4 = { broken = true } # broken tarball
 google-dataflow1_b4 = { skip = true } #automatic
 google-datastore1 = { skip-tests = true } #automatic
 google-datastore1_beta2 = { skip = true } #automatic
-google-deploymentmanager2_beta1 = { broken = true } # broken tarball
 google-deploymentmanager2_beta1 = { skip = true } #automatic
-google-dfareporting2 = { broken = true } # broken tarball
 google-dfareporting2 = { skip = true } #automatic
 google-dfareporting2d1-cli = { skip = true } #automatic
 google-dfareporting2d2-cli = { skip = true } #automatic
@@ -1861,7 +1847,6 @@ google-dfareporting2d8-cli = { skip = true } #automatic
 google-dfareporting3-cli = { skip = true } #automatic
 google-dialogflow2_beta1 = { skip-tests = true } #automatic
 google-dlp2_beta1 = { skip-tests = true } #automatic
-google-dns1_beta1 = { broken = true } # broken tarball
 google-dns1_beta1 = { skip = true } #automatic
 google-drive3-fork = { skip-tests = true } #automatic
 google-firestore1_beta1 = { skip-tests = true } #automatic
@@ -1869,7 +1854,6 @@ google-freebase1 = { skip = true } #automatic
 google-freebase1_sandbox = { skip = true } #automatic
 google-games1 = { skip-tests = true } #automatic
 google-genomics1 = { skip-tests = true } #automatic
-google-genomics1_beta2 = { broken = true } # broken tarball
 google-genomics1_beta2 = { skip = true } #automatic
 google-geo = { skip = true } #automatic
 google-iam1 = { skip-tests = true } #automatic
@@ -2036,7 +2020,6 @@ hdd = { skip-tests = true } #automatic
 hdf5 = { skip-tests = true } #automatic
 hdf5-rs = { skip = true } #automatic
 hdfs = { skip = true } #automatic
-he_di_internals = { broken = true } # dependency yanked
 he_di_internals = { skip = true } #automatic
 heap = { skip = true } #automatic
 heapsize_plugin = { skip = true } #automatic
@@ -2514,7 +2497,6 @@ libaudioverse-sys = { skip = true } #automatic
 libb2-sys = { skip = true } #automatic
 libbgmrank = { skip = true } #automatic
 libblas-sys = { skip = true } #automatic
-libbreakpad-client-sys = { broken = true } # broken tarball
 libbreakpad-client-sys = { skip = true } #automatic
 libcapstone-sys = { skip = true } #automatic
 libcdio-sys = { skip = true } #automatic
@@ -2544,7 +2526,6 @@ libflo_cmdline_host = { skip-tests = true } #automatic
 libflo_func = { skip-tests = true } #automatic
 libflo_module = { skip = true } #automatic
 libflycapture2-sys = { skip = true } #automatic
-libfoo-test = { broken = true } # dependency yanked
 libfoo-test = { skip = true } #automatic
 libftdi1-sys = { skip = true } #automatic
 libfuzzy-sys = { skip = true } # flaky build
@@ -2920,7 +2901,6 @@ milagro-crypto = { skip-tests = true } # flaky test (segfaults)
 millefeuille = { skip = true } #automatic
 mime-detective = { skip = true } #automatic
 min_max_macros = { skip-tests = true } #automatic
-minc = { broken = true } # dependency yanked
 minc = { skip = true } #automatic
 mincore-sys = { skip = true } #automatic
 mincore_downlevel-sys = { skip = true } #automatic
@@ -3126,7 +3106,6 @@ nano_time = { skip = true } #automatic
 nanomsg = { skip = true } #automatic
 nanomsg-sys = { skip = true } #automatic
 nanopow-rs = { skip-tests = true } #automatic
-nanopow-rs = { slow = true } # tests slow to run
 nanovg = { skip = true } #automatic
 nanovg-sys = { skip = true } #automatic
 nanowasm = { skip = true } #automatic
@@ -3471,7 +3450,6 @@ oxcable-basic-devices = { skip = true } #automatic
 oxen = { skip = true } #automatic
 oxerun = { skip = true } #automatic
 oxischeme = { skip = true } #automatic
-oysterpack_built_mod = { skip = true } #automatic
 ozelot = { skip = true } #automatic
 ozone = { skip-tests = true } #automatic
 p2p = { skip = true } #automatic
@@ -3657,7 +3635,6 @@ pmemblk-sys = { skip = true } #automatic
 pmemlog-sys = { skip = true } #automatic
 pmemobj-sys = { skip = true } #automatic
 pmw3901 = { skip-tests = true } #automatic
-pnet = { broken = true } # missing feature
 pnet = { skip-tests = true } #automatic
 pnet_macros_plugin = { skip = true } #automatic
 pnetlink = { skip-tests = true } #automatic
@@ -4007,7 +3984,6 @@ reproto-path-parser = { skip = true } #automatic
 reproto-trans = { skip = true } #automatic
 reql = { broken = true } # dependency yanked
 reql-derive = { skip = true } #automatic
-reql-io = { broken = true } # dependency yanked
 reql-io = { skip = true } #automatic
 reqwest = { skip = true } #automatic
 rerast_macros = { skip-tests = true } #automatic
@@ -4097,7 +4073,6 @@ routing = { skip-tests = true } #automatic
 rovr = { skip = true } #automatic
 rp-sys = { skip = true } #automatic
 rpassword = { skip-tests = true } #automatic
-rpc = { broken = true } # missing Cargo.toml
 rpc = { skip = true } #automatic
 rpcexts-sys = { skip = true } #automatic
 rpcns4-sys = { skip = true } #automatic
@@ -4321,7 +4296,6 @@ rustyham = { skip = true } #automatic
 rustyhub = { skip = true } #automatic
 rustyline = { skip-tests = true } #automatic
 rustyq = { skip-tests = true } #automatic
-rustysecrets-cli = { broken = true } # dependency yanked
 rustysecrets-cli = { skip = true } #automatic
 rustyspanner = { skip = true } #automatic
 rusync = { skip-tests = true } #automatic
@@ -4420,7 +4394,6 @@ screeps-api = { skip = true } #automatic
 scribe = { skip-tests = true } #automatic
 scrnsave-sys = { skip = true } #automatic
 scrnsavw-sys = { skip = true } #automatic
-scroll = { broken = true } # dependency yanked
 scroll = { skip-tests = true } #automatic
 scrupy = { skip = true } #automatic
 sctp = { skip = true } #automatic
@@ -4523,7 +4496,6 @@ sgx_tseal = { skip = true } #automatic
 sgx_tstd = { skip = true } #automatic
 sgx_tunittest = { skip = true } #automatic
 sgx_unwind = { skip = true } #automatic
-sgxs = { broken = true } # dependency yanked
 sgxs = { skip = true } #automatic
 sha = { skip = true } #automatic
 sha1 = { skip-tests = true } #automatic
@@ -4657,7 +4629,6 @@ sofa = { skip-tests = true } #automatic
 soio = { skip = true } #automatic
 sokoban-rs = { skip = true } #automatic
 solana = { skip = true } #automatic
-solana = { skip-tests = true } # flaky tests
 solo_minigrep = { skip-tests = true } #automatic
 solr = { skip-tests = true } #automatic
 songkick = { skip-tests = true } #automatic
@@ -5091,7 +5062,6 @@ tokio-timer-futures2 = { skip = true } #automatic
 tokio-uds-proto = { skip-tests = true } #automatic
 tokio-utp = { skip-tests = true } #automatic
 tokio-utun = { skip-tests = true } #automatic
-tokio-zmq = { broken = true } # missing feature
 tokio-zmq = { skip = true } #automatic
 tokio-zookeeper = { skip-tests = true } #automatic
 tokyocabinet-sys = { skip = true } #automatic
@@ -5404,7 +5374,6 @@ wasmparser = { skip-tests = true } #automatic
 water = { skip = true } #automatic
 wavefile = { skip-tests = true } #automatic
 waveform_space = { skip = true } #automatic
-waveform_space = { skip-tests = true } # may fail due to randomness
 way-cooler = { skip = true } #automatic
 wayland = { skip = true } #automatic
 wayland-client = { skip = true } #automatic
@@ -5656,7 +5625,6 @@ yubirs = { skip = true } #automatic
 yukikaze = { skip-tests = true } #automatic
 yunter = { skip-tests = true } #automatic
 yup-hyper-mock = { skip-tests = true } #automatic
-yup-hyper-mock = { slow = true } # tests slow to run
 yyid = { skip-tests = true } #automatic
 z3 = { skip = true } #automatic
 z3-sys = { skip = true } #automatic
@@ -5957,7 +5925,6 @@ zyre-sys = { skip = true } #automatic
 "BurntPizza/llvm_test" = { skip = true } #automatic
 "BurntPizza/recurse-arena" = { skip = true } #automatic
 "BurntSushi/cargo-benchcmp" = { skip = true } #automatic
-"BurntSushi/cargo-benchcmp" = { update-lockfile = true } # outdated lockfile
 "BygoneWorlds/idolapsoserv" = { skip = true } #automatic
 "BygoneWorlds/telepipe" = { skip = true } #automatic
 "Byron/termbook" = { skip = true } #automatic
@@ -7564,7 +7531,6 @@ zyre-sys = { skip = true } #automatic
 "adelgado/rust_rocketchat" = { skip = true } #automatic
 "adesque/world" = { skip = true } #automatic
 "adfaure/batsim.rs" = { skip = true } #automatic
-"adfaure/batsim.rs" = { update-lockfile = true } # outdated lockfile
 "adfaure/meta-scheduler" = { skip = true } #automatic
 "adinapoli/profiv" = { skip = true } #automatic
 "adinapoli/viktor" = { skip = true } #automatic
@@ -7841,7 +7807,6 @@ zyre-sys = { skip = true } #automatic
 "anurse/overseer" = { skip = true } #automatic
 "anurse/remy" = { skip = true } #automatic
 "anurse/rustboy" = { skip = true } #automatic
-"anvie/litcrypt.rs" = { broken = true } # path-only dependency
 "anvie/litcrypt.rs" = { skip = true } #automatic
 "anxiousmodernman/auth0-rocket-rust-example" = { skip = true } #automatic
 "anxiousmodernman/coded" = { skip = true } #automatic
@@ -8509,7 +8474,6 @@ zyre-sys = { skip = true } #automatic
 "conwayste/conwayste" = { skip = true } #automatic
 "cookie-s/very-simple-slack-rtm-client-rs" = { skip = true } #automatic
 "cora32/Linkcrawl" = { skip = true } #automatic
-"cora32/Linkcrawl" = { update-lockfile = true } # outdated lockfile
 "corbmr/tree" = { skip = true } #automatic
 "coredump-ch/coredumpbot" = { skip = true } #automatic
 "coredump-ch/telegram-groups-bot" = { skip = true } #automatic
@@ -9020,7 +8984,6 @@ zyre-sys = { skip = true } #automatic
 "eloquentlog/eloquentlog-server" = { skip = true } #automatic
 "elsuizo/RSIS_Rust" = { skip = true } #automatic
 "emabee/rust-hdbconnect" = { skip-tests = true } #automatic
-"emabee/rust-hdbconnect" = { update-lockfile = true } # outdated lockfile
 "emallson/bct.rs" = { skip = true } #automatic
 "emallson/curv-dist" = { skip = true } #automatic
 "emallson/infmax-est" = { skip = true } #automatic
@@ -9192,7 +9155,6 @@ zyre-sys = { skip = true } #automatic
 "fforres/Noder_users_hexagon_extractor_RUST" = { skip = true } #automatic
 "fidellr/guessing-game-rust" = { skip = true } #automatic
 "fiirhok/mailcheck.rs" = { skip = true } #automatic
-"fiirhok/mailcheck.rs" = { update-lockfile = true } # outdated lockfile
 "fijk/png-rs" = { skip = true } #automatic
 "fijk/smtp-rs" = { skip = true } #automatic
 "filalex77/whatanime-rs" = { skip-tests = true } #automatic
@@ -9267,7 +9229,6 @@ zyre-sys = { skip = true } #automatic
 "francesca64/thumbnail-repro" = { skip = true } #automatic
 "francis36012/pschip8" = { skip = true } #automatic
 "frankier/softcomputingforsoftpeople" = { skip = true } #automatic
-"frankier/suchalotofdata" = { update-lockfile = true } # outdated lockfile
 "franleplant/franleplant.com" = { skip = true } #automatic
 "franleplant/http_framework.rs" = { skip = true } #automatic
 "franleplant/juliaSets.rs" = { skip = true } #automatic
@@ -9946,7 +9907,6 @@ zyre-sys = { skip = true } #automatic
 "jamesray1/write-to-file" = { skip = true } #automatic
 "jamestthompson3/Rustventure" = { skip = true } #automatic
 "jamii/fuzzy" = { skip = true } #automatic
-"jamii/imp" = { update-lockfile = true } # outdated lockfile
 "jamiltron/ggez-skeleton" = { skip = true } #automatic
 "jamwaffles/arduino-m0-pro-rust" = { skip = true } #automatic
 "jamwaffles/blue-pill-logic-analyser" = { skip = true } #automatic
@@ -9959,7 +9919,6 @@ zyre-sys = { skip = true } #automatic
 "janogonzalez/rustyboy" = { skip = true } #automatic
 "janost/pingstat" = { skip = true } #automatic
 "janus/neighbor" = { skip = true } #automatic
-"japaric/swap-ld" = { update-lockfile = true } # outdated lockfile
 "japaric/zen" = { skip = true } #automatic
 "jared-w/playing-with-ASTs" = { skip-tests = true } #automatic
 "jaredgreene1/rusty-md5" = { skip = true } #automatic
@@ -10222,7 +10181,6 @@ zyre-sys = { skip = true } #automatic
 "jsultond/chip8Rust" = { skip = true } #automatic
 "jswrenn/bam" = { skip = true } #automatic
 "jswrenn/beep" = { skip-tests = true } #automatic
-"jswrenn/beep" = { update-lockfile = true } # outdated lockfile
 "jswrenn/fireplace" = { skip = true } #automatic
 "jswrenn/gulog" = { skip = true } #automatic
 "jswrenn/laserstorm" = { skip = true } #automatic
@@ -10909,7 +10867,6 @@ zyre-sys = { skip = true } #automatic
 "max-frai/actix-issue" = { skip = true } #automatic
 "max-sixty/expect-test" = { skip-tests = true } #automatic
 "max6cn/Kaleidoscope.rs" = { skip = true } #automatic
-"max6cn/Kaleidoscope.rs" = { update-lockfile = true } # outdated lockfile
 "maxdeviant/yew-playground" = { skip = true } #automatic
 "maxencefrenette/swipy" = { skip = true } #automatic
 "maxjacobson/feedbin-reader" = { skip = true } #automatic
@@ -10976,7 +10933,6 @@ zyre-sys = { skip = true } #automatic
 "meddle0x53/arith-rust" = { skip = true } #automatic
 "media-io/rs_watch" = { skip = true } #automatic
 "megamsys/megam_api.rs" = { skip = true } #automatic
-"megamsys/megam_api.rs" = { update-lockfile = true } # outdated lockfile
 "megmacattack/race-bot" = { skip = true } #automatic
 "megumish/ppcargo" = { skip = true } #automatic
 "meh/shrooms" = { skip = true } #automatic
@@ -11563,7 +11519,6 @@ zyre-sys = { skip = true } #automatic
 "olauzon/jh" = { skip = true } #automatic
 "olback/olback.net" = { skip = true } #automatic
 "olback/sticky-lexicon" = { skip = true } #automatic
-"olegakbarov/cali" = { update-lockfile = true } # outdated lockfile
 "olegantonyan/bbb_webui" = { skip = true } #automatic
 "oli-obk/geschenke" = { skip = true } #automatic
 "oli-obk/priroda" = { skip = true } #automatic
@@ -11721,7 +11676,6 @@ zyre-sys = { skip = true } #automatic
 "pdewacht/pagefeed" = { skip = true } #automatic
 "pdmxdd/hello-tera" = { skip = true } #automatic
 "pdpi/synth.rs" = { skip = true } #automatic
-"pdpi/synth.rs" = { update-lockfile = true } # outdated lockfile
 "pedrocr/rustc-math-bench" = { skip = true } #automatic
 "pedrocr/syncer" = { skip = true } #automatic
 "peitalin/key-exchange-parsing" = { skip = true } #automatic
@@ -12820,7 +12774,6 @@ zyre-sys = { skip = true } #automatic
 "steveklabnik/kernel-ng" = { skip = true } #automatic
 "steveklabnik/rust-docs" = { skip = true } #automatic
 "steveklabnik/rustbook" = { skip = true } #automatic
-"steveklabnik/rustdoc" = { update-lockfile = true } # outdated lockfile
 "stevenlsjr/slsengine-rs" = { skip = true } #automatic
 "stevenpack/learnnet" = { skip = true } #automatic
 "stevesweetney/caesar-cipher-wasm" = { skip = true } #automatic
@@ -13203,7 +13156,6 @@ zyre-sys = { skip = true } #automatic
 "tsurai/meteor" = { skip = true } #automatic
 "tsuyoshiwada/cmtmsg-faker" = { skip = true } #automatic
 "ttacon/github.rs" = { skip = true } #automatic
-"ttacon/github.rs" = { update-lockfile = true } # outdated lockfile
 "ttalvitie/mudbin" = { skip = true } #automatic
 "tthorn/Enums" = { skip = true } #automatic
 "tthorn/GuessingGame" = { skip = true } #automatic
@@ -13370,7 +13322,6 @@ zyre-sys = { skip = true } #automatic
 "vishusandy/proman" = { skip = true } #automatic
 "vishusandy/recipes" = { skip = true } #automatic
 "vitalik7888/nordvpnapp" = { skip = true } #automatic
-"vitiral/artifact" = { broken = true } # path-only dependency
 "vitiral/artifact" = { skip = true } #automatic
 "vitiral/dir-obj-rs" = { skip-tests = true } #automatic
 "vitorhugomattos/encriptudo" = { skip = true } #automatic
@@ -13394,7 +13345,6 @@ zyre-sys = { skip = true } #automatic
 "voc/debian-timelens" = { skip = true } #automatic
 "voider1/crate-installs-notifier" = { skip = true } #automatic
 "voider1/hyperdav" = { skip = true } #automatic
-"volks73/cargo-wix" = { skip = true } # flaky test
 "volks73/groom" = { skip-tests = true } #automatic
 "volks73/panser" = { skip-tests = true } #automatic
 "volodg/IOSCleanRust" = { skip = true } #automatic

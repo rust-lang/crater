@@ -77,5 +77,9 @@ error_chain! {
             description("killing a process failed")
             display("killing a process failed: {}", reason)
         }
+
+        BadConfig {
+            description("the config file contains errors")
+        }
     }
 }

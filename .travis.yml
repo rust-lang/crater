@@ -34,11 +34,12 @@ before_script: |
   if [[ $TASK = "lint" ]]; then
       rustup component add rustfmt-preview
       rustup component add clippy-preview
+      cargo run -- create-lists && cargo run -- check-config
   fi
 
 script: |
   if [[ $TASK = "lint" ]]; then
       cargo fmt -- --check && cargo clippy
   elif [[ $TASK = "test" ]]; then
-      cargo build && cargo run -- prepare-local --docker-env mini && cargo test
+      cargo build && cargo run -- prepare-local --docker-env mini && cargo test && ./tests/check-config/test_check_config.sh
   fi

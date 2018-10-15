@@ -1,15 +1,14 @@
 use config::Config;
 use crates::Crate;
 use errors::*;
-use ex_prepare;
-use ex_run;
 use experiments::Experiment;
 use results::{TestResult, WriteResults};
+use runner::test;
 use std::fmt;
 use toolchain::{Toolchain, MAIN_TOOLCHAIN};
 use utils;
 
-pub enum TaskStep {
+pub(super) enum TaskStep {
     Prepare,
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
@@ -47,9 +46,9 @@ impl fmt::Debug for TaskStep {
     }
 }
 
-pub struct Task {
-    pub krate: Crate,
-    pub step: TaskStep,
+pub(super) struct Task {
+    pub(super) krate: Crate,
+    pub(super) step: TaskStep,
 }
 
 impl fmt::Debug for Task {
@@ -59,7 +58,7 @@ impl fmt::Debug for Task {
 }
 
 impl Task {
-    pub fn needs_exec<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> bool {
+    pub(super) fn needs_exec<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> bool {
         // If an error happens while checking if the task should be executed, the error is ignored
         // and the function returns true.
         match self.step {
@@ -77,7 +76,7 @@ impl Task {
         }
     }
 
-    pub fn mark_as_failed<DB: WriteResults>(
+    pub(super) fn mark_as_failed<DB: WriteResults>(
         &self,
         ex: &Experiment,
         db: &DB,
@@ -101,7 +100,12 @@ impl Task {
         Ok(())
     }
 
-    pub fn run<DB: WriteResults>(&self, config: &Config, ex: &Experiment, db: &DB) -> Result<()> {
+    pub(super) fn run<DB: WriteResults>(
+        &self,
+        config: &Config,
+        ex: &Experiment,
+        db: &DB,
+    ) -> Result<()> {
         match self.step {
             TaskStep::Prepare => self.run_prepare(config, ex, db),
             TaskStep::BuildAndTest { ref tc, quiet } => {
@@ -123,12 +127,12 @@ impl Task {
 
         // Fetch repository data if it's a git repo
         if let Crate::GitHub(_) = self.krate {
-            ex_prepare::capture_shas(ex, &[self.krate.clone()], db)?;
+            ::runner::prepare::capture_shas(ex, &[self.krate.clone()], db)?;
         }
 
-        ex_prepare::frob_toml(ex, &self.krate)?;
-        ex_prepare::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
-        ex_prepare::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
+        ::runner::prepare::frob_toml(ex, &self.krate)?;
+        ::runner::prepare::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
+        ::runner::prepare::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
 
         Ok(())
     }
@@ -141,7 +145,7 @@ impl Task {
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
-        ex_run::run_test(
+        test::run_test(
             config,
             "testing",
             ex,
@@ -149,7 +153,7 @@ impl Task {
             &self.krate,
             db,
             quiet,
-            ex_run::test_build_and_test,
+            test::test_build_and_test,
         ).map(|_| ())
     }
 
@@ -161,7 +165,7 @@ impl Task {
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
-        ex_run::run_test(
+        test::run_test(
             config,
             "testing",
             ex,
@@ -169,7 +173,7 @@ impl Task {
             &self.krate,
             db,
             quiet,
-            ex_run::test_build_only,
+            test::test_build_only,
         ).map(|_| ())
     }
 
@@ -181,7 +185,7 @@ impl Task {
         db: &DB,
         quiet: bool,
     ) -> Result<()> {
-        ex_run::run_test(
+        test::run_test(
             config,
             "checking",
             ex,
@@ -189,7 +193,7 @@ impl Task {
             &self.krate,
             db,
             quiet,
-            ex_run::test_check_only,
+            test::test_check_only,
         ).map(|_| ())
     }
 
@@ -200,7 +204,7 @@ impl Task {
         db: &DB,
         tc: &Toolchain,
     ) -> Result<()> {
-        ex_run::run_test(
+        test::run_test(
             config,
             "checking",
             ex,
@@ -208,7 +212,7 @@ impl Task {
             &self.krate,
             db,
             false,
-            ex_run::test_find_unstable_features,
+            ::runner::unstable_features::find_unstable_features,
         ).map(|_| ())
     }
 }

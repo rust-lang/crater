@@ -28,6 +28,10 @@ pub(crate) fn current_user() -> u32 {
     unimplemented!();
 }
 
+pub(crate) fn is_executable<P: AsRef<Path>>(_path: P) -> Result<bool> {
+    unimplemented!();
+}
+
 pub(crate) fn make_executable<P: AsRef<Path>>(_path: P) -> Result<()> {
     unimplemented!();
 }

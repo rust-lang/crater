@@ -5,10 +5,11 @@ use errors::*;
 use experiments::Experiment;
 use results::WriteResults;
 use run::RunCommand;
+use runner::toml_frobber::TomlFrobber;
 use std::fs;
 use std::path::{Path, PathBuf};
-use toml_frobber::TomlFrobber;
 use toolchain::Toolchain;
+use tools::CARGO;
 
 fn froml_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("fromls")
@@ -19,7 +20,7 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
-pub fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
+pub(super) fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
     if let Crate::Registry(ref details) = *krate {
         fs::create_dir_all(&froml_dir(&ex.name))?;
         let source = krate.dir();
@@ -33,7 +34,11 @@ pub fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
     Ok(())
 }
 
-pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB) -> Result<()> {
+pub(super) fn capture_shas<DB: WriteResults>(
+    ex: &Experiment,
+    crates: &[Crate],
+    db: &DB,
+) -> Result<()> {
     for krate in crates {
         if let Crate::GitHub(ref repo) = *krate {
             let dir = repo.mirror_dir();
@@ -66,7 +71,7 @@ pub fn capture_shas<DB: WriteResults>(ex: &Experiment, crates: &[Crate], db: &DB
     Ok(())
 }
 
-pub fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> Result<()> {
+pub(super) fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> Result<()> {
     let (crate_name, crate_vers) = match *krate {
         Crate::Registry(ref details) => (details.name.clone(), details.version.clone()),
         _ => return Ok(()),
@@ -108,7 +113,7 @@ fn crate_work_dir(ex_name: &str, toolchain: &Toolchain) -> PathBuf {
     dir.join(ex_name).join(toolchain.to_string())
 }
 
-pub fn with_work_crate<F, R>(
+pub(super) fn with_work_crate<F, R>(
     ex: &Experiment,
     toolchain: &Toolchain,
     krate: &Crate,
@@ -131,7 +136,7 @@ where
     r
 }
 
-pub fn capture_lockfile(
+pub(super) fn capture_lockfile(
     config: &Config,
     ex: &Experiment,
     krate: &Crate,
@@ -161,7 +166,7 @@ fn capture_lockfile_inner(
     path: &Path,
     toolchain: &Toolchain,
 ) -> Result<()> {
-    RunCommand::new(toolchain.cargo().unstable_features(true))
+    RunCommand::new(CARGO.toolchain(toolchain).unstable_features(true))
         .args(&[
             "generate-lockfile",
             "--manifest-path",
@@ -189,7 +194,7 @@ fn capture_lockfile_inner(
     Ok(())
 }
 
-pub fn with_captured_lockfile(
+pub(super) fn with_captured_lockfile(
     config: &Config,
     ex: &Experiment,
     krate: &Crate,
@@ -217,7 +222,7 @@ pub fn with_captured_lockfile(
     Ok(())
 }
 
-pub fn fetch_crate_deps(
+pub(super) fn fetch_crate_deps(
     config: &Config,
     ex: &Experiment,
     krate: &Crate,
@@ -227,7 +232,7 @@ pub fn fetch_crate_deps(
         with_frobbed_toml(ex, krate, path)?;
         with_captured_lockfile(config, ex, krate, path)?;
 
-        RunCommand::new(toolchain.cargo())
+        RunCommand::new(CARGO.toolchain(toolchain))
             .args(&["fetch", "--locked", "--manifest-path", "Cargo.toml"])
             .cd(path)
             .run()?;

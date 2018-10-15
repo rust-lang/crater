@@ -6,6 +6,7 @@ use futures_cpupool::CpuPool;
 use native;
 use slog_scope;
 use std::convert::AsRef;
+use std::env::consts::EXE_SUFFIX;
 use std::ffi::{OsStr, OsString};
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
@@ -30,9 +31,25 @@ pub(crate) trait Runnable {
     }
 }
 
-impl<T: AsRef<str>> Runnable for T {
+impl<'a> Runnable for &'a str {
     fn binary(&self) -> Binary {
-        Binary::Global(PathBuf::from(self.as_ref()))
+        Binary::Global(self.into())
+    }
+}
+
+impl Runnable for String {
+    fn binary(&self) -> Binary {
+        Binary::Global(self.into())
+    }
+}
+
+impl<'a, R: Runnable> Runnable for &'a R {
+    fn binary(&self) -> Binary {
+        Runnable::binary(*self)
+    }
+
+    fn prepare_command(&self, cmd: RunCommand) -> RunCommand {
+        Runnable::prepare_command(*self, cmd)
     }
 }
 
@@ -110,9 +127,12 @@ impl RunCommand {
     fn run_inner(self, capture: bool) -> Result<ProcessOutput> {
         let name = match self.binary {
             Binary::Global(path) => path,
-            Binary::InstalledByCrater(path) => ::utils::fs::try_canonicalize(
-                ::toolchain::installed_binary(path.to_string_lossy().as_ref()),
-            ),
+            Binary::InstalledByCrater(path) => ::utils::fs::try_canonicalize(format!(
+                "{}/bin/{}{}",
+                *CARGO_HOME,
+                path.to_string_lossy(),
+                EXE_SUFFIX
+            )),
         };
 
         let mut cmd = Command::new(&name);

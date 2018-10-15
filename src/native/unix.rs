@@ -37,8 +37,7 @@ fn executable_mode_for(path: &Path) -> Result<u32> {
     }
 }
 
-#[cfg(test)]
-fn is_executable<P: AsRef<Path>>(path: P) -> Result<bool> {
+pub(crate) fn is_executable<P: AsRef<Path>>(path: P) -> Result<bool> {
     let path = path.as_ref();
 
     let expected_mode = executable_mode_for(&path)?;
@@ -87,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn test_make_executable() {
+    fn test_executables() {
         let dir = TempDir::new("crater-tests").unwrap();
         let path = dir.path().join("test");
 

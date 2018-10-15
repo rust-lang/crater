@@ -5,7 +5,6 @@ use agent::api::AgentApi;
 use config::Config;
 use errors::*;
 use experiments::Experiment;
-use run_graph;
 use std::thread;
 use std::time::Duration;
 use utils;
@@ -56,7 +55,7 @@ pub fn run(url: &str, token: &str, threads_count: usize) -> Result<()> {
 
     loop {
         let ex = agent.experiment()?;
-        run_graph::run_ex(&ex, &db, threads_count, &agent.config)?;
+        ::runner::run_ex(&ex, &db, threads_count, &agent.config)?;
         agent.api.complete_experiment()?;
     }
 }

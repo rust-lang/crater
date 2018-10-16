@@ -15,8 +15,8 @@
                 <h1>Crater report for <b>{{ ex.name }}</b></h1>
                 <ul>
                     {% for item in nav %}
-                        <li><a href="{{ nav.url }}" {% if nav.active %}class="active"{% endif %}>
-                            {{ nav.label }}
+                        <li><a href="{{ item.url }}" {% if item.active %}class="active"{% endif %}>
+                            {{ item.label }}
                         </a></li>
                     {% endfor %}
                 </ul>

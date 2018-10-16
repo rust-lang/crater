@@ -4,9 +4,9 @@ use http::header::{HeaderValue, CONTENT_TYPE};
 use http::Response;
 use http::StatusCode;
 use hyper::Body;
-use reqwest::header::Scheme;
 use serde::Serialize;
 use std::fmt;
+use std::fmt::Display;
 use std::str::FromStr;
 
 #[derive(Serialize, Deserialize)]
@@ -67,13 +67,9 @@ pub struct CraterToken {
     pub token: String,
 }
 
-impl Scheme for CraterToken {
-    fn scheme() -> Option<&'static str> {
-        Some("CraterToken")
-    }
-
-    fn fmt_scheme(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.token)
+impl Display for CraterToken {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "CraterToken {}", self.token)
     }
 }
 

@@ -2,14 +2,18 @@ use base64;
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use experiments::Experiment;
-use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
+use http::header::AUTHORIZATION;
+use http::header::USER_AGENT;
+use http::StatusCode;
+use reqwest::{Client, Method, RequestBuilder};
 use results::TestResult;
 use serde::de::DeserializeOwned;
 use server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use toolchain::Toolchain;
 
 lazy_static! {
-    static ref USER_AGENT: String = format!("crater-agent/{}", ::GIT_REVISION.unwrap_or("unknown"));
+    static ref CRATER_USER_AGENT: String =
+        format!("crater-agent/{}", ::GIT_REVISION.unwrap_or("unknown"));
 }
 
 trait ResponseExt {
@@ -20,13 +24,13 @@ impl ResponseExt for ::reqwest::Response {
     fn to_api_response<T: DeserializeOwned>(mut self) -> Result<T> {
         // 404 responses are not JSON, so avoid parsing them
         match self.status() {
-            StatusCode::NotFound => bail!("invalid API endpoint called"),
-            StatusCode::BadGateway
-            | StatusCode::ServiceUnavailable
-            | StatusCode::GatewayTimeout => {
+            StatusCode::NOT_FOUND => bail!("invalid API endpoint called"),
+            StatusCode::BAD_GATEWAY
+            | StatusCode::SERVICE_UNAVAILABLE
+            | StatusCode::GATEWAY_TIMEOUT => {
                 return Err(ErrorKind::ServerUnavailable.into());
             }
-            StatusCode::PayloadTooLarge => bail!("payload to agent (misconfigured server?)"),
+            StatusCode::PAYLOAD_TOO_LARGE => bail!("payload to agent (misconfigured server?)"),
             _ => {}
         }
 
@@ -63,14 +67,14 @@ impl AgentApi {
     }
 
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
-        let mut req = self
-            .client
-            .request(method, &format!("{}/agent-api/{}", self.url, url));
-        req.header(header::Authorization(CraterToken {
-            token: self.token.clone(),
-        }));
-        req.header(header::UserAgent::new(USER_AGENT.as_str()));
-        req
+        self.client
+            .request(method, &format!("{}/agent-api/{}", self.url, url))
+            .header(
+                AUTHORIZATION,
+                (CraterToken {
+                    token: self.token.clone(),
+                }).to_string(),
+            ).header(USER_AGENT, CRATER_USER_AGENT.clone())
     }
 
     fn retry<T, F: Fn(&Self) -> Result<T>>(&self, f: F) -> Result<T> {
@@ -105,7 +109,7 @@ impl AgentApi {
 
     pub fn config(&self) -> Result<AgentConfig> {
         self.retry(|this| {
-            this.build_request(Method::Get, "config")
+            this.build_request(Method::GET, "config")
                 .send()?
                 .to_api_response()
         })
@@ -114,7 +118,7 @@ impl AgentApi {
     pub fn next_experiment(&self) -> Result<Experiment> {
         self.retry(|this| loop {
             let resp: Option<_> = this
-                .build_request(Method::Get, "next-experiment")
+                .build_request(Method::GET, "next-experiment")
                 .send()?
                 .to_api_response()?;
 
@@ -136,7 +140,7 @@ impl AgentApi {
     ) -> Result<()> {
         self.retry(|this| {
             let _: bool = this
-                .build_request(Method::Post, "record-progress")
+                .build_request(Method::POST, "record-progress")
                 .json(&json!({
                     "results": [
                         {
@@ -156,7 +160,7 @@ impl AgentApi {
     pub fn complete_experiment(&self) -> Result<()> {
         self.retry(|this| {
             let _: bool = this
-                .build_request(Method::Post, "complete-experiment")
+                .build_request(Method::POST, "complete-experiment")
                 .send()?
                 .to_api_response()?;
             Ok(())
@@ -166,7 +170,7 @@ impl AgentApi {
     pub fn heartbeat(&self) -> Result<()> {
         self.retry(|this| {
             let _: bool = this
-                .build_request(Method::Post, "heartbeat")
+                .build_request(Method::POST, "heartbeat")
                 .send()?
                 .to_api_response()?;
             Ok(())

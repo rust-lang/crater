@@ -47,7 +47,7 @@ trait InstallableTool: Send + Sync {
     fn update(&self) -> Result<()>;
 }
 
-pub fn install() -> Result<()> {
+pub(crate) fn install() -> Result<()> {
     for tool in INSTALLABLE_TOOLS {
         if tool.is_installed()? {
             info!("tool {} is installed, trying to update it", tool.name());

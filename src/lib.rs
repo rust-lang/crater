@@ -95,7 +95,7 @@ mod run;
 pub mod runner;
 pub mod server;
 pub mod toolchain;
-pub mod tools;
+mod tools;
 
 pub(crate) static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));
 pub(crate) static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));

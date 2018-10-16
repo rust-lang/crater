@@ -6,8 +6,8 @@ use http::StatusCode;
 use hyper::Body;
 use serde::Serialize;
 use std::fmt;
-use std::str::FromStr;
 use std::fmt::Display;
+use std::str::FromStr;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

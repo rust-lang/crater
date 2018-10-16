@@ -1,13 +1,14 @@
 use errors::*;
-use reqwest::{Client, RequestBuilder};
-use http::StatusCode;
-use http::Method;
 use http::header::{AUTHORIZATION, USER_AGENT};
+use http::Method;
+use http::StatusCode;
+use reqwest::{Client, RequestBuilder};
 use server::tokens::Tokens;
 use std::collections::HashMap;
 
 lazy_static! {
-    static ref CRATER_USER_AGENT: String = format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
+    static ref CRATER_USER_AGENT: String =
+        format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
 }
 
 #[derive(Clone)]
@@ -31,7 +32,8 @@ impl GitHubApi {
             url.to_string()
         };
 
-        self.client.request(method, &url)
+        self.client
+            .request(method, &url)
             .header(AUTHORIZATION, format!("token {}", self.token))
             .header(USER_AGENT, CRATER_USER_AGENT.clone())
     }

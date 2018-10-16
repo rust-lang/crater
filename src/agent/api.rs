@@ -2,17 +2,18 @@ use base64;
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use experiments::Experiment;
-use reqwest::{Client, Method, RequestBuilder};
-use http::StatusCode;
 use http::header::AUTHORIZATION;
+use http::header::USER_AGENT;
+use http::StatusCode;
+use reqwest::{Client, Method, RequestBuilder};
 use results::TestResult;
 use serde::de::DeserializeOwned;
 use server::api_types::{AgentConfig, ApiResponse, CraterToken};
-use http::header::USER_AGENT;
 use toolchain::Toolchain;
 
 lazy_static! {
-    static ref CRATER_USER_AGENT: String = format!("crater-agent/{}", ::GIT_REVISION.unwrap_or("unknown"));
+    static ref CRATER_USER_AGENT: String =
+        format!("crater-agent/{}", ::GIT_REVISION.unwrap_or("unknown"));
 }
 
 trait ResponseExt {
@@ -66,13 +67,14 @@ impl AgentApi {
     }
 
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
-        self
-            .client
+        self.client
             .request(method, &format!("{}/agent-api/{}", self.url, url))
-            .header(AUTHORIZATION, (CraterToken {
-                token: self.token.clone(),
-            }).to_string())
-            .header(USER_AGENT, CRATER_USER_AGENT.clone())
+            .header(
+                AUTHORIZATION,
+                (CraterToken {
+                    token: self.token.clone(),
+                }).to_string(),
+            ).header(USER_AGENT, CRATER_USER_AGENT.clone())
     }
 
     fn retry<T, F: Fn(&Self) -> Result<T>>(&self, f: F) -> Result<T> {

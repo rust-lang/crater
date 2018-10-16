@@ -9,6 +9,35 @@ use std::fmt;
 use toolchain::Toolchain;
 use utils;
 
+pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
+    pub(super) config: &'ctx Config,
+    pub(super) db: &'ctx DB,
+    pub(super) experiment: &'ctx Experiment,
+    pub(super) toolchain: &'ctx Toolchain,
+    pub(super) krate: &'ctx Crate,
+    pub(super) quiet: bool,
+}
+
+impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
+    fn new(
+        config: &'ctx Config,
+        db: &'ctx DB,
+        experiment: &'ctx Experiment,
+        toolchain: &'ctx Toolchain,
+        krate: &'ctx Crate,
+        quiet: bool,
+    ) -> Self {
+        TaskCtx {
+            config,
+            db,
+            experiment,
+            toolchain,
+            krate,
+            quiet,
+        }
+    }
+}
+
 pub(super) enum TaskStep {
     Prepare,
     BuildAndTest { tc: Toolchain, quiet: bool },
@@ -108,14 +137,30 @@ impl Task {
         db: &DB,
     ) -> Fallible<()> {
         match self.step {
-            TaskStep::Prepare => self.run_prepare(config, ex, db),
+            TaskStep::Prepare => self.run_prepare(config, ex, db)?,
             TaskStep::BuildAndTest { ref tc, quiet } => {
-                self.run_build_and_test(config, ex, tc, db, quiet)
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, quiet);
+                test::run_test("testing", &ctx, test::test_build_and_test)?;
             }
-            TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(config, ex, tc, db, quiet),
-            TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(config, ex, tc, db, quiet),
-            TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(config, ex, db, tc),
+            TaskStep::BuildOnly { ref tc, quiet } => {
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, quiet);
+                test::run_test("building", &ctx, test::test_build_only)?;
+            }
+            TaskStep::CheckOnly { ref tc, quiet } => {
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, quiet);
+                test::run_test("checking", &ctx, test::test_check_only)?;
+            }
+            TaskStep::UnstableFeatures { ref tc } => {
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, false);
+                test::run_test(
+                    "checking unstable",
+                    &ctx,
+                    ::runner::unstable_features::find_unstable_features,
+                )?;
+            }
         }
+
+        Ok(())
     }
 
     fn run_prepare<DB: WriteResults>(
@@ -137,84 +182,5 @@ impl Task {
         ::runner::prepare::fetch_crate_deps(config, ex, &self.krate, &ex.toolchains[0])?;
 
         Ok(())
-    }
-
-    fn run_build_and_test<DB: WriteResults>(
-        &self,
-        config: &Config,
-        ex: &Experiment,
-        tc: &Toolchain,
-        db: &DB,
-        quiet: bool,
-    ) -> Fallible<()> {
-        test::run_test(
-            config,
-            "testing",
-            ex,
-            tc,
-            &self.krate,
-            db,
-            quiet,
-            test::test_build_and_test,
-        ).map(|_| ())
-    }
-
-    fn run_build_only<DB: WriteResults>(
-        &self,
-        config: &Config,
-        ex: &Experiment,
-        tc: &Toolchain,
-        db: &DB,
-        quiet: bool,
-    ) -> Fallible<()> {
-        test::run_test(
-            config,
-            "testing",
-            ex,
-            tc,
-            &self.krate,
-            db,
-            quiet,
-            test::test_build_only,
-        ).map(|_| ())
-    }
-
-    fn run_check_only<DB: WriteResults>(
-        &self,
-        config: &Config,
-        ex: &Experiment,
-        tc: &Toolchain,
-        db: &DB,
-        quiet: bool,
-    ) -> Fallible<()> {
-        test::run_test(
-            config,
-            "checking",
-            ex,
-            tc,
-            &self.krate,
-            db,
-            quiet,
-            test::test_check_only,
-        ).map(|_| ())
-    }
-
-    fn run_unstable_features<DB: WriteResults>(
-        &self,
-        config: &Config,
-        ex: &Experiment,
-        db: &DB,
-        tc: &Toolchain,
-    ) -> Fallible<()> {
-        test::run_test(
-            config,
-            "checking",
-            ex,
-            tc,
-            &self.krate,
-            db,
-            false,
-            ::runner::unstable_features::find_unstable_features,
-        ).map(|_| ())
     }
 }

@@ -20,7 +20,7 @@ pub(crate) fn get(url: &str) -> Result<Response> {
 
         // Return an error if the response wasn't a 200 OK
         match resp.status() {
-            StatusCode::Ok => Ok(resp),
+            StatusCode::OK => Ok(resp),
             other => bail!("GET {} failed with status code {}", url, other),
         }
     })

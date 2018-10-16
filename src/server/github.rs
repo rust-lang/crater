@@ -1,10 +1,13 @@
 use errors::*;
-use reqwest::{header, Client, Method, RequestBuilder, StatusCode};
+use reqwest::{Client, RequestBuilder};
+use http::StatusCode;
+use http::Method;
+use http::header::{AUTHORIZATION, USER_AGENT};
 use server::tokens::Tokens;
 use std::collections::HashMap;
 
 lazy_static! {
-    static ref USER_AGENT: String = format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
+    static ref CRATER_USER_AGENT: String = format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
 }
 
 #[derive(Clone)]
@@ -28,25 +31,24 @@ impl GitHubApi {
             url.to_string()
         };
 
-        let mut req = self.client.request(method, &url);
-        req.header(header::Authorization(format!("token {}", self.token)));
-        req.header(header::UserAgent::new(USER_AGENT.as_str()));
-        req
+        self.client.request(method, &url)
+            .header(AUTHORIZATION, format!("token {}", self.token))
+            .header(USER_AGENT, CRATER_USER_AGENT.clone())
     }
 
     pub fn username(&self) -> Result<String> {
-        let response: User = self.build_request(Method::Get, "user").send()?.json()?;
+        let response: User = self.build_request(Method::GET, "user").send()?.json()?;
         Ok(response.login)
     }
 
     pub fn post_comment(&self, issue_url: &str, body: &str) -> Result<()> {
         let mut response = self
-            .build_request(Method::Post, &format!("{}/comments", issue_url))
+            .build_request(Method::POST, &format!("{}/comments", issue_url))
             .json(&json!({
                 "body": body,
             })).send()?;
 
-        if response.status() == StatusCode::Created {
+        if response.status() == StatusCode::CREATED {
             Ok(())
         } else {
             let error: Error = response.json()?;
@@ -61,10 +63,10 @@ impl GitHubApi {
 
     pub fn list_labels(&self, issue_url: &str) -> Result<Vec<Label>> {
         let mut response = self
-            .build_request(Method::Get, &format!("{}/labels", issue_url))
+            .build_request(Method::GET, &format!("{}/labels", issue_url))
             .send()?;
 
-        if response.status() == StatusCode::Ok {
+        if response.status() == StatusCode::OK {
             Ok(response.json()?)
         } else {
             let error: Error = response.json()?;
@@ -79,11 +81,11 @@ impl GitHubApi {
 
     pub fn add_label(&self, issue_url: &str, label: &str) -> Result<()> {
         let mut response = self
-            .build_request(Method::Post, &format!("{}/labels", issue_url))
+            .build_request(Method::POST, &format!("{}/labels", issue_url))
             .json(&json!([label]))
             .send()?;
 
-        if response.status() == StatusCode::Ok {
+        if response.status() == StatusCode::OK {
             Ok(())
         } else {
             let error: Error = response.json()?;
@@ -99,10 +101,10 @@ impl GitHubApi {
 
     pub fn remove_label(&self, issue_url: &str, label: &str) -> Result<()> {
         let mut response = self
-            .build_request(Method::Delete, &format!("{}/labels/{}", issue_url, label))
+            .build_request(Method::DELETE, &format!("{}/labels/{}", issue_url, label))
             .send()?;
 
-        if response.status() == StatusCode::Ok {
+        if response.status() == StatusCode::OK {
             Ok(())
         } else {
             let error: Error = response.json()?;
@@ -118,10 +120,10 @@ impl GitHubApi {
 
     pub fn list_teams(&self, org: &str) -> Result<HashMap<String, usize>> {
         let mut response = self
-            .build_request(Method::Get, &format!("orgs/{}/teams", org))
+            .build_request(Method::GET, &format!("orgs/{}/teams", org))
             .send()?;
 
-        if response.status() == StatusCode::Ok {
+        if response.status() == StatusCode::OK {
             let teams: Vec<Team> = response.json()?;
             Ok(teams.into_iter().map(|t| (t.slug, t.id)).collect())
         } else {
@@ -137,10 +139,10 @@ impl GitHubApi {
 
     pub fn team_members(&self, team: usize) -> Result<Vec<String>> {
         let mut response = self
-            .build_request(Method::Get, &format!("teams/{}/members", team))
+            .build_request(Method::GET, &format!("teams/{}/members", team))
             .send()?;
 
-        if response.status() == StatusCode::Ok {
+        if response.status() == StatusCode::OK {
             let users: Vec<User> = response.json()?;
             Ok(users.into_iter().map(|u| u.login).collect())
         } else {

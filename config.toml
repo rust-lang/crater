@@ -11123,7 +11123,6 @@ zyre-sys = { skip = true } #automatic
 "moratorium08/blog_os" = { skip = true } #automatic
 "moratorium08/reversi-ai" = { skip-tests = true } #automatic
 "moreorem/graphdener-backend" = { skip = true } #automatic
-"moritayasuaki/mahj" = { skip-tests = true } # outputs 5+GB of data during tests
 "mortonar/rustsysinfo" = { skip = true } #automatic
 "morty-c137-prime/rusty-ricks-cheatsheet" = { skip = true } #automatic
 "motecshine/msgboard" = { skip = true } #automatic

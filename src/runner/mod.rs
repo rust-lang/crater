@@ -7,6 +7,7 @@ mod unstable_features;
 
 use config::Config;
 use crossbeam_utils::thread::scope;
+use docker::DockerEnv;
 use experiments::Experiment;
 use prelude::*;
 use results::{FailureReason, TestResult, WriteResults};
@@ -25,13 +26,14 @@ pub fn run_ex<DB: WriteResults + Sync>(
     ex: &Experiment,
     db: &DB,
     threads_count: usize,
+    docker_env: &str,
     config: &Config,
 ) -> Fallible<()> {
     if !::docker::is_running() {
         return Err(err_msg("docker is not running"));
     }
 
-    let res = run_ex_inner(ex, db, threads_count, config);
+    let res = run_ex_inner(ex, db, threads_count, docker_env, config);
 
     // Remove all the target dirs even if the experiment failed
     let target_dir = &::toolchain::ex_target_dir(&ex.name);
@@ -46,10 +48,14 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     ex: &Experiment,
     db: &DB,
     threads_count: usize,
+    docker_env: &str,
     config: &Config,
 ) -> Fallible<()> {
     info!("ensuring all the tools are installed");
     ::tools::install()?;
+
+    info!("loading docker environment...");
+    let docker_env = DockerEnv::new(docker_env)?;
 
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(ex, config));
@@ -77,7 +83,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                     match walk_result {
                         WalkResult::Task(id, task) => {
                             info!("running task: {:?}", task);
-                            if let Err(e) = task.run(config, ex, db) {
+                            if let Err(e) = task.run(config, ex, db, &docker_env) {
                                 error!("task failed, marking childs as failed too: {:?}", task);
                                 utils::report_failure(&e);
 

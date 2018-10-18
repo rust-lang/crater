@@ -72,7 +72,7 @@ pub mod config;
 pub mod crates;
 pub mod db;
 pub mod dirs;
-pub mod docker;
+mod docker;
 pub mod experiments;
 mod git;
 mod native;

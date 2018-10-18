@@ -45,7 +45,7 @@ fn run_cargo<DB: WriteResults>(
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env("RUSTFLAGS", rustflags)
-        .sandboxed()
+        .sandboxed(&ctx.docker_env)
         .mount(target_dir, "/target", MountPerms::ReadWrite)
         .memory_limit(Some(ctx.config.sandbox.memory_limit))
         .run()?;

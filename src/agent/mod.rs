@@ -47,7 +47,7 @@ fn run_heartbeat(url: &str, token: &str) {
     });
 }
 
-pub fn run(url: &str, token: &str, threads_count: usize) -> Fallible<()> {
+pub fn run(url: &str, token: &str, threads_count: usize, docker_env: &str) -> Fallible<()> {
     let agent = Agent::new(url, token)?;
     let db = results::ResultsUploader::new(&agent.api);
 
@@ -55,7 +55,7 @@ pub fn run(url: &str, token: &str, threads_count: usize) -> Fallible<()> {
 
     loop {
         let ex = agent.experiment()?;
-        ::runner::run_ex(&ex, &db, threads_count, &agent.config)?;
+        ::runner::run_ex(&ex, &db, threads_count, docker_env, &agent.config)?;
         agent.api.complete_experiment()?;
     }
 }

@@ -14,7 +14,6 @@ use crater::agent;
 use crater::config::Config;
 use crater::crates::Crate;
 use crater::db::Database;
-use crater::docker;
 use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
@@ -27,25 +26,17 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::clap::AppSettings;
 
+static DEFAULT_DOCKER_ENV: &str = "mini";
+
 // An experiment name
 #[derive(Debug, Clone)]
 pub struct Ex(String);
 
-#[derive(Debug, Clone)]
-pub struct DockerEnv(String);
 impl FromStr for Ex {
     type Err = Error;
 
     fn from_str(ex: &str) -> Fallible<Ex> {
         Ok(Ex(ex.to_string()))
-    }
-}
-
-impl FromStr for DockerEnv {
-    type Err = Error;
-
-    fn from_str(env: &str) -> Fallible<DockerEnv> {
-        Ok(DockerEnv(env.to_string()))
     }
 }
 
@@ -73,16 +64,9 @@ impl FromStr for Dest {
 pub enum Crater {
     #[structopt(
         name = "prepare-local",
-        about = "acquire toolchains, build containers, build crate lists"
+        about = "prepare the local environment"
     )]
-    PrepareLocal {
-        #[structopt(
-            name = "docker env",
-            long = "docker-env",
-            default_value = "full"
-        )]
-        env: DockerEnv,
-    },
+    PrepareLocal,
 
     #[structopt(
         name = "create-lists",
@@ -209,6 +193,12 @@ pub enum Crater {
             default_value = "1"
         )]
         threads: usize,
+        #[structopt(
+            name = "docker-env",
+            long = "docker-env",
+            raw(default_value = "DEFAULT_DOCKER_ENV")
+        )]
+        docker_env: String,
     },
 
     #[structopt(
@@ -258,6 +248,12 @@ pub enum Crater {
             default_value = "1"
         )]
         threads: usize,
+        #[structopt(
+            name = "docker-env",
+            long = "docker-env",
+            raw(default_value = "DEFAULT_DOCKER_ENV")
+        )]
+        docker_env: String,
     },
 
     #[structopt(
@@ -306,12 +302,9 @@ impl Crater {
                     action.apply(&db, &config)?;
                 }
             }
-            Crater::PrepareLocal { ref env } => {
+            Crater::PrepareLocal => {
                 let config = Config::load()?;
                 let db = Database::open()?;
-
-                let docker_env = &env.0;
-                docker::build_container(docker_env)?;
                 actions::UpdateLists::default().apply(&db, &config)?;
             }
             Crater::DefineEx {
@@ -396,7 +389,11 @@ impl Crater {
                     bail!("missing experiment {}", ex.0);
                 }
             }
-            Crater::RunGraph { ref ex, threads } => {
+            Crater::RunGraph {
+                ref ex,
+                threads,
+                ref docker_env,
+            } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
 
@@ -416,7 +413,7 @@ impl Crater {
                     }
 
                     let result_db = DatabaseDB::new(&db);
-                    runner::run_ex(&experiment, &result_db, threads, &config)?;
+                    runner::run_ex(&experiment, &result_db, threads, docker_env, &config)?;
                     experiment.set_status(&db, Status::NeedsReport)?;
                 } else {
                     bail!("missing experiment {}", ex.0);
@@ -510,8 +507,9 @@ impl Crater {
                 ref url,
                 ref token,
                 threads,
+                ref docker_env,
             } => {
-                agent::run(url, token, threads)?;
+                agent::run(url, token, threads, docker_env)?;
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
                 let config = Config::load()?;

@@ -1,4 +1,5 @@
 use prelude::*;
+use regex::Regex;
 use run::RunCommand;
 use std::env;
 use std::fmt::{self, Display, Formatter};
@@ -6,17 +7,81 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use utils::size::Size;
 
-pub(crate) static IMAGE_NAME: &'static str = "crater";
+lazy_static! {
+    static ref LOCAL_ENV_REGEX: Regex = Regex::new(r"^(?P<image>[a-zA-Z0-9_-]+)@local$").unwrap();
+    static ref REMOTE_ENV_REGEX: Regex =
+        Regex::new(r"^(?P<org>[a-zA-Z0-9]+/)?(?P<image>[a-zA-Z0-9_-]+)$").unwrap();
+}
 
-/// Builds the docker container image, 'crater', what will be used
-/// to isolate builds from each other. This expects the Dockerfile
-/// to exist in the `docker` directory, at runtime.
-pub fn build_container(docker_env: &str) -> Fallible<()> {
-    let dockerfile = format!("docker/Dockerfile.{}", docker_env);
-    RunCommand::new("docker")
-        .args(&["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"])
-        .enable_timeout(false)
-        .run()
+static DEFAULT_IMAGES_ORG: &str = "rustops";
+static DEFAULT_IMAGES_PREFIX: &str = "crater-env";
+
+#[derive(Debug, Fail)]
+pub(crate) enum DockerError {
+    #[fail(display = "container ran out of memory")]
+    ContainerOOM,
+    #[fail(display = "missing docker image: {}", _0)]
+    MissingImage(String),
+    #[fail(display = "invalid docker environment: {}", _0)]
+    InvalidEnvironment(String),
+}
+
+pub(crate) struct DockerEnv {
+    image: String,
+    local: bool,
+}
+
+impl DockerEnv {
+    pub(crate) fn new(env: &str) -> Fallible<DockerEnv> {
+        let env = Self::parse(env)?;
+
+        // If the image has a remote, try to pull it
+        if !env.local {
+            info!("updating the docker image {}", env.image);
+            RunCommand::new("docker")
+                .args(&["pull", &env.image])
+                .run()?;
+        }
+
+        // Check if the image exists locally
+        info!("checking if the docker image {} exists locally", env.image);
+        let image_exists = RunCommand::new("docker")
+            .args(&["image", "inspect", &env.image, "-f", "ok"])
+            .run()
+            .is_ok();
+
+        if image_exists {
+            Ok(env)
+        } else {
+            Err(DockerError::MissingImage(env.image.clone()).into())
+        }
+    }
+
+    fn parse(input: &str) -> Fallible<DockerEnv> {
+        if let Some(captures) = LOCAL_ENV_REGEX.captures(input) {
+            Ok(DockerEnv {
+                image: format!("{}-{}", DEFAULT_IMAGES_PREFIX, captures[1].to_string()),
+                local: true,
+            })
+        } else if let Some(captures) = REMOTE_ENV_REGEX.captures(input) {
+            if captures.name("org").is_some() {
+                Ok(DockerEnv {
+                    image: input.to_string(),
+                    local: false,
+                })
+            } else {
+                Ok(DockerEnv {
+                    image: format!(
+                        "{}/{}-{}",
+                        DEFAULT_IMAGES_ORG, DEFAULT_IMAGES_PREFIX, &captures["image"]
+                    ),
+                    local: false,
+                })
+            }
+        } else {
+            Err(DockerError::InvalidEnvironment(input.to_string()).into())
+        }
+    }
 }
 
 pub(crate) fn is_running() -> bool {
@@ -59,9 +124,9 @@ pub(crate) struct ContainerBuilder {
 }
 
 impl ContainerBuilder {
-    pub(crate) fn new<S: Into<String>>(image: S) -> Self {
+    pub(crate) fn new(docker_env: &DockerEnv) -> Self {
         ContainerBuilder {
-            image: image.into(),
+            image: docker_env.image.clone(),
             mounts: Vec::new(),
             env: Vec::new(),
             memory_limit: None,
@@ -152,12 +217,6 @@ fn absolute(path: &Path) -> PathBuf {
     }
 }
 
-#[derive(Debug, Fail)]
-pub(crate) enum DockerError {
-    #[fail(display = "container ran out of memory")]
-    ContainerOOM,
-}
-
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct InspectContainer {
@@ -217,5 +276,35 @@ impl Container {
         RunCommand::new("docker")
             .args(&["rm", "-f", &self.id])
             .run()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DockerEnv;
+
+    #[test]
+    fn test_docker_env_parsing() {
+        let local = DockerEnv::parse("foo@local").unwrap();
+        assert_eq!(local.image.as_str(), "foo");
+        assert!(custom.local);
+
+        let rustops = DockerEnv::parse("mini").unwrap();
+        assert_eq!(rustops.image.as_str(), "rustops/crater-env-mini");
+        assert!(!custom.local);
+
+        let custom = DockerEnv::parse("foo/bar").unwrap();
+        assert_eq!(custom.image.as_str(), "foo/bar");
+        assert!(!custom.local);
+
+        for invalid in &[
+            "foo/bar@local",
+            "foo/bar/baz",
+            "foo/bar:baz",
+            "foo:bar",
+            "foo:bar@local",
+        ] {
+            assert!(DockerEnv::parse(invalid).is_err());
+        }
     }
 }

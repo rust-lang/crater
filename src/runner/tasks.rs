@@ -1,5 +1,6 @@
 use config::Config;
 use crates::Crate;
+use docker::DockerEnv;
 use experiments::Experiment;
 use failure::AsFail;
 use prelude::*;
@@ -16,6 +17,7 @@ pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
     pub(super) toolchain: &'ctx Toolchain,
     pub(super) krate: &'ctx Crate,
     pub(super) quiet: bool,
+    pub(super) docker_env: &'ctx DockerEnv,
 }
 
 impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
@@ -26,6 +28,7 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
         toolchain: &'ctx Toolchain,
         krate: &'ctx Crate,
         quiet: bool,
+        docker_env: &'ctx DockerEnv,
     ) -> Self {
         TaskCtx {
             config,
@@ -34,6 +37,7 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
             toolchain,
             krate,
             quiet,
+            docker_env,
         }
     }
 }
@@ -135,23 +139,24 @@ impl Task {
         config: &Config,
         ex: &Experiment,
         db: &DB,
+        docker_env: &DockerEnv,
     ) -> Fallible<()> {
         match self.step {
             TaskStep::Prepare => self.run_prepare(config, ex, db)?,
             TaskStep::BuildAndTest { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, quiet);
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, quiet, docker_env);
                 test::run_test("testing", &ctx, test::test_build_and_test)?;
             }
             TaskStep::BuildOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, quiet);
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, quiet, docker_env);
                 test::run_test("building", &ctx, test::test_build_only)?;
             }
             TaskStep::CheckOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, quiet);
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, quiet, docker_env);
                 test::run_test("checking", &ctx, test::test_check_only)?;
             }
             TaskStep::UnstableFeatures { ref tc } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, false);
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, false, docker_env);
                 test::run_test(
                     "checking unstable",
                     &ctx,

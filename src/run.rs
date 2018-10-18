@@ -1,5 +1,5 @@
 use dirs::{CARGO_HOME, RUSTUP_HOME};
-use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
+use docker::{ContainerBuilder, DockerEnv, MountPerms};
 use failure::Error;
 use futures::{future, Future, Stream};
 use native;
@@ -123,8 +123,8 @@ impl RunCommand {
         self
     }
 
-    pub(crate) fn sandboxed(self) -> SandboxedCommand {
-        SandboxedCommand::new(self)
+    pub(crate) fn sandboxed(self, docker_env: &DockerEnv) -> SandboxedCommand {
+        SandboxedCommand::new(self, docker_env)
     }
 
     pub(crate) fn run(self) -> Fallible<()> {
@@ -192,8 +192,8 @@ pub(crate) struct SandboxedCommand {
 }
 
 impl SandboxedCommand {
-    fn new(command: RunCommand) -> Self {
-        let container = ContainerBuilder::new(IMAGE_NAME)
+    fn new(command: RunCommand, docker_env: &DockerEnv) -> Self {
+        let container = ContainerBuilder::new(docker_env)
             .env("USER_ID", native::current_user().to_string())
             .enable_networking(false);
 

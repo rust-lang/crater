@@ -1,0 +1,22 @@
+[server]
+bot-acl = [
+    "pietroalbini",
+]
+
+[server.labels]
+remove = "^S-"
+experiment-queued = "S-waiting-on-crater"
+experiment-completed = "S-waiting-on-review"
+
+[demo-crates]
+crates = ["lazy_static"]
+github-repos = ["brson/hello-rs"]
+
+[sandbox]
+memory-limit = "1536M"
+
+[crates]
+lazy_static = { skip = true }
+
+[github-repos]
+"ghost/missing-repo" = { skip = true }

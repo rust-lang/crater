@@ -41,5 +41,5 @@ script: |
   if [[ $TASK = "lint" ]]; then
       cargo fmt -- --check && cargo clippy
   elif [[ $TASK = "test" ]]; then
-      cargo build && cargo run -- prepare-local --docker-env mini && cargo test && ./tests/check-config/test_check_config.sh
+      cargo build && cargo run -- prepare-local --docker-env mini && cargo test
   fi

@@ -20,5 +20,10 @@ install:
 
 build: false
 
+branches:
+  only:
+    - auto
+    - try
+
 test_script:
   - cargo build

@@ -1,6 +1,6 @@
-sudo: required
+os: linux
 dist: trusty
-
+sudo: required
 services:
   - docker
 
@@ -13,17 +13,30 @@ env:
 
 matrix:
   include:
-    # Lint only on stable
+
+    ###########
+    #  Lints  #
+    ###########
+
     - env: TASK=lint
       rust: stable
+      if: type = pull_request OR branch = auto OR branch = try
 
-    # Tests on all the channels
-    - env: TASK=test
+    ##################
+    #  Linux builds  #
+    ##################
+
+    - env: TASK=test-linux
       rust: stable
-    - env: TASK=test
+      if: type = pull_request OR branch = auto OR branch = try
+
+    - env: TASK=test-linux
       rust: beta
-    - env: TASK=test
+      if: branch = auto OR branch = try
+
+    - env: TASK=test-linux
       rust: nightly
+      if: branch = auto OR branch = try
 
   # Don't block CI if a nightly is faulty
   fast_finish: true
@@ -31,15 +44,14 @@ matrix:
     - rust: nightly
 
 before_script: |
-  if [[ $TASK = "lint" ]]; then
-      rustup component add rustfmt-preview
-      rustup component add clippy-preview
-      cargo run -- create-lists && cargo run -- check-config
+  if [[ -x "ci/before/${TASK}.sh" ]]; then
+      bash "ci/before/${TASK}.sh"
   fi
 
 script: |
-  if [[ $TASK = "lint" ]]; then
-      cargo fmt -- --check && cargo clippy
-  elif [[ $TASK = "test" ]]; then
-      cargo build && cargo run -- prepare-local --docker-env mini && cargo test && ./tests/check-config/test_check_config.sh
+  if [[ -x "ci/run/${TASK}.sh" ]]; then
+      bash "ci/run/${TASK}.sh"
+  else
+      echo "Error: missing run script for task ${TASK}"
+      exit 1
   fi

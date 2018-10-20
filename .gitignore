@@ -2,3 +2,7 @@ target
 *~
 work/
 tokens.toml
+
+/tests/minicrater/results.actual.json
+/local-crates/*/target
+/local-crates/*/Cargo.lock

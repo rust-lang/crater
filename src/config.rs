@@ -3,11 +3,18 @@ use errors::*;
 use regex::Regex;
 use serde_regex;
 use std::collections::{HashMap, HashSet};
+use std::env;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 use utils::size::Size;
 
-static CONFIG_FILE: &'static str = "config.toml";
+fn default_config_file() -> PathBuf {
+    env::var_os("CRATER_CONFIG")
+        .unwrap_or_else(|| OsStr::new("config.toml").to_os_string())
+        .into()
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -69,12 +76,12 @@ pub struct Config {
 
 impl Config {
     pub fn load() -> Result<Self> {
-        let buffer = Self::load_as_string(CONFIG_FILE)?;
+        let buffer = Self::load_as_string(default_config_file())?;
 
         Ok(::toml::from_str(&buffer)?)
     }
 
-    fn load_as_string(filename: &str) -> Result<String> {
+    fn load_as_string(filename: PathBuf) -> Result<String> {
         let mut buffer = String::new();
         File::open(filename)?.read_to_string(&mut buffer)?;
 
@@ -117,13 +124,13 @@ impl Config {
 
     pub fn check(file: &Option<String>) -> Result<()> {
         if let Some(file) = file {
-            Self::check_all(&file)
+            Self::check_all(file.into())
         } else {
-            Self::check_all(CONFIG_FILE)
+            Self::check_all(default_config_file())
         }
     }
 
-    fn check_all(filename: &str) -> Result<()> {
+    fn check_all(filename: PathBuf) -> Result<()> {
         use experiments::CrateSelect;
 
         let buffer = Self::load_as_string(filename)?;

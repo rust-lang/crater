@@ -22,6 +22,7 @@ fn run() {
     // Create local list in the temp work dir
     Command::crater()
         .args(&["create-lists", "local"])
+        .env("CRATER_CONFIG", "tests/minicrater/config.toml")
         .assert()
         .success();
 
@@ -33,18 +34,21 @@ fn run() {
             "stable",
             "beta",
             "--crate-select=local",
-        ]).assert()
+        ]).env("CRATER_CONFIG", "tests/minicrater/config.toml")
+        .assert()
         .success();
 
     // Execute the experiment
     Command::crater()
         .args(&["run-graph", &ex_arg])
+        .env("CRATER_CONFIG", "tests/minicrater/config.toml")
         .assert()
         .success();
 
     // Generate the report
     Command::crater()
         .args(&["gen-report", &ex_arg])
+        .env("CRATER_CONFIG", "tests/minicrater/config.toml")
         .arg(report_dir.path())
         .assert()
         .success();

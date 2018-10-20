@@ -61,6 +61,36 @@
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"
     },
     {
+      "name": "memory-hungry (local)",
+      "res": "Fixed",
+      "runs": [
+        {
+          "log": "stable/local/memory-hungry",
+          "res": "BuildFail"
+        },
+        {
+          "log": "beta/local/memory-hungry",
+          "res": "TestFail"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/memory-hungry"
+    },
+    {
+      "name": "network-access (local)",
+      "res": "Fixed",
+      "runs": [
+        {
+          "log": "stable/local/network-access",
+          "res": "BuildFail"
+        },
+        {
+          "log": "beta/local/network-access",
+          "res": "TestFail"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/network-access"
+    },
+    {
       "name": "test-fail (local)",
       "res": "SameTestFail",
       "runs": [

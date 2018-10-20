@@ -56,6 +56,7 @@ pub struct ServerLabels {
 pub struct DemoCrates {
     pub crates: Vec<String>,
     pub github_repos: Vec<String>,
+    pub local_crates: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -70,6 +71,7 @@ pub struct Config {
     pub demo_crates: DemoCrates,
     pub crates: HashMap<String, CrateConfig>,
     pub github_repos: HashMap<String, CrateConfig>,
+    pub local_crates: HashMap<String, CrateConfig>,
     pub server: ServerConfig,
     pub sandbox: SandboxConfig,
 }
@@ -92,7 +94,7 @@ impl Config {
         match *c {
             Crate::Registry(ref details) => self.crates.get(&details.name),
             Crate::GitHub(ref repo) => self.github_repos.get(&repo.slug()),
-            Crate::Local(_) => None,
+            Crate::Local(ref name) => self.local_crates.get(name),
         }
     }
 
@@ -228,9 +230,11 @@ impl Default for Config {
             demo_crates: DemoCrates {
                 crates: vec!["lazy_static".into()],
                 github_repos: vec!["brson/hello-rs".into()],
+                local_crates: vec![],
             },
             crates: HashMap::new(),
             github_repos: HashMap::new(),
+            local_crates: HashMap::new(),
             sandbox: SandboxConfig {
                 memory_limit: Size::Gigabytes(2),
             },
@@ -264,13 +268,14 @@ mod tests {
             "[demo-crates]\n",
             "crates = []\n",
             "github-repos = []\n",
+            "local-crates = []\n",
             "[sandbox]\n",
             "memory-limit = \"2G\"\n",
             "[crates]\n",
             "lazy_static = { skip = true }\n",
-            "\n",
             "[github-repos]\n",
-            "\"rust-lang/rust\" = { quiet = true }\n" // :(
+            "\"rust-lang/rust\" = { quiet = true }\n", // :(
+            "[local-crates]\n"
         );
 
         let list: Config = ::toml::from_str(&config).unwrap();

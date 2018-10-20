@@ -11,13 +11,15 @@ experiment-completed = "S-waiting-on-review"
 [demo-crates]
 crates = ["lazy_static"]
 github-repos = ["brson/hello-rs"]
+local-crates = []
 
 [sandbox]
 memory-limit = "1536M"
 
 [crates]
-lazy_static = { skip = true }
 
 [github-repos]
 "brson/hello-rs" = { skip = true }
 "brson/hello-rs" = { skip = true }
+
+[local-crates]

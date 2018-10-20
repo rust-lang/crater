@@ -11,6 +11,7 @@ experiment-completed = "S-waiting-on-review"
 [demo-crates]
 crates = ["lazy_static"]
 github-repos = ["brson/hello-rs"]
+local-crates = []
 
 [sandbox]
 memory-limit = "512M"
@@ -18,3 +19,5 @@ memory-limit = "512M"
 [crates]
 
 [github-repos]
+
+[local-crates]

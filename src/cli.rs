@@ -22,6 +22,7 @@ use crater::results::{DatabaseDB, DeleteResults};
 use crater::runner;
 use crater::server;
 use crater::toolchain::Toolchain;
+use std::collections::HashSet;
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -88,7 +89,10 @@ pub enum Crater {
         name = "create-lists",
         about = "create all the lists of crates"
     )]
-    CreateLists,
+    CreateLists {
+        #[structopt(name = "lists")]
+        lists: Vec<String>,
+    },
 
     #[structopt(name = "define-ex", about = "define an experiment")]
     DefineEx {
@@ -285,11 +289,27 @@ pub enum Crater {
 impl Crater {
     pub fn run(&self) -> Result<()> {
         match *self {
-            Crater::CreateLists => {
+            Crater::CreateLists { ref lists } => {
+                let mut lists: HashSet<_> = lists.iter().map(|s| s.as_str()).collect();
+
                 let config = Config::load()?;
                 let db = Database::open()?;
 
-                actions::UpdateLists::default().apply(&db, &config)?;
+                let action = if lists.is_empty() {
+                    actions::UpdateLists::default()
+                } else {
+                    actions::UpdateLists {
+                        github: lists.remove("github"),
+                        registry: lists.remove("registry"),
+                        local: lists.remove("local"),
+                    }
+                };
+
+                if let Some(unknown) = lists.iter().next() {
+                    bail!("unknown list: {}", unknown);
+                } else {
+                    action.apply(&db, &config)?;
+                }
             }
             Crater::PrepareLocal { ref env } => {
                 let config = Config::load()?;

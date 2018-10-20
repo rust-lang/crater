@@ -1,0 +1,6 @@
+[package]
+name = "build-fail"
+version = "0.1.0"
+authors = ["Pietro Albini <pietro@pietroalbini.org>"]
+
+[dependencies]

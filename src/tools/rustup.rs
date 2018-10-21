@@ -5,7 +5,7 @@ use run::{Binary, RunCommand, Runnable};
 use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
 use std::io;
-use tempdir::TempDir;
+use tempfile::tempdir;
 use toolchain::Toolchain;
 use toolchain::MAIN_TOOLCHAIN_NAME;
 use tools::{binary_path, InstallableTool, RUSTUP};
@@ -50,7 +50,7 @@ impl InstallableTool for Rustup {
         );
         let mut resp = ::utils::http::get(&url).chain_err(|| "unable to download rustup")?;
 
-        let tempdir = TempDir::new("crater")?;
+        let tempdir = tempdir()?;
         let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
         {
             let mut file = File::create(installer)?;

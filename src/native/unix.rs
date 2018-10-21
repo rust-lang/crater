@@ -63,7 +63,7 @@ mod tests {
     use std::fs::File;
     use std::os::unix::process::ExitStatusExt;
     use std::process::Command;
-    use tempdir::TempDir;
+    use tempfile::tempdir;
 
     #[test]
     fn test_kill_process() {
@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn test_executables() {
-        let dir = TempDir::new("crater-tests").unwrap();
+        let dir = tempdir().unwrap();
         let path = dir.path().join("test");
 
         // Create the temp file and make sure it's not executable

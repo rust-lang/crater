@@ -9,8 +9,8 @@ experiment-queued = "S-waiting-on-crater"
 experiment-completed = "S-waiting-on-review"
 
 [demo-crates]
-crates = ["lazy_static"]
-github-repos = ["brson/hello-rs"]
+crates = []
+github-repos = []
 local-crates = []
 
 [sandbox]

@@ -3,5 +3,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 cargo build
-cargo run -- create-lists
+
+cargo run -- prepare-local --docker-env=mini
 cargo test
+cargo test -- --ignored

@@ -38,6 +38,10 @@ matrix:
       rust: nightly
       if: branch = auto OR branch = try
 
+    - env: TASK=minicrater-linux
+      rust: stable
+      if: branch = auto OR branch = try
+
   # Don't block CI if a nightly is faulty
   fast_finish: true
   allow_failures:

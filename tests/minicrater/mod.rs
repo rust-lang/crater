@@ -1,4 +1,3 @@
-use assert_cmd::prelude::*;
 use common::CommandCraterExt;
 use difference::Changeset;
 use rand::{self, distributions::Alphanumeric, Rng};
@@ -23,14 +22,15 @@ fn execute(ex: &str, crate_select: &str) {
     );
 
     // Create local list in the temp work dir
-    Command::crater()
+    let out = Command::crater()
         .args(&["create-lists", "local"])
         .env("CRATER_CONFIG", &config_file)
-        .assert()
-        .success();
+        .status()
+        .unwrap();
+    assert!(out.success());
 
     // Define the experiment
-    Command::crater()
+    let out = Command::crater()
         .args(&[
             "define-ex",
             &ex_arg,
@@ -38,34 +38,38 @@ fn execute(ex: &str, crate_select: &str) {
             "beta",
             &format!("--crate-select={}", crate_select),
         ]).env("CRATER_CONFIG", &config_file)
-        .assert()
-        .success();
+        .status()
+        .unwrap();
+    assert!(out.success());
 
     // Execute the experiment
-    Command::crater()
+    let out = Command::crater()
         .args(&["run-graph", &ex_arg])
         .env("CRATER_CONFIG", &config_file)
-        .assert()
-        .success();
+        .status()
+        .unwrap();
+    assert!(out.success());
 
     // Generate the report
-    Command::crater()
+    let out = Command::crater()
         .args(&["gen-report", &ex_arg])
         .env("CRATER_CONFIG", &config_file)
         .arg(report_dir.path())
-        .assert()
-        .success();
+        .status()
+        .unwrap();
+    assert!(out.success());
 
     // Read the JSON report
     let json_report = ::std::fs::read(report_dir.path().join("results.json"))
         .expect("failed to read json report");
 
     // Delete the experiment
-    Command::crater()
+    let out = Command::crater()
         .args(&["delete-ex", &ex_arg])
         .env("CRATER_CONFIG", &config_file)
-        .assert()
-        .success();
+        .status()
+        .unwrap();
+    assert!(out.success());
 
     // Load the generated JSON report
     let parsed_report: Value = serde_json::from_slice(&json_report).expect("invalid json report");
@@ -99,6 +103,7 @@ fn execute(ex: &str, crate_select: &str) {
     }
 }
 
+#[ignore]
 #[test]
 fn run_small() {
     execute("small", "demo");

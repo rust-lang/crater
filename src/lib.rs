@@ -57,7 +57,6 @@ extern crate slog;
 extern crate slog_scope;
 extern crate slog_term;
 extern crate tar;
-extern crate tempdir;
 extern crate tempfile;
 extern crate tera;
 extern crate tokio_core;

@@ -3,11 +3,18 @@ use errors::*;
 use regex::Regex;
 use serde_regex;
 use std::collections::{HashMap, HashSet};
+use std::env;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 use utils::size::Size;
 
-static CONFIG_FILE: &'static str = "config.toml";
+fn default_config_file() -> PathBuf {
+    env::var_os("CRATER_CONFIG")
+        .unwrap_or_else(|| OsStr::new("config.toml").to_os_string())
+        .into()
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -49,6 +56,7 @@ pub struct ServerLabels {
 pub struct DemoCrates {
     pub crates: Vec<String>,
     pub github_repos: Vec<String>,
+    pub local_crates: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -63,18 +71,19 @@ pub struct Config {
     pub demo_crates: DemoCrates,
     pub crates: HashMap<String, CrateConfig>,
     pub github_repos: HashMap<String, CrateConfig>,
+    pub local_crates: HashMap<String, CrateConfig>,
     pub server: ServerConfig,
     pub sandbox: SandboxConfig,
 }
 
 impl Config {
     pub fn load() -> Result<Self> {
-        let buffer = Self::load_as_string(CONFIG_FILE)?;
+        let buffer = Self::load_as_string(default_config_file())?;
 
         Ok(::toml::from_str(&buffer)?)
     }
 
-    fn load_as_string(filename: &str) -> Result<String> {
+    fn load_as_string(filename: PathBuf) -> Result<String> {
         let mut buffer = String::new();
         File::open(filename)?.read_to_string(&mut buffer)?;
 
@@ -85,7 +94,7 @@ impl Config {
         match *c {
             Crate::Registry(ref details) => self.crates.get(&details.name),
             Crate::GitHub(ref repo) => self.github_repos.get(&repo.slug()),
-            Crate::Local(_) => None,
+            Crate::Local(ref name) => self.local_crates.get(name),
         }
     }
 
@@ -117,13 +126,13 @@ impl Config {
 
     pub fn check(file: &Option<String>) -> Result<()> {
         if let Some(file) = file {
-            Self::check_all(&file)
+            Self::check_all(file.into())
         } else {
-            Self::check_all(CONFIG_FILE)
+            Self::check_all(default_config_file())
         }
     }
 
-    fn check_all(filename: &str) -> Result<()> {
+    fn check_all(filename: PathBuf) -> Result<()> {
         use experiments::CrateSelect;
 
         let buffer = Self::load_as_string(filename)?;
@@ -221,9 +230,11 @@ impl Default for Config {
             demo_crates: DemoCrates {
                 crates: vec!["lazy_static".into()],
                 github_repos: vec!["brson/hello-rs".into()],
+                local_crates: vec![],
             },
             crates: HashMap::new(),
             github_repos: HashMap::new(),
+            local_crates: HashMap::new(),
             sandbox: SandboxConfig {
                 memory_limit: Size::Gigabytes(2),
             },
@@ -257,13 +268,14 @@ mod tests {
             "[demo-crates]\n",
             "crates = []\n",
             "github-repos = []\n",
+            "local-crates = []\n",
             "[sandbox]\n",
             "memory-limit = \"2G\"\n",
             "[crates]\n",
             "lazy_static = { skip = true }\n",
-            "\n",
             "[github-repos]\n",
-            "\"rust-lang/rust\" = { quiet = true }\n" // :(
+            "\"rust-lang/rust\" = { quiet = true }\n", // :(
+            "[local-crates]\n"
         );
 
         let list: Config = ::toml::from_str(&config).unwrap();

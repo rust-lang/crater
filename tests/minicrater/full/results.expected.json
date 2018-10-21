@@ -1,0 +1,109 @@
+{
+  "crates": [
+    {
+      "name": "beta-fixed (local)",
+      "res": "Fixed",
+      "runs": [
+        {
+          "log": "stable/local/beta-fixed",
+          "res": "BuildFail"
+        },
+        {
+          "log": "beta/local/beta-fixed",
+          "res": "TestPass"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/beta-fixed"
+    },
+    {
+      "name": "beta-regression (local)",
+      "res": "Regressed",
+      "runs": [
+        {
+          "log": "stable/local/beta-regression",
+          "res": "TestPass"
+        },
+        {
+          "log": "beta/local/beta-regression",
+          "res": "BuildFail"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/beta-regression"
+    },
+    {
+      "name": "build-fail (local)",
+      "res": "SameBuildFail",
+      "runs": [
+        {
+          "log": "stable/local/build-fail",
+          "res": "BuildFail"
+        },
+        {
+          "log": "beta/local/build-fail",
+          "res": "BuildFail"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-fail"
+    },
+    {
+      "name": "build-pass (local)",
+      "res": "SameTestPass",
+      "runs": [
+        {
+          "log": "stable/local/build-pass",
+          "res": "TestPass"
+        },
+        {
+          "log": "beta/local/build-pass",
+          "res": "TestPass"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"
+    },
+    {
+      "name": "memory-hungry (local)",
+      "res": "Fixed",
+      "runs": [
+        {
+          "log": "stable/local/memory-hungry",
+          "res": "BuildFail"
+        },
+        {
+          "log": "beta/local/memory-hungry",
+          "res": "TestFail"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/memory-hungry"
+    },
+    {
+      "name": "network-access (local)",
+      "res": "Fixed",
+      "runs": [
+        {
+          "log": "stable/local/network-access",
+          "res": "BuildFail"
+        },
+        {
+          "log": "beta/local/network-access",
+          "res": "TestFail"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/network-access"
+    },
+    {
+      "name": "test-fail (local)",
+      "res": "SameTestFail",
+      "runs": [
+        {
+          "log": "stable/local/test-fail",
+          "res": "TestFail"
+        },
+        {
+          "log": "beta/local/test-fail",
+          "res": "TestFail"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/test-fail"
+    }
+  ]
+}

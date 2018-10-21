@@ -77,16 +77,22 @@ pub(crate) fn get_crates(
                 .github_repos
                 .iter()
                 .collect::<HashSet<_>>();
+            let mut demo_local = config
+                .demo_crates()
+                .local_crates
+                .iter()
+                .collect::<HashSet<_>>();
 
             let mut all_crates = Vec::new();
             all_crates.append(&mut RegistryList::get(db)?);
             all_crates.append(&mut GitHubList::get(db)?);
+            all_crates.append(&mut LocalList::get(db)?);
 
             for krate in all_crates.drain(..) {
                 let add = match krate {
                     Crate::Registry(RegistryCrate { ref name, .. }) => demo_registry.remove(name),
                     Crate::GitHub(ref repo) => demo_github.remove(&repo.slug()),
-                    Crate::Local(_) => false, // Never include local crates in the demo set
+                    Crate::Local(ref name) => demo_local.remove(name),
                 };
 
                 if add {
@@ -100,6 +106,9 @@ pub(crate) fn get_crates(
             }
             if !demo_github.is_empty() {
                 bail!("missing demo GitHub repos: {:?}", demo_github);
+            }
+            if !demo_local.is_empty() {
+                bail!("missing demo local crates: {:?}", demo_local);
             }
         }
         CrateSelect::SmallRandom => {

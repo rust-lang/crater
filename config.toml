@@ -22,6 +22,7 @@ experiment-completed = "S-waiting-on-review"
 [demo-crates]
 crates = ["lazy_static"]
 github-repos = ["brson/hello-rs"]
+local-crates = []
 
 
 [sandbox]
@@ -13728,3 +13729,5 @@ zyre-sys = { skip = true } #automatic
 "zzeroo/gtk-betas" = { skip = true } #automatic
 "zzeroo/multi-window-tests" = { skip = true } #automatic
 "zzeroo/xMZ-Mod-Touch-GUI" = { skip = true } #automatic
+
+[local-crates]

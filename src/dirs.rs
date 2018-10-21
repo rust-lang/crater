@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 lazy_static! {
     pub static ref WORK_DIR: PathBuf = {
-        env::var_os("CARGOBOMB_WORK")
-            .unwrap_or_else(|| OsStr::new("./work").to_os_string())
+        env::var_os("CRATER_WORK_DIR")
+            .unwrap_or_else(|| OsStr::new("work").to_os_string())
             .into()
     };
     pub static ref LOCAL_DIR: PathBuf = WORK_DIR.join("local");

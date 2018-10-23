@@ -1,9 +1,25 @@
+use assert_cmd::prelude::*;
 use common::CommandCraterExt;
 use difference::Changeset;
 use rand::{self, distributions::Alphanumeric, Rng};
 use serde_json::{self, Value};
+use std::env;
 use std::path::PathBuf;
 use std::process::Command;
+
+trait CommandMinicraterExt {
+    fn minicrater_exec(&mut self);
+}
+
+impl CommandMinicraterExt for Command {
+    fn minicrater_exec(&mut self) {
+        if env::var_os("MINICRATER_SHOW_OUTPUT").is_some() {
+            assert!(self.status().unwrap().success());
+        } else {
+            self.assert().success();
+        }
+    }
+}
 
 fn execute(ex: &str, crate_select: &str) {
     let ex_dir = PathBuf::from("tests").join("minicrater").join(ex);
@@ -22,15 +38,13 @@ fn execute(ex: &str, crate_select: &str) {
     );
 
     // Create local list in the temp work dir
-    let out = Command::crater()
+    Command::crater()
         .args(&["create-lists", "local"])
         .env("CRATER_CONFIG", &config_file)
-        .status()
-        .unwrap();
-    assert!(out.success());
+        .minicrater_exec();
 
     // Define the experiment
-    let out = Command::crater()
+    Command::crater()
         .args(&[
             "define-ex",
             &ex_arg,
@@ -38,38 +52,30 @@ fn execute(ex: &str, crate_select: &str) {
             "beta",
             &format!("--crate-select={}", crate_select),
         ]).env("CRATER_CONFIG", &config_file)
-        .status()
-        .unwrap();
-    assert!(out.success());
+        .minicrater_exec();
 
     // Execute the experiment
-    let out = Command::crater()
+    Command::crater()
         .args(&["run-graph", &ex_arg])
         .env("CRATER_CONFIG", &config_file)
-        .status()
-        .unwrap();
-    assert!(out.success());
+        .minicrater_exec();
 
     // Generate the report
-    let out = Command::crater()
+    Command::crater()
         .args(&["gen-report", &ex_arg])
         .env("CRATER_CONFIG", &config_file)
         .arg(report_dir.path())
-        .status()
-        .unwrap();
-    assert!(out.success());
+        .minicrater_exec();
 
     // Read the JSON report
     let json_report = ::std::fs::read(report_dir.path().join("results.json"))
         .expect("failed to read json report");
 
     // Delete the experiment
-    let out = Command::crater()
+    Command::crater()
         .args(&["delete-ex", &ex_arg])
         .env("CRATER_CONFIG", &config_file)
-        .status()
-        .unwrap();
-    assert!(out.success());
+        .minicrater_exec();
 
     // Load the generated JSON report
     let parsed_report: Value = serde_json::from_slice(&json_report).expect("invalid json report");

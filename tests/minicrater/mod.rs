@@ -21,11 +21,13 @@ impl CommandMinicraterExt for Command {
     }
 }
 
-fn execute(ex: &str, crate_select: &str) {
+fn execute(ex: &str, crate_select: &str, multithread: bool) {
     let ex_dir = PathBuf::from("tests").join("minicrater").join(ex);
     let config_file = ex_dir.join("config.toml");
     let expected_file = ex_dir.join("results.expected.json");
     let actual_file = ex_dir.join("results.actual.json");
+
+    let threads_count = if multithread { ::num_cpus::get() } else { 1 };
 
     let report_dir = ::tempfile::tempdir().expect("failed to create report dir");
     let ex_arg = format!(
@@ -56,8 +58,12 @@ fn execute(ex: &str, crate_select: &str) {
 
     // Execute the experiment
     Command::crater()
-        .args(&["run-graph", &ex_arg])
-        .env("CRATER_CONFIG", &config_file)
+        .args(&[
+            "run-graph",
+            &ex_arg,
+            "--threads",
+            &threads_count.to_string(),
+        ]).env("CRATER_CONFIG", &config_file)
         .minicrater_exec();
 
     // Generate the report
@@ -111,12 +117,18 @@ fn execute(ex: &str, crate_select: &str) {
 
 #[ignore]
 #[test]
-fn run_small() {
-    execute("small", "demo");
+fn single_thread_small() {
+    execute("small", "demo", false);
 }
 
 #[ignore]
 #[test]
-fn run_full() {
-    execute("full", "local");
+fn single_thread_full() {
+    execute("full", "local", false);
+}
+
+#[ignore]
+#[test]
+fn multi_thread_full() {
+    execute("full", "local", true);
 }

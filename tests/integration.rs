@@ -1,5 +1,6 @@
 extern crate assert_cmd;
 extern crate difference;
+extern crate num_cpus;
 extern crate predicates;
 extern crate rand;
 extern crate serde;

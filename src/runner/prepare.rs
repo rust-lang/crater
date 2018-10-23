@@ -3,7 +3,7 @@ use crates::Crate;
 use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use errors::*;
 use experiments::Experiment;
-use results::WriteResults;
+use results::{TestResult, WriteResults};
 use run::RunCommand;
 use runner::toml_frobber::TomlFrobber;
 use std::fs;
@@ -90,6 +90,21 @@ pub(super) fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> 
     }
 
     Ok(())
+}
+
+pub(super) fn validate_manifest(ex: &Experiment, krate: &Crate, tc: &Toolchain) -> Result<()> {
+    info!("validating manifest of {} on toolchain {}", krate, tc);
+    with_work_crate(ex, tc, krate, |path| {
+        RunCommand::new(CARGO.toolchain(tc))
+            .args(&["read-manifest", "--manifest-path", "Cargo.toml"])
+            .cd(path)
+            .hide_output(true)
+            .run()
+            .chain_err(|| format!("invalid syntax in {}'s Cargo.toml", krate))
+            .chain_err(|| ErrorKind::OverrideResult(TestResult::BuildFail))?;
+
+        Ok(())
+    })
 }
 
 fn lockfile_dir(ex_name: &str) -> PathBuf {

@@ -5,7 +5,7 @@ use experiments::Experiment;
 use results::{TestResult, WriteResults};
 use runner::test;
 use std::fmt;
-use toolchain::{Toolchain, MAIN_TOOLCHAIN};
+use toolchain::Toolchain;
 use utils;
 
 pub(super) enum TaskStep {
@@ -131,8 +131,9 @@ impl Task {
         }
 
         ::runner::prepare::frob_toml(ex, &self.krate)?;
-        ::runner::prepare::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
-        ::runner::prepare::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
+        ::runner::prepare::validate_manifest(ex, &self.krate, &ex.toolchains[0])?;
+        ::runner::prepare::capture_lockfile(config, ex, &self.krate, &ex.toolchains[0])?;
+        ::runner::prepare::fetch_crate_deps(config, ex, &self.krate, &ex.toolchains[0])?;
 
         Ok(())
     }

@@ -79,6 +79,8 @@ fn run_ex_inner<DB: WriteResults + Sync>(
 
                                 let result = if config.is_broken(&task.krate) {
                                     TestResult::BuildFail
+                                } else if let ErrorKind::OverrideResult(res) = e.kind() {
+                                    *res
                                 } else {
                                     TestResult::Error
                                 };

@@ -11,6 +11,11 @@ env:
   global:
     - RUSTFLAGS=-Dwarnings
 
+    - DOCKER_USERNAME=rustopsbot
+    # DOCKER_PASSWORD=[secret] (note: the password is base64-encoded)
+    - secure: "m+/bvO8Rkoz2Hs6dOE9hsRq/u/cNgwQdRyKqK8EhF+d34jCi+m5mzG5qgu9YCOMC58EHExSVLGRfZnx+q0CcJElui14t0sw0ziVpWWTDapdSBjqeFyizNRbmuzLwPy2TJmGzkADILgsjbeLBTi2Ii8E4EDkuikDbRMx4YHwQrvrF+r80/3Rdc3psYdRdB0WSHSWO1SuPrlobMGNAetYevOmaaVV91OtCKno/2EtdyNiWXCZWl1S53/NhYFfz6J7GNOkLecqAohcc/jXX8OfgHNoW0ou/zmRlJapq4JVjL3biAVEhq98/vi5JG2J4tvUxNQF3gDW4d7o/oMEeA5EBycnmnof8mmGll7pQ5FF/X+6BDtIX1X3xEJn7i1KkA1HwK31zpr5K1piEWnctBdumjSwvJ0lYdMRVgtJd7H2zVZnVNEXOQdpTnbWnOQBMCf9oXKcCUiDhNPVFLWU7fpiCQ6vfyV/KmBjZ0dBP4zMoRq7iUnCivbYoIgd+uc3eB3HZ7fcQUgvdwyGThvQEyajrsJxe2qsqDRmQD1Z/8sJpaCw0I2uOQO3MSKyHuRA25fKE/a2hM38lUFs4kYz065h+m+NMSzM+AU2acUp+UJD8+ID/WnlUHEKQdOxw9KEUIR7bfc8Mn3R2bcmcuO2ig6YnaIcspu8Wn5v+CMkV7aTjQdk="
+
+
 matrix:
   include:
 
@@ -45,6 +50,14 @@ matrix:
     - env: TASK=minicrater-linux
       rust: stable
       if: branch = auto OR branch = try
+
+    ##############################
+    #  Linux docker environment  #
+    ##############################
+
+    - env: TASK=docker-env-linux
+      rust: stable
+      if: branch = try OR type = cron
 
   # Don't block CI if a nightly is faulty
   fast_finish: true

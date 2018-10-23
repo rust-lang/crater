@@ -31,6 +31,21 @@
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/beta-regression"
     },
     {
+      "name": "broken-cargotoml (local)",
+      "res": "SameBuildFail",
+      "runs": [
+        {
+          "log": "stable/local/broken-cargotoml",
+          "res": "BuildFail"
+        },
+        {
+          "log": "beta/local/broken-cargotoml",
+          "res": "BuildFail"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/broken-cargotoml"
+    },
+    {
       "name": "build-fail (local)",
       "res": "SameBuildFail",
       "runs": [

@@ -61,6 +61,7 @@ pub(crate) struct RunCommand {
     quiet: bool,
     enable_timeout: bool,
     local_rustup: bool,
+    hide_output: bool,
 }
 
 impl RunCommand {
@@ -73,6 +74,7 @@ impl RunCommand {
             quiet: false,
             enable_timeout: true,
             local_rustup: false,
+            hide_output: false,
         })
     }
 
@@ -107,6 +109,11 @@ impl RunCommand {
 
     pub(crate) fn local_rustup(mut self, local_rustup: bool) -> Self {
         self.local_rustup = local_rustup;
+        self
+    }
+
+    pub(crate) fn hide_output(mut self, hide_output: bool) -> Self {
+        self.hide_output = hide_output;
         self
     }
 
@@ -154,7 +161,13 @@ impl RunCommand {
         }
 
         info!("running `{}`", cmdstr);
-        let out = log_command(cmd, capture, self.quiet, self.enable_timeout).map_err(|e| {
+        let out = log_command(
+            cmd,
+            capture,
+            self.quiet,
+            self.enable_timeout,
+            self.hide_output,
+        ).map_err(|e| {
             info!("error running command: {}", e);
             e
         })?;
@@ -255,6 +268,7 @@ fn log_command(
     capture: bool,
     quiet: bool,
     enable_timeout: bool,
+    hide_output: bool,
 ) -> Result<ProcessOutput> {
     let (max_timeout, heartbeat_timeout) = if enable_timeout {
         let max_timeout = Duration::from_secs(MAX_TIMEOUT_SECS);
@@ -290,14 +304,18 @@ fn log_command(
     let stdout = lines(BufReader::new(stdout)).map({
         let logger = logger.clone();
         move |line| {
-            slog_info!(logger, "blam! {}", line);
+            if !hide_output {
+                slog_info!(logger, "blam! {}", line);
+            }
             line
         }
     });
     let stderr = lines(BufReader::new(stderr)).map({
         let logger = logger.clone();
         move |line| {
-            slog_info!(logger, "kablam! {}", line);
+            if !hide_output {
+                slog_info!(logger, "kablam! {}", line);
+            }
             line
         }
     });

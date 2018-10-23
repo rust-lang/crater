@@ -1,3 +1,5 @@
+use results::TestResult;
+
 error_chain! {
     foreign_links {
         IoError(::std::io::Error);
@@ -80,6 +82,11 @@ error_chain! {
 
         BadConfig {
             description("the config file contains errors")
+        }
+
+        OverrideResult(result: TestResult) {
+            description("overridden task result")
+            display("overridden task result to {}", result.to_str())
         }
     }
 }

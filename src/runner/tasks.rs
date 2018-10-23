@@ -131,6 +131,7 @@ impl Task {
         }
 
         ::runner::prepare::frob_toml(ex, &self.krate)?;
+        ::runner::prepare::validate_manifest(ex, &self.krate, &MAIN_TOOLCHAIN)?;
         ::runner::prepare::capture_lockfile(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
         ::runner::prepare::fetch_crate_deps(config, ex, &self.krate, &MAIN_TOOLCHAIN)?;
 

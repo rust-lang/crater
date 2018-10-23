@@ -3,4 +3,4 @@ set -euo pipefail
 IFS=$'\n\t'
 
 cargo run -- prepare-local --docker-env=mini
-cargo test -- --ignored --nocapture --test-threads 1
+MINICRATER_SHOW_OUTPUT=1 cargo test -- --ignored --nocapture --test-threads 1

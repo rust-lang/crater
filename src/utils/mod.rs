@@ -1,5 +1,6 @@
-use errors::*;
+use failure::AsFail;
 use std::any::Any;
+use std::fmt::Display;
 use std::thread;
 use std::time::Duration;
 
@@ -11,11 +12,19 @@ mod macros;
 pub mod size;
 pub(crate) mod string;
 
-pub(crate) fn try_hard<F: Fn() -> Result<R>, R>(f: F) -> Result<R> {
+pub(crate) fn try_hard<F, R, E>(f: F) -> Result<R, E>
+where
+    F: Fn() -> Result<R, E>,
+    E: Display,
+{
     try_hard_limit(1000, f)
 }
 
-pub(crate) fn try_hard_limit<F: Fn() -> Result<R>, R>(ms: usize, f: F) -> Result<R> {
+pub(crate) fn try_hard_limit<F, R, E>(ms: usize, f: F) -> Result<R, E>
+where
+    F: Fn() -> Result<R, E>,
+    E: Display,
+{
     let mut r;
     for i in 1..3 {
         r = f();
@@ -31,18 +40,6 @@ pub(crate) fn try_hard_limit<F: Fn() -> Result<R>, R>(ms: usize, f: F) -> Result
     f()
 }
 
-pub fn report_error(e: &Error) {
-    error!("{}", e);
-
-    for e in e.iter().skip(1) {
-        error!("caused by: {}", e)
-    }
-
-    if let Some(backtrace) = e.backtrace() {
-        error!("{:?}", backtrace);
-    }
-}
-
 pub fn report_panic(e: &Any) {
     if let Some(e) = e.downcast_ref::<String>() {
         error!("panicked: {}", e)
@@ -50,5 +47,18 @@ pub fn report_panic(e: &Any) {
         error!("panicked: {}", e)
     } else {
         error!("panicked")
+    }
+}
+
+pub fn report_failure<F: AsFail>(err: &F) {
+    let err = err.as_fail();
+    error!("{}", err);
+
+    for cause in err.iter_causes() {
+        error!("caused by: {}", cause);
+    }
+
+    if let Some(backtrace) = err.backtrace() {
+        error!("{}", backtrace);
     }
 }

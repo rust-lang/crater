@@ -1,5 +1,5 @@
-use errors::*;
 use native;
+use prelude::*;
 use run::{Binary, RunCommand, Runnable};
 use tools::{binary_path, InstallableTool, CARGO, CARGO_INSTALL_UPDATE};
 
@@ -32,7 +32,7 @@ impl InstallableTool for BinaryCrate {
         self.binary
     }
 
-    fn is_installed(&self) -> Result<bool> {
+    fn is_installed(&self) -> Fallible<bool> {
         let path = binary_path(self.binary);
         if !path.is_file() {
             return Ok(false);
@@ -41,7 +41,7 @@ impl InstallableTool for BinaryCrate {
         Ok(native::is_executable(path)?)
     }
 
-    fn install(&self) -> Result<()> {
+    fn install(&self) -> Fallible<()> {
         RunCommand::new(&CARGO)
             .args(&["install", self.crate_name])
             .enable_timeout(false)
@@ -49,7 +49,7 @@ impl InstallableTool for BinaryCrate {
         Ok(())
     }
 
-    fn update(&self) -> Result<()> {
+    fn update(&self) -> Fallible<()> {
         RunCommand::new(&CARGO_INSTALL_UPDATE)
             .args(&[self.crate_name])
             .enable_timeout(false)

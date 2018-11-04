@@ -1,8 +1,8 @@
 use assets;
-use errors::*;
 use experiments::Experiment;
 use mime;
 use minifier;
+use prelude::*;
 use report::{archives::Archive, Comparison, CrateResult, ReportWriter, TestResults};
 use results::TestResult;
 use std::collections::HashMap;
@@ -107,7 +107,7 @@ fn write_report<W: ReportWriter>(
     full: bool,
     to: &str,
     dest: &W,
-) -> Result<()> {
+) -> Fallible<()> {
     let mut comparison_colors = HashMap::new();
     let mut result_colors = HashMap::new();
 
@@ -163,7 +163,7 @@ fn write_downloads<W: ReportWriter>(
     ex: &Experiment,
     available_archives: Vec<Archive>,
     dest: &W,
-) -> Result<()> {
+) -> Fallible<()> {
     let context = DownloadsContext {
         ex,
         nav: CurrentPage::Downloads.navbar(),
@@ -184,7 +184,7 @@ pub fn write_html_report<W: ReportWriter>(
     res: &TestResults,
     available_archives: Vec<Archive>,
     dest: &W,
-) -> Result<()> {
+) -> Fallible<()> {
     let js_in = assets::load("report.js")?;
     let css_in = assets::load("report.css")?;
     write_report(ex, res, false, "index.html", dest)?;

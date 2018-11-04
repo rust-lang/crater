@@ -1,11 +1,11 @@
 use chrono::{Duration, SecondsFormat, Utc};
 use chrono_humanize::{Accuracy, HumanTime, Tense};
-use errors::*;
 use experiments::{Experiment, Mode, Status};
 use http::Response;
 use hyper::Body;
+use prelude::*;
 use server::routes::ui::{render_template, LayoutContext};
-use server::Data;
+use server::{Data, HttpError};
 use std::sync::Arc;
 
 #[derive(Serialize)]
@@ -20,7 +20,7 @@ struct ExperimentData {
 }
 
 impl ExperimentData {
-    fn new(data: &Data, experiment: &Experiment) -> Result<Self> {
+    fn new(data: &Data, experiment: &Experiment) -> Fallible<Self> {
         let (status_class, status_pretty) = match experiment.status {
             Status::Queued => ("", "Queued"),
             Status::Running => ("orange", "Running"),
@@ -53,7 +53,7 @@ struct ListContext {
     experiments: Vec<ExperimentData>,
 }
 
-pub fn endpoint_queue(data: Arc<Data>) -> Result<Response<Body>> {
+pub fn endpoint_queue(data: Arc<Data>) -> Fallible<Response<Body>> {
     let mut queued = Vec::new();
     let mut running = Vec::new();
     let mut needs_report = Vec::new();
@@ -119,7 +119,7 @@ struct ExperimentContext {
     layout: LayoutContext,
 }
 
-pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Result<Response<Body>> {
+pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<Body>> {
     if let Some(ex) = Experiment::get(&data.db, &name)? {
         let (completed_jobs, total_jobs) = ex.raw_progress(&data.db)?;
 
@@ -190,6 +190,6 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Result<Response<Bod
             },
         )
     } else {
-        Err(ErrorKind::Error404.into())
+        Err(HttpError::NotFound.into())
     }
 }

@@ -1,6 +1,6 @@
 use config::Config;
-use errors::*;
 use http::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
+use prelude::*;
 use regex::Regex;
 use server::github::GitHubApi;
 use server::Data;
@@ -94,7 +94,7 @@ pub struct ACL {
 }
 
 impl ACL {
-    pub fn new(config: &Config, github: &GitHubApi) -> Result<Self> {
+    pub fn new(config: &Config, github: &GitHubApi) -> Fallible<Self> {
         let mut users = Vec::new();
         let mut teams = Vec::new();
 
@@ -118,7 +118,7 @@ impl ACL {
         Ok(acl)
     }
 
-    pub fn refresh_cache(&self, github: &GitHubApi) -> Result<()> {
+    pub fn refresh_cache(&self, github: &GitHubApi) -> Fallible<()> {
         // A new HashSet is created instead of clearing the old one
         // This is done because if an error occurs the old cache is not flushed
         let mut new_cache = HashSet::new();
@@ -152,7 +152,7 @@ impl ACL {
         orgs: &mut HashMap<String, HashMap<String, usize>>,
         org: &str,
         team: &str,
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         // Cache the list of teams in an org
         if !orgs.contains_key(org) {
             orgs.insert(org.to_string(), github.list_teams(org)?);
@@ -161,7 +161,7 @@ impl ACL {
         let members = github.team_members(
             *orgs[org]
                 .get(team)
-                .ok_or_else(|| format!("team {}/{} doesn't exist", org, team))?,
+                .ok_or_else(|| err_msg(format!("team {}/{} doesn't exist", org, team)))?,
         )?;
         for member in &members {
             new_cache.insert(member.clone());

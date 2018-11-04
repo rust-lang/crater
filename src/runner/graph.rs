@@ -17,9 +17,10 @@
 //                                   +---+ tc2 <---+
 
 use config::Config;
-use errors::*;
 use experiments::{Experiment, Mode};
+use failure::AsFail;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
+use prelude::*;
 use results::{TestResult, WriteResults};
 use runner::tasks::{Task, TaskStep};
 use std::fmt::{self, Debug};
@@ -179,14 +180,14 @@ impl TasksGraph {
         self.graph.remove_node(node);
     }
 
-    pub(super) fn mark_as_failed<DB: WriteResults>(
+    pub(super) fn mark_as_failed<DB: WriteResults, F: AsFail>(
         &mut self,
         node: NodeIndex,
         ex: &Experiment,
         db: &DB,
-        error: &Error,
+        error: &F,
         result: TestResult,
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         let mut children = self
             .graph
             .neighbors_directed(node, Direction::Incoming)

@@ -1,16 +1,17 @@
+use actions::experiments::ExperimentError;
 use config::Config;
 use db::{Database, QueryUtils};
-use errors::*;
 use experiments::Experiment;
+use prelude::*;
 
 pub struct DeleteExperiment {
     pub name: String,
 }
 
 impl DeleteExperiment {
-    pub fn apply(self, db: &Database, _config: &Config) -> Result<()> {
+    pub fn apply(self, db: &Database, _config: &Config) -> Fallible<()> {
         if !Experiment::exists(db, &self.name)? {
-            return Err(ErrorKind::ExperimentNotFound(self.name).into());
+            return Err(ExperimentError::NotFound(self.name).into());
         }
 
         // This will also delete all the data related to this experiment, thanks to the foreign
@@ -24,10 +25,9 @@ impl DeleteExperiment {
 #[cfg(test)]
 mod tests {
     use super::DeleteExperiment;
-    use actions::CreateExperiment;
+    use actions::{CreateExperiment, ExperimentError};
     use config::Config;
     use db::Database;
-    use errors::*;
     use experiments::Experiment;
 
     #[test]
@@ -40,10 +40,10 @@ mod tests {
         }.apply(&db, &config)
         .unwrap_err();
 
-        match err.kind() {
-            ErrorKind::ExperimentNotFound(name) => assert_eq!(name, "dummy"),
-            other => panic!("unexpected error: {}", other),
-        }
+        assert_eq!(
+            err.downcast_ref(),
+            Some(&ExperimentError::NotFound("dummy".into()))
+        );
     }
 
     #[test]

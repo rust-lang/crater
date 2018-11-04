@@ -1,10 +1,9 @@
-use errors::*;
+use prelude::*;
 use serde::{
     de::{Deserialize, Deserializer, Error as DeError, Visitor},
     ser::{Serialize, Serializer},
 };
 use std::fmt;
-use std::result::Result as StdResult;
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -29,15 +28,15 @@ impl fmt::Display for Size {
 }
 
 impl FromStr for Size {
-    type Err = Error;
+    type Err = failure::Error;
 
-    fn from_str(mut input: &str) -> Result<Size> {
-        let mut last = input.chars().last().ok_or("empty size")?;
+    fn from_str(mut input: &str) -> Fallible<Size> {
+        let mut last = input.chars().last().ok_or_else(|| err_msg("empty size"))?;
 
         // Eat a trailing 'b'
         if last == 'b' || last == 'B' {
             input = &input[..input.len() - 1];
-            last = input.chars().last().ok_or("empty size")?;
+            last = input.chars().last().ok_or_else(|| err_msg("empty size"))?;
         }
 
         if last == 'K' || last == 'k' {
@@ -63,19 +62,19 @@ impl<'de> Visitor<'de> for SizeVisitor {
         f.write_str("a size")
     }
 
-    fn visit_str<E: DeError>(self, input: &str) -> StdResult<Size, E> {
+    fn visit_str<E: DeError>(self, input: &str) -> Result<Size, E> {
         Size::from_str(input).map_err(E::custom)
     }
 }
 
 impl<'de> Deserialize<'de> for Size {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Size, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Size, D::Error> {
         deserializer.deserialize_str(SizeVisitor)
     }
 }
 
 impl Serialize for Size {
-    fn serialize<S: Serializer>(&self, serializer: S) -> StdResult<S::Ok, S::Error> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.to_string())
     }
 }

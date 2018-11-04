@@ -1,5 +1,5 @@
-use errors::*;
 use mime::{self, Mime};
+use prelude::*;
 use serde::Serialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -90,11 +90,11 @@ enum FileContent {
 }
 
 impl FileContent {
-    fn load(&self) -> Result<Cow<[u8]>> {
+    fn load(&self) -> Fallible<Cow<[u8]>> {
         Ok(match *self {
             FileContent::Static(content) => Cow::Borrowed(content),
             FileContent::Dynamic(ref path) => {
-                Cow::Owned(::std::fs::read(path).chain_err(|| {
+                Cow::Owned(::std::fs::read(path).with_context(|_| {
                     format!("failed to load dynamic asset: {}", path.to_string_lossy())
                 })?)
             }
@@ -108,7 +108,7 @@ pub struct Asset {
 }
 
 impl Asset {
-    pub fn content(&self) -> Result<Cow<[u8]>> {
+    pub fn content(&self) -> Fallible<Cow<[u8]>> {
         self.content.load()
     }
 
@@ -117,7 +117,7 @@ impl Asset {
     }
 }
 
-pub fn load(name: &str) -> Result<&Asset> {
+pub fn load(name: &str) -> Fallible<&Asset> {
     if let Some(ref asset) = ASSETS.get(name) {
         Ok(asset)
     } else {
@@ -128,7 +128,7 @@ pub fn load(name: &str) -> Result<&Asset> {
     }
 }
 
-fn build_tera_cache() -> Result<Tera> {
+fn build_tera_cache() -> Fallible<Tera> {
     let mut templates = Vec::new();
     for (name, content) in TEMPLATES.iter() {
         templates.push((*name, String::from_utf8(content.load()?.into_owned())?));
@@ -140,12 +140,12 @@ fn build_tera_cache() -> Result<Tera> {
         .collect::<Vec<_>>();
 
     let mut tera = Tera::default();
-    tera.add_raw_templates(to_add)?;
+    tera.add_raw_templates(to_add).to_failure()?;
     Ok(tera)
 }
 
 #[allow(unused_variables)]
-pub fn render_template<C: Serialize>(name: &str, context: &C) -> Result<String> {
+pub fn render_template<C: Serialize>(name: &str, context: &C) -> Fallible<String> {
     // On debug builds the cache is rebuilt every time to pick up changed templates
     let tera_owned: Tera;
     let tera;
@@ -161,5 +161,5 @@ pub fn render_template<C: Serialize>(name: &str, context: &C) -> Result<String> 
         tera = &TERA_CACHE;
     }
 
-    Ok(tera.render(name, context)?)
+    Ok(tera.render(name, context).to_failure()?)
 }

@@ -3,8 +3,8 @@ mod db;
 mod dummy;
 
 use crates::{Crate, GitHubRepo};
-use errors::*;
 use experiments::Experiment;
+use prelude::*;
 pub use results::db::{DatabaseDB, ProgressData};
 #[cfg(test)]
 pub use results::dummy::DummyDB;
@@ -12,19 +12,19 @@ use std::collections::HashMap;
 use toolchain::Toolchain;
 
 pub trait ReadResults {
-    fn load_all_shas(&self, ex: &Experiment) -> Result<HashMap<GitHubRepo, String>>;
+    fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>>;
     fn load_log(
         &self,
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<Vec<u8>>>;
+    ) -> Fallible<Option<Vec<u8>>>;
     fn load_test_result(
         &self,
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<TestResult>>;
+    ) -> Fallible<Option<TestResult>>;
 }
 
 pub trait WriteResults {
@@ -33,22 +33,22 @@ pub trait WriteResults {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<TestResult>>;
-    fn record_sha(&self, ex: &Experiment, repo: &GitHubRepo, sha: &str) -> Result<()>;
+    ) -> Fallible<Option<TestResult>>;
+    fn record_sha(&self, ex: &Experiment, repo: &GitHubRepo, sha: &str) -> Fallible<()>;
     fn record_result<F>(
         &self,
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
         f: F,
-    ) -> Result<TestResult>
+    ) -> Fallible<TestResult>
     where
-        F: FnOnce() -> Result<TestResult>;
+        F: FnOnce() -> Fallible<TestResult>;
 }
 
 pub trait DeleteResults {
-    fn delete_all_results(&self, ex: &Experiment) -> Result<()>;
-    fn delete_result(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> Result<()>;
+    fn delete_all_results(&self, ex: &Experiment) -> Fallible<()>;
+    fn delete_result(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> Fallible<()>;
 }
 
 string_enum!(pub enum TestResult {

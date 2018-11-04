@@ -15,14 +15,14 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 
 extern crate crater;
 
 mod cli;
 
-use crater::errors::*;
 use crater::{log, utils};
+use failure::Fallible;
 use std::panic;
 use std::process;
 use structopt::StructOpt;
@@ -35,7 +35,7 @@ fn main() {
     let success = match panic::catch_unwind(main_) {
         Ok(Ok(())) => true,
         Ok(Err(e)) => {
-            utils::report_error(&e);
+            utils::report_failure(&e);
             false
         }
         Err(e) => {
@@ -55,6 +55,6 @@ fn main() {
     process::exit(if success { 0 } else { 1 });
 }
 
-fn main_() -> Result<()> {
+fn main_() -> Fallible<()> {
     cli::Crater::from_args().run()
 }

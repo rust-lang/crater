@@ -1,8 +1,8 @@
 use chrono::Duration;
 use chrono::{DateTime, Utc};
 use db::{Database, QueryUtils};
-use errors::*;
 use experiments::{Assignee, Experiment};
+use prelude::*;
 use server::tokens::Tokens;
 use std::collections::HashSet;
 
@@ -24,7 +24,7 @@ pub struct Agent {
 }
 
 impl Agent {
-    fn with_experiment(mut self, db: &Database) -> Result<Self> {
+    fn with_experiment(mut self, db: &Database) -> Fallible<Self> {
         self.experiment = Experiment::run_by(db, &Assignee::Agent(self.name.clone()))?;
         Ok(self)
     }
@@ -66,13 +66,13 @@ pub struct Agents {
 }
 
 impl Agents {
-    pub fn new(db: Database, tokens: &Tokens) -> Result<Self> {
+    pub fn new(db: Database, tokens: &Tokens) -> Fallible<Self> {
         let agents = Agents { db };
         agents.synchronize(tokens)?;
         Ok(agents)
     }
 
-    fn synchronize(&self, tokens: &Tokens) -> Result<()> {
+    fn synchronize(&self, tokens: &Tokens) -> Fallible<()> {
         self.db.transaction(|trans| {
             let mut real = tokens.agents.values().collect::<HashSet<&String>>();
             for agent in self.all()? {
@@ -92,7 +92,7 @@ impl Agents {
         })
     }
 
-    pub fn all(&self) -> Result<Vec<Agent>> {
+    pub fn all(&self) -> Fallible<Vec<Agent>> {
         self.db
             .query("SELECT * FROM agents ORDER BY name;", &[], |row| {
                 Agent {
@@ -107,7 +107,7 @@ impl Agents {
     }
 
     #[cfg(test)]
-    fn get(&self, name: &str) -> Result<Option<Agent>> {
+    fn get(&self, name: &str) -> Fallible<Option<Agent>> {
         let row = self
             .db
             .get_row("SELECT * FROM agents WHERE name = ?1;", &[&name], |row| {
@@ -126,7 +126,7 @@ impl Agents {
         })
     }
 
-    pub fn record_heartbeat(&self, agent: &str) -> Result<()> {
+    pub fn record_heartbeat(&self, agent: &str) -> Fallible<()> {
         let changes = self.db.execute(
             "UPDATE agents SET last_heartbeat = ?1 WHERE name = ?2;",
             &[&Utc::now(), &agent],
@@ -136,7 +136,7 @@ impl Agents {
         Ok(())
     }
 
-    pub fn set_git_revision(&self, agent: &str, revision: &str) -> Result<()> {
+    pub fn set_git_revision(&self, agent: &str, revision: &str) -> Fallible<()> {
         let changes = self.db.execute(
             "UPDATE agents SET git_revision = ?1 WHERE name = ?2;",
             &[&revision, &agent],

@@ -1,11 +1,12 @@
 use config::Config;
 use crates::Crate;
 use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
-use errors::*;
 use experiments::Experiment;
+use prelude::*;
 use results::{TestResult, WriteResults};
 use run::RunCommand;
 use runner::toml_frobber::TomlFrobber;
+use runner::OverrideResult;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toolchain::Toolchain;
@@ -20,7 +21,7 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
-pub(super) fn frob_toml(ex: &Experiment, krate: &Crate) -> Result<()> {
+pub(super) fn frob_toml(ex: &Experiment, krate: &Crate) -> Fallible<()> {
     if let Crate::Registry(ref details) = *krate {
         fs::create_dir_all(&froml_dir(&ex.name))?;
         let source = krate.dir();
@@ -38,7 +39,7 @@ pub(super) fn capture_shas<DB: WriteResults>(
     ex: &Experiment,
     crates: &[Crate],
     db: &DB,
-) -> Result<()> {
+) -> Fallible<()> {
     for krate in crates {
         if let Crate::GitHub(ref repo) = *krate {
             let dir = repo.mirror_dir();
@@ -53,25 +54,26 @@ pub(super) fn capture_shas<DB: WriteResults>(
                         info!("sha for GitHub repo {}: {}", repo.slug(), shaline);
                         shaline.to_string()
                     } else {
-                        bail!("bogus output from git log for {}", dir.display());
+                        bail!("bogus output from git log for {}", dir.to_string_lossy());
                     }
                 } else {
-                    bail!("bogus output from git log for {}", dir.display());
+                    bail!("bogus output from git log for {}", dir.to_string_lossy());
                 },
                 Err(e) => {
-                    bail!("unable to capture sha for {}: {}", dir.display(), e);
+                    bail!("unable to capture sha for {}: {}", dir.to_string_lossy(), e);
                 }
             };
 
-            db.record_sha(ex, repo, &sha)
-                .chain_err(|| format!("failed to record the sha of GitHub repo {}", repo.slug()))?;
+            db.record_sha(ex, repo, &sha).with_context(|_| {
+                format!("failed to record the sha of GitHub repo {}", repo.slug())
+            })?;
         }
     }
 
     Ok(())
 }
 
-pub(super) fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> Result<()> {
+pub(super) fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> Fallible<()> {
     let (crate_name, crate_vers) = match *krate {
         Crate::Registry(ref details) => (details.name.clone(), details.version.clone()),
         _ => return Ok(()),
@@ -80,7 +82,7 @@ pub(super) fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> 
     let dst_froml = &path.join("Cargo.toml");
     if src_froml.exists() {
         info!("using frobbed toml {}", src_froml.display());
-        fs::copy(src_froml, dst_froml).chain_err(|| {
+        fs::copy(src_froml, dst_froml).with_context(|_| {
             format!(
                 "unable to copy frobbed toml from {} to {}",
                 src_froml.display(),
@@ -92,7 +94,7 @@ pub(super) fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> 
     Ok(())
 }
 
-pub(super) fn validate_manifest(ex: &Experiment, krate: &Crate, tc: &Toolchain) -> Result<()> {
+pub(super) fn validate_manifest(ex: &Experiment, krate: &Crate, tc: &Toolchain) -> Fallible<()> {
     info!("validating manifest of {} on toolchain {}", krate, tc);
     with_work_crate(ex, tc, krate, |path| {
         RunCommand::new(CARGO.toolchain(tc))
@@ -100,8 +102,8 @@ pub(super) fn validate_manifest(ex: &Experiment, krate: &Crate, tc: &Toolchain) 
             .cd(path)
             .hide_output(true)
             .run()
-            .chain_err(|| format!("invalid syntax in {}'s Cargo.toml", krate))
-            .chain_err(|| ErrorKind::OverrideResult(TestResult::BuildFail))?;
+            .with_context(|_| format!("invalid syntax in {}'s Cargo.toml", krate))
+            .with_context(|_| OverrideResult(TestResult::BuildFail))?;
 
         Ok(())
     })
@@ -111,7 +113,7 @@ fn lockfile_dir(ex_name: &str) -> PathBuf {
     EXPERIMENT_DIR.join(ex_name).join("lockfiles")
 }
 
-fn lockfile(ex_name: &str, krate: &Crate) -> Result<PathBuf> {
+fn lockfile(ex_name: &str, krate: &Crate) -> Fallible<PathBuf> {
     let name = match *krate {
         Crate::Registry(ref details) => format!("reg-{}-{}.lock", details.name, details.version),
         Crate::GitHub(ref repo) => format!("gh-{}-{}.lock", repo.org, repo.name),
@@ -133,9 +135,9 @@ pub(super) fn with_work_crate<F, R>(
     toolchain: &Toolchain,
     krate: &Crate,
     f: F,
-) -> Result<R>
+) -> Fallible<R>
 where
-    F: Fn(&Path) -> Result<R>,
+    F: Fn(&Path) -> Fallible<R>,
 {
     let src_dir = krate.dir();
     let dest_dir = crate_work_dir(&ex.name, toolchain);
@@ -156,7 +158,7 @@ pub(super) fn capture_lockfile(
     ex: &Experiment,
     krate: &Crate,
     toolchain: &Toolchain,
-) -> Result<()> {
+) -> Fallible<()> {
     fs::create_dir_all(&lockfile_dir(&ex.name))?;
 
     if !config.should_update_lockfile(krate)
@@ -170,7 +172,7 @@ pub(super) fn capture_lockfile(
     with_work_crate(ex, toolchain, krate, |path| {
         with_frobbed_toml(ex, krate, path)?;
         capture_lockfile_inner(ex, krate, path, toolchain)
-    }).chain_err(|| format!("failed to generate lockfile for {}", krate))?;
+    }).with_context(|_| format!("failed to generate lockfile for {}", krate))?;
 
     Ok(())
 }
@@ -180,7 +182,7 @@ fn capture_lockfile_inner(
     krate: &Crate,
     path: &Path,
     toolchain: &Toolchain,
-) -> Result<()> {
+) -> Fallible<()> {
     RunCommand::new(CARGO.toolchain(toolchain).unstable_features(true))
         .args(&[
             "generate-lockfile",
@@ -192,7 +194,7 @@ fn capture_lockfile_inner(
 
     let src_lockfile = &path.join("Cargo.lock");
     let dst_lockfile = &lockfile(&ex.name, krate)?;
-    fs::copy(src_lockfile, dst_lockfile).chain_err(|| {
+    fs::copy(src_lockfile, dst_lockfile).with_context(|_| {
         format!(
             "unable to copy lockfile from {} to {}",
             src_lockfile.display(),
@@ -214,7 +216,7 @@ pub(super) fn with_captured_lockfile(
     ex: &Experiment,
     krate: &Crate,
     path: &Path,
-) -> Result<()> {
+) -> Fallible<()> {
     let src_lockfile = &lockfile(&ex.name, krate)?;
     let dst_lockfile = &path.join("Cargo.lock");
 
@@ -225,7 +227,7 @@ pub(super) fn with_captured_lockfile(
 
     if src_lockfile.exists() {
         info!("using lockfile {}", src_lockfile.display());
-        fs::copy(src_lockfile, dst_lockfile).chain_err(|| {
+        fs::copy(src_lockfile, dst_lockfile).with_context(|_| {
             format!(
                 "unable to copy lockfile from {} to {}",
                 src_lockfile.display(),
@@ -242,7 +244,7 @@ pub(super) fn fetch_crate_deps(
     ex: &Experiment,
     krate: &Crate,
     toolchain: &Toolchain,
-) -> Result<()> {
+) -> Fallible<()> {
     with_work_crate(ex, toolchain, krate, |path| {
         with_frobbed_toml(ex, krate, path)?;
         with_captured_lockfile(config, ex, krate, path)?;

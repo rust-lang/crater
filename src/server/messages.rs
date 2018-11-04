@@ -1,4 +1,4 @@
-use errors::*;
+use prelude::*;
 use server::Data;
 
 pub enum Label {
@@ -47,7 +47,7 @@ impl Message {
         self
     }
 
-    pub fn send(mut self, issue_url: &str, data: &Data) -> Result<()> {
+    pub fn send(mut self, issue_url: &str, data: &Data) -> Fallible<()> {
         // Always add a note at the bottom explaining what this is
         self = self.note(
             "information_source",

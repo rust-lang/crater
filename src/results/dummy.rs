@@ -1,6 +1,6 @@
 use crates::{Crate, GitHubRepo};
-use errors::*;
 use experiments::Experiment;
+use prelude::*;
 use results::{ReadResults, TestResult};
 use std::collections::HashMap;
 use toolchain::Toolchain;
@@ -18,11 +18,11 @@ pub struct DummyDB {
 }
 
 impl DummyDB {
-    fn get_data(&self, ex: &Experiment) -> Result<&DummyData> {
+    fn get_data(&self, ex: &Experiment) -> Fallible<&DummyData> {
         Ok(self
             .experiments
             .get(&ex.name)
-            .ok_or_else(|| format!("missing experiment {}", ex.name))?)
+            .ok_or_else(|| err_msg(format!("missing experiment {}", ex.name)))?)
     }
 
     pub fn add_dummy_sha(&mut self, ex: &Experiment, repo: GitHubRepo, sha: String) {
@@ -57,7 +57,7 @@ impl DummyDB {
 }
 
 impl ReadResults for DummyDB {
-    fn load_all_shas(&self, ex: &Experiment) -> Result<HashMap<GitHubRepo, String>> {
+    fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>> {
         Ok(self.get_data(ex)?.shas.clone())
     }
 
@@ -66,7 +66,7 @@ impl ReadResults for DummyDB {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<Vec<u8>>> {
+    ) -> Fallible<Option<Vec<u8>>> {
         Ok(self
             .get_data(ex)?
             .logs
@@ -79,7 +79,7 @@ impl ReadResults for DummyDB {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<TestResult>> {
+    ) -> Fallible<Option<TestResult>> {
         Ok(self
             .get_data(ex)?
             .results

@@ -1,5 +1,5 @@
 use dirs::TARGET_DIR;
-use errors::*;
+use prelude::*;
 use run::RunCommand;
 use std::borrow::Cow;
 use std::fmt;
@@ -53,7 +53,7 @@ pub struct Toolchain {
 }
 
 impl Toolchain {
-    pub fn prepare(&self) -> Result<()> {
+    pub fn prepare(&self) -> Fallible<()> {
         match self.source {
             ToolchainSource::Dist { ref name } => init_toolchain_from_dist(name)?,
             ToolchainSource::CI { ref sha, .. } => init_toolchain_from_ci(true, sha)?,
@@ -83,7 +83,7 @@ impl Toolchain {
         dir.join(self.to_string())
     }
 
-    pub fn prep_offline_registry(&self) -> Result<()> {
+    pub fn prep_offline_registry(&self) -> Fallible<()> {
         // This nop cargo command is to update the registry
         // so we don't have to do it for each crate.
         // using `install` is a temporary solution until
@@ -121,19 +121,29 @@ impl fmt::Display for Toolchain {
     }
 }
 
-impl FromStr for Toolchain {
-    type Err = Error;
+#[derive(Debug, Fail)]
+pub enum ToolchainParseError {
+    #[fail(display = "empty toolchain name")]
+    EmptyName,
+    #[fail(display = "invalid toolchain source name: {}", _0)]
+    InvalidSourceName(String),
+    #[fail(display = "invalid toolchain flag: {}", _0)]
+    InvalidFlag(String),
+}
 
-    fn from_str(input: &str) -> Result<Self> {
+impl FromStr for Toolchain {
+    type Err = ToolchainParseError;
+
+    fn from_str(input: &str) -> Result<Self, ToolchainParseError> {
         let mut parts = input.split('+');
 
-        let raw_source = parts.next().ok_or(ErrorKind::EmptyToolchainName)?;
+        let raw_source = parts.next().ok_or(ToolchainParseError::EmptyName)?;
         let source = if let Some(hash_idx) = raw_source.find('#') {
             let (source_name, sha_with_hash) = raw_source.split_at(hash_idx);
 
             let sha = (&sha_with_hash[1..]).to_string();
             if sha.is_empty() {
-                return Err(ErrorKind::EmptyToolchainName.into());
+                return Err(ToolchainParseError::EmptyName);
             }
 
             match source_name {
@@ -145,10 +155,10 @@ impl FromStr for Toolchain {
                     sha: Cow::Owned(sha),
                     try: false,
                 },
-                name => return Err(ErrorKind::InvalidToolchainSourceName(name.to_string()).into()),
+                name => return Err(ToolchainParseError::InvalidSourceName(name.to_string())),
             }
         } else if raw_source.is_empty() {
-            return Err(ErrorKind::EmptyToolchainName.into());
+            return Err(ToolchainParseError::EmptyName);
         } else {
             ToolchainSource::Dist {
                 name: Cow::Owned(raw_source.to_string()),
@@ -162,17 +172,15 @@ impl FromStr for Toolchain {
                 let value = (&value_with_equal[1..]).to_string();
 
                 if value.is_empty() {
-                    return Err(ErrorKind::InvalidToolchainFlag(flag.to_string()).into());
+                    return Err(ToolchainParseError::InvalidFlag(flag.to_string()));
                 }
 
                 match flag {
                     "rustflags" => rustflags = Some(value),
-                    unknown => {
-                        return Err(ErrorKind::InvalidToolchainFlag(unknown.to_string()).into())
-                    }
+                    unknown => return Err(ToolchainParseError::InvalidFlag(unknown.to_string())),
                 }
             } else {
-                return Err(ErrorKind::InvalidToolchainFlag(part.to_string()).into());
+                return Err(ToolchainParseError::InvalidFlag(part.to_string()));
             }
         }
 
@@ -180,17 +188,19 @@ impl FromStr for Toolchain {
     }
 }
 
-fn init_toolchain_from_dist(toolchain: &str) -> Result<()> {
+fn init_toolchain_from_dist(toolchain: &str) -> Fallible<()> {
     info!("installing toolchain {}", toolchain);
     utils::try_hard(|| {
         RunCommand::new(&RUSTUP)
             .args(&["toolchain", "install", toolchain])
             .run()
-            .chain_err(|| format!("unable to install toolchain {} via rustup", toolchain))
-    })
+            .with_context(|_| format!("unable to install toolchain {} via rustup", toolchain))
+    })?;
+
+    Ok(())
 }
 
-fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
+fn init_toolchain_from_ci(alt: bool, sha: &str) -> Fallible<()> {
     if alt {
         info!("installing toolchain {}-alt", sha);
     } else {
@@ -206,13 +216,15 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Result<()> {
         RunCommand::new(&RUSTUP_TOOLCHAIN_INSTALL_MASTER)
             .args(&args)
             .run()
-            .chain_err(|| {
+            .with_context(|_| {
                 format!(
                     "unable to install toolchain {} via rustup-toolchain-install-master",
                     sha
                 )
             })
-    })
+    })?;
+
+    Ok(())
 }
 
 #[cfg(test)]

@@ -1,9 +1,9 @@
 use config::Config;
-use errors::*;
 use http::header::{HeaderValue, CONTENT_TYPE};
 use http::Response;
 use http::StatusCode;
 use hyper::Body;
+use prelude::*;
 use serde::Serialize;
 use std::fmt;
 use std::fmt::Display;
@@ -51,7 +51,7 @@ impl<T> ApiResponse<T> {
 }
 
 impl<T: Serialize> ApiResponse<T> {
-    pub(in server) fn into_response(self) -> Result<Response<Body>> {
+    pub(in server) fn into_response(self) -> Fallible<Response<Body>> {
         let serialized = ::serde_json::to_vec(&self)?;
 
         let mut resp = Response::new(serialized.into());

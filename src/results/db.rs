@@ -1,8 +1,8 @@
 use base64;
 use crates::{Crate, GitHubRepo};
 use db::{Database, QueryUtils};
-use errors::*;
 use experiments::Experiment;
+use prelude::*;
 use results::{DeleteResults, ReadResults, TestResult, WriteResults};
 use serde_json;
 use std::collections::HashMap;
@@ -33,14 +33,14 @@ impl<'a> DatabaseDB<'a> {
         DatabaseDB { db }
     }
 
-    pub fn store(&self, ex: &Experiment, data: &ProgressData) -> Result<()> {
+    pub fn store(&self, ex: &Experiment, data: &ProgressData) -> Fallible<()> {
         for result in &data.results {
             self.store_result(
                 ex,
                 &result.krate,
                 &result.toolchain,
                 result.result,
-                &base64::decode(&result.log).chain_err(|| "invalid base64 log provided")?,
+                &base64::decode(&result.log).with_context(|_| "invalid base64 log provided")?,
             )?;
         }
 
@@ -58,7 +58,7 @@ impl<'a> DatabaseDB<'a> {
         toolchain: &Toolchain,
         res: TestResult,
         log: &[u8],
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         self.db.execute(
             "INSERT INTO results (experiment, crate, toolchain, result, log) \
              VALUES (?1, ?2, ?3, ?4, ?5);",
@@ -75,7 +75,7 @@ impl<'a> DatabaseDB<'a> {
 }
 
 impl<'a> ReadResults for DatabaseDB<'a> {
-    fn load_all_shas(&self, ex: &Experiment) -> Result<HashMap<GitHubRepo, String>> {
+    fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>> {
         Ok(self
             .db
             .query(
@@ -99,8 +99,8 @@ impl<'a> ReadResults for DatabaseDB<'a> {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<Vec<u8>>> {
-        self.db.get_row(
+    ) -> Fallible<Option<Vec<u8>>> {
+        Ok(self.db.get_row(
             "SELECT log FROM results \
              WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
              LIMIT 1;",
@@ -110,7 +110,7 @@ impl<'a> ReadResults for DatabaseDB<'a> {
                 &serde_json::to_string(krate)?,
             ],
             |row| row.get("log"),
-        )
+        )?)
     }
 
     fn load_test_result(
@@ -118,7 +118,7 @@ impl<'a> ReadResults for DatabaseDB<'a> {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<TestResult>> {
+    ) -> Fallible<Option<TestResult>> {
         let result: Option<String> = self
             .db
             .query(
@@ -147,11 +147,11 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<TestResult>> {
+    ) -> Fallible<Option<TestResult>> {
         self.load_test_result(ex, toolchain, krate)
     }
 
-    fn record_sha(&self, ex: &Experiment, repo: &GitHubRepo, sha: &str) -> Result<()> {
+    fn record_sha(&self, ex: &Experiment, repo: &GitHubRepo, sha: &str) -> Fallible<()> {
         self.db.execute(
             "INSERT INTO shas (experiment, org, name, sha) VALUES (?1, ?2, ?3, ?4)",
             &[&ex.name, &repo.org, &repo.name, &sha],
@@ -166,9 +166,9 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         toolchain: &Toolchain,
         krate: &Crate,
         f: F,
-    ) -> Result<TestResult>
+    ) -> Fallible<TestResult>
     where
-        F: FnOnce() -> Result<TestResult>,
+        F: FnOnce() -> Fallible<TestResult>,
     {
         let mut log_file = ::tempfile::NamedTempFile::new()?;
         let result = ::log::redirect(log_file.path(), f)?;
@@ -183,13 +183,13 @@ impl<'a> WriteResults for DatabaseDB<'a> {
 }
 
 impl<'a> DeleteResults for DatabaseDB<'a> {
-    fn delete_all_results(&self, ex: &Experiment) -> Result<()> {
+    fn delete_all_results(&self, ex: &Experiment) -> Fallible<()> {
         self.db
             .execute("DELETE FROM results WHERE experiment = ?1;", &[&ex.name])?;
         Ok(())
     }
 
-    fn delete_result(&self, ex: &Experiment, tc: &Toolchain, krate: &Crate) -> Result<()> {
+    fn delete_result(&self, ex: &Experiment, tc: &Toolchain, krate: &Crate) -> Fallible<()> {
         self.db.execute(
             "DELETE FROM results WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3;",
             &[

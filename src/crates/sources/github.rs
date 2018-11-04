@@ -1,6 +1,6 @@
 use crates::{lists::List, Crate};
 use dirs::GH_MIRRORS_DIR;
-use errors::*;
+use prelude::*;
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -30,11 +30,11 @@ impl Default for GitHubList {
 impl List for GitHubList {
     const NAME: &'static str = "github-oss";
 
-    fn fetch(&self) -> Result<Vec<Crate>> {
+    fn fetch(&self) -> Fallible<Vec<Crate>> {
         info!("loading cached GitHub list from {}", self.source);
 
         let mut resp = ::utils::http::get(&self.source)
-            .chain_err(|| format!("failed to fetch GitHub crates list from {}", self.source))?;
+            .with_context(|_| format!("failed to fetch GitHub crates list from {}", self.source))?;
         let mut reader = ::csv::Reader::from_reader(&mut resp);
 
         let mut list = Vec::new();
@@ -84,7 +84,7 @@ impl GitHubRepo {
         GH_MIRRORS_DIR.join(format!("{}.{}", self.org, self.name))
     }
 
-    pub(in crates) fn prepare(&self, dest: &Path) -> Result<()> {
+    pub(in crates) fn prepare(&self, dest: &Path) -> Fallible<()> {
         ::git::shallow_clone_or_pull(&self.url(), &self.mirror_dir())?;
         ::utils::fs::copy_dir(&self.mirror_dir(), &dest)?;
         Ok(())
@@ -92,9 +92,9 @@ impl GitHubRepo {
 }
 
 impl FromStr for GitHubRepo {
-    type Err = Error;
+    type Err = ::failure::Error;
 
-    fn from_str(input: &str) -> Result<Self> {
+    fn from_str(input: &str) -> Fallible<Self> {
         let mut components = input.split('/').collect::<Vec<_>>();
         let name = components.pop();
         let org = components.pop();

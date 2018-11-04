@@ -1,8 +1,9 @@
+use actions::experiments::ExperimentError;
 use chrono::Utc;
 use config::Config;
 use db::{Database, QueryUtils};
-use errors::*;
 use experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
+use prelude::*;
 use toolchain::Toolchain;
 
 pub struct CreateExperiment {
@@ -31,15 +32,15 @@ impl CreateExperiment {
         }
     }
 
-    pub fn apply(self, db: &Database, config: &Config) -> Result<()> {
+    pub fn apply(self, db: &Database, config: &Config) -> Fallible<()> {
         // Ensure no duplicate experiments are created
         if Experiment::exists(db, &self.name)? {
-            return Err(ErrorKind::ExperimentAlreadyExists(self.name).into());
+            return Err(ExperimentError::AlreadyExists(self.name).into());
         }
 
         // Ensure no experiment with duplicate toolchains is created
         if self.toolchains[0] == self.toolchains[1] {
-            return Err(ErrorKind::DuplicateToolchains.into());
+            return Err(ExperimentError::DuplicateToolchains.into());
         }
 
         let crates = ::crates::lists::get_crates(self.crates, db, config)?;
@@ -74,16 +75,18 @@ impl CreateExperiment {
             }
 
             Ok(())
-        })
+        })?;
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::CreateExperiment;
+    use actions::ExperimentError;
     use config::Config;
     use db::Database;
-    use errors::*;
     use experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
@@ -154,10 +157,10 @@ mod tests {
         }.apply(&db, &config)
         .unwrap_err();
 
-        match err.kind() {
-            ErrorKind::DuplicateToolchains => {}
-            other => panic!("received unexpected error: {}", other),
-        }
+        assert_eq!(
+            err.downcast_ref(),
+            Some(&ExperimentError::DuplicateToolchains)
+        );
     }
 
     #[test]
@@ -191,9 +194,9 @@ mod tests {
         }.apply(&db, &config)
         .unwrap_err();
 
-        match err.kind() {
-            ErrorKind::ExperimentAlreadyExists(name) => assert_eq!(name, "foo"),
-            other => panic!("received unexpected error: {}", other),
-        }
+        assert_eq!(
+            err.downcast_ref(),
+            Some(&ExperimentError::AlreadyExists("foo".into()))
+        );
     }
 }

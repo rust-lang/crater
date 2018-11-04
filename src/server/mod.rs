@@ -9,9 +9,9 @@ pub mod tokens;
 
 use config::Config;
 use db::Database;
-use errors::*;
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
+use prelude::*;
 use server::agents::Agents;
 use server::auth::ACL;
 use server::github::GitHubApi;
@@ -21,6 +21,12 @@ use warp::{self, Filter};
 
 lazy_static! {
     static ref SERVER_HEADER: String = format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
+}
+
+#[derive(Debug, Fail, PartialEq, Eq)]
+pub enum HttpError {
+    #[fail(display = "not found")]
+    NotFound,
 }
 
 #[derive(Clone)]
@@ -35,7 +41,7 @@ pub struct Data {
     pub acl: ACL,
 }
 
-pub fn run(config: Config) -> Result<()> {
+pub fn run(config: Config) -> Fallible<()> {
     let db = Database::open()?;
     let tokens = tokens::Tokens::load()?;
     let github = GitHubApi::new(&tokens);

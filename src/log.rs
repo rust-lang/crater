@@ -1,6 +1,6 @@
 use chrono::Utc;
 use dirs::LOG_DIR;
-use errors::*;
+use prelude::*;
 use slog::{self, Drain};
 use slog_scope;
 use slog_term;
@@ -20,9 +20,9 @@ fn global_log_name() -> &'static Path {
     &*PATH
 }
 
-pub fn redirect<F, R>(path: &Path, f: F) -> Result<R>
+pub fn redirect<F, R>(path: &Path, f: F) -> Fallible<R>
 where
-    F: FnOnce() -> Result<R>,
+    F: FnOnce() -> Fallible<R>,
 {
     let file = file_drain(path);
     let term = TERM_DRAIN.clone();

@@ -1,7 +1,8 @@
+use actions::experiments::ExperimentError;
 use config::Config;
 use db::{Database, QueryUtils};
-use errors::*;
 use experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
+use prelude::*;
 use toolchain::Toolchain;
 
 pub struct EditExperiment {
@@ -26,18 +27,18 @@ impl EditExperiment {
         }
     }
 
-    pub fn apply(mut self, db: &Database, config: &Config) -> Result<bool> {
+    pub fn apply(mut self, db: &Database, config: &Config) -> Fallible<bool> {
         let mut ex = match Experiment::get(db, &self.name)? {
             Some(ex) => ex,
-            None => return Err(ErrorKind::ExperimentNotFound(self.name).into()),
+            None => return Err(ExperimentError::NotFound(self.name).into()),
         };
 
         // Ensure no change is made to running or complete experiments
         if ex.status != Status::Queued {
-            return Err(ErrorKind::CanEditOnlyQueuedExperiments.into());
+            return Err(ExperimentError::CanOnlyEditQueuedExperiments.into());
         }
 
-        db.transaction(|t| {
+        Ok(db.transaction(|t| {
             let mut has_changed = false;
 
             // Try to update both toolchains
@@ -47,7 +48,7 @@ impl EditExperiment {
 
                     // Ensure no duplicate toolchain is inserted
                     if ex.toolchains[0] == ex.toolchains[1] {
-                        return Err(ErrorKind::DuplicateToolchains.into());
+                        return Err(ExperimentError::DuplicateToolchains.into());
                     }
 
                     let changes = t.execute(
@@ -123,17 +124,16 @@ impl EditExperiment {
             }
 
             Ok(has_changed)
-        })
+        })?)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::EditExperiment;
-    use actions::CreateExperiment;
+    use actions::{CreateExperiment, ExperimentError};
     use config::Config;
     use db::Database;
-    use errors::*;
     use experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
@@ -217,10 +217,10 @@ mod tests {
         edit.toolchains[1] = Some(MAIN_TOOLCHAIN.clone());
 
         let err = edit.apply(&db, &config).unwrap_err();
-        match err.kind() {
-            ErrorKind::DuplicateToolchains => {}
-            other => panic!("received unexpected error: {}", other),
-        }
+        assert_eq!(
+            err.downcast_ref(),
+            Some(&ExperimentError::DuplicateToolchains)
+        );
     }
 
     #[test]
@@ -233,10 +233,10 @@ mod tests {
         let err = EditExperiment::dummy("foo")
             .apply(&db, &config)
             .unwrap_err();
-        match err.kind() {
-            ErrorKind::ExperimentNotFound(name) => assert_eq!(name, "foo"),
-            other => panic!("received unexpected error: {}", other),
-        }
+        assert_eq!(
+            err.downcast_ref(),
+            Some(&ExperimentError::NotFound("foo".into()))
+        );
     }
 
     #[test]
@@ -255,9 +255,9 @@ mod tests {
         let err = EditExperiment::dummy("foo")
             .apply(&db, &config)
             .unwrap_err();
-        match err.kind() {
-            ErrorKind::CanEditOnlyQueuedExperiments => {}
-            other => panic!("received unexpected error: {}", other),
-        }
+        assert_eq!(
+            err.downcast_ref(),
+            Some(&ExperimentError::CanOnlyEditQueuedExperiments)
+        );
     }
 }

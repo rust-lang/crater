@@ -1,9 +1,9 @@
 use dirs::{CARGO_HOME, RUSTUP_HOME};
 use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
-use errors::*;
 use futures::{future, Future, Stream};
 use futures_cpupool::CpuPool;
 use native;
+use prelude::*;
 use slog_scope;
 use std::convert::AsRef;
 use std::env::consts::EXE_SUFFIX;
@@ -17,6 +17,14 @@ use tokio_io::io::lines;
 use tokio_process::CommandExt;
 use tokio_timer;
 use utils::size::Size;
+
+#[derive(Debug, Fail)]
+pub enum RunCommandError {
+    #[fail(display = "no output for {} seconds", _0)]
+    NoOutputFor(u64),
+    #[fail(display = "command timed out after {} seconds", _0)]
+    Timeout(u64),
+}
 
 pub(crate) enum Binary {
     Global(PathBuf),
@@ -121,17 +129,17 @@ impl RunCommand {
         SandboxedCommand::new(self)
     }
 
-    pub(crate) fn run(self) -> Result<()> {
+    pub(crate) fn run(self) -> Fallible<()> {
         self.run_inner(false)?;
         Ok(())
     }
 
-    pub(crate) fn run_capture(self) -> Result<(Vec<String>, Vec<String>)> {
+    pub(crate) fn run_capture(self) -> Fallible<(Vec<String>, Vec<String>)> {
         let out = self.run_inner(true)?;
         Ok((out.stdout, out.stderr))
     }
 
-    fn run_inner(self, capture: bool) -> Result<ProcessOutput> {
+    fn run_inner(self, capture: bool) -> Fallible<ProcessOutput> {
         let name = match self.binary {
             Binary::Global(path) => path,
             Binary::InstalledByCrater(path) => ::utils::fs::try_canonicalize(format!(
@@ -175,7 +183,7 @@ impl RunCommand {
         if out.status.success() {
             Ok(out)
         } else {
-            Err(format!("command `{}` failed", cmdstr).into())
+            bail!("command `{}` failed", cmdstr);
         }
     }
 }
@@ -209,7 +217,7 @@ impl SandboxedCommand {
         self
     }
 
-    pub(crate) fn run(mut self) -> Result<()> {
+    pub(crate) fn run(mut self) -> Fallible<()> {
         // Build the full CLI
         let mut cmd = match self.command.binary {
             Binary::Global(path) => path,
@@ -269,7 +277,7 @@ fn log_command(
     quiet: bool,
     enable_timeout: bool,
     hide_output: bool,
-) -> Result<ProcessOutput> {
+) -> Fallible<ProcessOutput> {
     let (max_timeout, heartbeat_timeout) = if enable_timeout {
         let max_timeout = Duration::from_secs(MAX_TIMEOUT_SECS);
         let heartbeat_timeout = if quiet {
@@ -327,10 +335,7 @@ fn log_command(
             if e.kind() == io::ErrorKind::TimedOut {
                 match native::kill_process(child_id) {
                     Err(err) => err,
-                    Ok(()) => Error::from(ErrorKind::Timeout(
-                        "not generating output for ",
-                        heartbeat_timeout.as_secs(),
-                    )),
+                    Ok(()) => RunCommandError::NoOutputFor(heartbeat_timeout.as_secs()).into(),
                 }
             } else {
                 e.into()
@@ -353,7 +358,7 @@ fn log_command(
         if e.kind() == io::ErrorKind::TimedOut {
             match native::kill_process(child_id) {
                 Err(err) => err,
-                Ok(()) => ErrorKind::Timeout("max time of", MAX_TIMEOUT_SECS).into(),
+                Ok(()) => RunCommandError::Timeout(max_timeout.as_secs()).into(),
             }
         } else {
             e.into()

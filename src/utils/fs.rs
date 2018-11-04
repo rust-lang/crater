@@ -1,4 +1,4 @@
-use errors::*;
+use prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 use utils::try_hard_limit;
@@ -8,24 +8,25 @@ pub(crate) fn try_canonicalize<P: AsRef<Path>>(path: P) -> PathBuf {
     fs::canonicalize(&path).unwrap_or_else(|_| path.as_ref().to_path_buf())
 }
 
-pub(crate) fn remove_dir_all(dir: &Path) -> Result<()> {
+pub(crate) fn remove_dir_all(dir: &Path) -> Fallible<()> {
     try_hard_limit(10, || {
         fs::remove_dir_all(dir)?;
         if dir.exists() {
-            bail!("unable to remove directory");
+            bail!("unable to remove directory: {}", dir.to_string_lossy())
         } else {
             Ok(())
         }
     })
 }
 
-pub(crate) fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
+pub(crate) fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Fallible<()> {
     info!("copying {} to {}", src_dir.display(), dest_dir.display());
 
     if dest_dir.exists() {
-        remove_dir_all(dest_dir).chain_err(|| "unable to remove test dir")?;
+        remove_dir_all(dest_dir)?;
     }
-    fs::create_dir_all(dest_dir).chain_err(|| "unable to create test dir")?;
+    fs::create_dir_all(dest_dir)
+        .with_context(|_| format!("unable to create dest dir: {}", dest_dir.to_string_lossy()))?;
 
     fn is_hidden(entry: &DirEntry) -> bool {
         entry
@@ -41,7 +42,7 @@ pub(crate) fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Result<()> {
         .into_iter()
         .filter_entry(|e| !is_hidden(e))
     {
-        let entry = entry.chain_err(|| "walk dir")?;
+        let entry = entry?;
         while entry.depth() <= depth && depth > 0 {
             assert!(partial_dest_dir.pop());
             depth -= 1;

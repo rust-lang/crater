@@ -23,10 +23,12 @@ lazy_static! {
     static ref SERVER_HEADER: String = format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
 }
 
-#[derive(Debug, Fail, PartialEq, Eq)]
+#[derive(Debug, Fail, PartialEq, Eq, Copy, Clone)]
 pub enum HttpError {
     #[fail(display = "not found")]
     NotFound,
+    #[fail(display = "forbidden")]
+    Forbidden,
 }
 
 #[derive(Clone)]

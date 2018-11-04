@@ -3,7 +3,7 @@ use http::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
 use prelude::*;
 use regex::Regex;
 use server::github::GitHubApi;
-use server::Data;
+use server::{Data, HttpError};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 use warp::{self, Filter, Rejection};
@@ -81,7 +81,7 @@ pub fn auth_filter(
     warp::header::headers_cloned().and_then(move |headers| {
         match check_auth(&data, &headers, token_type) {
             Some(details) => Ok(details),
-            None => Err(warp::reject::forbidden()),
+            None => Err(warp::reject::custom(HttpError::Forbidden.compat())),
         }
     })
 }

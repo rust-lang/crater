@@ -41,17 +41,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_regex;
-#[macro_use(
-    slog_o,
-    slog_info,
-    slog_log,
-    slog_error,
-    slog_warn,
-    slog_record,
-    slog_record_static,
-    slog_b,
-    slog_kv
-)]
+#[macro_use(slog_o, slog_info, slog_error, slog_warn,)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;

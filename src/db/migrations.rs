@@ -4,6 +4,10 @@ use rusqlite::{Connection, Transaction};
 use serde_json;
 use std::collections::HashSet;
 
+fn no_args() -> impl Iterator<Item = &'static str> {
+    ::std::iter::empty()
+}
+
 enum MigrationKind {
     SQL(&'static str),
     Code(Box<Fn(&Transaction) -> ::rusqlite::Result<()>>),
@@ -156,26 +160,26 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                 }
             })?;
 
-            t.execute("PRAGMA foreign_keys = OFF;", &[])?;
+            t.execute("PRAGMA foreign_keys = OFF;", no_args())?;
             t.execute(
                 &format!(
                     "UPDATE experiments SET toolchain_start = {}(toolchain_start);",
                     fn_name
                 ),
-                &[],
+                no_args(),
             )?;
             t.execute(
                 &format!(
                     "UPDATE experiments SET toolchain_end = {}(toolchain_end);",
                     fn_name
                 ),
-                &[],
+                no_args(),
             )?;
             t.execute(
                 &format!("UPDATE results SET toolchain = {}(toolchain);", fn_name),
-                &[],
+                no_args(),
             )?;
-            t.execute("PRAGMA foreign_keys = ON;", &[])?;
+            t.execute("PRAGMA foreign_keys = ON;", no_args())?;
 
             Ok(())
         })),
@@ -245,16 +249,19 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
 
 pub fn execute(db: &mut Connection) -> Fallible<()> {
     // If the database version is 0, create the migrations table and bump it
-    let version: i32 = db.query_row("PRAGMA user_version;", &[], |r| r.get(0))?;
+    let version: i32 = db.query_row("PRAGMA user_version;", no_args(), |r| r.get(0))?;
     if version == 0 {
-        db.execute("CREATE TABLE migrations (name TEXT PRIMARY KEY);", &[])?;
-        db.execute("PRAGMA user_version = 1;", &[])?;
+        db.execute(
+            "CREATE TABLE migrations (name TEXT PRIMARY KEY);",
+            no_args(),
+        )?;
+        db.execute("PRAGMA user_version = 1;", no_args())?;
     }
 
     let executed_migrations = {
         let mut prepared = db.prepare("SELECT name FROM migrations;")?;
         let mut result = HashSet::new();
-        for value in prepared.query_map(&[], |row| -> String { row.get("name") })? {
+        for value in prepared.query_map(no_args(), |row| -> String { row.get("name") })? {
             result.insert(value?);
         }
 

@@ -17,7 +17,7 @@ struct ConnectionCustomizer;
 
 impl CustomizeConnection<Connection, ::rusqlite::Error> for ConnectionCustomizer {
     fn on_acquire(&self, conn: &mut Connection) -> Result<(), ::rusqlite::Error> {
-        conn.execute("PRAGMA foreign_keys = ON;", &[])?;
+        conn.execute("PRAGMA foreign_keys = ON;", ::std::iter::empty::<&ToSql>())?;
         Ok(())
     }
 }

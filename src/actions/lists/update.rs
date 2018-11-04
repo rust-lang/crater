@@ -1,7 +1,7 @@
 use config::Config;
 use crates::lists::{GitHubList, List, LocalList, RegistryList};
 use db::Database;
-use errors::*;
+use prelude::*;
 
 pub struct UpdateLists {
     pub github: bool,
@@ -20,7 +20,7 @@ impl Default for UpdateLists {
 }
 
 impl UpdateLists {
-    pub fn apply(self, db: &Database, _config: &Config) -> Result<()> {
+    pub fn apply(self, db: &Database, _config: &Config) -> Fallible<()> {
         if self.github {
             info!("updating GitHub repositories list");
             GitHubList::default().update(db)?;

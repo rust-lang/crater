@@ -1,20 +1,17 @@
-use errors::*;
 use nix::{
     sys::signal::{kill, Signal},
     unistd::{Gid, Pid, Uid},
 };
+use prelude::*;
 use std::convert::AsRef;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::Path;
 
 const EXECUTABLE_BITS: u32 = 0o5;
 
-pub(crate) fn kill_process(id: u32) -> Result<()> {
-    if let Err(err) = kill(Pid::from_raw(id as i32), Signal::SIGKILL) {
-        Err(ErrorKind::KillProcessFailed(err.to_string()).into())
-    } else {
-        Ok(())
-    }
+pub(crate) fn kill_process(id: u32) -> Fallible<()> {
+    kill(Pid::from_raw(id as i32), Signal::SIGKILL)?;
+    Ok(())
 }
 
 pub(crate) fn current_user() -> u32 {
@@ -25,7 +22,7 @@ fn current_group() -> u32 {
     Gid::effective().into()
 }
 
-fn executable_mode_for(path: &Path) -> Result<u32> {
+fn executable_mode_for(path: &Path) -> Fallible<u32> {
     let metadata = path.metadata()?;
 
     if metadata.uid() == current_user() {
@@ -37,14 +34,14 @@ fn executable_mode_for(path: &Path) -> Result<u32> {
     }
 }
 
-pub(crate) fn is_executable<P: AsRef<Path>>(path: P) -> Result<bool> {
+pub(crate) fn is_executable<P: AsRef<Path>>(path: P) -> Fallible<bool> {
     let path = path.as_ref();
 
     let expected_mode = executable_mode_for(&path)?;
     Ok(path.metadata()?.mode() & expected_mode == expected_mode)
 }
 
-pub(crate) fn make_executable<P: AsRef<Path>>(path: P) -> Result<()> {
+pub(crate) fn make_executable<P: AsRef<Path>>(path: P) -> Fallible<()> {
     let path = path.as_ref();
 
     // Set the executable and readable bits on the file

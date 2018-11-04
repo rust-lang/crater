@@ -1,7 +1,18 @@
-use errors::*;
+use prelude::*;
 use reqwest::{Client, ClientBuilder, RedirectPolicy, Response, StatusCode};
 
 const MAX_REDIRECTS: usize = 4;
+
+#[derive(Debug, Fail)]
+#[fail(
+    display = "request to {} returned status code {}",
+    url,
+    status
+)]
+pub struct InvalidStatusCode {
+    url: String,
+    status: StatusCode,
+}
 
 lazy_static! {
     static ref HTTP_CLIENT: Client = setup_client();
@@ -14,14 +25,17 @@ fn setup_client() -> Client {
         .unwrap()
 }
 
-pub(crate) fn get(url: &str) -> Result<Response> {
+pub(crate) fn get(url: &str) -> Fallible<Response> {
     ::utils::try_hard(|| {
         let resp = HTTP_CLIENT.get(url).send()?;
 
         // Return an error if the response wasn't a 200 OK
         match resp.status() {
             StatusCode::OK => Ok(resp),
-            other => bail!("GET {} failed with status code {}", url, other),
+            status => Err(InvalidStatusCode {
+                url: url.to_string(),
+                status,
+            }.into()),
         }
     })
 }

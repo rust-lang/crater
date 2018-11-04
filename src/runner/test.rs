@@ -1,8 +1,8 @@
 use config::Config;
 use crates::Crate;
 use docker::MountPerms;
-use errors::*;
 use experiments::Experiment;
+use prelude::*;
 use results::{TestResult, WriteResults};
 use run::RunCommand;
 use runner::prepare::{with_captured_lockfile, with_frobbed_toml, with_work_crate};
@@ -17,7 +17,7 @@ fn run_cargo(
     toolchain: &Toolchain,
     quiet: bool,
     args: &[&str],
-) -> Result<()> {
+) -> Fallible<()> {
     let target_dir = toolchain.target_dir(&ex.name);
     ::std::fs::create_dir_all(&target_dir)?;
 
@@ -38,7 +38,9 @@ fn run_cargo(
         .sandboxed()
         .mount(target_dir, "/target", MountPerms::ReadWrite)
         .memory_limit(Some(config.sandbox.memory_limit))
-        .run()
+        .run()?;
+
+    Ok(())
 }
 
 pub struct RunTestResult {
@@ -55,8 +57,8 @@ pub fn run_test<DB: WriteResults>(
     krate: &Crate,
     db: &DB,
     quiet: bool,
-    test_fn: fn(&Config, &Experiment, &Path, &Toolchain, bool) -> Result<TestResult>,
-) -> Result<RunTestResult> {
+    test_fn: fn(&Config, &Experiment, &Path, &Toolchain, bool) -> Fallible<TestResult>,
+) -> Fallible<RunTestResult> {
     if let Some(res) = db.get_result(ex, tc, krate)? {
         info!("skipping crate {}. existing result: {}", krate, res);
         Ok(RunTestResult {
@@ -91,7 +93,7 @@ fn build(
     source_path: &Path,
     toolchain: &Toolchain,
     quiet: bool,
-) -> Result<()> {
+) -> Fallible<()> {
     run_cargo(
         config,
         ex,
@@ -117,7 +119,7 @@ fn test(
     source_path: &Path,
     toolchain: &Toolchain,
     quiet: bool,
-) -> Result<()> {
+) -> Fallible<()> {
     run_cargo(
         config,
         ex,
@@ -134,7 +136,7 @@ pub fn test_build_and_test(
     source_path: &Path,
     toolchain: &Toolchain,
     quiet: bool,
-) -> Result<TestResult> {
+) -> Fallible<TestResult> {
     let build_r = build(config, ex, source_path, toolchain, quiet);
     let test_r = if build_r.is_ok() {
         Some(test(config, ex, source_path, toolchain, quiet))
@@ -156,7 +158,7 @@ pub fn test_build_only(
     source_path: &Path,
     toolchain: &Toolchain,
     quiet: bool,
-) -> Result<TestResult> {
+) -> Fallible<TestResult> {
     let r = build(config, ex, source_path, toolchain, quiet);
     if r.is_ok() {
         Ok(TestResult::TestSkipped)
@@ -171,7 +173,7 @@ pub fn test_check_only(
     source_path: &Path,
     toolchain: &Toolchain,
     quiet: bool,
-) -> Result<TestResult> {
+) -> Fallible<TestResult> {
     if run_cargo(
         config,
         ex,

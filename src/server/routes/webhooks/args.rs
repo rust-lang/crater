@@ -1,6 +1,19 @@
 use experiments::{CapLints, CrateSelect, Mode};
 use toolchain::Toolchain;
 
+#[derive(Debug, Fail)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub enum CommandParseError {
+    #[fail(display = "missing command")]
+    MissingCommand,
+    #[fail(display = "invalid argument: {}", _0)]
+    InvalidArgument(String),
+    #[fail(display = "duplicate key: {}", _0)]
+    DuplicateKey(String),
+    #[fail(display = "unknown key: {}", _0)]
+    UnknownKey(String),
+}
+
 macro_rules! generate_parser {
     (pub enum $enum:ident {
         $($command:expr => $variant:ident($var_struct:ident {
@@ -8,7 +21,7 @@ macro_rules! generate_parser {
         }))*
         _ => $d_variant:ident($d_var_struct:ident {$($d_flag:ident: $d_type:ty = $d_name:expr,)*})
     }) => {
-        use errors::*;
+        use prelude::*;
         use std::str::FromStr;
         use utils::string::split_quoted;
 
@@ -32,9 +45,9 @@ macro_rules! generate_parser {
 
         #[allow(unused_variables)]
         impl FromStr for $enum {
-            type Err = Error;
+            type Err = ::failure::Error;
 
-            fn from_str(input: &str) -> Result<$enum> {
+            fn from_str(input: &str) -> Fallible<$enum> {
                 let mut parts = split_quoted(input)?.into_iter().peekable();
                 Ok(match parts.peek().map(|s| s.as_str()) {
                     $(
@@ -47,7 +60,7 @@ macro_rules! generate_parser {
                         parts, $enum, $d_variant, $d_var_struct,
                         $($d_flag, $d_type, $d_name),*
                     ),
-                    _ => bail!("missing command"),
+                    _ => return Err(CommandParseError::MissingCommand.into()),
                 })
             }
         }
@@ -67,19 +80,19 @@ macro_rules! generate_parser {
             }
 
             let mut segments = part.splitn(2, '=');
-            let key = segments.next().ok_or_else(|| format!("invalid argument: {}", part))?;
-            let value = segments.next().ok_or_else(|| format!("invalid argument: {}", part))?;
+            let key = segments.next().ok_or_else(|| CommandParseError::InvalidArgument(part.to_string()))?;
+            let value = segments.next().ok_or_else(|| CommandParseError::InvalidArgument(part.to_string()))?;
 
             if false {}
             $(else if key == $name {
                 if args.$flag.is_none() {
                     args.$flag = Some(value.parse()?)
                 } else {
-                    bail!("duplicate key: {}", key);
+                    return Err(CommandParseError::DuplicateKey(key.to_string()).into());
                 }
             })*
             else {
-                bail!("unknown key: {}", key);
+                return Err(CommandParseError::UnknownKey(key.to_string()).into());
             }
         }
 
@@ -123,6 +136,8 @@ generate_parser!(pub enum Command {
 
 #[cfg(test)]
 mod tests {
+    use super::CommandParseError;
+
     // Use a simpler parser for tests
     generate_parser!(pub enum TestCommand {
         "foo" => Foo(FooArgs {
@@ -146,7 +161,10 @@ mod tests {
                 assert_eq!($cmd.parse::<TestCommand>().unwrap(), $expected);
             };
             (fail $cmd:expr, $error:expr) => {
-                assert_eq!($cmd.parse::<TestCommand>().unwrap_err().to_string(), $error);
+                assert_eq!(
+                    $cmd.parse::<TestCommand>().unwrap_err().downcast_ref(),
+                    Some(&$error)
+                );
             };
         }
 
@@ -191,9 +209,9 @@ mod tests {
         test!("arg4=42", TestCommand::Baz(BazArgs { arg4: Some(42) }));
 
         // Test if invalid args are rejected
-        test!(fail "foo arg1=98 arg1=42", "duplicate key: arg1");
-        test!(fail "bar arg1=98", "unknown key: arg1");
-        test!(fail "foo arg4=42", "unknown key: arg4");
-        test!(fail "foo bar", "invalid argument: bar");
+        test!(fail "foo arg1=98 arg1=42", CommandParseError::DuplicateKey("arg1".into()));
+        test!(fail "bar arg1=98", CommandParseError::UnknownKey("arg1".into()));
+        test!(fail "foo arg4=42", CommandParseError::UnknownKey("arg4".into()));
+        test!(fail "foo bar", CommandParseError::InvalidArgument("bar".into()));
     }
 }

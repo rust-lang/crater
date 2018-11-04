@@ -7,8 +7,9 @@ mod unstable_features;
 
 use config::Config;
 use crossbeam_utils::thread::scope;
-use errors::*;
 use experiments::Experiment;
+use failure::Context;
+use prelude::*;
 use results::{TestResult, WriteResults};
 use runner::graph::{build_graph, WalkResult};
 use std::collections::HashMap;
@@ -17,14 +18,18 @@ use std::sync::Mutex;
 use std::thread;
 use utils;
 
+#[derive(Debug, Fail)]
+#[fail(display = "overridden task result to {}", _0)]
+pub struct OverrideResult(TestResult);
+
 pub fn run_ex<DB: WriteResults + Sync>(
     ex: &Experiment,
     db: &DB,
     threads_count: usize,
     config: &Config,
-) -> Result<()> {
+) -> Fallible<()> {
     if !::docker::is_running() {
-        return Err("docker is not running".into());
+        return Err(err_msg("docker is not running"));
     }
 
     let res = run_ex_inner(ex, db, threads_count, config);
@@ -43,7 +48,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     db: &DB,
     threads_count: usize,
     config: &Config,
-) -> Result<()> {
+) -> Fallible<()> {
     info!("ensuring all the tools are installed");
     ::tools::install()?;
 
@@ -61,12 +66,12 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     let parked_threads: Mutex<HashMap<thread::ThreadId, thread::Thread>> =
         Mutex::new(HashMap::new());
 
-    scope(|scope| -> Result<()> {
+    scope(|scope| -> Fallible<()> {
         let mut threads = Vec::new();
 
         for i in 0..threads_count {
             let name = format!("worker-{}", i);
-            let join = scope.builder().name(name).spawn(|| -> Result<()> {
+            let join = scope.builder().name(name).spawn(|| -> Fallible<()> {
                 // This uses a `loop` instead of a `while let` to avoid locking the graph too much
                 loop {
                     let walk_result = graph.lock().unwrap().next_task(ex, db);
@@ -75,15 +80,26 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                             info!("running task: {:?}", task);
                             if let Err(e) = task.run(config, ex, db) {
                                 error!("task failed, marking childs as failed too: {:?}", task);
-                                utils::report_error(&e);
+                                utils::report_failure(&e);
 
-                                let result = if config.is_broken(&task.krate) {
+                                let mut result = if config.is_broken(&task.krate) {
                                     TestResult::BuildFail
-                                } else if let ErrorKind::OverrideResult(res) = e.kind() {
-                                    *res
                                 } else {
                                     TestResult::Error
                                 };
+
+                                for err in e.iter_chain() {
+                                    if let Some(&OverrideResult(res)) = err.downcast_ref() {
+                                        result = res;
+                                        break;
+                                    } else if let Some(ctx) =
+                                        err.downcast_ref::<Context<OverrideResult>>()
+                                    {
+                                        result = ctx.get_context().0;
+                                        break;
+                                    };
+                                }
+
                                 graph
                                     .lock()
                                     .unwrap()
@@ -124,7 +140,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
             match thread.join() {
                 Ok(Ok(())) => {}
                 Ok(Err(err)) => {
-                    ::utils::report_error(&err);
+                    ::utils::report_failure(&err);
                     clean_exit = false;
                 }
                 Err(panic) => {
@@ -137,7 +153,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
         if clean_exit {
             Ok(())
         } else {
-            Err("some threads returned an error".into())
+            bail!("some threads returned an error");
         }
     })?;
 
@@ -149,7 +165,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     Ok(())
 }
 
-pub fn dump_dot(ex: &Experiment, config: &Config, dest: &Path) -> Result<()> {
+pub fn dump_dot(ex: &Experiment, config: &Config, dest: &Path) -> Fallible<()> {
     info!("computing the tasks graph...");
     let graph = build_graph(&ex, config);
 

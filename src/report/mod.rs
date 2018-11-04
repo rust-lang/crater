@@ -1,8 +1,8 @@
 use config::Config;
 use crates::{Crate, GitHubRepo};
-use errors::*;
 use experiments::Experiment;
 use mime::{self, Mime};
+use prelude::*;
 use results::{ReadResults, TestResult};
 use serde_json;
 use std::borrow::Cow;
@@ -142,7 +142,7 @@ pub fn generate_report<DB: ReadResults>(
     db: &DB,
     config: &Config,
     ex: &Experiment,
-) -> Result<TestResults> {
+) -> Fallible<TestResults> {
     let shas = db.load_all_shas(ex)?;
     let res = ex
         .crates
@@ -150,10 +150,10 @@ pub fn generate_report<DB: ReadResults>(
         .into_iter()
         .map(|krate| {
             // Any errors here will turn into unknown results
-            let crate_results = ex.toolchains.iter().map(|tc| -> Result<BuildTestResult> {
+            let crate_results = ex.toolchains.iter().map(|tc| -> Fallible<BuildTestResult> {
                 let res = db
                     .load_test_result(ex, tc, &krate)?
-                    .ok_or_else(|| "no result")?;
+                    .ok_or_else(|| err_msg("no result"))?;
 
                 Ok(BuildTestResult {
                     res,
@@ -180,7 +180,7 @@ pub fn generate_report<DB: ReadResults>(
                 res: comp,
                 runs: [crate1, crate2],
             })
-        }).collect::<Result<Vec<_>>>()?;
+        }).collect::<Fallible<Vec<_>>>()?;
 
     Ok(TestResults { crates: res })
 }
@@ -192,7 +192,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
     ex: &Experiment,
     dest: &W,
     config: &Config,
-) -> Result<()> {
+) -> Fallible<()> {
     let num_crates = ex.crates.len();
     let progress_every = (num_crates / PROGRESS_FRACTION) + 1;
     for (i, krate) in ex.crates.iter().enumerate() {
@@ -208,12 +208,12 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
             let log_path = crate_to_path_fragment(tc, krate, false).join("log.txt");
             let content = db
                 .load_log(ex, tc, krate)
-                .and_then(|c| c.ok_or_else(|| "missing logs".into()))
-                .chain_err(|| format!("failed to read log of {} on {}", krate, tc.to_string()));
+                .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
+                .with_context(|_| format!("failed to read log of {} on {}", krate, tc.to_string()));
             let content = match content {
                 Ok(c) => c,
                 Err(e) => {
-                    utils::report_error(&e);
+                    utils::report_failure(&e);
                     continue;
                 }
             };
@@ -228,7 +228,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     ex: &Experiment,
     dest: &W,
     config: &Config,
-) -> Result<()> {
+) -> Fallible<()> {
     let res = generate_report(db, config, ex)?;
 
     info!("writing results to {}", dest);
@@ -254,7 +254,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     Ok(())
 }
 
-fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String> {
+fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Fallible<String> {
     Ok(match *c {
         Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
         Crate::GitHub(ref repo) => {
@@ -268,7 +268,7 @@ fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String
     })
 }
 
-fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Result<String> {
+fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Fallible<String> {
     Ok(match *c {
         Crate::Registry(ref details) => format!(
             "https://crates.io/crates/{}/{}",
@@ -322,19 +322,19 @@ fn compare(
 }
 
 pub trait ReportWriter {
-    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, mime: &Mime) -> Result<()>;
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()>;
-    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()>;
+    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, mime: &Mime) -> Fallible<()>;
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()>;
+    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Fallible<()>;
 }
 
 pub struct FileWriter(PathBuf);
 
 impl FileWriter {
-    pub fn create(dest: PathBuf) -> Result<FileWriter> {
+    pub fn create(dest: PathBuf) -> Fallible<FileWriter> {
         fs::create_dir_all(&dest)?;
         Ok(FileWriter(dest))
     }
-    fn create_prefix(&self, path: &Path) -> Result<()> {
+    fn create_prefix(&self, path: &Path) -> Fallible<()> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(self.0.join(parent))?;
         }
@@ -343,19 +343,19 @@ impl FileWriter {
 }
 
 impl ReportWriter for FileWriter {
-    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, _: &Mime) -> Result<()> {
+    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, _: &Mime) -> Fallible<()> {
         self.create_prefix(path.as_ref())?;
         fs::write(&self.0.join(path.as_ref()), &b)?;
         Ok(())
     }
 
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Result<()> {
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Fallible<()> {
         self.create_prefix(path.as_ref())?;
         fs::write(&self.0.join(path.as_ref()), s.as_ref().as_bytes())?;
         Ok(())
     }
 
-    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, _: &Mime) -> Result<()> {
+    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, _: &Mime) -> Fallible<()> {
         self.create_prefix(path.as_ref())?;
         io::copy(r, &mut File::create(self.0.join(path.as_ref()))?)?;
         Ok(())
@@ -387,14 +387,14 @@ impl DummyWriter {
 
 #[cfg(test)]
 impl ReportWriter for DummyWriter {
-    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, mime: &Mime) -> Result<()> {
+    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, mime: &Mime) -> Fallible<()> {
         self.results
             .borrow_mut()
             .insert((path.as_ref().to_path_buf(), mime.clone()), b);
         Ok(())
     }
 
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()> {
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()> {
         self.results.borrow_mut().insert(
             (path.as_ref().to_path_buf(), mime.clone()),
             s.bytes().collect(),
@@ -402,7 +402,7 @@ impl ReportWriter for DummyWriter {
         Ok(())
     }
 
-    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()> {
+    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Fallible<()> {
         let mut buffer = Vec::new();
         r.read_to_end(&mut buffer)?;
 

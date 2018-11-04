@@ -1,8 +1,8 @@
 use crates::{lists::List, Crate};
 use crates_index::Index;
 use dirs::LOCAL_DIR;
-use errors::*;
 use flate2::read::GzDecoder;
+use prelude::*;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
@@ -16,12 +16,12 @@ pub(crate) struct RegistryList;
 impl List for RegistryList {
     const NAME: &'static str = "registry";
 
-    fn fetch(&self) -> Result<Vec<Crate>> {
+    fn fetch(&self) -> Fallible<Vec<Crate>> {
         let mut list = Vec::new();
         let mut counts = HashMap::new();
 
         let index = Index::new(LOCAL_DIR.join("crates.io-index"));
-        index.retrieve_or_update()?;
+        index.retrieve_or_update().to_failure()?;
 
         for krate in index.crates() {
             // The versions() method returns the list of published versions starting from the
@@ -67,14 +67,15 @@ pub struct RegistryCrate {
 }
 
 impl RegistryCrate {
-    pub(in crates) fn prepare(&self, dest: &Path) -> Result<()> {
-        dl_registry(&self.name, &self.version, &dest)
-            .chain_err(|| format!("unable to download {} version {}", self.name, self.version))?;
+    pub(in crates) fn prepare(&self, dest: &Path) -> Fallible<()> {
+        dl_registry(&self.name, &self.version, &dest).with_context(|_| {
+            format!("unable to download {} version {}", self.name, self.version)
+        })?;
         Ok(())
     }
 }
 
-fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
+fn dl_registry(name: &str, vers: &str, dir: &Path) -> Fallible<()> {
     if dir.exists() {
         info!(
             "crate {}-{} exists at {}. skipping",
@@ -86,21 +87,22 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Result<()> {
     }
     info!("downloading crate {}-{} to {}", name, vers, dir.display());
     let url = format!("{0}/{1}/{1}-{2}.crate", CRATES_ROOT, name, vers);
-    let bin = ::utils::http::get(&url).chain_err(|| format!("unable to download {}", url))?;
+    let bin = ::utils::http::get(&url).with_context(|_| format!("unable to download {}", url))?;
 
     fs::create_dir_all(&dir)?;
 
     let mut tar = Archive::new(GzDecoder::new(bin));
-    let r = unpack_without_first_dir(&mut tar, dir).chain_err(|| "unable to unpack crate tarball");
+    let r =
+        unpack_without_first_dir(&mut tar, dir).with_context(|_| "unable to unpack crate tarball");
 
     if r.is_err() {
         let _ = ::utils::fs::remove_dir_all(dir);
     }
 
-    r
+    r.map_err(|e| e.into())
 }
 
-fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> Result<()> {
+fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> Fallible<()> {
     let entries = archive.entries()?;
     for entry in entries {
         let mut entry = entry?;

@@ -1,7 +1,8 @@
 use config::Config;
 use crates::Crate;
-use errors::*;
 use experiments::Experiment;
+use failure::AsFail;
+use prelude::*;
 use results::{TestResult, WriteResults};
 use runner::test;
 use std::fmt;
@@ -76,13 +77,13 @@ impl Task {
         }
     }
 
-    pub(super) fn mark_as_failed<DB: WriteResults>(
+    pub(super) fn mark_as_failed<DB: WriteResults, F: AsFail>(
         &self,
         ex: &Experiment,
         db: &DB,
-        err: &Error,
+        err: &F,
         result: TestResult,
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         match self.step {
             TaskStep::Prepare => {}
             TaskStep::BuildAndTest { ref tc, .. }
@@ -91,7 +92,7 @@ impl Task {
             | TaskStep::UnstableFeatures { ref tc } => {
                 db.record_result(ex, tc, &self.krate, || {
                     error!("this task or one of its parent failed!");
-                    utils::report_error(err);
+                    utils::report_failure(err);
                     Ok(result)
                 })?;
             }
@@ -105,7 +106,7 @@ impl Task {
         config: &Config,
         ex: &Experiment,
         db: &DB,
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         match self.step {
             TaskStep::Prepare => self.run_prepare(config, ex, db),
             TaskStep::BuildAndTest { ref tc, quiet } => {
@@ -122,7 +123,7 @@ impl Task {
         config: &Config,
         ex: &Experiment,
         db: &DB,
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         self.krate.prepare()?;
 
         // Fetch repository data if it's a git repo
@@ -145,7 +146,7 @@ impl Task {
         tc: &Toolchain,
         db: &DB,
         quiet: bool,
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         test::run_test(
             config,
             "testing",
@@ -165,7 +166,7 @@ impl Task {
         tc: &Toolchain,
         db: &DB,
         quiet: bool,
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         test::run_test(
             config,
             "testing",
@@ -185,7 +186,7 @@ impl Task {
         tc: &Toolchain,
         db: &DB,
         quiet: bool,
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         test::run_test(
             config,
             "checking",
@@ -204,7 +205,7 @@ impl Task {
         ex: &Experiment,
         db: &DB,
         tc: &Toolchain,
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         test::run_test(
             config,
             "checking",

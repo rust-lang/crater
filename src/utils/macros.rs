@@ -6,13 +6,13 @@ macro_rules! string_enum {
         }
 
         impl ::std::str::FromStr for $name {
-            type Err = ::errors::Error;
+            type Err = ::failure::Error;
 
-            fn from_str(s: &str) -> ::errors::Result<$name> {
-                Ok(match s {
-                    $($str => $name::$item,)*
+            fn from_str(s: &str) -> ::failure::Fallible<$name> {
+                match s {
+                    $($str => Ok($name::$item),)*
                     s => bail!("invalid {}: {}", stringify!($name), s),
-                })
+                }
             }
         }
 

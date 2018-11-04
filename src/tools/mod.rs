@@ -2,7 +2,7 @@ mod binary_crates;
 mod rustup;
 
 use dirs::CARGO_HOME;
-use errors::*;
+use prelude::*;
 use std::env::consts::EXE_SUFFIX;
 use std::path::PathBuf;
 use toolchain::MAIN_TOOLCHAIN;
@@ -42,12 +42,12 @@ fn binary_path(name: &str) -> PathBuf {
 
 trait InstallableTool: Send + Sync {
     fn name(&self) -> &'static str;
-    fn is_installed(&self) -> Result<bool>;
-    fn install(&self) -> Result<()>;
-    fn update(&self) -> Result<()>;
+    fn is_installed(&self) -> Fallible<bool>;
+    fn install(&self) -> Fallible<()>;
+    fn update(&self) -> Fallible<()>;
 }
 
-pub(crate) fn install() -> Result<()> {
+pub(crate) fn install() -> Fallible<()> {
     for tool in INSTALLABLE_TOOLS {
         if tool.is_installed()? {
             info!("tool {} is installed, trying to update it", tool.name());
@@ -56,11 +56,9 @@ pub(crate) fn install() -> Result<()> {
             info!("tool {} is missing, installing it", tool.name());
             tool.install()?;
 
-            ensure!(
-                tool.is_installed()?,
-                "tool {} is still missing after install",
-                tool.name()
-            );
+            if !tool.is_installed()? {
+                bail!("tool {} is still missing after install", tool.name());
+            }
         }
     }
 

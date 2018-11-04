@@ -1,4 +1,4 @@
-use errors::*;
+use prelude::*;
 use rusoto_core::Region;
 use rusoto_credential::StaticProvider;
 use std::collections::HashMap;
@@ -14,7 +14,7 @@ pub enum BucketRegion {
 }
 
 impl BucketRegion {
-    pub fn to_region(&self) -> Result<Region> {
+    pub fn to_region(&self) -> Fallible<Region> {
         match *self {
             BucketRegion::S3 { ref region } => Ok(region.parse()?),
             BucketRegion::Custom { ref url } => Ok(Region::Custom {
@@ -79,7 +79,7 @@ impl Default for Tokens {
 }
 
 impl Tokens {
-    pub fn load() -> Result<Tokens> {
+    pub fn load() -> Fallible<Tokens> {
         let content = ::std::fs::read_to_string(Path::new(TOKENS_PATH))?;
         let res = ::toml::from_str(&content)?;
         Ok(res)

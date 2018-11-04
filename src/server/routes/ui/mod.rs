@@ -1,10 +1,10 @@
 use assets;
-use errors::*;
 use http::header::{HeaderValue, CONTENT_TYPE};
 use http::{Response, StatusCode};
 use hyper::Body;
+use prelude::*;
 use serde::Serialize;
-use server::Data;
+use server::{Data, HttpError};
 use std::sync::Arc;
 use warp::{self, Filter, Rejection};
 
@@ -67,7 +67,7 @@ pub fn routes(
         .unify()
 }
 
-fn endpoint_assets(path: String) -> Result<Response<Body>> {
+fn endpoint_assets(path: String) -> Fallible<Response<Body>> {
     if let Ok(asset) = assets::load(&path) {
         if let Ok(content) = asset.content() {
             let mut resp = Response::new(content.into_owned().into());
@@ -87,7 +87,7 @@ struct ErrorContext {
     layout: LayoutContext,
 }
 
-fn error_404() -> Result<Response<Body>> {
+fn error_404() -> Fallible<Response<Body>> {
     let mut resp = render_template(
         "ui/404.html",
         &ErrorContext {
@@ -110,7 +110,7 @@ fn error_500() -> Response<Body> {
         Ok(resp) => resp,
         Err(err) => {
             error!("failed to render 500 error page!");
-            ::utils::report_error(&err);
+            ::utils::report_failure(&err);
             Response::new("500: Internal Server Error\n".into())
         }
     };
@@ -119,31 +119,37 @@ fn error_500() -> Response<Body> {
     resp
 }
 
-fn handle_results(resp: Result<Response<Body>>) -> Response<Body> {
+fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
     match resp {
         Ok(resp) => resp,
-        Err(mut err) => {
-            // Render a 404 page with ErrorKind::Error404
-            if let ErrorKind::Error404 = err.kind() {
+        Err(err) => {
+            if err
+                .downcast_ref::<HttpError>()
+                .map(|e| e == &HttpError::NotFound)
+                .unwrap_or(false)
+            {
                 match error_404() {
                     Ok(content) => return content,
-                    Err(err404) => err = err404,
+                    Err(err404) => {
+                        ::utils::report_failure(&err404);
+                        return error_500();
+                    }
                 }
             }
 
-            ::utils::report_error(&err);
+            ::utils::report_failure(&err);
             error_500()
         }
     }
 }
 
-fn handle_errors(err: Rejection) -> ::std::result::Result<Response<Body>, Rejection> {
+fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
     match err.status() {
         StatusCode::NOT_FOUND | StatusCode::METHOD_NOT_ALLOWED => match error_404() {
             Ok(resp) => Ok(resp),
             Err(err) => {
                 error!("failed to render 404 page!");
-                ::utils::report_error(&err);
+                ::utils::report_failure(&err);
                 Ok(error_500())
             }
         },
@@ -151,7 +157,7 @@ fn handle_errors(err: Rejection) -> ::std::result::Result<Response<Body>, Reject
     }
 }
 
-fn render_template<C: Serialize>(name: &str, context: &C) -> Result<Response<Body>> {
+fn render_template<C: Serialize>(name: &str, context: &C) -> Fallible<Response<Body>> {
     let mut resp = Response::new(assets::render_template(name, context)?.into());
     resp.headers_mut()
         .insert(CONTENT_TYPE, HeaderValue::from_static("text/html"));

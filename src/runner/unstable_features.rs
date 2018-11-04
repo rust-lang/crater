@@ -1,6 +1,6 @@
 use config::Config;
-use errors::*;
 use experiments::Experiment;
+use prelude::*;
 use results::TestResult;
 use std::collections::HashSet;
 use std::path::Path;
@@ -13,14 +13,14 @@ pub(super) fn find_unstable_features(
     source_path: &Path,
     _toolchain: &Toolchain,
     _quiet: bool,
-) -> Result<TestResult> {
+) -> Fallible<TestResult> {
     let mut features = HashSet::new();
 
     for entry in WalkDir::new(source_path)
         .into_iter()
         .filter_entry(|e| !is_hidden(e))
     {
-        let entry = entry.chain_err(|| "walk dir")?;
+        let entry = entry?;
         if !entry
             .file_name()
             .to_str()
@@ -49,7 +49,7 @@ pub(super) fn find_unstable_features(
     Ok(TestResult::TestPass)
 }
 
-fn parse_features(path: &Path) -> Result<Vec<String>> {
+fn parse_features(path: &Path) -> Fallible<Vec<String>> {
     let mut features = Vec::new();
     let contents = ::std::fs::read_to_string(path)?;
     for (hash_idx, _) in contents.match_indices('#') {

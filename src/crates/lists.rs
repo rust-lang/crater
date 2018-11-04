@@ -2,8 +2,8 @@ use chrono::Utc;
 use config::Config;
 use crates::{Crate, RegistryCrate};
 use db::{Database, QueryUtils};
-use errors::*;
 use experiments::CrateSelect;
+use prelude::*;
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 
@@ -14,9 +14,9 @@ const SMALL_RANDOM_COUNT: usize = 20;
 pub(crate) trait List {
     const NAME: &'static str;
 
-    fn fetch(&self) -> Result<Vec<Crate>>;
+    fn fetch(&self) -> Fallible<Vec<Crate>>;
 
-    fn update(&self, db: &Database) -> Result<()> {
+    fn update(&self, db: &Database) -> Fallible<()> {
         let crates = self.fetch()?;
 
         let now = Utc::now();
@@ -27,7 +27,7 @@ pub(crate) trait List {
                 t.execute(
                     "INSERT INTO crates (crate, list, loaded_at) VALUES (?1, ?2, ?3);",
                     &[&::serde_json::to_string(krate)?, &Self::NAME, &now],
-                ).chain_err(|| {
+                ).with_context(|_| {
                     format!(
                         "failed to insert crate {} into the {} list",
                         krate,
@@ -43,7 +43,7 @@ pub(crate) trait List {
         Ok(())
     }
 
-    fn get(db: &Database) -> Result<Vec<Crate>> {
+    fn get(db: &Database) -> Fallible<Vec<Crate>> {
         let crates_results = db.query(
             "SELECT crate FROM crates WHERE list = ?1 ORDER BY rowid;",
             &[&Self::NAME],
@@ -53,7 +53,7 @@ pub(crate) trait List {
             },
         )?;
 
-        // Turns Vec<Result<Crate>> into Result<Vec<Crate>>
+        // Turns Vec<Fallible<Crate>> into Fallible<Vec<Crate>>
         crates_results.into_iter().collect()
     }
 }
@@ -62,7 +62,7 @@ pub(crate) fn get_crates(
     select: CrateSelect,
     db: &Database,
     config: &Config,
-) -> Result<Vec<Crate>> {
+) -> Fallible<Vec<Crate>> {
     let mut crates = Vec::new();
 
     match select {
@@ -133,7 +133,7 @@ pub(crate) fn get_crates(
 }
 
 #[cfg(test)]
-pub(crate) fn setup_test_lists(db: &Database, config: &Config) -> Result<()> {
+pub(crate) fn setup_test_lists(db: &Database, config: &Config) -> Fallible<()> {
     ::actions::UpdateLists {
         github: false,
         registry: false,

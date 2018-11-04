@@ -1,4 +1,4 @@
-use errors::*;
+use prelude::*;
 use rand::{self, distributions::Alphanumeric, Rng};
 use rusqlite::{Connection, Transaction};
 use serde_json;
@@ -243,7 +243,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
     migrations
 }
 
-pub fn execute(db: &mut Connection) -> Result<()> {
+pub fn execute(db: &mut Connection) -> Fallible<()> {
     // If the database version is 0, create the migrations table and bump it
     let version: i32 = db.query_row("PRAGMA user_version;", &[], |r| r.get(0))?;
     if version == 0 {
@@ -267,7 +267,7 @@ pub fn execute(db: &mut Connection) -> Result<()> {
             match migration {
                 MigrationKind::SQL(sql) => t.execute_batch(sql),
                 MigrationKind::Code(code) => code(&t),
-            }.chain_err(|| format!("error running migration: {}", name))?;
+            }.with_context(|_| format!("error running migration: {}", name))?;
 
             t.execute("INSERT INTO migrations (name) VALUES (?1)", &[&name])?;
             t.commit()?;

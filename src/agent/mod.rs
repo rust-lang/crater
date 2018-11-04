@@ -3,8 +3,8 @@ mod results;
 
 use agent::api::AgentApi;
 use config::Config;
-use errors::*;
 use experiments::Experiment;
+use prelude::*;
 use std::thread;
 use std::time::Duration;
 use utils;
@@ -15,7 +15,7 @@ struct Agent {
 }
 
 impl Agent {
-    fn new(url: &str, token: &str) -> Result<Self> {
+    fn new(url: &str, token: &str) -> Fallible<Self> {
         info!("connecting to crater server {}...", url);
 
         let api = AgentApi::new(url, token);
@@ -30,7 +30,7 @@ impl Agent {
         })
     }
 
-    fn experiment(&self) -> Result<Experiment> {
+    fn experiment(&self) -> Fallible<Experiment> {
         info!("asking the server for a new experiment...");
         Ok(self.api.next_experiment()?)
     }
@@ -40,14 +40,14 @@ fn run_heartbeat(url: &str, token: &str) {
     let api = AgentApi::new(url, token);
 
     thread::spawn(move || loop {
-        if let Err(e) = api.heartbeat().chain_err(|| "failed to send heartbeat") {
-            utils::report_error(&e);
+        if let Err(e) = api.heartbeat().with_context(|_| "failed to send heartbeat") {
+            utils::report_failure(&e);
         }
         thread::sleep(Duration::from_secs(60));
     });
 }
 
-pub fn run(url: &str, token: &str, threads_count: usize) -> Result<()> {
+pub fn run(url: &str, token: &str, threads_count: usize) -> Fallible<()> {
     let agent = Agent::new(url, token)?;
     let db = results::ResultsUploader::new(&agent.api);
 

@@ -1,10 +1,10 @@
 use base64;
 use crates::{Crate, GitHubRepo};
-use errors::*;
 use experiments::Experiment;
 use http::header::AUTHORIZATION;
 use http::header::USER_AGENT;
 use http::StatusCode;
+use prelude::*;
 use reqwest::{Client, Method, RequestBuilder};
 use results::TestResult;
 use serde::de::DeserializeOwned;
@@ -16,25 +16,39 @@ lazy_static! {
         format!("crater-agent/{}", ::GIT_REVISION.unwrap_or("unknown"));
 }
 
+#[derive(Debug, Fail)]
+pub enum AgentApiError {
+    #[fail(display = "invalid API endpoint called")]
+    InvalidEndpoint,
+    #[fail(display = "Crater server unavailable")]
+    ServerUnavailable,
+    #[fail(display = "payload sent to the server too large")]
+    PayloadTooLarge,
+    #[fail(display = "invalid authorization token")]
+    InvalidAuthorizationToken,
+    #[fail(display = "internal server error: {}", _0)]
+    InternalServerError(String),
+}
+
 trait ResponseExt {
-    fn to_api_response<T: DeserializeOwned>(self) -> Result<T>;
+    fn to_api_response<T: DeserializeOwned>(self) -> Fallible<T>;
 }
 
 impl ResponseExt for ::reqwest::Response {
-    fn to_api_response<T: DeserializeOwned>(mut self) -> Result<T> {
+    fn to_api_response<T: DeserializeOwned>(mut self) -> Fallible<T> {
         // 404 responses are not JSON, so avoid parsing them
         match self.status() {
-            StatusCode::NOT_FOUND => bail!("invalid API endpoint called"),
+            StatusCode::NOT_FOUND => return Err(AgentApiError::InvalidEndpoint.into()),
             StatusCode::BAD_GATEWAY
             | StatusCode::SERVICE_UNAVAILABLE
             | StatusCode::GATEWAY_TIMEOUT => {
-                return Err(ErrorKind::ServerUnavailable.into());
+                return Err(AgentApiError::ServerUnavailable.into());
             }
-            StatusCode::PAYLOAD_TOO_LARGE => bail!("payload to agent (misconfigured server?)"),
+            StatusCode::PAYLOAD_TOO_LARGE => return Err(AgentApiError::PayloadTooLarge.into()),
             _ => {}
         }
 
-        let result: ApiResponse<T> = self.json().chain_err(|| {
+        let result: ApiResponse<T> = self.json().with_context(|_| {
             format!(
                 "failed to parse API response (status code {})",
                 self.status()
@@ -42,9 +56,11 @@ impl ResponseExt for ::reqwest::Response {
         })?;
         match result {
             ApiResponse::Success { result } => Ok(result),
-            ApiResponse::InternalError { error } => bail!("internal server error: {}", error),
-            ApiResponse::Unauthorized => bail!("invalid authorization token provided"),
-            ApiResponse::NotFound => bail!("API endpoint not found"),
+            ApiResponse::InternalError { error } => {
+                Err(AgentApiError::InternalServerError(error).into())
+            }
+            ApiResponse::Unauthorized => Err(AgentApiError::InvalidAuthorizationToken.into()),
+            ApiResponse::NotFound => Err(AgentApiError::InvalidEndpoint.into()),
         }
     }
 }
@@ -77,23 +93,20 @@ impl AgentApi {
             ).header(USER_AGENT, CRATER_USER_AGENT.clone())
     }
 
-    fn retry<T, F: Fn(&Self) -> Result<T>>(&self, f: F) -> Result<T> {
+    fn retry<T, F: Fn(&Self) -> Fallible<T>>(&self, f: F) -> Fallible<T> {
         loop {
             match f(self) {
                 Ok(res) => return Ok(res),
                 Err(err) => {
-                    let mut retry = false;
-                    match *err.kind() {
-                        ErrorKind::ServerUnavailable => retry = true,
-                        ErrorKind::ReqwestError(ref error) => if error
-                            .get_ref()
-                            .map(|e| e.is::<::std::io::Error>())
+                    let retry = if let Some(AgentApiError::ServerUnavailable) = err.downcast_ref() {
+                        true
+                    } else if let Some(err) = err.downcast_ref::<::reqwest::Error>() {
+                        err.cause()
+                            .map(|cause| cause.downcast_ref::<::std::io::Error>().is_some())
                             .unwrap_or(false)
-                        {
-                            retry = true;
-                        },
-                        _ => {}
-                    }
+                    } else {
+                        false
+                    };
 
                     if retry {
                         warn!("connection to the server failed. retrying in a few seconds...");
@@ -107,7 +120,7 @@ impl AgentApi {
         }
     }
 
-    pub fn config(&self) -> Result<AgentConfig> {
+    pub fn config(&self) -> Fallible<AgentConfig> {
         self.retry(|this| {
             this.build_request(Method::GET, "config")
                 .send()?
@@ -115,7 +128,7 @@ impl AgentApi {
         })
     }
 
-    pub fn next_experiment(&self) -> Result<Experiment> {
+    pub fn next_experiment(&self) -> Fallible<Experiment> {
         self.retry(|this| loop {
             let resp: Option<_> = this
                 .build_request(Method::GET, "next-experiment")
@@ -137,7 +150,7 @@ impl AgentApi {
         log: &[u8],
         result: TestResult,
         shas: &[(GitHubRepo, String)],
-    ) -> Result<()> {
+    ) -> Fallible<()> {
         self.retry(|this| {
             let _: bool = this
                 .build_request(Method::POST, "record-progress")
@@ -157,7 +170,7 @@ impl AgentApi {
         })
     }
 
-    pub fn complete_experiment(&self) -> Result<()> {
+    pub fn complete_experiment(&self) -> Fallible<()> {
         self.retry(|this| {
             let _: bool = this
                 .build_request(Method::POST, "complete-experiment")
@@ -167,7 +180,7 @@ impl AgentApi {
         })
     }
 
-    pub fn heartbeat(&self) -> Result<()> {
+    pub fn heartbeat(&self) -> Fallible<()> {
         self.retry(|this| {
             let _: bool = this
                 .build_request(Method::POST, "heartbeat")

@@ -1,7 +1,7 @@
 mod migrations;
 
 use dirs::WORK_DIR;
-use errors::*;
+use prelude::*;
 use r2d2::{CustomizeConnection, Pool};
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
@@ -16,7 +16,7 @@ static DATABASE_PATH: &str = "crater.db";
 struct ConnectionCustomizer;
 
 impl CustomizeConnection<Connection, ::rusqlite::Error> for ConnectionCustomizer {
-    fn on_acquire(&self, conn: &mut Connection) -> ::std::result::Result<(), ::rusqlite::Error> {
+    fn on_acquire(&self, conn: &mut Connection) -> Result<(), ::rusqlite::Error> {
         conn.execute("PRAGMA foreign_keys = ON;", &[])?;
         Ok(())
     }
@@ -30,7 +30,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn open() -> Result<Self> {
+    pub fn open() -> Fallible<Self> {
         let path = WORK_DIR.join(DATABASE_PATH);
         if !path.exists() {
             // If the database doesn't exist check if it's present in a legacy path
@@ -54,7 +54,7 @@ impl Database {
     }
 
     #[cfg(test)]
-    pub fn temp() -> Result<Self> {
+    pub fn temp() -> Fallible<Self> {
         let tempfile = NamedTempFile::new()?;
         Database::new(
             SqliteConnectionManager::file(tempfile.path()),
@@ -62,7 +62,7 @@ impl Database {
         )
     }
 
-    fn new(conn: SqliteConnectionManager, tempfile: Option<NamedTempFile>) -> Result<Self> {
+    fn new(conn: SqliteConnectionManager, tempfile: Option<NamedTempFile>) -> Fallible<Self> {
         let pool = Pool::builder()
             .connection_customizer(Box::new(ConnectionCustomizer))
             .build(conn)?;
@@ -75,7 +75,10 @@ impl Database {
         })
     }
 
-    pub fn transaction<T, F: FnOnce(&TransactionHandle) -> Result<T>>(&self, f: F) -> Result<T> {
+    pub fn transaction<T, F: FnOnce(&TransactionHandle) -> Fallible<T>>(
+        &self,
+        f: F,
+    ) -> Fallible<T> {
         let mut conn = self.pool.get()?;
         let handle = TransactionHandle {
             transaction: conn.transaction()?,
@@ -99,28 +102,28 @@ pub struct TransactionHandle<'a> {
 }
 
 impl<'a> TransactionHandle<'a> {
-    pub fn commit(self) -> Result<()> {
+    pub fn commit(self) -> Fallible<()> {
         self.transaction.commit()?;
         Ok(())
     }
 
-    pub fn rollback(self) -> Result<()> {
+    pub fn rollback(self) -> Fallible<()> {
         self.transaction.rollback()?;
         Ok(())
     }
 }
 
 pub trait QueryUtils {
-    fn with_conn<T, F: FnOnce(&Connection) -> Result<T>>(&self, f: F) -> Result<T>;
+    fn with_conn<T, F: FnOnce(&Connection) -> Fallible<T>>(&self, f: F) -> Fallible<T>;
 
-    fn exists(&self, sql: &str, params: &[&ToSql]) -> Result<bool> {
+    fn exists(&self, sql: &str, params: &[&ToSql]) -> Fallible<bool> {
         self.with_conn(|conn| {
             let mut prepared = conn.prepare(sql)?;
             Ok(prepared.exists(params)?)
         })
     }
 
-    fn execute(&self, sql: &str, params: &[&ToSql]) -> Result<usize> {
+    fn execute(&self, sql: &str, params: &[&ToSql]) -> Fallible<usize> {
         self.with_conn(|conn| {
             let mut prepared = conn.prepare(sql)?;
             let changes = prepared.execute(params)?;
@@ -133,7 +136,7 @@ pub trait QueryUtils {
         sql: &str,
         params: &[&ToSql],
         func: F,
-    ) -> Result<Option<T>> {
+    ) -> Fallible<Option<T>> {
         self.with_conn(|conn| {
             let mut prepared = conn.prepare(sql)?;
             let mut iter = prepared.query_map(params, func)?;
@@ -151,7 +154,7 @@ pub trait QueryUtils {
         sql: &str,
         params: &[&ToSql],
         func: F,
-    ) -> Result<Vec<T>> {
+    ) -> Fallible<Vec<T>> {
         self.with_conn(|conn| {
             let mut prepared = conn.prepare(sql)?;
             let rows = prepared.query_map(params, func)?;
@@ -167,13 +170,13 @@ pub trait QueryUtils {
 }
 
 impl QueryUtils for Database {
-    fn with_conn<T, F: FnOnce(&Connection) -> Result<T>>(&self, f: F) -> Result<T> {
+    fn with_conn<T, F: FnOnce(&Connection) -> Fallible<T>>(&self, f: F) -> Fallible<T> {
         f(&self.pool.get()? as &Connection)
     }
 }
 
 impl<'a> QueryUtils for TransactionHandle<'a> {
-    fn with_conn<T, F: FnOnce(&Connection) -> Result<T>>(&self, f: F) -> Result<T> {
+    fn with_conn<T, F: FnOnce(&Connection) -> Fallible<T>>(&self, f: F) -> Fallible<T> {
         f(&self.transaction)
     }
 }

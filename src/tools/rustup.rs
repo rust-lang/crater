@@ -1,6 +1,6 @@
 use dirs::{CARGO_HOME, RUSTUP_HOME};
-use errors::*;
 use native;
+use prelude::*;
 use run::{Binary, RunCommand, Runnable};
 use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
@@ -29,7 +29,7 @@ impl InstallableTool for Rustup {
         "rustup"
     }
 
-    fn is_installed(&self) -> Result<bool> {
+    fn is_installed(&self) -> Fallible<bool> {
         let path = binary_path("rustup");
         if !path.is_file() {
             return Ok(false);
@@ -38,7 +38,7 @@ impl InstallableTool for Rustup {
         Ok(native::is_executable(path)?)
     }
 
-    fn install(&self) -> Result<()> {
+    fn install(&self) -> Fallible<()> {
         fs::create_dir_all(&*CARGO_HOME)?;
         fs::create_dir_all(&*RUSTUP_HOME)?;
 
@@ -48,7 +48,7 @@ impl InstallableTool for Rustup {
             ::HOST_TARGET,
             EXE_SUFFIX
         );
-        let mut resp = ::utils::http::get(&url).chain_err(|| "unable to download rustup")?;
+        let mut resp = ::utils::http::get(&url).with_context(|_| "unable to download rustup")?;
 
         let tempdir = tempdir()?;
         let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
@@ -66,20 +66,20 @@ impl InstallableTool for Rustup {
                 MAIN_TOOLCHAIN_NAME,
             ]).local_rustup(true)
             .run()
-            .chain_err(|| "unable to install rustup")?;
+            .with_context(|_| "unable to install rustup")?;
 
         Ok(())
     }
 
-    fn update(&self) -> Result<()> {
+    fn update(&self) -> Fallible<()> {
         RunCommand::new(&RUSTUP)
             .args(&["self", "update"])
             .run()
-            .chain_err(|| "failed to update rustup")?;
+            .with_context(|_| "failed to update rustup")?;
         RunCommand::new(&RUSTUP)
             .args(&["update", MAIN_TOOLCHAIN_NAME])
             .run()
-            .chain_err(|| format!("failed to update main toolchain {}", MAIN_TOOLCHAIN_NAME))?;
+            .with_context(|_| format!("failed to update main toolchain {}", MAIN_TOOLCHAIN_NAME))?;
         Ok(())
     }
 }

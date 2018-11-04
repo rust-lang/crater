@@ -1,7 +1,7 @@
-use errors::*;
 use http::header::{AUTHORIZATION, USER_AGENT};
 use http::Method;
 use http::StatusCode;
+use prelude::*;
 use reqwest::{Client, RequestBuilder};
 use server::tokens::Tokens;
 use std::collections::HashMap;
@@ -9,6 +9,16 @@ use std::collections::HashMap;
 lazy_static! {
     static ref CRATER_USER_AGENT: String =
         format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
+}
+
+#[derive(Debug, Fail)]
+pub enum GitHubError {
+    #[fail(
+        display = "request to GitHub API failed with status {}: {}",
+        _0,
+        _1
+    )]
+    RequestFailed(StatusCode, String),
 }
 
 #[derive(Clone)]
@@ -38,12 +48,12 @@ impl GitHubApi {
             .header(USER_AGENT, CRATER_USER_AGENT.clone())
     }
 
-    pub fn username(&self) -> Result<String> {
+    pub fn username(&self) -> Fallible<String> {
         let response: User = self.build_request(Method::GET, "user").send()?.json()?;
         Ok(response.login)
     }
 
-    pub fn post_comment(&self, issue_url: &str, body: &str) -> Result<()> {
+    pub fn post_comment(&self, issue_url: &str, body: &str) -> Fallible<()> {
         let mut response = self
             .build_request(Method::POST, &format!("{}/comments", issue_url))
             .json(&json!({
@@ -54,16 +64,11 @@ impl GitHubApi {
             Ok(())
         } else {
             let error: Error = response.json()?;
-            bail!(
-                "failed to post comment on issue {} (status code {}): {}",
-                issue_url,
-                response.status(),
-                error.message
-            );
+            Err(GitHubError::RequestFailed(response.status(), error.message).into())
         }
     }
 
-    pub fn list_labels(&self, issue_url: &str) -> Result<Vec<Label>> {
+    pub fn list_labels(&self, issue_url: &str) -> Fallible<Vec<Label>> {
         let mut response = self
             .build_request(Method::GET, &format!("{}/labels", issue_url))
             .send()?;
@@ -72,16 +77,11 @@ impl GitHubApi {
             Ok(response.json()?)
         } else {
             let error: Error = response.json()?;
-            bail!(
-                "failed to list labels of issue {} (status code {}): {}",
-                issue_url,
-                response.status(),
-                error.message
-            );
+            Err(GitHubError::RequestFailed(response.status(), error.message).into())
         }
     }
 
-    pub fn add_label(&self, issue_url: &str, label: &str) -> Result<()> {
+    pub fn add_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
         let mut response = self
             .build_request(Method::POST, &format!("{}/labels", issue_url))
             .json(&json!([label]))
@@ -91,17 +91,11 @@ impl GitHubApi {
             Ok(())
         } else {
             let error: Error = response.json()?;
-            bail!(
-                "failed to add label {} to issue {} (status code {}): {}",
-                label,
-                issue_url,
-                response.status(),
-                error.message
-            );
+            Err(GitHubError::RequestFailed(response.status(), error.message).into())
         }
     }
 
-    pub fn remove_label(&self, issue_url: &str, label: &str) -> Result<()> {
+    pub fn remove_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
         let mut response = self
             .build_request(Method::DELETE, &format!("{}/labels/{}", issue_url, label))
             .send()?;
@@ -110,17 +104,11 @@ impl GitHubApi {
             Ok(())
         } else {
             let error: Error = response.json()?;
-            bail!(
-                "failed to remove label {} from issue {} (status code {}): {}",
-                label,
-                issue_url,
-                response.status(),
-                error.message
-            );
+            Err(GitHubError::RequestFailed(response.status(), error.message).into())
         }
     }
 
-    pub fn list_teams(&self, org: &str) -> Result<HashMap<String, usize>> {
+    pub fn list_teams(&self, org: &str) -> Fallible<HashMap<String, usize>> {
         let mut response = self
             .build_request(Method::GET, &format!("orgs/{}/teams", org))
             .send()?;
@@ -130,16 +118,11 @@ impl GitHubApi {
             Ok(teams.into_iter().map(|t| (t.slug, t.id)).collect())
         } else {
             let error: Error = response.json()?;
-            bail!(
-                "failed to get {}'s teams (status code {}): {}'",
-                org,
-                response.status(),
-                error.message
-            );
+            Err(GitHubError::RequestFailed(response.status(), error.message).into())
         }
     }
 
-    pub fn team_members(&self, team: usize) -> Result<Vec<String>> {
+    pub fn team_members(&self, team: usize) -> Fallible<Vec<String>> {
         let mut response = self
             .build_request(Method::GET, &format!("teams/{}/members", team))
             .send()?;
@@ -149,12 +132,7 @@ impl GitHubApi {
             Ok(users.into_iter().map(|u| u.login).collect())
         } else {
             let error: Error = response.json()?;
-            bail!(
-                "failed to get team {} members (status code {}): {}'",
-                team,
-                response.status(),
-                error.message
-            );
+            Err(GitHubError::RequestFailed(response.status(), error.message).into())
         }
     }
 }

@@ -1,6 +1,6 @@
 use crates::{lists::List, Crate};
 use dirs::LOCAL_CRATES_DIR;
-use errors::*;
+use prelude::*;
 use std::path::PathBuf;
 
 pub(crate) struct LocalList {
@@ -18,7 +18,7 @@ impl Default for LocalList {
 impl List for LocalList {
     const NAME: &'static str = "local";
 
-    fn fetch(&self) -> Result<Vec<Crate>> {
+    fn fetch(&self) -> Fallible<Vec<Crate>> {
         if !self.source.is_dir() {
             return Ok(Vec::new());
         }
@@ -32,10 +32,10 @@ impl List for LocalList {
                     .file_name()
                     .to_str()
                     .ok_or_else(|| {
-                        format!(
+                        err_msg(format!(
                             "invalid UTF-8 in local crate name: {}",
                             entry.file_name().to_string_lossy()
-                        )
+                        ))
                     })?.to_string();
 
                 list.push(Crate::Local(name));

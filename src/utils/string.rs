@@ -1,6 +1,12 @@
-use errors::*;
+use prelude::*;
 
-pub(crate) fn split_quoted(input: &str) -> Result<Vec<String>> {
+#[derive(Debug, Fail)]
+pub enum SplitQuotedError {
+    #[fail(display = "unbalanced quotes")]
+    UnbalancedQuotes,
+}
+
+pub(crate) fn split_quoted(input: &str) -> Result<Vec<String>, SplitQuotedError> {
     let mut segments = Vec::new();
     let mut buffer = String::new();
 
@@ -28,7 +34,7 @@ pub(crate) fn split_quoted(input: &str) -> Result<Vec<String>> {
     }
 
     if is_quoted {
-        bail!("unbalanced quotes");
+        Err(SplitQuotedError::UnbalancedQuotes)
     } else {
         segments.push(buffer);
         Ok(segments)

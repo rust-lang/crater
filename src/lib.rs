@@ -13,7 +13,6 @@ extern crate csv;
 extern crate failure;
 extern crate flate2;
 extern crate futures;
-extern crate futures_cpupool;
 extern crate http;
 extern crate hyper;
 #[macro_use]
@@ -49,10 +48,8 @@ extern crate slog_term;
 extern crate tar;
 extern crate tempfile;
 extern crate tera;
-extern crate tokio_core;
-extern crate tokio_io;
+extern crate tokio;
 extern crate tokio_process;
-extern crate tokio_timer;
 #[cfg_attr(test, macro_use)]
 extern crate toml;
 #[macro_use]

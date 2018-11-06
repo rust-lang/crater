@@ -1,21 +1,19 @@
 use dirs::{CARGO_HOME, RUSTUP_HOME};
 use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
+use failure::Error;
 use futures::{future, Future, Stream};
-use futures_cpupool::CpuPool;
 use native;
 use prelude::*;
 use slog_scope;
 use std::convert::AsRef;
 use std::env::consts::EXE_SUFFIX;
 use std::ffi::{OsStr, OsString};
-use std::io::{self, BufReader};
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
-use std::time::Duration;
-use tokio_core::reactor::Core;
-use tokio_io::io::lines;
+use std::time::{Duration, Instant};
+use tokio::{io::lines, runtime::current_thread::block_on_all, util::*};
 use tokio_process::CommandExt;
-use tokio_timer;
 use utils::size::Size;
 
 #[derive(Debug, Fail)]
@@ -176,7 +174,7 @@ impl RunCommand {
             self.enable_timeout,
             self.hide_output,
         ).map_err(|e| {
-            info!("error running command: {}", e);
+            error!("error running command: {}", e);
             e
         })?;
 
@@ -268,6 +266,20 @@ struct ProcessOutput {
     stderr: Vec<String>,
 }
 
+enum OutputKind {
+    Stdout,
+    Stderr,
+}
+
+impl OutputKind {
+    fn prefix(&self) -> &'static str {
+        match *self {
+            OutputKind::Stdout => "stdout",
+            OutputKind::Stderr => "stderr",
+        }
+    }
+}
+
 const MAX_TIMEOUT_SECS: u64 = 60 * 15;
 const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 5;
 
@@ -295,124 +307,74 @@ fn log_command(
         (max, max)
     };
 
-    let mut core = Core::new().unwrap();
-    let timer = tokio_timer::wheel().max_timeout(max_timeout * 2).build();
     let mut child = cmd
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn_async(&core.handle())?;
-
-    let stdout = child.stdout().take().expect("");
-    let stderr = child.stderr().take().expect("");
-
-    // Needed for killing after timeout
+        .spawn_async()?;
     let child_id = child.id();
 
-    let logger = slog_scope::logger();
-    let stdout = lines(BufReader::new(stdout)).map({
-        let logger = logger.clone();
-        move |line| {
-            if !hide_output {
-                slog_info!(logger, "blam! {}", line);
-            }
-            line
-        }
-    });
-    let stderr = lines(BufReader::new(stderr)).map({
-        let logger = logger.clone();
-        move |line| {
-            if !hide_output {
-                slog_info!(logger, "kablam! {}", line);
-            }
-            line
-        }
-    });
+    let stdout = lines(BufReader::new(child.stdout().take().unwrap()))
+        .map(|line| (OutputKind::Stdout, line));
+    let stderr = lines(BufReader::new(child.stderr().take().unwrap()))
+        .map(|line| (OutputKind::Stderr, line));
 
-    let output = Stream::select(stdout.map(future::Either::A), stderr.map(future::Either::B));
-    let output = timer
-        .timeout_stream(output, heartbeat_timeout)
-        .map_err(move |e| {
-            if e.kind() == io::ErrorKind::TimedOut {
+    let start = Instant::now();
+
+    let logger = slog_scope::logger();
+    let output = stdout
+        .select(stderr)
+        .timeout(heartbeat_timeout)
+        .map_err(move |err| {
+            if err.is_elapsed() {
                 match native::kill_process(child_id) {
+                    Ok(()) => {
+                        Error::from(RunCommandError::NoOutputFor(heartbeat_timeout.as_secs()))
+                    }
                     Err(err) => err,
-                    Ok(()) => RunCommandError::NoOutputFor(heartbeat_timeout.as_secs()).into(),
                 }
             } else {
-                e.into()
+                Error::from(err)
             }
-        });
+        }).and_then(move |(kind, line)| {
+            // If the process is in a tight output loop the timeout on the process might fail to
+            // be executed, so this extra check prevents the process to run without limits.
+            if start.elapsed() > max_timeout {
+                return future::err(Error::from(RunCommandError::Timeout(max_timeout.as_secs())));
+            }
 
-    let output = if capture {
-        unmerge(output)
-    } else {
-        Box::new(
-            output
-                .for_each(|_| Ok(()))
-                .and_then(|_| Ok((Vec::new(), Vec::new()))),
-        )
-    };
-    let pool = CpuPool::new(1);
-    let output = pool.spawn(output);
+            if !hide_output {
+                slog_info!(logger, "[{}] {}", kind.prefix(), line);
+            }
+            future::ok((kind, line))
+        }).fold(
+            (Vec::new(), Vec::new()),
+            move |mut res, (kind, line)| -> Fallible<_> {
+                if capture {
+                    match kind {
+                        OutputKind::Stdout => res.0.push(line),
+                        OutputKind::Stderr => res.1.push(line),
+                    }
+                }
+                Ok(res)
+            },
+        );
 
-    let child = timer.timeout(child, max_timeout).map_err(move |e| {
-        if e.kind() == io::ErrorKind::TimedOut {
+    let child = child.timeout(max_timeout).map_err(move |err| {
+        if err.is_elapsed() {
             match native::kill_process(child_id) {
+                Ok(()) => Error::from(RunCommandError::Timeout(max_timeout.as_secs())),
                 Err(err) => err,
-                Ok(()) => RunCommandError::Timeout(max_timeout.as_secs()).into(),
             }
         } else {
-            e.into()
+            Error::from(err)
         }
     });
 
-    // TODO: Handle errors from tokio_timer better, in particular TimerError::TooLong
-    let (status, (stdout, stderr)) = core.run(child.select2(output).then(|res| {
-        let future: Box<Future<Item = _, Error = _>> = match res {
-            // child exited, finish collecting output
-            Ok(future::Either::A((status, output))) => {
-                Box::new(output.map(move |sose| (status, sose)))
-            }
-            // output finished, wait for process to exit (possibly being killed by timeout)
-            Ok(future::Either::B((sose, child))) => {
-                Box::new(child.map(move |status| (status, sose)))
-            }
-            // child lived too long and was killed, finish collecting output so it goes to logs then
-            // return timeout error (not interested in errors with output at this point, so ignore)
-            Err(future::Either::A((e, output))) => Box::new(output.then(|_| future::err(e))),
-            // output collection failed (timeout, misc io error) and child was killed, drop timeout
-            Err(future::Either::B((e, _child))) => Box::new(future::err(e)),
-        };
-        future
-    }))?;
+    let ((stdout, stderr), status) = block_on_all(output.join(child))?;
 
     Ok(ProcessOutput {
         status,
         stdout,
         stderr,
     })
-}
-
-#[cfg_attr(feature = "cargo-clippy", allow(type_complexity))]
-fn unmerge<T1, T2, S>(reader: S) -> Box<Future<Item = (Vec<T1>, Vec<T2>), Error = S::Error> + Send>
-where
-    S: Stream<Item = future::Either<T1, T2>> + Send + 'static,
-    S::Error: Send,
-    T1: Send + 'static,
-    T2: Send + 'static,
-{
-    Box::new(
-        reader
-            .map(|i| match i {
-                future::Either::A(l) => (Some(l), None),
-                future::Either::B(r) => (None, Some(r)),
-            }).fold((Vec::new(), Vec::new()), |mut v, i| {
-                if let Some(i) = i.0 {
-                    v.0.push(i);
-                }
-                if let Some(i) = i.1 {
-                    v.1.push(i);
-                }
-                Ok(v)
-            }),
-    )
 }

@@ -30,27 +30,27 @@ pub fn routes(
     let data_filter = warp::any().map(move || data.clone());
 
     let queue = warp::get2()
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .map(experiments::endpoint_queue);
 
     let experiment = warp::get2()
         .and(warp::path("ex"))
         .and(warp::path::param())
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .map(experiments::endpoint_experiment);
 
     let agents = warp::get2()
         .and(warp::path("agents"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .map(agents::endpoint_list);
 
     let assets = warp::get2()
         .and(warp::path("assets"))
         .and(warp::path::param())
-        .and(warp::path::index())
+        .and(warp::path::end())
         .map(endpoint_assets);
 
     warp::any()

@@ -184,7 +184,7 @@ pub fn routes(
     let data_filter = warp::any().map(move || data.clone());
 
     warp::post2()
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter)
         .and(warp::header::headers_cloned())
         .and(warp::body::concat())

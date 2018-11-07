@@ -1,4 +1,5 @@
 use experiments::{Assignee, Experiment, Status};
+use failure::Compat;
 use http::{Response, StatusCode};
 use hyper::Body;
 use prelude::*;
@@ -6,7 +7,7 @@ use results::{DatabaseDB, ProgressData};
 use server::api_types::{AgentConfig, ApiResponse};
 use server::auth::{auth_filter, AuthDetails, TokenType};
 use server::messages::Message;
-use server::Data;
+use server::{Data, HttpError};
 use std::sync::Arc;
 use warp::{self, Filter, Rejection};
 
@@ -18,28 +19,28 @@ pub fn routes(
 
     let config = warp::get2()
         .and(warp::path("config"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_config);
 
     let next_experiment = warp::get2()
         .and(warp::path("next-experiment"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_experiment);
 
     let complete_experiment = warp::post2()
         .and(warp::path("complete-experiment"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_complete_experiment);
 
     let record_progress = warp::post2()
         .and(warp::path("record-progress"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(warp::body::json())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
@@ -47,7 +48,7 @@ pub fn routes(
 
     let heartbeat = warp::post2()
         .and(warp::path("heartbeat"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_heartbeat);
@@ -152,11 +153,19 @@ fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
 }
 
 fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
-    match err.status() {
-        StatusCode::NOT_FOUND | StatusCode::METHOD_NOT_ALLOWED => {
-            Ok(ApiResponse::not_found().into_response().unwrap())
-        }
-        StatusCode::FORBIDDEN => Ok(ApiResponse::unauthorized().into_response().unwrap()),
-        _ => Err(err),
+    let error = if let Some(compat) = err.find_cause::<Compat<HttpError>>() {
+        Some(*compat.get_ref())
+    } else if let StatusCode::NOT_FOUND = err.status() {
+        Some(HttpError::NotFound)
+    } else if let StatusCode::METHOD_NOT_ALLOWED = err.status() {
+        Some(HttpError::NotFound)
+    } else {
+        None
+    };
+
+    match error {
+        Some(HttpError::NotFound) => Ok(ApiResponse::not_found().into_response().unwrap()),
+        Some(HttpError::Forbidden) => Ok(ApiResponse::unauthorized().into_response().unwrap()),
+        None => Err(err),
     }
 }

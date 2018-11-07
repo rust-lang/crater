@@ -13,7 +13,6 @@ extern crate csv;
 extern crate failure;
 extern crate flate2;
 extern crate futures;
-extern crate futures_cpupool;
 extern crate http;
 extern crate hyper;
 #[macro_use]
@@ -41,17 +40,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_regex;
-#[macro_use(
-    slog_o,
-    slog_info,
-    slog_log,
-    slog_error,
-    slog_warn,
-    slog_record,
-    slog_record_static,
-    slog_b,
-    slog_kv
-)]
+#[macro_use(slog_o, slog_info, slog_error, slog_warn,)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
@@ -59,10 +48,8 @@ extern crate slog_term;
 extern crate tar;
 extern crate tempfile;
 extern crate tera;
-extern crate tokio_core;
-extern crate tokio_io;
+extern crate tokio;
 extern crate tokio_process;
-extern crate tokio_timer;
 #[cfg_attr(test, macro_use)]
 extern crate toml;
 #[macro_use]

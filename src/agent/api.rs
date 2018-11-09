@@ -91,9 +91,17 @@ impl AgentApi {
                     let retry = if let Some(AgentApiError::ServerUnavailable) = err.downcast_ref() {
                         true
                     } else if let Some(err) = err.downcast_ref::<::reqwest::Error>() {
-                        err.cause()
-                            .map(|cause| cause.downcast_ref::<::std::io::Error>().is_some())
-                            .unwrap_or(false)
+                        let reqwest_io = err
+                            .get_ref()
+                            .map(|inner| inner.is::<::std::io::Error>())
+                            .unwrap_or(false);
+                        let hyper_io = err
+                            .get_ref()
+                            .and_then(|inner| inner.downcast_ref::<::hyper::Error>())
+                            .and_then(|inner| inner.cause2())
+                            .map(|inner| inner.is::<::std::io::Error>())
+                            .unwrap_or(false);
+                        reqwest_io || hyper_io
                     } else {
                         false
                     };

@@ -152,6 +152,24 @@ fn absolute(path: &Path) -> PathBuf {
     }
 }
 
+#[derive(Debug, Fail)]
+pub(crate) enum DockerError {
+    #[fail(display = "container ran out of memory")]
+    ContainerOOM,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct InspectContainer {
+    state: InspectState,
+}
+
+#[derive(Deserialize)]
+struct InspectState {
+    #[serde(rename = "OOMKilled")]
+    oom_killed: bool,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct Container {
     // Docker container ID
@@ -165,11 +183,34 @@ impl Display for Container {
 }
 
 impl Container {
+    fn inspect(&self) -> Fallible<InspectContainer> {
+        let output = RunCommand::new("docker")
+            .args(&["inspect", &self.id])
+            .hide_output(true)
+            .run_capture()?;
+
+        let mut data: Vec<InspectContainer> = ::serde_json::from_str(&output.0.join("\n"))?;
+        assert_eq!(data.len(), 1);
+        Ok(data.pop().unwrap())
+    }
+
     pub(crate) fn run(&self, quiet: bool) -> Fallible<()> {
-        RunCommand::new("docker")
+        let res = RunCommand::new("docker")
             .args(&["start", "-a", &self.id])
             .quiet(quiet)
-            .run()
+            .run();
+        let details = self.inspect()?;
+
+        // Return a different error if the container was killed due to an OOM
+        if details.state.oom_killed {
+            if let Err(err) = res {
+                Err(err.context(DockerError::ContainerOOM).into())
+            } else {
+                Err(DockerError::ContainerOOM.into())
+            }
+        } else {
+            res
+        }
     }
 
     pub(crate) fn delete(&self) -> Fallible<()> {

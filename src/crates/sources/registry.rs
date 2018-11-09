@@ -87,7 +87,8 @@ fn dl_registry(name: &str, vers: &str, dir: &Path) -> Fallible<()> {
     }
     info!("downloading crate {}-{} to {}", name, vers, dir.display());
     let url = format!("{0}/{1}/{1}-{2}.crate", CRATES_ROOT, name, vers);
-    let bin = ::utils::http::get(&url).with_context(|_| format!("unable to download {}", url))?;
+    let bin =
+        ::utils::http::get_sync(&url).with_context(|_| format!("unable to download {}", url))?;
 
     fs::create_dir_all(&dir)?;
 

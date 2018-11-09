@@ -1,15 +1,11 @@
-use http::header::{AUTHORIZATION, USER_AGENT};
+use http::header::AUTHORIZATION;
 use http::Method;
 use http::StatusCode;
 use prelude::*;
-use reqwest::{Client, RequestBuilder};
+use reqwest::RequestBuilder;
 use server::tokens::Tokens;
 use std::collections::HashMap;
-
-lazy_static! {
-    static ref CRATER_USER_AGENT: String =
-        format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
-}
+use utils::http;
 
 #[derive(Debug, Fail)]
 pub enum GitHubError {
@@ -24,14 +20,12 @@ pub enum GitHubError {
 #[derive(Clone)]
 pub struct GitHubApi {
     token: String,
-    client: Client,
 }
 
 impl GitHubApi {
     pub fn new(tokens: &Tokens) -> Self {
         GitHubApi {
             token: tokens.bot.api_token.clone(),
-            client: Client::new(),
         }
     }
 
@@ -42,10 +36,7 @@ impl GitHubApi {
             url.to_string()
         };
 
-        self.client
-            .request(method, &url)
-            .header(AUTHORIZATION, format!("token {}", self.token))
-            .header(USER_AGENT, CRATER_USER_AGENT.clone())
+        http::prepare_sync(method, &url).header(AUTHORIZATION, format!("token {}", self.token))
     }
 
     pub fn username(&self) -> Fallible<String> {

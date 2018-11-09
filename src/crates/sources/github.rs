@@ -33,7 +33,7 @@ impl List for GitHubList {
     fn fetch(&self) -> Fallible<Vec<Crate>> {
         info!("loading cached GitHub list from {}", self.source);
 
-        let mut resp = ::utils::http::get(&self.source)
+        let mut resp = ::utils::http::get_sync(&self.source)
             .with_context(|_| format!("failed to fetch GitHub crates list from {}", self.source))?;
         let mut reader = ::csv::Reader::from_reader(&mut resp);
 

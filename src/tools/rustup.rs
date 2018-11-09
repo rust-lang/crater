@@ -48,7 +48,8 @@ impl InstallableTool for Rustup {
             ::HOST_TARGET,
             EXE_SUFFIX
         );
-        let mut resp = ::utils::http::get(&url).with_context(|_| "unable to download rustup")?;
+        let mut resp =
+            ::utils::http::get_sync(&url).with_context(|_| "unable to download rustup")?;
 
         let tempdir = tempdir()?;
         let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));

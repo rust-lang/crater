@@ -10,7 +10,7 @@ use warp::{self, Filter, Rejection};
 
 lazy_static! {
     static ref GIT_REVISION_RE: Regex =
-        Regex::new(r"^crater(-agent)?/(?P<sha>[a-f0-9]{7,40})$").unwrap();
+        Regex::new(r"^crater(-agent)?/(?P<sha>[a-f0-9]{7,40})( \(.*\))?$").unwrap();
 }
 
 #[derive(Copy, Clone)]
@@ -38,15 +38,17 @@ fn parse_token(authorization: &str) -> Option<&str> {
     None
 }
 
+fn git_revision(user_agent: &str) -> Option<String> {
+    GIT_REVISION_RE
+        .captures(user_agent)
+        .map(|cap| cap["sha"].to_string())
+}
+
 fn check_auth(data: &Data, headers: &HeaderMap, token_type: TokenType) -> Option<AuthDetails> {
     // Try to extract the git revision from the User-Agent header
     let git_revision = if let Some(ua_value) = headers.get(USER_AGENT) {
         if let Ok(ua) = ua_value.to_str() {
-            if let Some(cap) = GIT_REVISION_RE.captures(ua) {
-                Some(cap["sha"].to_string())
-            } else {
-                None
-            }
+            git_revision(ua)
         } else {
             None
         }
@@ -177,7 +179,7 @@ impl ACL {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_token;
+    use super::{git_revision, parse_token};
 
     #[test]
     fn test_parse_token() {
@@ -186,5 +188,29 @@ mod tests {
         assert_eq!(parse_token("CraterToken"), None);
         assert_eq!(parse_token("CraterToken foo"), Some("foo"));
         assert_eq!(parse_token("CraterToken foo bar"), None);
+    }
+
+    #[test]
+    fn test_git_revision() {
+        for sha in &["0000000", "0000000000000000000000000000000000000000"] {
+            assert_eq!(
+                git_revision(&format!("crater/{}", sha)),
+                Some(sha.to_string())
+            );
+            assert_eq!(
+                git_revision(&format!("crater/{} (foo bar!)", sha)),
+                Some(sha.to_string())
+            );
+        }
+
+        // Test with too few and too many digits
+        assert!(git_revision("crater/000000").is_none());
+        assert!(git_revision("crater/00000000000000000000000000000000000000000").is_none());
+
+        // Test invalid syntaxes
+        assert!(git_revision("crater/ggggggg").is_none());
+        assert!(git_revision("crater/0000000(foo bar!)").is_none());
+        assert!(git_revision("crater/0000000 (foo bar!) ").is_none());
+        assert!(git_revision("crate/0000000").is_none());
     }
 }

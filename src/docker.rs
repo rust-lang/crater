@@ -6,7 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use utils::size::Size;
 
-pub static IMAGE_NAME: &'static str = "crater";
+pub(crate) static IMAGE_NAME: &'static str = "crater";
 
 /// Builds the docker container image, 'crater', what will be used
 /// to isolate builds from each other. This expects the Dockerfile
@@ -24,7 +24,7 @@ pub(crate) fn is_running() -> bool {
 }
 
 #[derive(Copy, Clone)]
-pub enum MountPerms {
+pub(crate) enum MountPerms {
     ReadWrite,
     ReadOnly,
 }
@@ -50,7 +50,7 @@ impl MountConfig {
     }
 }
 
-pub struct ContainerBuilder {
+pub(crate) struct ContainerBuilder {
     image: String,
     mounts: Vec<MountConfig>,
     env: Vec<(String, String)>,
@@ -59,7 +59,7 @@ pub struct ContainerBuilder {
 }
 
 impl ContainerBuilder {
-    pub fn new<S: Into<String>>(image: S) -> Self {
+    pub(crate) fn new<S: Into<String>>(image: S) -> Self {
         ContainerBuilder {
             image: image.into(),
             mounts: Vec::new(),
@@ -69,7 +69,7 @@ impl ContainerBuilder {
         }
     }
 
-    pub fn mount<P1: Into<PathBuf>, P2: Into<PathBuf>>(
+    pub(crate) fn mount<P1: Into<PathBuf>, P2: Into<PathBuf>>(
         mut self,
         host_path: P1,
         container_path: P2,
@@ -83,22 +83,22 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn env<S1: Into<String>, S2: Into<String>>(mut self, key: S1, value: S2) -> Self {
+    pub(crate) fn env<S1: Into<String>, S2: Into<String>>(mut self, key: S1, value: S2) -> Self {
         self.env.push((key.into(), value.into()));
         self
     }
 
-    pub fn memory_limit(mut self, limit: Option<Size>) -> Self {
+    pub(crate) fn memory_limit(mut self, limit: Option<Size>) -> Self {
         self.memory_limit = limit;
         self
     }
 
-    pub fn enable_networking(mut self, enable: bool) -> Self {
+    pub(crate) fn enable_networking(mut self, enable: bool) -> Self {
         self.enable_networking = enable;
         self
     }
 
-    pub fn create(self) -> Fallible<Container> {
+    pub(crate) fn create(self) -> Fallible<Container> {
         let mut args: Vec<String> = vec!["create".into()];
 
         for mount in &self.mounts {
@@ -128,7 +128,7 @@ impl ContainerBuilder {
         Ok(Container { id: out[0].clone() })
     }
 
-    pub fn run(self, quiet: bool) -> Fallible<()> {
+    pub(crate) fn run(self, quiet: bool) -> Fallible<()> {
         let container = self.create()?;
 
         // Ensure the container is properly deleted even if something panics
@@ -153,7 +153,7 @@ fn absolute(path: &Path) -> PathBuf {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Container {
+pub(crate) struct Container {
     // Docker container ID
     id: String,
 }
@@ -165,14 +165,14 @@ impl Display for Container {
 }
 
 impl Container {
-    pub fn run(&self, quiet: bool) -> Fallible<()> {
+    pub(crate) fn run(&self, quiet: bool) -> Fallible<()> {
         RunCommand::new("docker")
             .args(&["start", "-a", &self.id])
             .quiet(quiet)
             .run()
     }
 
-    pub fn delete(&self) -> Fallible<()> {
+    pub(crate) fn delete(&self) -> Fallible<()> {
         RunCommand::new("docker")
             .args(&["rm", "-f", &self.id])
             .run()

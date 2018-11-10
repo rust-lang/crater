@@ -296,22 +296,22 @@ fn compare(
     use results::TestResult::*;
     match (r1, r2) {
         (Some(res1), Some(res2)) => match (res1, res2) {
-            (BuildFail, BuildFail) => Comparison::SameBuildFail,
-            (TestFail, TestFail) => Comparison::SameTestFail,
+            (BuildFail(_), BuildFail(_)) => Comparison::SameBuildFail,
+            (TestFail(_), TestFail(_)) => Comparison::SameTestFail,
             (TestSkipped, TestSkipped) => Comparison::SameTestSkipped,
             (TestPass, TestPass) => Comparison::SameTestPass,
-            (BuildFail, TestFail)
-            | (BuildFail, TestSkipped)
-            | (BuildFail, TestPass)
-            | (TestFail, TestPass) => Comparison::Fixed,
-            (TestPass, TestFail)
-            | (TestPass, BuildFail)
-            | (TestSkipped, BuildFail)
-            | (TestFail, BuildFail) => Comparison::Regressed,
+            (BuildFail(_), TestFail(_))
+            | (BuildFail(_), TestSkipped)
+            | (BuildFail(_), TestPass)
+            | (TestFail(_), TestPass) => Comparison::Fixed,
+            (TestPass, TestFail(_))
+            | (TestPass, BuildFail(_))
+            | (TestSkipped, BuildFail(_))
+            | (TestFail(_), BuildFail(_)) => Comparison::Regressed,
             (Error, _) | (_, Error) => Comparison::Error,
-            (TestFail, TestSkipped)
+            (TestFail(_), TestSkipped)
             | (TestPass, TestSkipped)
-            | (TestSkipped, TestFail)
+            | (TestSkipped, TestFail(_))
             | (TestSkipped, TestPass) => {
                 panic!("can't compare {} and {}", res1, res2);
             }
@@ -426,7 +426,7 @@ mod tests {
     use config::{Config, CrateConfig};
     use crates::{Crate, GitHubRepo, RegistryCrate};
     use experiments::{CapLints, Experiment, Mode, Status};
-    use results::{DummyDB, TestResult};
+    use results::{DummyDB, FailureReason, TestResult};
     use std::collections::HashMap;
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
@@ -515,15 +515,17 @@ mod tests {
 
     #[test]
     fn test_compare() {
+        use results::{FailureReason::*, TestResult::*};
+
         macro_rules! test_compare {
-            ($cmp:ident, $config:expr, $reg:expr, [$($a:ident + $b:ident = $c:ident,)*]) => {
+            ($cmp:ident, $config:expr, $reg:expr, [$($a:expr, $b:expr => $c:ident;)*]) => {
                 $(
                     assert_eq!(
                         $cmp(
                             $config,
                             $reg,
-                            Some(TestResult::$a),
-                            Some(TestResult::$b),
+                            Some($a),
+                            Some($b),
                         ),
                         Comparison::$c
                     );
@@ -542,26 +544,26 @@ mod tests {
             &config,
             &reg,
             [
-                BuildFail + BuildFail = SameBuildFail,
-                TestFail + TestFail = SameTestFail,
-                TestSkipped + TestSkipped = SameTestSkipped,
-                TestPass + TestPass = SameTestPass,
-                BuildFail + TestFail = Fixed,
-                BuildFail + TestSkipped = Fixed,
-                BuildFail + TestPass = Fixed,
-                TestFail + TestPass = Fixed,
-                TestPass + TestFail = Regressed,
-                TestPass + BuildFail = Regressed,
-                TestSkipped + BuildFail = Regressed,
-                TestFail + BuildFail = Regressed,
-                Error + TestPass = Error,
-                Error + TestSkipped = Error,
-                Error + TestFail = Error,
-                Error + BuildFail = Error,
-                TestPass + Error = Error,
-                TestSkipped + Error = Error,
-                TestFail + Error = Error,
-                BuildFail + Error = Error,
+                BuildFail(Unknown), BuildFail(Unknown) => SameBuildFail;
+                TestFail(Unknown), TestFail(Unknown) => SameTestFail;
+                TestSkipped, TestSkipped => SameTestSkipped;
+                TestPass, TestPass => SameTestPass;
+                BuildFail(Unknown), TestFail(Unknown) => Fixed;
+                BuildFail(Unknown), TestSkipped => Fixed;
+                BuildFail(Unknown), TestPass => Fixed;
+                TestFail(Unknown), TestPass => Fixed;
+                TestPass, TestFail(Unknown) => Regressed;
+                TestPass, BuildFail(Unknown) => Regressed;
+                TestSkipped, BuildFail(Unknown) => Regressed;
+                TestFail(Unknown), BuildFail(Unknown) => Regressed;
+                Error, TestPass => Error;
+                Error, TestSkipped => Error;
+                Error, TestFail(Unknown) => Error;
+                Error, BuildFail(Unknown) => Error;
+                TestPass, Error => Error;
+                TestSkipped, Error => Error;
+                TestFail(Unknown), Error => Error;
+                BuildFail(Unknown), Error => Error;
             ]
         );
 
@@ -618,7 +620,7 @@ mod tests {
             &ex,
             gh.clone(),
             TEST_TOOLCHAIN.clone(),
-            TestResult::BuildFail,
+            TestResult::BuildFail(FailureReason::Unknown),
         );
         db.add_dummy_log(
             &ex,
@@ -668,7 +670,7 @@ mod tests {
         );
         assert_eq!(
             (&crate_result.runs[1]).as_ref().unwrap().res,
-            TestResult::BuildFail
+            TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
             (&crate_result.runs[0]).as_ref().unwrap().log.as_str(),

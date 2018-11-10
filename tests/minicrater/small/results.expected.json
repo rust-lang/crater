@@ -6,11 +6,11 @@
       "runs": [
         {
           "log": "stable/local/beta-regression",
-          "res": "TestPass"
+          "res": "test-pass"
         },
         {
           "log": "beta/local/beta-regression",
-          "res": "BuildFail"
+          "res": "build-fail:unknown"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/beta-regression"
@@ -21,11 +21,11 @@
       "runs": [
         {
           "log": "stable/local/build-pass",
-          "res": "TestPass"
+          "res": "test-pass"
         },
         {
           "log": "beta/local/build-pass",
-          "res": "TestPass"
+          "res": "test-pass"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"

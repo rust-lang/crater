@@ -1,8 +1,4 @@
 use prelude::*;
-use serde::{
-    de::{Deserialize, Deserializer, Error as DeError, Visitor},
-    ser::{Serialize, Serializer},
-};
 use std::fmt;
 use std::str::FromStr;
 
@@ -53,31 +49,7 @@ impl FromStr for Size {
     }
 }
 
-struct SizeVisitor;
-
-impl<'de> Visitor<'de> for SizeVisitor {
-    type Value = Size;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("a size")
-    }
-
-    fn visit_str<E: DeError>(self, input: &str) -> Result<Size, E> {
-        Size::from_str(input).map_err(E::custom)
-    }
-}
-
-impl<'de> Deserialize<'de> for Size {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Size, D::Error> {
-        deserializer.deserialize_str(SizeVisitor)
-    }
-}
-
-impl Serialize for Size {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&self.to_string())
-    }
-}
+impl_serde_from_parse!(Size, expecting = "a size");
 
 #[cfg(test)]
 mod tests {

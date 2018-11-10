@@ -21,6 +21,8 @@ extern crate mime;
 extern crate minifier;
 #[cfg(unix)]
 extern crate nix;
+#[macro_use]
+extern crate paste;
 extern crate petgraph;
 extern crate r2d2;
 extern crate r2d2_sqlite;

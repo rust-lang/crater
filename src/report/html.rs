@@ -4,7 +4,7 @@ use mime;
 use minifier;
 use prelude::*;
 use report::{archives::Archive, Comparison, CrateResult, ReportWriter, TestResults};
-use results::TestResult;
+use results::{FailureReason, TestResult};
 use std::collections::HashMap;
 
 #[derive(Serialize)]
@@ -36,10 +36,37 @@ impl ResultColor for Comparison {
 impl ResultColor for TestResult {
     fn color(&self) -> Color {
         match self {
-            TestResult::BuildFail => Color::Single("#db3026"),
-            TestResult::TestFail => Color::Single("#65461e"),
+            TestResult::BuildFail(_) => Color::Single("#db3026"),
+            TestResult::TestFail(_) => Color::Single("#65461e"),
             TestResult::TestSkipped | TestResult::TestPass => Color::Single("#62a156"),
             TestResult::Error => Color::Single("#d77026"),
+        }
+    }
+}
+
+trait ResultName {
+    fn name(&self) -> String;
+}
+
+impl ResultName for FailureReason {
+    fn name(&self) -> String {
+        match self {
+            FailureReason::Unknown => "failed".into(),
+            FailureReason::Broken => "broken".into(),
+            FailureReason::Timeout => "timed out".into(),
+            FailureReason::OOM => "OOM".into(),
+        }
+    }
+}
+
+impl ResultName for TestResult {
+    fn name(&self) -> String {
+        match self {
+            TestResult::BuildFail(reason) => format!("build {}", reason.name()),
+            TestResult::TestFail(reason) => format!("test {}", reason.name()),
+            TestResult::TestSkipped => "test skipped".into(),
+            TestResult::TestPass => "test passed".into(),
+            TestResult::Error => "error".into(),
         }
     }
 }
@@ -90,6 +117,7 @@ struct ResultsContext<'a> {
 
     comparison_colors: HashMap<Comparison, Color>,
     result_colors: HashMap<TestResult, Color>,
+    result_names: HashMap<TestResult, String>,
 }
 
 #[derive(Serialize)]
@@ -110,6 +138,7 @@ fn write_report<W: ReportWriter>(
 ) -> Fallible<()> {
     let mut comparison_colors = HashMap::new();
     let mut result_colors = HashMap::new();
+    let mut result_names = HashMap::new();
 
     let mut categories = HashMap::new();
     for result in &res.crates {
@@ -118,7 +147,7 @@ fn write_report<W: ReportWriter>(
             continue;
         }
 
-        // Add the colors used in this run
+        // Add the colors and names used in this run
         comparison_colors
             .entry(result.res)
             .or_insert_with(|| result.res.color());
@@ -126,11 +155,17 @@ fn write_report<W: ReportWriter>(
             result_colors
                 .entry(run.res)
                 .or_insert_with(|| run.res.color());
+            result_names
+                .entry(run.res)
+                .or_insert_with(|| run.res.name());
         }
         if let Some(ref run) = result.runs[1] {
             result_colors
                 .entry(run.res)
                 .or_insert_with(|| run.res.color());
+            result_names
+                .entry(run.res)
+                .or_insert_with(|| run.res.name());
         }
 
         let mut category = categories.entry(result.res).or_insert_with(Vec::new);
@@ -150,6 +185,7 @@ fn write_report<W: ReportWriter>(
 
         comparison_colors,
         result_colors,
+        result_names,
     };
 
     info!("generating {}", to);

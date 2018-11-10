@@ -3,7 +3,7 @@ use crates::Crate;
 use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use experiments::Experiment;
 use prelude::*;
-use results::{TestResult, WriteResults};
+use results::{FailureReason, TestResult, WriteResults};
 use run::RunCommand;
 use runner::toml_frobber::TomlFrobber;
 use runner::OverrideResult;
@@ -103,7 +103,7 @@ pub(super) fn validate_manifest(ex: &Experiment, krate: &Crate, tc: &Toolchain) 
             .hide_output(true)
             .run()
             .with_context(|_| format!("invalid syntax in {}'s Cargo.toml", krate))
-            .with_context(|_| OverrideResult(TestResult::BuildFail))?;
+            .with_context(|_| OverrideResult(TestResult::BuildFail(FailureReason::Broken)))?;
 
         Ok(())
     })

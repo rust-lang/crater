@@ -100,7 +100,7 @@ mod tests {
     use flate2::read::GzDecoder;
     use mime::Mime;
     use report::DummyWriter;
-    use results::{DatabaseDB, TestResult, WriteResults};
+    use results::{DatabaseDB, FailureReason, TestResult, WriteResults};
     use std::io::Read;
     use tar::Archive;
 
@@ -130,7 +130,7 @@ mod tests {
         results
             .record_result(&ex, &ex.toolchains[1], &crate1, || {
                 info!("tc2 crate1");
-                Ok(TestResult::BuildFail)
+                Ok(TestResult::BuildFail(FailureReason::Unknown))
             }).unwrap();
         results
             .record_result(&ex, &ex.toolchains[0], &crate2, || {

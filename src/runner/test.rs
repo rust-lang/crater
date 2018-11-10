@@ -1,14 +1,30 @@
 use config::Config;
 use crates::Crate;
+use docker::DockerError;
 use docker::MountPerms;
 use experiments::Experiment;
+use failure::Error;
 use prelude::*;
-use results::{TestResult, WriteResults};
-use run::RunCommand;
+use results::{FailureReason, TestResult, WriteResults};
+use run::{RunCommand, RunCommandError};
 use runner::prepare::{with_captured_lockfile, with_frobbed_toml, with_work_crate};
 use std::path::Path;
 use toolchain::Toolchain;
 use tools::CARGO;
+
+fn failure_reason(err: &Error) -> FailureReason {
+    for cause in err.iter_chain() {
+        if let Some(&DockerError::ContainerOOM) = cause.downcast_ctx() {
+            return FailureReason::OOM;
+        } else if let Some(&RunCommandError::NoOutputFor(_)) = cause.downcast_ctx() {
+            return FailureReason::Timeout;
+        } else if let Some(&RunCommandError::Timeout(_)) = cause.downcast_ctx() {
+            return FailureReason::Timeout;
+        }
+    }
+
+    FailureReason::Unknown
+}
 
 fn run_cargo(
     config: &Config,
@@ -145,8 +161,8 @@ pub fn test_build_and_test(
     };
 
     Ok(match (build_r, test_r) {
-        (Err(_), None) => TestResult::BuildFail,
-        (Ok(_), Some(Err(_))) => TestResult::TestFail,
+        (Err(err), None) => TestResult::BuildFail(failure_reason(&err)),
+        (Ok(_), Some(Err(err))) => TestResult::TestFail(failure_reason(&err)),
         (Ok(_), Some(Ok(_))) => TestResult::TestPass,
         (_, _) => unreachable!(),
     })
@@ -159,11 +175,10 @@ pub fn test_build_only(
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Fallible<TestResult> {
-    let r = build(config, ex, source_path, toolchain, quiet);
-    if r.is_ok() {
-        Ok(TestResult::TestSkipped)
+    if let Err(err) = build(config, ex, source_path, toolchain, quiet) {
+        Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
-        Ok(TestResult::BuildFail)
+        Ok(TestResult::TestSkipped)
     }
 }
 
@@ -174,17 +189,16 @@ pub fn test_check_only(
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Fallible<TestResult> {
-    if run_cargo(
+    if let Err(err) = run_cargo(
         config,
         ex,
         source_path,
         toolchain,
         quiet,
         &["check", "--frozen", "--all", "--all-targets"],
-    ).is_ok()
-    {
-        Ok(TestResult::TestPass)
+    ) {
+        Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
-        Ok(TestResult::BuildFail)
+        Ok(TestResult::TestPass)
     }
 }

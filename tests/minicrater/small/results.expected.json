@@ -2,30 +2,30 @@
   "crates": [
     {
       "name": "beta-regression (local)",
-      "res": "Regressed",
+      "res": "regressed",
       "runs": [
         {
           "log": "stable/local/beta-regression",
-          "res": "TestPass"
+          "res": "test-pass"
         },
         {
           "log": "beta/local/beta-regression",
-          "res": "BuildFail"
+          "res": "build-fail:unknown"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/beta-regression"
     },
     {
       "name": "build-pass (local)",
-      "res": "SameTestPass",
+      "res": "test-pass",
       "runs": [
         {
           "log": "stable/local/build-pass",
-          "res": "TestPass"
+          "res": "test-pass"
         },
         {
           "log": "beta/local/build-pass",
-          "res": "TestPass"
+          "res": "test-pass"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"

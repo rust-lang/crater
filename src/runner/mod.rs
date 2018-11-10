@@ -8,9 +8,8 @@ mod unstable_features;
 use config::Config;
 use crossbeam_utils::thread::scope;
 use experiments::Experiment;
-use failure::Context;
 use prelude::*;
-use results::{TestResult, WriteResults};
+use results::{FailureReason, TestResult, WriteResults};
 use runner::graph::{build_graph, WalkResult};
 use std::collections::HashMap;
 use std::path::Path;
@@ -83,21 +82,16 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                                 utils::report_failure(&e);
 
                                 let mut result = if config.is_broken(&task.krate) {
-                                    TestResult::BuildFail
+                                    TestResult::BuildFail(FailureReason::Broken)
                                 } else {
                                     TestResult::Error
                                 };
 
                                 for err in e.iter_chain() {
-                                    if let Some(&OverrideResult(res)) = err.downcast_ref() {
+                                    if let Some(&OverrideResult(res)) = err.downcast_ctx() {
                                         result = res;
                                         break;
-                                    } else if let Some(ctx) =
-                                        err.downcast_ref::<Context<OverrideResult>>()
-                                    {
-                                        result = ctx.get_context().0;
-                                        break;
-                                    };
+                                    }
                                 }
 
                                 graph

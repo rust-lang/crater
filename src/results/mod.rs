@@ -18,7 +18,7 @@ pub trait ReadResults {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<Vec<u8>>>;
+    ) -> Result<Option<EncodedLog>>;
     fn load_test_result(
         &self,
         ex: &Experiment,
@@ -41,6 +41,7 @@ pub trait WriteResults {
         toolchain: &Toolchain,
         krate: &Crate,
         f: F,
+        encoding_type: EncodingType,
     ) -> Result<TestResult>
     where
         F: FnOnce() -> Result<TestResult>;
@@ -58,3 +59,14 @@ string_enum!(pub enum TestResult {
     TestPass => "test-pass",
     Error => "error",
 });
+
+string_enum!(pub enum EncodingType {
+    Plain => "plain",
+    Gzip => "gzip",
+});
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum EncodedLog {
+    Plain(Vec<u8>),
+    Gzip(Vec<u8>),
+}

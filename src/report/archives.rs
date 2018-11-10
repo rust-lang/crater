@@ -1,10 +1,12 @@
 use config::Config;
 use errors::*;
 use experiments::Experiment;
-use flate2::{write::GzEncoder, Compression};
+use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use report::{compare, ReportWriter};
+use results::EncodedLog;
 use results::ReadResults;
 use std::collections::HashMap;
+use std::io::Read;
 use tar::{Builder as TarBuilder, Header as TarHeader};
 
 #[derive(Serialize)]
@@ -38,13 +40,25 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
                 .and_then(|c| c.ok_or_else(|| "missing logs".into()))
                 .chain_err(|| format!("failed to read log of {} on {}", krate, tc));
 
-            let log_bytes: &[u8] = match log {
-                Ok(ref l) => l,
+            let log_bytes: EncodedLog = match log {
+                Ok(l) => l,
                 Err(e) => {
                     ::utils::report_error(&e);
                     continue;
                 }
             };
+
+            let log_bytes: Vec<u8> = match log_bytes {
+                EncodedLog::Plain(data) => data,
+                EncodedLog::Gzip(data) => {
+                    let mut decoded_log = GzDecoder::new(data.as_slice());
+                    let mut new_log = Vec::new();
+                    decoded_log.read_to_end(&mut new_log)?;
+                    new_log
+                }
+            };
+
+            let log_bytes = log_bytes.as_slice();
 
             let path = format!("{}/{}/{}.txt", comparison, krate.id(), tc);
 
@@ -100,6 +114,7 @@ mod tests {
     use flate2::read::GzDecoder;
     use mime::Mime;
     use report::DummyWriter;
+    use results::EncodingType;
     use results::{DatabaseDB, TestResult, WriteResults};
     use std::io::Read;
     use tar::Archive;
@@ -123,25 +138,49 @@ mod tests {
         // Fill some dummy results into the database
         let results = DatabaseDB::new(&db);
         results
-            .record_result(&ex, &ex.toolchains[0], &crate1, || {
-                info!("tc1 crate1");
-                Ok(TestResult::TestPass)
-            }).unwrap();
+            .record_result(
+                &ex,
+                &ex.toolchains[0],
+                &crate1,
+                || {
+                    info!("tc1 crate1");
+                    Ok(TestResult::TestPass)
+                },
+                EncodingType::Gzip,
+            ).unwrap();
         results
-            .record_result(&ex, &ex.toolchains[1], &crate1, || {
-                info!("tc2 crate1");
-                Ok(TestResult::BuildFail)
-            }).unwrap();
+            .record_result(
+                &ex,
+                &ex.toolchains[1],
+                &crate1,
+                || {
+                    info!("tc2 crate1");
+                    Ok(TestResult::BuildFail)
+                },
+                EncodingType::Plain,
+            ).unwrap();
         results
-            .record_result(&ex, &ex.toolchains[0], &crate2, || {
-                info!("tc1 crate2");
-                Ok(TestResult::TestPass)
-            }).unwrap();
+            .record_result(
+                &ex,
+                &ex.toolchains[0],
+                &crate2,
+                || {
+                    info!("tc1 crate2");
+                    Ok(TestResult::TestPass)
+                },
+                EncodingType::Gzip,
+            ).unwrap();
         results
-            .record_result(&ex, &ex.toolchains[1], &crate2, || {
-                info!("tc2 crate2");
-                Ok(TestResult::TestPass)
-            }).unwrap();
+            .record_result(
+                &ex,
+                &ex.toolchains[1],
+                &crate2,
+                || {
+                    info!("tc2 crate2");
+                    Ok(TestResult::TestPass)
+                },
+                EncodingType::Plain,
+            ).unwrap();
 
         // Generate all the archives
         let archives = write_logs_archives(&results, &ex, &writer, &config).unwrap();

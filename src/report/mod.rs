@@ -3,6 +3,7 @@ use crates::{Crate, GitHubRepo};
 use errors::*;
 use experiments::Experiment;
 use mime::{self, Mime};
+use results::EncodedLog;
 use results::{ReadResults, TestResult};
 use serde_json;
 use std::borrow::Cow;
@@ -217,7 +218,15 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
                     continue;
                 }
             };
-            dest.write_bytes(log_path, content, &mime::TEXT_PLAIN_UTF_8)?;
+
+            match content {
+                EncodedLog::Plain(data) => {
+                    dest.write_bytes(log_path, data, &mime::TEXT_PLAIN_UTF_8)
+                }
+                EncodedLog::Gzip(data) => {
+                    dest.write_bytes(log_path, data, &"application/gzip".parse().unwrap())
+                }
+            }?;
         }
     }
     Ok(())
@@ -624,13 +633,13 @@ mod tests {
             &ex,
             gh.clone(),
             MAIN_TOOLCHAIN.clone(),
-            b"stable log".to_vec(),
+            EncodedLog::Plain(b"stable log".to_vec()),
         );
         db.add_dummy_log(
             &ex,
             gh.clone(),
             TEST_TOOLCHAIN.clone(),
-            b"beta log".to_vec(),
+            EncodedLog::Plain(b"beta log".to_vec()),
         );
 
         let writer = DummyWriter::default();

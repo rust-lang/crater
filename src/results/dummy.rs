@@ -1,6 +1,7 @@
 use crates::{Crate, GitHubRepo};
 use errors::*;
 use experiments::Experiment;
+use results::EncodedLog;
 use results::{ReadResults, TestResult};
 use std::collections::HashMap;
 use toolchain::Toolchain;
@@ -8,7 +9,7 @@ use toolchain::Toolchain;
 #[derive(Default)]
 struct DummyData {
     shas: HashMap<GitHubRepo, String>,
-    logs: HashMap<(Crate, Toolchain), Vec<u8>>,
+    logs: HashMap<(Crate, Toolchain), EncodedLog>,
     results: HashMap<(Crate, Toolchain), TestResult>,
 }
 
@@ -33,7 +34,7 @@ impl DummyDB {
             .insert(repo, sha);
     }
 
-    pub fn add_dummy_log(&mut self, ex: &Experiment, krate: Crate, tc: Toolchain, log: Vec<u8>) {
+    pub fn add_dummy_log(&mut self, ex: &Experiment, krate: Crate, tc: Toolchain, log: EncodedLog) {
         self.experiments
             .entry(ex.name.to_string())
             .or_insert_with(DummyData::default)
@@ -66,7 +67,7 @@ impl ReadResults for DummyDB {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<Vec<u8>>> {
+    ) -> Result<Option<EncodedLog>> {
         Ok(self
             .get_data(ex)?
             .logs

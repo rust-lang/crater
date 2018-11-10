@@ -3,6 +3,7 @@ use crates::{Crate, GitHubRepo};
 use errors::*;
 use experiments::Experiment;
 use log;
+use results::EncodingType;
 use results::{TestResult, WriteResults};
 use std::io::Read;
 use std::ops::DerefMut;
@@ -49,6 +50,7 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         toolchain: &Toolchain,
         krate: &Crate,
         f: F,
+        _: EncodingType,
     ) -> Result<TestResult>
     where
         F: FnOnce() -> Result<TestResult>,

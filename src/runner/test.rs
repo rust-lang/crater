@@ -3,6 +3,7 @@ use crates::Crate;
 use docker::MountPerms;
 use errors::*;
 use experiments::Experiment;
+use results::EncodingType;
 use results::{TestResult, WriteResults};
 use run::RunCommand;
 use runner::prepare::{with_captured_lockfile, with_frobbed_toml, with_work_crate};
@@ -68,16 +69,22 @@ pub fn run_test<DB: WriteResults>(
             with_frobbed_toml(ex, krate, source_path)?;
             with_captured_lockfile(config, ex, krate, source_path)?;
 
-            db.record_result(ex, tc, krate, || {
-                info!(
-                    "{} {} against {} for {}",
-                    action,
-                    krate,
-                    tc.to_string(),
-                    ex.name
-                );
-                test_fn(config, ex, source_path, tc, quiet)
-            })
+            db.record_result(
+                ex,
+                tc,
+                krate,
+                || {
+                    info!(
+                        "{} {} against {} for {}",
+                        action,
+                        krate,
+                        tc.to_string(),
+                        ex.name
+                    );
+                    test_fn(config, ex, source_path, tc, quiet)
+                },
+                EncodingType::Plain,
+            )
         }).map(|result| RunTestResult {
             result,
             skipped: false,

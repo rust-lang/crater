@@ -2,6 +2,7 @@ use config::Config;
 use crates::Crate;
 use errors::*;
 use experiments::Experiment;
+use results::EncodingType;
 use results::{TestResult, WriteResults};
 use runner::test;
 use std::fmt;
@@ -89,11 +90,17 @@ impl Task {
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
             | TaskStep::UnstableFeatures { ref tc } => {
-                db.record_result(ex, tc, &self.krate, || {
-                    error!("this task or one of its parent failed!");
-                    utils::report_error(err);
-                    Ok(result)
-                })?;
+                db.record_result(
+                    ex,
+                    tc,
+                    &self.krate,
+                    || {
+                        error!("this task or one of its parent failed!");
+                        utils::report_error(err);
+                        Ok(result)
+                    },
+                    EncodingType::Plain,
+                )?;
             }
         }
 

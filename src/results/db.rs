@@ -3,10 +3,15 @@ use crates::{Crate, GitHubRepo};
 use db::{Database, QueryUtils};
 use errors::*;
 use experiments::Experiment;
+use flate2::write::GzEncoder;
+use flate2::Compression;
+use results::EncodedLog;
+use results::EncodingType;
 use results::{DeleteResults, ReadResults, TestResult, WriteResults};
 use serde_json;
 use std::collections::HashMap;
 use std::io::Read;
+use std::io::Write;
 use toolchain::Toolchain;
 
 #[derive(Deserialize)]
@@ -33,7 +38,12 @@ impl<'a> DatabaseDB<'a> {
         DatabaseDB { db }
     }
 
-    pub fn store(&self, ex: &Experiment, data: &ProgressData) -> Result<()> {
+    pub fn store(
+        &self,
+        ex: &Experiment,
+        data: &ProgressData,
+        encoding_type: EncodingType,
+    ) -> Result<()> {
         for result in &data.results {
             self.store_result(
                 ex,
@@ -41,6 +51,7 @@ impl<'a> DatabaseDB<'a> {
                 &result.toolchain,
                 result.result,
                 &base64::decode(&result.log).chain_err(|| "invalid base64 log provided")?,
+                encoding_type,
             )?;
         }
 
@@ -58,19 +69,50 @@ impl<'a> DatabaseDB<'a> {
         toolchain: &Toolchain,
         res: TestResult,
         log: &[u8],
+        encoding_type: EncodingType,
     ) -> Result<()> {
+        match encoding_type {
+            EncodingType::Gzip => {
+                let mut encoded_log = GzEncoder::new(Vec::new(), Compression::default());
+                encoded_log.write_all(log).unwrap();
+                self.insert_into_results(
+                    ex,
+                    krate,
+                    toolchain,
+                    res,
+                    encoded_log.finish().unwrap().as_slice(),
+                    encoding_type,
+                )?;
+            }
+            EncodingType::Plain => {
+                self.insert_into_results(ex, krate, toolchain, res, log, encoding_type)?;
+            }
+        };
+
+        Ok(())
+    }
+
+    fn insert_into_results(
+        &self,
+        ex: &Experiment,
+        krate: &Crate,
+        toolchain: &Toolchain,
+        res: TestResult,
+        log: &[u8],
+        encoding_type: EncodingType,
+    ) -> Result<usize> {
         self.db.execute(
-            "INSERT INTO results (experiment, crate, toolchain, result, log) \
-             VALUES (?1, ?2, ?3, ?4, ?5);",
+            "INSERT INTO results (experiment, crate, toolchain, result, log, encoding) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6);",
             &[
                 &ex.name,
                 &serde_json::to_string(krate)?,
                 &toolchain.to_string(),
                 &res.to_str(),
                 &log,
+                &encoding_type.to_str(),
             ],
-        )?;
-        Ok(())
+        )
     }
 }
 
@@ -99,9 +141,9 @@ impl<'a> ReadResults for DatabaseDB<'a> {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Result<Option<Vec<u8>>> {
+    ) -> Result<Option<EncodedLog>> {
         self.db.get_row(
-            "SELECT log FROM results \
+            "SELECT log, encoding FROM results \
              WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
              LIMIT 1;",
             &[
@@ -109,7 +151,16 @@ impl<'a> ReadResults for DatabaseDB<'a> {
                 &toolchain.to_string(),
                 &serde_json::to_string(krate)?,
             ],
-            |row| row.get("log"),
+            |row| {
+                let log: Vec<u8> = row.get("log");
+                let encoding: String = row.get("encoding");
+                let encoding = encoding.parse().unwrap();
+
+                match encoding {
+                    EncodingType::Plain => EncodedLog::Plain(log),
+                    EncodingType::Gzip => EncodedLog::Gzip(log),
+                }
+            },
         )
     }
 
@@ -166,6 +217,7 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         toolchain: &Toolchain,
         krate: &Crate,
         f: F,
+        encoding_type: EncodingType,
     ) -> Result<TestResult>
     where
         F: FnOnce() -> Result<TestResult>,
@@ -176,7 +228,7 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         let mut buffer = Vec::new();
         log_file.read_to_end(&mut buffer)?;
 
-        self.store_result(ex, krate, toolchain, result, &buffer)?;
+        self.store_result(ex, krate, toolchain, result, &buffer, encoding_type)?;
 
         Ok(result)
     }
@@ -211,6 +263,8 @@ mod tests {
     use crates::{Crate, GitHubRepo, RegistryCrate};
     use db::Database;
     use experiments::Experiment;
+    use results::EncodedLog;
+    use results::EncodingType;
     use results::{DeleteResults, ReadResults, TestResult, WriteResults};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
@@ -296,10 +350,16 @@ mod tests {
 
         // Record a result with a message in it
         results
-            .record_result(&ex, &MAIN_TOOLCHAIN, &krate, || {
-                info!("hello world");
-                Ok(TestResult::TestPass)
-            }).unwrap();
+            .record_result(
+                &ex,
+                &MAIN_TOOLCHAIN,
+                &krate,
+                || {
+                    info!("hello world");
+                    Ok(TestResult::TestPass)
+                },
+                EncodingType::Plain,
+            ).unwrap();
 
         // Ensure the data is recorded correctly
         assert_eq!(
@@ -312,13 +372,16 @@ mod tests {
             results.get_result(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestPass)
         );
+
+        let result_var = results
+            .load_log(&ex, &MAIN_TOOLCHAIN, &krate)
+            .unwrap()
+            .unwrap();
         assert!(
-            String::from_utf8_lossy(
-                &results
-                    .load_log(&ex, &MAIN_TOOLCHAIN, &krate)
-                    .unwrap()
-                    .unwrap()
-            ).contains("hello world")
+            String::from_utf8_lossy(match result_var {
+                EncodedLog::Plain(ref data) => data,
+                EncodedLog::Gzip(_) => panic!("The encoded log should not be Gzipped."),
+            }).contains("hello world")
         );
 
         // Ensure no data is returned for missing results
@@ -343,10 +406,16 @@ mod tests {
 
         // Add another result
         results
-            .record_result(&ex, &TEST_TOOLCHAIN, &krate, || {
-                info!("Another log message!");
-                Ok(TestResult::TestFail)
-            }).unwrap();
+            .record_result(
+                &ex,
+                &TEST_TOOLCHAIN,
+                &krate,
+                || {
+                    info!("Another log message!");
+                    Ok(TestResult::TestFail)
+                },
+                EncodingType::Plain,
+            ).unwrap();
         assert_eq!(
             results.get_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestFail)
@@ -422,11 +491,12 @@ mod tests {
                         ),
                     ],
                 },
+                EncodingType::Plain,
             ).unwrap();
 
         assert_eq!(
             results.load_log(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
-            Some("foo".as_bytes().to_vec())
+            Some(EncodedLog::Plain("foo".as_bytes().to_vec()))
         );
         assert_eq!(
             results

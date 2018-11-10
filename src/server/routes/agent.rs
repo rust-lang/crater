@@ -2,6 +2,7 @@ use errors::*;
 use experiments::{Assignee, Experiment, Status};
 use http::{Response, StatusCode};
 use hyper::Body;
+use results::EncodingType;
 use results::{DatabaseDB, ProgressData};
 use server::api_types::{AgentConfig, ApiResponse};
 use server::auth::{auth_filter, AuthDetails, TokenType};
@@ -128,7 +129,7 @@ fn endpoint_record_progress(
     );
 
     let db = DatabaseDB::new(&data.db);
-    db.store(&experiment, &result)?;
+    db.store(&experiment, &result, EncodingType::Gzip)?;
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }

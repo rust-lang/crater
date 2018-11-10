@@ -115,6 +115,15 @@ string_enum!(pub enum FailureReason {
     Timeout => "timeout",
 });
 
+impl FailureReason {
+    pub(crate) fn is_spurious(self) -> bool {
+        match self {
+            FailureReason::Unknown | FailureReason::Broken => false,
+            FailureReason::OOM | FailureReason::Timeout => true,
+        }
+    }
+}
+
 test_result_enum!(pub enum TestResult {
     with_reason {
         BuildFail(FailureReason) => "build-fail",

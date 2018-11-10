@@ -1,7 +1,7 @@
 macro_rules! string_enum {
-    (pub enum $name:ident { $($item:ident => $str:expr,)* }) => {
-        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Copy, Clone)]
-        pub enum $name {
+    ($vis:vis enum $name:ident { $($item:ident => $str:expr,)* }) => {
+        #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+        $vis enum $name {
             $($item,)*
         }
 
@@ -23,16 +23,20 @@ macro_rules! string_enum {
         }
 
         impl $name {
-            pub fn to_str(&self) -> &'static str {
+            #[allow(dead_code)]
+            $vis fn to_str(&self) -> &'static str {
                 match *self {
                     $($name::$item => $str,)*
                 }
             }
 
-            pub fn possible_values() -> &'static [&'static str] {
+            #[allow(dead_code)]
+            $vis fn possible_values() -> &'static [&'static str] {
                 &[$($str,)*]
             }
         }
+
+        impl_serde_from_parse!($name, expecting="foo");
     }
 }
 
@@ -49,6 +53,7 @@ macro_rules! impl_serde_from_parse {
                 }
 
                 fn visit_str<E: ::serde::de::Error>(self, input: &str) -> Result<$for, E> {
+                    use std::str::FromStr;
                     $for::from_str(input).map_err(E::custom)
                 }
             }

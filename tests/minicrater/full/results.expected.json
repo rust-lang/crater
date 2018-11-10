@@ -2,7 +2,7 @@
   "crates": [
     {
       "name": "beta-fixed (local)",
-      "res": "Fixed",
+      "res": "fixed",
       "runs": [
         {
           "log": "stable/local/beta-fixed",
@@ -17,7 +17,7 @@
     },
     {
       "name": "beta-regression (local)",
-      "res": "Regressed",
+      "res": "regressed",
       "runs": [
         {
           "log": "stable/local/beta-regression",
@@ -32,7 +32,7 @@
     },
     {
       "name": "broken-cargotoml (local)",
-      "res": "SameBuildFail",
+      "res": "build-fail",
       "runs": [
         {
           "log": "stable/local/broken-cargotoml",
@@ -47,7 +47,7 @@
     },
     {
       "name": "build-fail (local)",
-      "res": "SameBuildFail",
+      "res": "build-fail",
       "runs": [
         {
           "log": "stable/local/build-fail",
@@ -62,7 +62,7 @@
     },
     {
       "name": "build-pass (local)",
-      "res": "SameTestPass",
+      "res": "test-pass",
       "runs": [
         {
           "log": "stable/local/build-pass",
@@ -77,7 +77,7 @@
     },
     {
       "name": "memory-hungry (local)",
-      "res": "Fixed",
+      "res": "spurious-fixed",
       "runs": [
         {
           "log": "stable/local/memory-hungry",
@@ -92,7 +92,7 @@
     },
     {
       "name": "network-access (local)",
-      "res": "Fixed",
+      "res": "fixed",
       "runs": [
         {
           "log": "stable/local/network-access",
@@ -107,7 +107,7 @@
     },
     {
       "name": "test-fail (local)",
-      "res": "SameTestFail",
+      "res": "test-fail",
       "runs": [
         {
           "log": "stable/local/test-fail",

@@ -2,7 +2,7 @@
   "crates": [
     {
       "name": "beta-regression (local)",
-      "res": "Regressed",
+      "res": "regressed",
       "runs": [
         {
           "log": "stable/local/beta-regression",
@@ -17,7 +17,7 @@
     },
     {
       "name": "build-pass (local)",
-      "res": "SameTestPass",
+      "res": "test-pass",
       "runs": [
         {
           "log": "stable/local/build-pass",

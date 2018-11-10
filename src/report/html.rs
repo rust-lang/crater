@@ -29,6 +29,8 @@ impl ResultColor for Comparison {
             Comparison::SameTestSkipped => Color::Striped("#72a156", "#80b65f"),
             Comparison::SameTestPass => Color::Single("#72a156"),
             Comparison::Error => Color::Single("#d77026"),
+            Comparison::SpuriousRegressed => Color::Striped("#db3026", "#d5433b"),
+            Comparison::SpuriousFixed => Color::Striped("#5630db", "#5d3dcf"),
         }
     }
 }

@@ -46,51 +46,35 @@ struct CrateResult {
     runs: [Option<BuildTestResult>; 2],
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Copy, Clone, Debug)]
-enum Comparison {
-    Regressed,
-    Fixed,
-    Skipped,
-    Unknown,
-    Error,
-    SameBuildFail,
-    SameTestFail,
-    SameTestSkipped,
-    SameTestPass,
-}
+string_enum!(enum Comparison {
+    Regressed => "regressed",
+    Fixed => "fixed",
+    Skipped => "skipped",
+    Unknown => "unknown",
+    Error => "error",
+    SameBuildFail => "build-fail",
+    SameTestFail => "test-fail",
+    SameTestSkipped => "test-skipped",
+    SameTestPass => "test-pass",
+    SpuriousRegressed => "spurious-regressed",
+    SpuriousFixed => "spurious-fixed",
+});
 
 impl Comparison {
     fn show_in_summary(self) -> bool {
         match self {
-            Comparison::Regressed | Comparison::Fixed | Comparison::Unknown | Comparison::Error => {
-                true
-            }
+            Comparison::Regressed
+            | Comparison::Fixed
+            | Comparison::Unknown
+            | Comparison::Error
+            | Comparison::SpuriousRegressed
+            | Comparison::SpuriousFixed => true,
             Comparison::Skipped
             | Comparison::SameBuildFail
             | Comparison::SameTestFail
             | Comparison::SameTestSkipped
             | Comparison::SameTestPass => false,
         }
-    }
-}
-
-impl Display for Comparison {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Comparison::Regressed => "regressed",
-                Comparison::Fixed => "fixed",
-                Comparison::Skipped => "skipped",
-                Comparison::Unknown => "unknown",
-                Comparison::Error => "error",
-                Comparison::SameBuildFail => "build-fail",
-                Comparison::SameTestFail => "test-fail",
-                Comparison::SameTestSkipped => "test-skipped",
-                Comparison::SameTestPass => "test-pass",
-            }
-        )
     }
 }
 
@@ -294,20 +278,49 @@ fn compare(
     r2: Option<TestResult>,
 ) -> Comparison {
     use results::TestResult::*;
+
     match (r1, r2) {
         (Some(res1), Some(res2)) => match (res1, res2) {
             (BuildFail(_), BuildFail(_)) => Comparison::SameBuildFail,
             (TestFail(_), TestFail(_)) => Comparison::SameTestFail,
             (TestSkipped, TestSkipped) => Comparison::SameTestSkipped,
             (TestPass, TestPass) => Comparison::SameTestPass,
+
+            (BuildFail(reason1), TestFail(reason2))
+                if reason1.is_spurious() || reason2.is_spurious() =>
+            {
+                Comparison::SpuriousFixed
+            }
+            (BuildFail(reason), TestSkipped)
+            | (BuildFail(reason), TestPass)
+            | (TestFail(reason), TestPass)
+                if reason.is_spurious() =>
+            {
+                Comparison::SpuriousFixed
+            }
             (BuildFail(_), TestFail(_))
             | (BuildFail(_), TestSkipped)
             | (BuildFail(_), TestPass)
             | (TestFail(_), TestPass) => Comparison::Fixed,
+
+            (TestFail(reason1), BuildFail(reason2))
+                if reason1.is_spurious() || reason2.is_spurious() =>
+            {
+                Comparison::SpuriousRegressed
+            }
+            (TestPass, TestFail(reason))
+            | (TestPass, BuildFail(reason))
+            | (TestSkipped, BuildFail(reason))
+            | (TestFail(_), BuildFail(reason))
+                if reason.is_spurious() =>
+            {
+                Comparison::SpuriousRegressed
+            }
             (TestPass, TestFail(_))
             | (TestPass, BuildFail(_))
             | (TestSkipped, BuildFail(_))
             | (TestFail(_), BuildFail(_)) => Comparison::Regressed,
+
             (Error, _) | (_, Error) => Comparison::Error,
             (TestFail(_), TestSkipped)
             | (TestPass, TestSkipped)
@@ -548,6 +561,8 @@ mod tests {
                 TestFail(Unknown), TestFail(Unknown) => SameTestFail;
                 TestSkipped, TestSkipped => SameTestSkipped;
                 TestPass, TestPass => SameTestPass;
+
+                // Non-spurious fixes/regressions
                 BuildFail(Unknown), TestFail(Unknown) => Fixed;
                 BuildFail(Unknown), TestSkipped => Fixed;
                 BuildFail(Unknown), TestPass => Fixed;
@@ -556,6 +571,20 @@ mod tests {
                 TestPass, BuildFail(Unknown) => Regressed;
                 TestSkipped, BuildFail(Unknown) => Regressed;
                 TestFail(Unknown), BuildFail(Unknown) => Regressed;
+
+                // Spurious fixes/regressions
+                BuildFail(OOM), TestFail(Unknown) => SpuriousFixed;
+                BuildFail(Unknown), TestFail(OOM) => SpuriousFixed;
+                BuildFail(OOM), TestSkipped => SpuriousFixed;
+                BuildFail(OOM), TestPass => SpuriousFixed;
+                TestFail(OOM), TestPass => SpuriousFixed;
+                TestPass, TestFail(OOM) => SpuriousRegressed;
+                TestPass, BuildFail(OOM) => SpuriousRegressed;
+                TestSkipped, BuildFail(OOM) => SpuriousRegressed;
+                TestFail(OOM), BuildFail(Unknown) => SpuriousRegressed;
+                TestFail(Unknown), BuildFail(OOM) => SpuriousRegressed;
+
+                // Errors
                 Error, TestPass => Error;
                 Error, TestSkipped => Error;
                 Error, TestFail(Unknown) => Error;

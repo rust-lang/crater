@@ -859,8 +859,6 @@ crc32 = { skip = true } #automatic
 crc64-rs = { skip = true } #automatic
 crdt = { skip = true } #automatic
 credui-sys = { skip = true } #automatic
-cretonne-faerie = { skip = true } #automatic
-cretonne-wasm = { skip = true } #automatic
 crfsuite = { skip-tests = true } #automatic
 crfsuite-sys = { skip = true } #automatic
 criterion-plot = { skip-tests = true } #automatic

@@ -26,6 +26,10 @@ matrix:
     #  Linux builds  #
     ##################
 
+    - env: TASK=check-release-linux
+      rust: stable
+      if: branch = auto OR branch = try
+
     - env: TASK=test-linux
       rust: stable
       if: type = pull_request OR branch = auto OR branch = try

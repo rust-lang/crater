@@ -67,6 +67,7 @@ The following experiment modes are currently available:
 * `build-and-test`: run `cargo build` and `cargo test` on every crate
 * `build-only`: run `cargo build` on every crate
 * `check-only`: run `cargo check` on every crate (faster)
+* `rustdoc`: run `cargo doc --no-deps` on every crate
 
 The mode you should use depends on what your experiment is testing:
 

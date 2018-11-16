@@ -255,6 +255,10 @@ pub(super) fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
                             tc: tc.clone(),
                             quiet,
                         },
+                        Mode::Rustdoc => TaskStep::Rustdoc {
+                            tc: tc.clone(),
+                            quiet,
+                        },
                         Mode::UnstableFeatures => TaskStep::UnstableFeatures { tc: tc.clone() },
                     },
                 },

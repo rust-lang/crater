@@ -43,6 +43,12 @@ fn run_cargo(
         rustflags.push_str(tc_rustflags);
     }
 
+    let rustflags_env = if let Some(&"doc") = args.get(0) {
+        "RUSTDOCFLAGS"
+    } else {
+        "RUSTFLAGS"
+    };
+
     RunCommand::new(CARGO.toolchain(toolchain))
         .args(args)
         .quiet(quiet)
@@ -50,7 +56,7 @@ fn run_cargo(
         .env("CARGO_TARGET_DIR", "/target")
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
-        .env("RUSTFLAGS", rustflags)
+        .env(rustflags_env, rustflags)
         .sandboxed()
         .mount(target_dir, "/target", MountPerms::ReadWrite)
         .memory_limit(Some(config.sandbox.memory_limit))
@@ -197,6 +203,34 @@ pub fn test_check_only(
         quiet,
         &["check", "--frozen", "--all", "--all-targets"],
     ) {
+        Ok(TestResult::BuildFail(failure_reason(&err)))
+    } else {
+        Ok(TestResult::TestPass)
+    }
+}
+
+pub fn test_rustdoc(
+    config: &Config,
+    ex: &Experiment,
+    source_path: &Path,
+    toolchain: &Toolchain,
+    quiet: bool,
+) -> Fallible<TestResult> {
+    let res = run_cargo(
+        config,
+        ex,
+        source_path,
+        toolchain,
+        quiet,
+        &["doc", "--frozen", "--no-deps", "--document-private-items"],
+    );
+
+    // Make sure to remove the built documentation
+    // There is no point in storing it after the build is done
+    let target_dir = toolchain.target_dir(&ex.name);
+    ::utils::fs::remove_dir_all(&target_dir.join("doc"))?;
+
+    if let Err(err) = res {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
         Ok(TestResult::TestPass)

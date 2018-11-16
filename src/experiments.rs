@@ -21,6 +21,7 @@ string_enum!(pub enum Mode {
     BuildAndTest => "build-and-test",
     BuildOnly => "build-only",
     CheckOnly => "check-only",
+    Rustdoc => "rustdoc",
     UnstableFeatures => "unstable-features",
 });
 

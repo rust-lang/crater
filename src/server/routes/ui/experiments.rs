@@ -38,6 +38,7 @@ impl ExperimentData {
                 Mode::BuildAndTest => "cargo test",
                 Mode::BuildOnly => "cargo build",
                 Mode::CheckOnly => "cargo check",
+                Mode::Rustdoc => "cargo doc",
                 Mode::UnstableFeatures => "unstable features",
             },
             assigned_to: experiment.assigned_to.as_ref().map(|a| a.to_string()),

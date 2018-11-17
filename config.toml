@@ -6,6 +6,7 @@ bot-acl = [
     "rust-lang/release",
     "rust-lang/compiler",
     "rust-lang/libs",
+    "rust-lang/rustdoc",
 ]
 
 [server.labels]

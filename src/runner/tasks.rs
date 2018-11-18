@@ -141,8 +141,8 @@ impl Task {
             ::runner::prepare::capture_shas(ex, &[self.krate.clone()], db)?;
         }
 
-        ::runner::prepare::frob_toml(ex, &self.krate)?;
         ::runner::prepare::validate_manifest(ex, &self.krate, &ex.toolchains[0])?;
+        ::runner::prepare::frob_toml(ex, &self.krate)?;
         ::runner::prepare::capture_lockfile(config, ex, &self.krate, &ex.toolchains[0])?;
         ::runner::prepare::fetch_crate_deps(config, ex, &self.krate, &ex.toolchains[0])?;
 

@@ -97,6 +97,12 @@ pub(super) fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> 
 pub(super) fn validate_manifest(ex: &Experiment, krate: &Crate, tc: &Toolchain) -> Fallible<()> {
     info!("validating manifest of {} on toolchain {}", krate, tc);
     with_work_crate(ex, tc, krate, |path| {
+        // Skip crates missing a Cargo.toml
+        if !path.join("Cargo.toml").is_file() {
+            Err(err_msg(format!("missing Cargo.toml for {}", krate)))
+                .with_context(|_| OverrideResult(TestResult::BuildFail(FailureReason::Broken)))?;
+        }
+
         RunCommand::new(CARGO.toolchain(tc))
             .args(&["read-manifest", "--manifest-path", "Cargo.toml"])
             .cd(path)

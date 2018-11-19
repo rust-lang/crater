@@ -4,6 +4,7 @@ use experiments::Experiment;
 use failure::AsFail;
 use prelude::*;
 use results::{TestResult, WriteResults};
+use runner::prepare::PrepareCrate;
 use runner::test;
 use std::fmt;
 use toolchain::Toolchain;
@@ -117,7 +118,10 @@ impl Task {
         db: &DB,
     ) -> Fallible<()> {
         match self.step {
-            TaskStep::Prepare => self.run_prepare(config, ex, db),
+            TaskStep::Prepare => {
+                let prepare = PrepareCrate::new(ex, &self.krate, config, db);
+                prepare.prepare()
+            }
             TaskStep::BuildAndTest { ref tc, quiet } => {
                 self.run_build_and_test(config, ex, tc, db, quiet)
             }
@@ -126,27 +130,6 @@ impl Task {
             TaskStep::Rustdoc { ref tc, quiet } => self.run_rustdoc(config, ex, tc, db, quiet),
             TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(config, ex, db, tc),
         }
-    }
-
-    fn run_prepare<DB: WriteResults>(
-        &self,
-        config: &Config,
-        ex: &Experiment,
-        db: &DB,
-    ) -> Fallible<()> {
-        self.krate.prepare()?;
-
-        // Fetch repository data if it's a git repo
-        if let Crate::GitHub(_) = self.krate {
-            ::runner::prepare::capture_shas(ex, &[self.krate.clone()], db)?;
-        }
-
-        ::runner::prepare::validate_manifest(ex, &self.krate, &ex.toolchains[0])?;
-        ::runner::prepare::frob_toml(ex, &self.krate)?;
-        ::runner::prepare::capture_lockfile(config, ex, &self.krate, &ex.toolchains[0])?;
-        ::runner::prepare::fetch_crate_deps(config, ex, &self.krate, &ex.toolchains[0])?;
-
-        Ok(())
     }
 
     fn run_build_and_test<DB: WriteResults>(

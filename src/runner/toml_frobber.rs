@@ -10,15 +10,11 @@ pub(super) struct TomlFrobber<'a> {
 }
 
 impl<'a> TomlFrobber<'a> {
-    pub(super) fn new(krate: &'a Crate, source_dir: &Path) -> Fallible<Self> {
-        let toml_content = ::std::fs::read_to_string(&source_dir.join("Cargo.toml"))
+    pub(super) fn new(krate: &'a Crate, cargo_toml: &Path) -> Fallible<Self> {
+        let toml_content = ::std::fs::read_to_string(cargo_toml)
             .with_context(|_| format!("missing Cargo.toml from {}", krate))?;
-        let table: Table = toml::from_str(&toml_content).with_context(|_| {
-            format!(
-                "unable to parse Cargo.toml at {}",
-                source_dir.to_string_lossy()
-            )
-        })?;
+        let table: Table = toml::from_str(&toml_content)
+            .with_context(|_| format!("unable to parse {}", cargo_toml.display(),))?;
 
         Ok(TomlFrobber { krate, table })
     }

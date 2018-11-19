@@ -1,10 +1,10 @@
 pub(crate) mod lists;
 mod sources;
 
-use dirs::{CRATES_DIR, LOCAL_CRATES_DIR};
+use dirs::LOCAL_CRATES_DIR;
 use prelude::*;
 use std::fmt;
-use std::path::PathBuf;
+use std::path::Path;
 use std::str::FromStr;
 
 pub(crate) use crates::sources::github::GitHubRepo;
@@ -25,17 +25,6 @@ impl Crate {
             Crate::Local(_) => false,
         }
     }
-    pub(crate) fn dir(&self) -> PathBuf {
-        match *self {
-            Crate::Registry(ref details) => CRATES_DIR
-                .join("reg")
-                .join(format!("{}-{}", details.name, details.version)),
-            Crate::GitHub(ref repo) => CRATES_DIR
-                .join("gh")
-                .join(format!("{}.{}", repo.org, repo.name)),
-            Crate::Local(ref name) => CRATES_DIR.join("local").join(name),
-        }
-    }
 
     pub(crate) fn id(&self) -> String {
         match *self {
@@ -45,13 +34,28 @@ impl Crate {
         }
     }
 
-    pub(crate) fn prepare(&self) -> Fallible<()> {
-        let dir = self.dir();
+    pub(crate) fn fetch(&self) -> Fallible<()> {
         match *self {
-            Crate::Registry(ref details) => details.prepare(&dir)?,
-            Crate::GitHub(ref repo) => repo.prepare(&dir)?,
+            Crate::Registry(ref krate) => krate.fetch(),
+            Crate::GitHub(ref repo) => repo.fetch(),
+            Crate::Local(_) => Ok(()),
+        }
+    }
+
+    pub(crate) fn copy_to(&self, dest: &Path) -> Fallible<()> {
+        if dest.exists() {
+            info!(
+                "crate source directory {} already exists, cleaning it up",
+                dest.display()
+            );
+            ::utils::fs::remove_dir_all(dest)?;
+        }
+        match *self {
+            Crate::Registry(ref details) => details.copy_to(&dest)?,
+            Crate::GitHub(ref repo) => repo.copy_to(&dest)?,
             Crate::Local(ref name) => {
-                ::utils::fs::copy_dir(&LOCAL_CRATES_DIR.join(name), &dir)?;
+                info!("copying local crate {} to {}", name, dest.display());
+                ::utils::fs::copy_dir(&LOCAL_CRATES_DIR.join(name), &dest)?;
             }
         }
 

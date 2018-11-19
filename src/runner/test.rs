@@ -7,7 +7,6 @@ use failure::Error;
 use prelude::*;
 use results::{FailureReason, TestResult, WriteResults};
 use run::{RunCommand, RunCommandError};
-use runner::prepare::{with_captured_lockfile, with_frobbed_toml, with_work_crate};
 use std::path::Path;
 use toolchain::Toolchain;
 use tools::CARGO;
@@ -88,20 +87,16 @@ pub fn run_test<DB: WriteResults>(
             skipped: true,
         })
     } else {
-        with_work_crate(ex, tc, krate, |source_path| {
-            with_frobbed_toml(ex, krate, source_path)?;
-            with_captured_lockfile(config, ex, krate, source_path)?;
-
-            db.record_result(ex, tc, krate, || {
-                info!(
-                    "{} {} against {} for {}",
-                    action,
-                    krate,
-                    tc.to_string(),
-                    ex.name
-                );
-                test_fn(config, ex, source_path, tc, quiet)
-            })
+        let source_path = ::dirs::crate_source_dir(ex, tc, krate);
+        db.record_result(ex, tc, krate, || {
+            info!(
+                "{} {} against {} for {}",
+                action,
+                krate,
+                tc.to_string(),
+                ex.name
+            );
+            test_fn(config, ex, &source_path, tc, quiet)
         })
         .map(|result| RunTestResult {
             result,

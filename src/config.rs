@@ -1,5 +1,5 @@
 use crates::Crate;
-use errors::*;
+use prelude::*;
 use regex::Regex;
 use serde_regex;
 use std::collections::{HashMap, HashSet};
@@ -15,6 +15,10 @@ fn default_config_file() -> PathBuf {
         .unwrap_or_else(|| OsStr::new("config.toml").to_os_string())
         .into()
 }
+
+#[derive(Debug, Fail)]
+#[fail(display = "the configuration file has errors")]
+pub struct BadConfig;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -77,13 +81,13 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load() -> Result<Self> {
+    pub fn load() -> Fallible<Self> {
         let buffer = Self::load_as_string(default_config_file())?;
 
         Ok(::toml::from_str(&buffer)?)
     }
 
-    fn load_as_string(filename: PathBuf) -> Result<String> {
+    fn load_as_string(filename: PathBuf) -> Fallible<String> {
         let mut buffer = String::new();
         File::open(filename)?.read_to_string(&mut buffer)?;
 
@@ -124,7 +128,7 @@ impl Config {
         &self.demo_crates
     }
 
-    pub fn check(file: &Option<String>) -> Result<()> {
+    pub fn check(file: &Option<String>) -> Fallible<()> {
         if let Some(file) = file {
             Self::check_all(file.into())
         } else {
@@ -132,7 +136,7 @@ impl Config {
         }
     }
 
-    fn check_all(filename: PathBuf) -> Result<()> {
+    fn check_all(filename: PathBuf) -> Fallible<()> {
         use experiments::CrateSelect;
 
         let buffer = Self::load_as_string(filename)?;
@@ -143,13 +147,13 @@ impl Config {
         has_errors |= cfg.check_for_missing_crates(&crates).is_err();
         has_errors |= cfg.check_for_missing_repos(&crates).is_err();
         if has_errors {
-            bail!("the config file contains errors");
+            Err(BadConfig.into())
         } else {
             Ok(())
         }
     }
 
-    fn check_for_dup_keys(buffer: &str) -> Result<()> {
+    fn check_for_dup_keys(buffer: &str) -> Fallible<()> {
         if let Err(e) = ::toml::from_str::<::toml::Value>(&buffer) {
             error!("got error parsing the config-file: {}", e);
             Err(e.into())
@@ -158,7 +162,7 @@ impl Config {
         }
     }
 
-    fn check_for_missing_crates(&self, crates: &[Crate]) -> Result<()> {
+    fn check_for_missing_crates(&self, crates: &[Crate]) -> Fallible<()> {
         if self.crates.is_empty() {
             return Ok(());
         }
@@ -184,13 +188,13 @@ impl Config {
             }
         }
         if any_missing {
-            Err(ErrorKind::BadConfig.into())
+            Err(BadConfig.into())
         } else {
             Ok(())
         }
     }
 
-    fn check_for_missing_repos(&self, crates: &[Crate]) -> Result<()> {
+    fn check_for_missing_repos(&self, crates: &[Crate]) -> Fallible<()> {
         if self.github_repos.is_empty() {
             return Ok(());
         }
@@ -216,7 +220,7 @@ impl Config {
             }
         }
         if any_missing {
-            Err(ErrorKind::BadConfig.into())
+            Err(BadConfig.into())
         } else {
             Ok(())
         }

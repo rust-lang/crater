@@ -1,5 +1,5 @@
-use errors::*;
 use mime::Mime;
+use prelude::*;
 use report::ReportWriter;
 use rusoto_core::request::HttpClient;
 use rusoto_core::{DefaultCredentialsProvider, Region};
@@ -13,6 +13,14 @@ use std::thread;
 use std::time::Duration;
 use url::{Host, Url};
 
+#[derive(Debug, Fail)]
+pub enum S3Error {
+    #[fail(display = "bad S3 url: {}", _0)]
+    BadUrl(String),
+    #[fail(display = "unknown bucket region")]
+    UnknownBucketRegion,
+}
+
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct S3Prefix {
@@ -21,10 +29,10 @@ pub struct S3Prefix {
 }
 
 impl FromStr for S3Prefix {
-    type Err = Error;
+    type Err = ::failure::Error;
 
-    fn from_str(url: &str) -> Result<S3Prefix> {
-        let parsed = Url::parse(url).chain_err(|| ErrorKind::BadS3Uri)?;
+    fn from_str(url: &str) -> Fallible<S3Prefix> {
+        let parsed = Url::parse(url).with_context(|_| S3Error::BadUrl(url.into()))?;
 
         if parsed.scheme() != "s3"
             || parsed.username() != ""
@@ -33,13 +41,13 @@ impl FromStr for S3Prefix {
             || parsed.query().is_some()
             || parsed.fragment().is_some()
         {
-            return Err(ErrorKind::BadS3Uri.into());
+            return Err(S3Error::BadUrl(url.into()).into());
         }
 
         let bucket = if let Some(Host::Domain(host)) = parsed.host() {
             host.to_string()
         } else {
-            return Err(ErrorKind::BadS3Uri.into());
+            return Err(S3Error::BadUrl(url.into()).into());
         };
 
         Ok(S3Prefix {
@@ -54,8 +62,8 @@ pub struct S3Writer {
     client: Box<S3>,
 }
 
-pub fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
-    let make_client = |region| -> Result<S3Client> {
+pub fn get_client_for_bucket(bucket: &str) -> Fallible<Box<S3>> {
+    let make_client = |region| -> Fallible<S3Client> {
         let credentials = DefaultCredentialsProvider::new().unwrap();
         Ok(S3Client::new_with(HttpClient::new()?, credentials, region))
     };
@@ -64,11 +72,11 @@ pub fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
         .get_bucket_location(GetBucketLocationRequest {
             bucket: bucket.into(),
         }).sync()
-        .chain_err(|| "S3 failure to get bucket location")?;
+        .context(S3Error::UnknownBucketRegion)?;
     let region = match response.location_constraint.as_ref() {
         Some(region) if region == "" => Region::UsEast1,
-        Some(region) => region.parse().chain_err(|| "Unknown bucket region.")?,
-        None => bail!{"Couldn't determine bucket region"},
+        Some(region) => Region::from_str(region).context(S3Error::UnknownBucketRegion)?,
+        None => Err(S3Error::UnknownBucketRegion)?,
     };
 
     Ok(Box::new(make_client(region)?))
@@ -77,13 +85,13 @@ pub fn get_client_for_bucket(bucket: &str) -> Result<Box<S3>> {
 const S3RETRIES: u64 = 4;
 
 impl S3Writer {
-    pub fn create(client: Box<S3>, prefix: S3Prefix) -> Result<S3Writer> {
+    pub fn create(client: Box<S3>, prefix: S3Prefix) -> Fallible<S3Writer> {
         Ok(S3Writer { prefix, client })
     }
 }
 
 impl ReportWriter for S3Writer {
-    fn write_bytes<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Result<()> {
+    fn write_bytes<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Fallible<()> {
         let mut retry = 0;
         loop {
             let req = PutObjectRequest {
@@ -112,19 +120,18 @@ impl ReportWriter for S3Writer {
                     continue;
                 }
                 r => {
-                    return r
-                        .map(|_| ())
-                        .chain_err(|| format!("S3 failure to upload {:?}", path.as_ref()))
+                    r.with_context(|_| format!("S3 failure to upload {:?}", path.as_ref()))?;
+                    return Ok(());
                 }
             }
         }
     }
 
-    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Result<()> {
+    fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()> {
         self.write_bytes(path, s.into_owned().into_bytes(), mime)
     }
 
-    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Result<()> {
+    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Fallible<()> {
         let mut bytes = Vec::new();
         io::copy(r, &mut bytes)?;
         self.write_bytes(path, bytes, mime)

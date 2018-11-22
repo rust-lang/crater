@@ -1,6 +1,15 @@
-use errors::*;
+use prelude::*;
 
-pub(crate) fn from_hex(input: &str) -> Result<Vec<u8>> {
+#[derive(Debug, Fail)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub(crate) enum HexError {
+    #[fail(display = "invalid char in hex: {}", _0)]
+    InvalidChar(char),
+    #[fail(display = "invalid hex length")]
+    InvalidLength,
+}
+
+pub(crate) fn from_hex(input: &str) -> Result<Vec<u8>, HexError> {
     let mut result = Vec::with_capacity(input.len() / 2);
 
     let mut pending: u8 = 0;
@@ -14,7 +23,7 @@ pub(crate) fn from_hex(input: &str) -> Result<Vec<u8>> {
             b'a'...b'f' => byte - b'a' + 10,
             b'A'...b'F' => byte - b'A' + 10,
             _ => {
-                bail!("invalid char {} in hex", input[i..].chars().next().unwrap());
+                return Err(HexError::InvalidChar(input[i..].chars().next().unwrap()));
             }
         };
 
@@ -27,7 +36,7 @@ pub(crate) fn from_hex(input: &str) -> Result<Vec<u8>> {
     }
 
     if pending != 0 {
-        bail!("invalid hex length");
+        Err(HexError::InvalidLength)
     } else {
         Ok(result)
     }
@@ -35,7 +44,7 @@ pub(crate) fn from_hex(input: &str) -> Result<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use super::from_hex;
+    use super::{from_hex, HexError};
 
     #[test]
     fn test_from_hex() {
@@ -45,10 +54,10 @@ mod tests {
         );
 
         // Invalid char
-        assert!(from_hex("!").is_err());
-        assert!(from_hex("g").is_err());
+        assert_eq!(from_hex("!").unwrap_err(), HexError::InvalidChar('!'));
+        assert_eq!(from_hex("g").unwrap_err(), HexError::InvalidChar('g'));
 
         // Invalid length
-        assert!(from_hex("000").is_err());
+        assert_eq!(from_hex("000").unwrap_err(), HexError::InvalidLength);
     }
 }

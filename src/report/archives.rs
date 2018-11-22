@@ -1,7 +1,7 @@
 use config::Config;
-use errors::*;
 use experiments::Experiment;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
+use prelude::*;
 use report::{compare, ReportWriter};
 use results::EncodedLog;
 use results::ReadResults;
@@ -20,7 +20,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
     ex: &Experiment,
     dest: &W,
     config: &Config,
-) -> Result<Vec<Archive>> {
+) -> Fallible<Vec<Archive>> {
     let mut archives = Vec::new();
     let mut all = TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()));
     let mut by_comparison = HashMap::new();
@@ -37,13 +37,13 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
         for tc in &ex.toolchains {
             let log = db
                 .load_log(ex, tc, krate)
-                .and_then(|c| c.ok_or_else(|| "missing logs".into()))
-                .chain_err(|| format!("failed to read log of {} on {}", krate, tc));
+                .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
+                .with_context(|_| format!("failed to read log of {} on {}", krate, tc));
 
             let log_bytes: EncodedLog = match log {
                 Ok(l) => l,
                 Err(e) => {
-                    ::utils::report_error(&e);
+                    ::utils::report_failure(&e);
                     continue;
                 }
             };

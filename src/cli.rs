@@ -15,15 +15,14 @@ use crater::config::Config;
 use crater::crates::Crate;
 use crater::db::Database;
 use crater::docker;
-use crater::errors::*;
 use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
 use crater::runner;
 use crater::server;
 use crater::toolchain::Toolchain;
+use failure::{Error, Fallible};
 use std::collections::HashSet;
-use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::clap::AppSettings;
@@ -37,7 +36,7 @@ pub struct DockerEnv(String);
 impl FromStr for Ex {
     type Err = Error;
 
-    fn from_str(ex: &str) -> Result<Ex> {
+    fn from_str(ex: &str) -> Fallible<Ex> {
         Ok(Ex(ex.to_string()))
     }
 }
@@ -45,7 +44,7 @@ impl FromStr for Ex {
 impl FromStr for DockerEnv {
     type Err = Error;
 
-    fn from_str(env: &str) -> Result<DockerEnv> {
+    fn from_str(env: &str) -> Fallible<DockerEnv> {
         Ok(DockerEnv(env.to_string()))
     }
 }
@@ -56,7 +55,7 @@ pub struct Dest(PathBuf);
 impl FromStr for Dest {
     type Err = Error;
 
-    fn from_str(env: &str) -> Result<Dest> {
+    fn from_str(env: &str) -> Fallible<Dest> {
         Ok(Dest(env.into()))
     }
 }
@@ -237,12 +236,8 @@ pub enum Crater {
             help = "The experiment to publish a report for."
         )]
         ex: Ex,
-        #[structopt(
-            name = "S3 URI",
-            help = "The S3 URI to put the report at. \
-                    [default: $CARGOBOMB_REPORT_S3_PREFIX/<experiment>"
-        )]
-        s3_prefix: Option<report::S3Prefix>,
+        #[structopt(name = "S3 URI", help = "The S3 URI to put the report at.")]
+        s3_prefix: report::S3Prefix,
         #[structopt(name = "force", long = "force")]
         force: bool,
     },
@@ -287,7 +282,7 @@ pub enum Crater {
 }
 
 impl Crater {
-    pub fn run(&self) -> Result<()> {
+    pub fn run(&self) -> Fallible<()> {
         match *self {
             Crater::CreateLists { ref lists } => {
                 let mut lists: HashSet<_> = lists.iter().map(|s| s.as_str()).collect();
@@ -474,15 +469,6 @@ impl Crater {
                 let config = Config::load()?;
                 let db = Database::open()?;
 
-                let s3_prefix = match *s3_prefix {
-                    Some(ref prefix) => prefix.clone(),
-                    None => {
-                        let mut prefix: report::S3Prefix = get_env("CARGOBOMB_REPORT_S3_PREFIX")?;
-                        prefix.prefix.push(&ex.0);
-                        prefix
-                    }
-                };
-
                 if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
                     // Update the status
                     match (experiment.status, force) {
@@ -502,7 +488,7 @@ impl Crater {
                     let res = report::gen(
                         &result_db,
                         &experiment,
-                        &report::S3Writer::create(client, s3_prefix)?,
+                        &report::S3Writer::create(client, s3_prefix.clone())?,
                         &config,
                     );
 
@@ -546,17 +532,4 @@ impl Crater {
 
         Ok(())
     }
-}
-
-/// Load and parse and environment variable.
-fn get_env<T>(name: &str) -> Result<T>
-where
-    T: FromStr,
-    T::Err: ::std::error::Error + Send + 'static,
-{
-    env::var(name)
-        .chain_err(|| {
-            format!{"Need to specify {:?} in environment or `.env`.", name}
-        })?.parse()
-        .chain_err(|| format!{"Couldn't parse {:?}.", name})
 }

@@ -1,7 +1,7 @@
 use chrono::SecondsFormat;
-use errors::*;
 use http::Response;
 use hyper::Body;
+use prelude::*;
 use server::agents::AgentStatus;
 use server::routes::ui::{render_template, LayoutContext};
 use server::Data;
@@ -23,7 +23,7 @@ struct ListContext {
     agents: Vec<AgentData>,
 }
 
-pub fn endpoint_list(data: Arc<Data>) -> Result<Response<Body>> {
+pub fn endpoint_list(data: Arc<Data>) -> Fallible<Response<Body>> {
     let mut agents = Vec::new();
     for agent in &data.agents.all()? {
         let (status_class, status_pretty, show_assigned) = match agent.status() {

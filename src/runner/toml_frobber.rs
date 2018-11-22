@@ -1,5 +1,5 @@
 use crates::Crate;
-use errors::*;
+use prelude::*;
 use std::path::Path;
 use toml::value::Table;
 use toml::{self, Value};
@@ -10,10 +10,10 @@ pub(super) struct TomlFrobber<'a> {
 }
 
 impl<'a> TomlFrobber<'a> {
-    pub(super) fn new(krate: &'a Crate, source_dir: &Path) -> Result<Self> {
+    pub(super) fn new(krate: &'a Crate, source_dir: &Path) -> Fallible<Self> {
         let toml_content = ::std::fs::read_to_string(&source_dir.join("Cargo.toml"))
-            .chain_err(|| format!("missing Cargo.toml from {}", krate))?;
-        let table: Table = toml::from_str(&toml_content).chain_err(|| {
+            .with_context(|_| format!("missing Cargo.toml from {}", krate))?;
+        let table: Table = toml::from_str(&toml_content).with_context(|_| {
             format!(
                 "unable to parse Cargo.toml at {}",
                 source_dir.to_string_lossy()
@@ -123,7 +123,7 @@ impl<'a> TomlFrobber<'a> {
         }
     }
 
-    pub(super) fn save(self, output_file: &Path) -> Result<()> {
+    pub(super) fn save(self, output_file: &Path) -> Fallible<()> {
         let crate_name = self.krate.to_string();
         ::std::fs::write(output_file, Value::Table(self.table).to_string().as_bytes())?;
         info!(

@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use crates::Crate;
 use db::{Database, QueryUtils};
-use errors::*;
+use prelude::*;
 use rusqlite::Row;
 use serde_json;
 use std::fmt;
@@ -55,34 +55,45 @@ impl fmt::Display for Assignee {
     }
 }
 
-impl FromStr for Assignee {
-    type Err = Error;
+#[derive(Debug, Fail)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub enum AssigneeParseError {
+    #[fail(display = "the assignee is empty")]
+    Empty,
+    #[fail(display = "unexpected assignee payload")]
+    UnexpectedPayload,
+    #[fail(display = "invalid assignee kind: {}", _0)]
+    InvalidKind(String),
+}
 
-    fn from_str(input: &str) -> Result<Self> {
+impl FromStr for Assignee {
+    type Err = AssigneeParseError;
+
+    fn from_str(input: &str) -> Result<Self, AssigneeParseError> {
         if input.trim().is_empty() {
-            return Err(ErrorKind::EmptyAssignee.into());
+            return Err(AssigneeParseError::Empty);
         }
 
         let mut split = input.splitn(2, ':');
-        let kind = split.next().ok_or(ErrorKind::EmptyAssignee)?;
+        let kind = split.next().ok_or(AssigneeParseError::Empty)?;
 
         match kind {
             "agent" => {
-                let name = split.next().ok_or(ErrorKind::EmptyAssignee)?;
+                let name = split.next().ok_or(AssigneeParseError::Empty)?;
                 if name.trim().is_empty() {
-                    return Err(ErrorKind::EmptyAssignee.into());
+                    return Err(AssigneeParseError::Empty);
                 }
 
                 Ok(Assignee::Agent(name.to_string()))
             }
             "cli" => {
                 if split.next().is_some() {
-                    return Err(ErrorKind::UnexpectedAssigneePayload.into());
+                    return Err(AssigneeParseError::UnexpectedPayload);
                 }
 
                 Ok(Assignee::CLI)
             }
-            invalid => Err(ErrorKind::InvalidAssigneeKind(invalid.to_string()).into()),
+            invalid => Err(AssigneeParseError::InvalidKind(invalid.into())),
         }
     }
 }
@@ -112,11 +123,11 @@ pub struct Experiment {
 }
 
 impl Experiment {
-    pub fn exists(db: &Database, name: &str) -> Result<bool> {
-        db.exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])
+    pub fn exists(db: &Database, name: &str) -> Fallible<bool> {
+        Ok(db.exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])?)
     }
 
-    pub fn all(db: &Database) -> Result<Vec<Experiment>> {
+    pub fn all(db: &Database) -> Fallible<Vec<Experiment>> {
         let records = db.query(
             "SELECT * FROM experiments ORDER BY priority DESC, created_at;",
             &[],
@@ -125,10 +136,10 @@ impl Experiment {
         records
             .into_iter()
             .map(|record| record.into_experiment(db))
-            .collect::<Result<_>>()
+            .collect::<Fallible<_>>()
     }
 
-    pub fn run_by(db: &Database, assignee: &Assignee) -> Result<Option<Experiment>> {
+    pub fn run_by(db: &Database, assignee: &Assignee) -> Fallible<Option<Experiment>> {
         let record = db.get_row(
             "SELECT * FROM experiments \
              WHERE status = ?1 AND assigned_to = ?2;",
@@ -143,7 +154,7 @@ impl Experiment {
         }
     }
 
-    pub fn first_by_status(db: &Database, status: Status) -> Result<Option<Experiment>> {
+    pub fn first_by_status(db: &Database, status: Status) -> Fallible<Option<Experiment>> {
         let record = db.get_row(
             "SELECT * FROM experiments \
              WHERE status = ?1 \
@@ -159,7 +170,7 @@ impl Experiment {
         }
     }
 
-    pub fn next(db: &Database, assignee: &Assignee) -> Result<Option<(bool, Experiment)>> {
+    pub fn next(db: &Database, assignee: &Assignee) -> Fallible<Option<(bool, Experiment)>> {
         // Avoid assigning two experiments to the same agent
         if let Some(experiment) = Experiment::run_by(db, assignee)? {
             return Ok(Some((false, experiment)));
@@ -183,7 +194,7 @@ impl Experiment {
         }
     }
 
-    pub fn get(db: &Database, name: &str) -> Result<Option<Experiment>> {
+    pub fn get(db: &Database, name: &str) -> Fallible<Option<Experiment>> {
         let record = db.get_row(
             "SELECT * FROM experiments WHERE name = ?1;",
             &[&name],
@@ -197,7 +208,7 @@ impl Experiment {
         }
     }
 
-    pub fn set_status(&mut self, db: &Database, status: Status) -> Result<()> {
+    pub fn set_status(&mut self, db: &Database, status: Status) -> Fallible<()> {
         db.execute(
             "UPDATE experiments SET status = ?1 WHERE name = ?2;",
             &[&status.to_str(), &self.name.as_str()],
@@ -225,7 +236,11 @@ impl Experiment {
         Ok(())
     }
 
-    pub fn set_assigned_to(&mut self, db: &Database, assigned_to: Option<&Assignee>) -> Result<()> {
+    pub fn set_assigned_to(
+        &mut self,
+        db: &Database,
+        assigned_to: Option<&Assignee>,
+    ) -> Fallible<()> {
         db.execute(
             "UPDATE experiments SET assigned_to = ?1 WHERE name = ?2;",
             &[&assigned_to.map(|a| a.to_string()), &self.name.as_str()],
@@ -234,7 +249,7 @@ impl Experiment {
         Ok(())
     }
 
-    pub fn set_report_url(&mut self, db: &Database, url: &str) -> Result<()> {
+    pub fn set_report_url(&mut self, db: &Database, url: &str) -> Fallible<()> {
         db.execute(
             "UPDATE experiments SET report_url = ?1 WHERE name = ?2;",
             &[&url, &self.name.as_str()],
@@ -243,7 +258,7 @@ impl Experiment {
         Ok(())
     }
 
-    pub fn raw_progress(&self, db: &Database) -> Result<(u32, u32)> {
+    pub fn raw_progress(&self, db: &Database) -> Fallible<(u32, u32)> {
         let results_len: u32 = db
             .get_row(
                 "SELECT COUNT(*) AS count FROM results WHERE experiment = ?1;",
@@ -262,7 +277,7 @@ impl Experiment {
         Ok((results_len, crates_len * 2))
     }
 
-    pub fn progress(&self, db: &Database) -> Result<u8> {
+    pub fn progress(&self, db: &Database) -> Fallible<u8> {
         let (results_len, crates_len) = self.raw_progress(db)?;
 
         if crates_len != 0 {
@@ -272,7 +287,7 @@ impl Experiment {
         }
     }
 
-    pub fn remove_completed_crates(&mut self, db: &Database) -> Result<()> {
+    pub fn remove_completed_crates(&mut self, db: &Database) -> Fallible<()> {
         // FIXME: optimize this
         let mut new_crates = Vec::with_capacity(self.crates.len());
         for krate in self.crates.drain(..) {
@@ -333,7 +348,7 @@ impl ExperimentDBRecord {
         }
     }
 
-    fn into_experiment(self, db: &Database) -> Result<Experiment> {
+    fn into_experiment(self, db: &Database) -> Fallible<Experiment> {
         let crates = db
             .query(
                 "SELECT crate FROM experiment_crates WHERE experiment = ?1",
@@ -343,7 +358,7 @@ impl ExperimentDBRecord {
                     Ok(serde_json::from_str(&value)?)
                 },
             )?.into_iter()
-            .collect::<Result<Vec<Crate>>>()?;
+            .collect::<Fallible<Vec<Crate>>>()?;
 
         Ok(Experiment {
             name: self.name,
@@ -381,11 +396,10 @@ impl ExperimentDBRecord {
 
 #[cfg(test)]
 mod tests {
-    use super::{Assignee, Experiment, Status};
+    use super::{Assignee, AssigneeParseError, Experiment, Status};
     use actions::CreateExperiment;
     use config::Config;
     use db::Database;
-    use errors::*;
     use server::agents::Agents;
     use server::tokens::Tokens;
     use std::str::FromStr;
@@ -406,24 +420,15 @@ mod tests {
 
         for empty in &["", "agent:"] {
             let err = Assignee::from_str(empty).unwrap_err();
-            match err.kind() {
-                ErrorKind::EmptyAssignee => {}
-                other => panic!("invalid error received for '{}': {}", empty, other),
-            }
+            assert_eq!(err, AssigneeParseError::Empty);
         }
 
         let err = Assignee::from_str("foo").unwrap_err();
-        match err.kind() {
-            ErrorKind::InvalidAssigneeKind(kind) => assert_eq!(kind, "foo"),
-            other => panic!("invalid error received: {}", other),
-        }
+        assert_eq!(err, AssigneeParseError::InvalidKind("foo".into()));
 
         for invalid in &["cli:", "cli:foo"] {
             let err = Assignee::from_str(invalid).unwrap_err();
-            match err.kind() {
-                ErrorKind::UnexpectedAssigneePayload => {}
-                other => panic!("invalid error received for '{}': {}", invalid, other),
-            }
+            assert_eq!(err, AssigneeParseError::UnexpectedPayload);
         }
     }
 

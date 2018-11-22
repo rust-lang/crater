@@ -1,13 +1,14 @@
-use errors::*;
 use experiments::{Assignee, Experiment, Status};
+use failure::Compat;
 use http::{Response, StatusCode};
 use hyper::Body;
 use results::EncodingType;
+use prelude::*;
 use results::{DatabaseDB, ProgressData};
 use server::api_types::{AgentConfig, ApiResponse};
 use server::auth::{auth_filter, AuthDetails, TokenType};
 use server::messages::Message;
-use server::Data;
+use server::{Data, HttpError};
 use std::sync::Arc;
 use warp::{self, Filter, Rejection};
 
@@ -19,28 +20,28 @@ pub fn routes(
 
     let config = warp::get2()
         .and(warp::path("config"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_config);
 
     let next_experiment = warp::get2()
         .and(warp::path("next-experiment"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_experiment);
 
     let complete_experiment = warp::post2()
         .and(warp::path("complete-experiment"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_complete_experiment);
 
     let record_progress = warp::post2()
         .and(warp::path("record-progress"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(warp::body::json())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
@@ -48,7 +49,7 @@ pub fn routes(
 
     let heartbeat = warp::post2()
         .and(warp::path("heartbeat"))
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_heartbeat);
@@ -69,7 +70,7 @@ pub fn routes(
         .unify()
 }
 
-fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Result<Response<Body>> {
+fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
     Ok(ApiResponse::Success {
         result: AgentConfig {
             agent_name: auth.name,
@@ -78,7 +79,7 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Result<Response<Body>>
     }.into_response()?)
 }
 
-fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Result<Response<Body>> {
+fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
     let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
 
     let result = if let Some((new, mut ex)) = next {
@@ -104,9 +105,9 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Result<Respon
     Ok(ApiResponse::Success { result }.into_response()?)
 }
 
-fn endpoint_complete_experiment(data: Arc<Data>, auth: AuthDetails) -> Result<Response<Body>> {
+fn endpoint_complete_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
     let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
-        .ok_or("no experiment run by this agent")?;
+        .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     ex.set_status(&data.db, Status::NeedsReport)?;
     info!("experiment {} completed, marked as needs-report", ex.name);
@@ -119,9 +120,9 @@ fn endpoint_record_progress(
     result: ProgressData,
     data: Arc<Data>,
     auth: AuthDetails,
-) -> Result<Response<Body>> {
+) -> Fallible<Response<Body>> {
     let experiment = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
-        .ok_or("no experiment run by this agent")?;
+        .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     info!(
         "received progress on experiment {} from agent {}",
@@ -134,7 +135,7 @@ fn endpoint_record_progress(
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }
 
-fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Result<Response<Body>> {
+fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
     if let Some(rev) = auth.git_revision {
         data.agents.set_git_revision(&auth.name, &rev)?;
     }
@@ -143,7 +144,7 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Result<Response<Bod
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }
 
-fn handle_results(resp: Result<Response<Body>>) -> Response<Body> {
+fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
     match resp {
         Ok(resp) => resp,
         Err(err) => ApiResponse::internal_error(err.to_string())
@@ -152,12 +153,20 @@ fn handle_results(resp: Result<Response<Body>>) -> Response<Body> {
     }
 }
 
-fn handle_errors(err: Rejection) -> ::std::result::Result<Response<Body>, Rejection> {
-    match err.status() {
-        StatusCode::NOT_FOUND | StatusCode::METHOD_NOT_ALLOWED => {
-            Ok(ApiResponse::not_found().into_response().unwrap())
-        }
-        StatusCode::FORBIDDEN => Ok(ApiResponse::unauthorized().into_response().unwrap()),
-        _ => Err(err),
+fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
+    let error = if let Some(compat) = err.find_cause::<Compat<HttpError>>() {
+        Some(*compat.get_ref())
+    } else if let StatusCode::NOT_FOUND = err.status() {
+        Some(HttpError::NotFound)
+    } else if let StatusCode::METHOD_NOT_ALLOWED = err.status() {
+        Some(HttpError::NotFound)
+    } else {
+        None
+    };
+
+    match error {
+        Some(HttpError::NotFound) => Ok(ApiResponse::not_found().into_response().unwrap()),
+        Some(HttpError::Forbidden) => Ok(ApiResponse::unauthorized().into_response().unwrap()),
+        None => Err(err),
     }
 }

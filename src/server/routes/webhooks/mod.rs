@@ -2,15 +2,16 @@ mod args;
 mod commands;
 
 use bytes::buf::Buf;
-use errors::*;
 use http::{HeaderMap, Response, StatusCode};
 use hyper::Body;
+use prelude::*;
 use ring;
 use serde_json;
 use server::github::{EventIssueComment, Issue};
 use server::messages::Message;
 use server::routes::webhooks::args::Command;
 use server::Data;
+use std::str::FromStr;
 use std::sync::Arc;
 use warp::{self, filters::body::FullBody, Filter, Rejection};
 
@@ -20,7 +21,7 @@ fn process_webhook(
     signature: &str,
     event: &str,
     data: &Data,
-) -> Result<()> {
+) -> Fallible<()> {
     if !verify_signature(&data.tokens.bot.webhooks_secret, payload, signature) {
         bail!("invalid signature for the webhook!");
     }
@@ -51,7 +52,13 @@ fn process_webhook(
     Ok(())
 }
 
-fn process_command(host: &str, sender: &str, body: &str, issue: &Issue, data: &Data) -> Result<()> {
+fn process_command(
+    host: &str,
+    sender: &str,
+    body: &str,
+    issue: &Issue,
+    data: &Data,
+) -> Fallible<()> {
     let start = format!("@{} ", data.bot_username);
     for line in body.lines() {
         if !line.starts_with(&start) {
@@ -81,9 +88,8 @@ fn process_command(host: &str, sender: &str, body: &str, issue: &Issue, data: &D
 
         info!("user @{} sent command: {}", sender, command);
 
-        let args: Command = command
-            .parse()
-            .chain_err(|| "failed to parse the command")?;
+        let args: Command =
+            Command::from_str(command).with_context(|_| "failed to parse the command")?;
 
         match args {
             Command::Ping(_) => {
@@ -155,19 +161,19 @@ fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
     ring::hmac::verify(&key, payload, &signature).is_ok()
 }
 
-fn receive_endpoint(data: Arc<Data>, headers: HeaderMap, body: FullBody) -> Result<()> {
+fn receive_endpoint(data: Arc<Data>, headers: HeaderMap, body: FullBody) -> Fallible<()> {
     let signature = headers
         .get("X-Hub-Signature")
         .and_then(|h| h.to_str().ok())
-        .ok_or("missing header X-Hub-Signature\n")?;
+        .ok_or_else(|| err_msg("missing header X-Hub-Signature\n"))?;
     let event = headers
         .get("X-GitHub-Event")
         .and_then(|h| h.to_str().ok())
-        .ok_or("missing header X-GitHub-Event\n")?;
+        .ok_or_else(|| err_msg("missing header X-GitHub-Event\n"))?;
     let host = headers
         .get("Host")
         .and_then(|h| h.to_str().ok())
-        .ok_or("missing header Host\n")?;
+        .ok_or_else(|| err_msg("missing header Host\n"))?;
 
     process_webhook(body.bytes(), host, signature, event, &data)
 }
@@ -178,7 +184,7 @@ pub fn routes(
     let data_filter = warp::any().map(move || data.clone());
 
     warp::post2()
-        .and(warp::path::index())
+        .and(warp::path::end())
         .and(data_filter)
         .and(warp::header::headers_cloned())
         .and(warp::body::concat())
@@ -188,7 +194,7 @@ pub fn routes(
                 Ok(()) => resp = Response::new("OK\n".into()),
                 Err(err) => {
                     error!("error while processing webhook");
-                    ::utils::report_error(&err);
+                    ::utils::report_failure(&err);
 
                     resp = Response::new(format!("Error: {}\n", err).into());
                     *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;

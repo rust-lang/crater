@@ -1,5 +1,5 @@
-use errors::*;
 use experiments::{Experiment, Status};
+use prelude::*;
 use report;
 use results::DatabaseDB;
 use rusoto_core::request::HttpClient;
@@ -14,7 +14,7 @@ use utils;
 // Automatically wake up the reports generator thread every 10 minutes to check for new jobs
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
 
-fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Result<()> {
+fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallible<()> {
     let client = S3Client::new_with(
         HttpClient::new()?,
         data.tokens.reports_bucket.to_aws_credentials(),
@@ -28,7 +28,7 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Result
     Ok(())
 }
 
-fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
+fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
     let timeout = Duration::from_secs(AUTOMATIC_THREAD_WAKEUP);
     let results = DatabaseDB::new(&data.db);
 
@@ -52,7 +52,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Result<()> {
         if let Err(err) = generate_report(data, &ex, &results) {
             ex.set_status(&data.db, Status::ReportFailed)?;
             error!("failed to generate the report of {}", name);
-            utils::report_error(&err);
+            utils::report_failure(&err);
 
             if let Some(ref github_issue) = ex.github_issue {
                 Message::new()
@@ -121,9 +121,9 @@ impl ReportsWorker {
 
             loop {
                 let result = reports_thread(&data.clone(), &wake_recv)
-                    .chain_err(|| "the reports generator thread crashed");
+                    .with_context(|_| "the reports generator thread crashed");
                 if let Err(e) = result {
-                    utils::report_error(&e);
+                    utils::report_failure(&e);
                 }
 
                 warn!("the reports generator thread will be respawned in one minute");

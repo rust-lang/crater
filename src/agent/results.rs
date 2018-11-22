@@ -1,9 +1,9 @@
 use agent::api::AgentApi;
 use crates::{Crate, GitHubRepo};
-use errors::*;
 use experiments::Experiment;
 use log;
 use results::EncodingType;
+use prelude::*;
 use results::{TestResult, WriteResults};
 use std::io::Read;
 use std::ops::DerefMut;
@@ -31,12 +31,12 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         _ex: &Experiment,
         _toolchain: &Toolchain,
         _krate: &Crate,
-    ) -> Result<Option<TestResult>> {
+    ) -> Fallible<Option<TestResult>> {
         // TODO: not yet implemented
         Ok(None)
     }
 
-    fn record_sha(&self, _ex: &Experiment, repo: &GitHubRepo, sha: &str) -> Result<()> {
+    fn record_sha(&self, _ex: &Experiment, repo: &GitHubRepo, sha: &str) -> Fallible<()> {
         self.shas
             .lock()
             .unwrap()
@@ -51,9 +51,9 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         krate: &Crate,
         f: F,
         _: EncodingType,
-    ) -> Result<TestResult>
+    ) -> Fallible<TestResult>
     where
-        F: FnOnce() -> Result<TestResult>,
+        F: FnOnce() -> Fallible<TestResult>,
     {
         let mut log_file = ::tempfile::NamedTempFile::new()?;
         let result = log::redirect(log_file.path(), f)?;

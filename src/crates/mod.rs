@@ -2,7 +2,7 @@ pub(crate) mod lists;
 mod sources;
 
 use dirs::{CRATES_DIR, LOCAL_CRATES_DIR};
-use errors::*;
+use prelude::*;
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -45,7 +45,7 @@ impl Crate {
         }
     }
 
-    pub(crate) fn prepare(&self) -> Result<()> {
+    pub(crate) fn prepare(&self) -> Fallible<()> {
         let dir = self.dir();
         match *self {
             Crate::Registry(ref details) => details.prepare(&dir)?,
@@ -60,7 +60,7 @@ impl Crate {
 }
 
 impl fmt::Display for Crate {
-    fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
@@ -74,9 +74,9 @@ impl fmt::Display for Crate {
 }
 
 impl FromStr for Crate {
-    type Err = Error;
+    type Err = ::failure::Error;
 
-    fn from_str(s: &str) -> Result<Self> {
+    fn from_str(s: &str) -> Fallible<Self> {
         if s.starts_with("https://github.com/") {
             Ok(Crate::GitHub(s.parse()?))
         } else if let Some(dash_idx) = s.rfind('-') {
@@ -87,7 +87,7 @@ impl FromStr for Crate {
                 version: version.to_string(),
             }))
         } else {
-            bail!("no version for crate");
+            bail!("crate not found");
         }
     }
 }

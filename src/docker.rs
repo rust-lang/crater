@@ -1,4 +1,4 @@
-use errors::*;
+use prelude::*;
 use run::RunCommand;
 use std::env;
 use std::fmt::{self, Display, Formatter};
@@ -11,7 +11,7 @@ pub static IMAGE_NAME: &'static str = "crater";
 /// Builds the docker container image, 'crater', what will be used
 /// to isolate builds from each other. This expects the Dockerfile
 /// to exist in the `docker` directory, at runtime.
-pub fn build_container(docker_env: &str) -> Result<()> {
+pub fn build_container(docker_env: &str) -> Fallible<()> {
     let dockerfile = format!("docker/Dockerfile.{}", docker_env);
     RunCommand::new("docker")
         .args(&["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"])
@@ -98,7 +98,7 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn create(self) -> Result<Container> {
+    pub fn create(self) -> Fallible<Container> {
         let mut args: Vec<String> = vec!["create".into()];
 
         for mount in &self.mounts {
@@ -128,13 +128,13 @@ impl ContainerBuilder {
         Ok(Container { id: out[0].clone() })
     }
 
-    pub fn run(self, quiet: bool) -> Result<()> {
+    pub fn run(self, quiet: bool) -> Fallible<()> {
         let container = self.create()?;
 
         // Ensure the container is properly deleted even if something panics
         defer! {{
-            if let Err(err) = container.delete().chain_err(|| format!("failed to delete container {}", container.id)) {
-                ::utils::report_error(&err);
+            if let Err(err) = container.delete().with_context(|_| format!("failed to delete container {}", container.id)) {
+                ::utils::report_failure(&err);
             }
         }}
 
@@ -165,14 +165,14 @@ impl Display for Container {
 }
 
 impl Container {
-    pub fn run(&self, quiet: bool) -> Result<()> {
+    pub fn run(&self, quiet: bool) -> Fallible<()> {
         RunCommand::new("docker")
             .args(&["start", "-a", &self.id])
             .quiet(quiet)
             .run()
     }
 
-    pub fn delete(&self) -> Result<()> {
+    pub fn delete(&self) -> Fallible<()> {
         RunCommand::new("docker")
             .args(&["rm", "-f", &self.id])
             .run()

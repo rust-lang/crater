@@ -1,9 +1,9 @@
-use errors::*;
+use prelude::*;
 use run::RunCommand;
 use std::fs;
 use std::path::Path;
 
-pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
+pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Fallible<()> {
     let url = frob_url(url);
 
     if !dir.exists() {
@@ -11,13 +11,13 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
         let r = RunCommand::new("git")
             .args(&["clone", "--depth", "1", &url, &dir.to_string_lossy()])
             .run()
-            .chain_err(|| format!("unable to clone {}", url));
+            .with_context(|_| format!("unable to clone {}", url));
 
         if r.is_err() && dir.exists() {
             fs::remove_dir_all(dir)?;
         }
 
-        r
+        r.map_err(|e| e.into())
     } else {
         info!("pulling existing url {} into {}", url, dir.display());
         RunCommand::new("git")
@@ -28,7 +28,8 @@ pub fn shallow_clone_or_pull(url: &str, dir: &Path) -> Result<()> {
             .args(&["reset", "--hard", "@{upstream}"])
             .cd(dir)
             .run()
-            .chain_err(|| format!("unable to pull {}", url))
+            .with_context(|_| format!("unable to pull {}", url))?;
+        Ok(())
     }
 }
 

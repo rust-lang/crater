@@ -4,9 +4,9 @@ use db::{Database, QueryUtils};
 use experiments::Experiment;
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use prelude::*;
 use results::EncodedLog;
 use results::EncodingType;
-use prelude::*;
 use results::{DeleteResults, ReadResults, TestResult, WriteResults};
 use serde_json;
 use std::collections::HashMap;
@@ -101,7 +101,6 @@ impl<'a> DatabaseDB<'a> {
         log: &[u8],
         encoding_type: EncodingType,
     ) -> Fallible<usize> {
-
         self.db.execute(
             "INSERT INTO results (experiment, crate, toolchain, result, log, encoding) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6);",
@@ -407,11 +406,16 @@ mod tests {
 
         // Add another result
         results
-            .record_result(&ex, &TEST_TOOLCHAIN, &krate, || {
-                info!("Another log message!");
-                Ok(TestResult::TestFail(FailureReason::Unknown))
-            },
-            EncodingType::Plain).unwrap();
+            .record_result(
+                &ex,
+                &TEST_TOOLCHAIN,
+                &krate,
+                || {
+                    info!("Another log message!");
+                    Ok(TestResult::TestFail(FailureReason::Unknown))
+                },
+                EncodingType::Plain,
+            ).unwrap();
         assert_eq!(
             results.get_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestFail(FailureReason::Unknown))

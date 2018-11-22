@@ -149,10 +149,16 @@ mod tests {
                 EncodingType::Gzip,
             ).unwrap();
         results
-            .record_result(&ex, &ex.toolchains[1], &crate1, || {
-                info!("tc2 crate1");
-                Ok(TestResult::BuildFail(FailureReason::Unknown))
-            }, EncodingType::Plain).unwrap();
+            .record_result(
+                &ex,
+                &ex.toolchains[1],
+                &crate1,
+                || {
+                    info!("tc2 crate1");
+                    Ok(TestResult::BuildFail(FailureReason::Unknown))
+                },
+                EncodingType::Plain,
+            ).unwrap();
         results
             .record_result(
                 &ex,

@@ -1,7 +1,7 @@
 use crates::{Crate, GitHubRepo};
 use experiments::Experiment;
-use results::EncodedLog;
 use prelude::*;
+use results::EncodedLog;
 use results::{ReadResults, TestResult};
 use std::collections::HashMap;
 use toolchain::Toolchain;

@@ -1,9 +1,9 @@
 use config::Config;
 use crates::Crate;
 use experiments::Experiment;
-use results::EncodingType;
 use failure::AsFail;
 use prelude::*;
+use results::EncodingType;
 use results::{TestResult, WriteResults};
 use runner::test;
 use std::fmt;

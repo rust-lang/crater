@@ -109,7 +109,7 @@ impl<'a> DatabaseDB<'a> {
                 &ex.name,
                 &serde_json::to_string(krate)?,
                 &toolchain.to_string(),
-                &res.to_str(),
+                &res.to_string(),
                 &log,
                 &encoding_type.to_str(),
             ],
@@ -266,7 +266,7 @@ mod tests {
     use experiments::Experiment;
     use results::EncodedLog;
     use results::EncodingType;
-    use results::{DeleteResults, ReadResults, TestResult, WriteResults};
+    use results::{DeleteResults, FailureReason, ReadResults, TestResult, WriteResults};
     use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
@@ -407,19 +407,14 @@ mod tests {
 
         // Add another result
         results
-            .record_result(
-                &ex,
-                &TEST_TOOLCHAIN,
-                &krate,
-                || {
-                    info!("Another log message!");
-                    Ok(TestResult::TestFail)
-                },
-                EncodingType::Plain,
-            ).unwrap();
+            .record_result(&ex, &TEST_TOOLCHAIN, &krate, || {
+                info!("Another log message!");
+                Ok(TestResult::TestFail(FailureReason::Unknown))
+            },
+            EncodingType::Plain).unwrap();
         assert_eq!(
             results.get_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap(),
-            Some(TestResult::TestFail)
+            Some(TestResult::TestFail(FailureReason::Unknown))
         );
 
         // Test deleting the newly-added result

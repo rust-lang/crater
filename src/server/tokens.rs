@@ -18,7 +18,7 @@ impl BucketRegion {
         match *self {
             BucketRegion::S3 { ref region } => Ok(region.parse()?),
             BucketRegion::Custom { ref url } => Ok(Region::Custom {
-                name: "custom".to_string(),
+                name: "us-east-1".to_string(),
                 endpoint: url.clone(),
             }),
         }

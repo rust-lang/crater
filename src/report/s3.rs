@@ -120,6 +120,11 @@ impl ReportWriter for S3Writer {
                     continue;
                 }
                 r => {
+                    if let Err(::rusoto_s3::PutObjectError::Unknown(ref resp)) = r {
+                        error!("S3 request status: {}", resp.status);
+                        error!("S3 request body: {}", String::from_utf8_lossy(&resp.body));
+                        error!("S3 request headers: {:?}", resp.headers);
+                    }
                     r.with_context(|_| format!("S3 failure to upload {:?}", path.as_ref()))?;
                     return Ok(());
                 }

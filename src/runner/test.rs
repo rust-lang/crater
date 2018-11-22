@@ -1,15 +1,31 @@
 use config::Config;
 use crates::Crate;
+use docker::DockerError;
 use docker::MountPerms;
 use experiments::Experiment;
 use results::EncodingType;
+use failure::Error;
 use prelude::*;
-use results::{TestResult, WriteResults};
-use run::RunCommand;
+use results::{FailureReason, TestResult, WriteResults};
+use run::{RunCommand, RunCommandError};
 use runner::prepare::{with_captured_lockfile, with_frobbed_toml, with_work_crate};
 use std::path::Path;
 use toolchain::Toolchain;
 use tools::CARGO;
+
+fn failure_reason(err: &Error) -> FailureReason {
+    for cause in err.iter_chain() {
+        if let Some(&DockerError::ContainerOOM) = cause.downcast_ctx() {
+            return FailureReason::OOM;
+        } else if let Some(&RunCommandError::NoOutputFor(_)) = cause.downcast_ctx() {
+            return FailureReason::Timeout;
+        } else if let Some(&RunCommandError::Timeout(_)) = cause.downcast_ctx() {
+            return FailureReason::Timeout;
+        }
+    }
+
+    FailureReason::Unknown
+}
 
 fn run_cargo(
     config: &Config,
@@ -28,6 +44,12 @@ fn run_cargo(
         rustflags.push_str(tc_rustflags);
     }
 
+    let rustflags_env = if let Some(&"doc") = args.get(0) {
+        "RUSTDOCFLAGS"
+    } else {
+        "RUSTFLAGS"
+    };
+
     RunCommand::new(CARGO.toolchain(toolchain))
         .args(args)
         .quiet(quiet)
@@ -35,7 +57,7 @@ fn run_cargo(
         .env("CARGO_TARGET_DIR", "/target")
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
-        .env("RUSTFLAGS", rustflags)
+        .env(rustflags_env, rustflags)
         .sandboxed()
         .mount(target_dir, "/target", MountPerms::ReadWrite)
         .memory_limit(Some(config.sandbox.memory_limit))
@@ -152,8 +174,8 @@ pub fn test_build_and_test(
     };
 
     Ok(match (build_r, test_r) {
-        (Err(_), None) => TestResult::BuildFail,
-        (Ok(_), Some(Err(_))) => TestResult::TestFail,
+        (Err(err), None) => TestResult::BuildFail(failure_reason(&err)),
+        (Ok(_), Some(Err(err))) => TestResult::TestFail(failure_reason(&err)),
         (Ok(_), Some(Ok(_))) => TestResult::TestPass,
         (_, _) => unreachable!(),
     })
@@ -166,11 +188,10 @@ pub fn test_build_only(
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Fallible<TestResult> {
-    let r = build(config, ex, source_path, toolchain, quiet);
-    if r.is_ok() {
-        Ok(TestResult::TestSkipped)
+    if let Err(err) = build(config, ex, source_path, toolchain, quiet) {
+        Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
-        Ok(TestResult::BuildFail)
+        Ok(TestResult::TestSkipped)
     }
 }
 
@@ -181,17 +202,44 @@ pub fn test_check_only(
     toolchain: &Toolchain,
     quiet: bool,
 ) -> Fallible<TestResult> {
-    if run_cargo(
+    if let Err(err) = run_cargo(
         config,
         ex,
         source_path,
         toolchain,
         quiet,
         &["check", "--frozen", "--all", "--all-targets"],
-    ).is_ok()
-    {
-        Ok(TestResult::TestPass)
+    ) {
+        Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
-        Ok(TestResult::BuildFail)
+        Ok(TestResult::TestPass)
+    }
+}
+
+pub fn test_rustdoc(
+    config: &Config,
+    ex: &Experiment,
+    source_path: &Path,
+    toolchain: &Toolchain,
+    quiet: bool,
+) -> Fallible<TestResult> {
+    let res = run_cargo(
+        config,
+        ex,
+        source_path,
+        toolchain,
+        quiet,
+        &["doc", "--frozen", "--no-deps", "--document-private-items"],
+    );
+
+    // Make sure to remove the built documentation
+    // There is no point in storing it after the build is done
+    let target_dir = toolchain.target_dir(&ex.name);
+    ::utils::fs::remove_dir_all(&target_dir.join("doc"))?;
+
+    if let Err(err) = res {
+        Ok(TestResult::BuildFail(failure_reason(&err)))
+    } else {
+        Ok(TestResult::TestPass)
     }
 }

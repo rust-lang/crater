@@ -5,7 +5,7 @@
 {% block extra_head %}
     <style>
         {% for name, color in result_colors %}
-            .cr-{{ name }} {
+            .cr-{{ name|replace(from=":", to="\:") }} {
                 {% if color.Single %}
                     background: {{ color.Single }};
                 {% elif color.Striped %}
@@ -42,7 +42,9 @@
                             <span class="run">
                                 {% if run %}
                                     <b class="cr-{{ run.res }}"></b>
-                                    <a href="{{ run.log|safe }}/log.txt">{{ run.res }}</a>
+                                    <a href="{{ run.log|safe }}/log.txt">
+                                        {{ result_names[run.res] }}
+                                    </a>
                                 {% else %}
                                     <b class="cc-{{ crate.res }}"></b>
                                     {{ crate.res }}

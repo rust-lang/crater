@@ -115,7 +115,7 @@ mod tests {
     use mime::Mime;
     use report::DummyWriter;
     use results::EncodingType;
-    use results::{DatabaseDB, TestResult, WriteResults};
+    use results::{DatabaseDB, FailureReason, TestResult, WriteResults};
     use std::io::Read;
     use tar::Archive;
 
@@ -149,16 +149,10 @@ mod tests {
                 EncodingType::Gzip,
             ).unwrap();
         results
-            .record_result(
-                &ex,
-                &ex.toolchains[1],
-                &crate1,
-                || {
-                    info!("tc2 crate1");
-                    Ok(TestResult::BuildFail)
-                },
-                EncodingType::Plain,
-            ).unwrap();
+            .record_result(&ex, &ex.toolchains[1], &crate1, || {
+                info!("tc2 crate1");
+                Ok(TestResult::BuildFail(FailureReason::Unknown))
+            }, EncodingType::Plain).unwrap();
         results
             .record_result(
                 &ex,

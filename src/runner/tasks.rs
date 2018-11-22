@@ -15,6 +15,7 @@ pub(super) enum TaskStep {
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
     CheckOnly { tc: Toolchain, quiet: bool },
+    Rustdoc { tc: Toolchain, quiet: bool },
     UnstableFeatures { tc: Toolchain },
 }
 
@@ -36,6 +37,12 @@ impl fmt::Debug for TaskStep {
             }
             TaskStep::CheckOnly { ref tc, quiet } => {
                 write!(f, "check {}", tc.to_string())?;
+                if quiet {
+                    write!(f, " (quiet)")?;
+                }
+            }
+            TaskStep::Rustdoc { ref tc, quiet } => {
+                write!(f, "doc {}", tc.to_string())?;
                 if quiet {
                     write!(f, " (quiet)")?;
                 }
@@ -72,6 +79,7 @@ impl Task {
             TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
+            | TaskStep::Rustdoc { ref tc, .. }
             | TaskStep::UnstableFeatures { ref tc } => {
                 db.get_result(ex, tc, &self.krate).unwrap_or(None).is_none()
             }
@@ -90,6 +98,7 @@ impl Task {
             TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
+            | TaskStep::Rustdoc { ref tc, .. }
             | TaskStep::UnstableFeatures { ref tc } => {
                 db.record_result(
                     ex,
@@ -97,7 +106,7 @@ impl Task {
                     &self.krate,
                     || {
                         error!("this task or one of its parent failed!");
-                        utils::report_error(err);
+                        utils::report_failure(err);
                         Ok(result)
                     },
                     EncodingType::Plain,
@@ -121,6 +130,7 @@ impl Task {
             }
             TaskStep::BuildOnly { ref tc, quiet } => self.run_build_only(config, ex, tc, db, quiet),
             TaskStep::CheckOnly { ref tc, quiet } => self.run_check_only(config, ex, tc, db, quiet),
+            TaskStep::Rustdoc { ref tc, quiet } => self.run_rustdoc(config, ex, tc, db, quiet),
             TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(config, ex, db, tc),
         }
     }
@@ -138,8 +148,8 @@ impl Task {
             ::runner::prepare::capture_shas(ex, &[self.krate.clone()], db)?;
         }
 
-        ::runner::prepare::frob_toml(ex, &self.krate)?;
         ::runner::prepare::validate_manifest(ex, &self.krate, &ex.toolchains[0])?;
+        ::runner::prepare::frob_toml(ex, &self.krate)?;
         ::runner::prepare::capture_lockfile(config, ex, &self.krate, &ex.toolchains[0])?;
         ::runner::prepare::fetch_crate_deps(config, ex, &self.krate, &ex.toolchains[0])?;
 
@@ -203,6 +213,26 @@ impl Task {
             db,
             quiet,
             test::test_check_only,
+        ).map(|_| ())
+    }
+
+    fn run_rustdoc<DB: WriteResults>(
+        &self,
+        config: &Config,
+        ex: &Experiment,
+        tc: &Toolchain,
+        db: &DB,
+        quiet: bool,
+    ) -> Fallible<()> {
+        test::run_test(
+            config,
+            "documenting",
+            ex,
+            tc,
+            &self.krate,
+            db,
+            quiet,
+            test::test_rustdoc,
         ).map(|_| ())
     }
 

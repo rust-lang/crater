@@ -2,120 +2,120 @@
   "crates": [
     {
       "name": "beta-fixed (local)",
-      "res": "Fixed",
+      "res": "fixed",
       "runs": [
         {
           "log": "stable/local/beta-fixed",
-          "res": "BuildFail"
+          "res": "build-fail:unknown"
         },
         {
           "log": "beta/local/beta-fixed",
-          "res": "TestPass"
+          "res": "test-pass"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/beta-fixed"
     },
     {
       "name": "beta-regression (local)",
-      "res": "Regressed",
+      "res": "regressed",
       "runs": [
         {
           "log": "stable/local/beta-regression",
-          "res": "TestPass"
+          "res": "test-pass"
         },
         {
           "log": "beta/local/beta-regression",
-          "res": "BuildFail"
+          "res": "build-fail:unknown"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/beta-regression"
     },
     {
       "name": "broken-cargotoml (local)",
-      "res": "SameBuildFail",
+      "res": "build-fail",
       "runs": [
         {
           "log": "stable/local/broken-cargotoml",
-          "res": "BuildFail"
+          "res": "build-fail:broken"
         },
         {
           "log": "beta/local/broken-cargotoml",
-          "res": "BuildFail"
+          "res": "build-fail:broken"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/broken-cargotoml"
     },
     {
       "name": "build-fail (local)",
-      "res": "SameBuildFail",
+      "res": "build-fail",
       "runs": [
         {
           "log": "stable/local/build-fail",
-          "res": "BuildFail"
+          "res": "build-fail:unknown"
         },
         {
           "log": "beta/local/build-fail",
-          "res": "BuildFail"
+          "res": "build-fail:unknown"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-fail"
     },
     {
       "name": "build-pass (local)",
-      "res": "SameTestPass",
+      "res": "test-pass",
       "runs": [
         {
           "log": "stable/local/build-pass",
-          "res": "TestPass"
+          "res": "test-pass"
         },
         {
           "log": "beta/local/build-pass",
-          "res": "TestPass"
+          "res": "test-pass"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"
     },
     {
       "name": "memory-hungry (local)",
-      "res": "Fixed",
+      "res": "spurious-fixed",
       "runs": [
         {
           "log": "stable/local/memory-hungry",
-          "res": "BuildFail"
+          "res": "build-fail:oom"
         },
         {
           "log": "beta/local/memory-hungry",
-          "res": "TestFail"
+          "res": "test-fail:oom"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/memory-hungry"
     },
     {
       "name": "network-access (local)",
-      "res": "Fixed",
+      "res": "fixed",
       "runs": [
         {
           "log": "stable/local/network-access",
-          "res": "BuildFail"
+          "res": "build-fail:unknown"
         },
         {
           "log": "beta/local/network-access",
-          "res": "TestFail"
+          "res": "test-fail:unknown"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/network-access"
     },
     {
       "name": "test-fail (local)",
-      "res": "SameTestFail",
+      "res": "test-fail",
       "runs": [
         {
           "log": "stable/local/test-fail",
-          "res": "TestFail"
+          "res": "test-fail:unknown"
         },
         {
           "log": "beta/local/test-fail",
-          "res": "TestFail"
+          "res": "test-fail:unknown"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/test-fail"

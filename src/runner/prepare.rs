@@ -3,7 +3,7 @@ use crates::Crate;
 use dirs::{EXPERIMENT_DIR, TEST_SOURCE_DIR};
 use experiments::Experiment;
 use prelude::*;
-use results::{TestResult, WriteResults};
+use results::{FailureReason, TestResult, WriteResults};
 use run::RunCommand;
 use runner::toml_frobber::TomlFrobber;
 use runner::OverrideResult;
@@ -97,13 +97,19 @@ pub(super) fn with_frobbed_toml(ex: &Experiment, krate: &Crate, path: &Path) -> 
 pub(super) fn validate_manifest(ex: &Experiment, krate: &Crate, tc: &Toolchain) -> Fallible<()> {
     info!("validating manifest of {} on toolchain {}", krate, tc);
     with_work_crate(ex, tc, krate, |path| {
+        // Skip crates missing a Cargo.toml
+        if !path.join("Cargo.toml").is_file() {
+            Err(err_msg(format!("missing Cargo.toml for {}", krate)))
+                .with_context(|_| OverrideResult(TestResult::BuildFail(FailureReason::Broken)))?;
+        }
+
         RunCommand::new(CARGO.toolchain(tc))
             .args(&["read-manifest", "--manifest-path", "Cargo.toml"])
             .cd(path)
             .hide_output(true)
             .run()
             .with_context(|_| format!("invalid syntax in {}'s Cargo.toml", krate))
-            .with_context(|_| OverrideResult(TestResult::BuildFail))?;
+            .with_context(|_| OverrideResult(TestResult::BuildFail(FailureReason::Broken)))?;
 
         Ok(())
     })

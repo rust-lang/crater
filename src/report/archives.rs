@@ -4,6 +4,7 @@ use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use prelude::*;
 use report::{compare, ReportWriter};
 use results::EncodedLog;
+use results::EncodingType;
 use results::ReadResults;
 use std::collections::HashMap;
 use std::io::Read;
@@ -81,6 +82,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
         "logs-archives/all.tar.gz",
         data,
         &"application/gzip".parse().unwrap(),
+        EncodingType::Plain,
     )?;
 
     archives.push(Archive {
@@ -94,6 +96,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
             &format!("logs-archives/{}.tar.gz", comparison),
             data,
             &"application/gzip".parse().unwrap(),
+            EncodingType::Plain,
         )?;
 
         archives.push(Archive {

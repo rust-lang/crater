@@ -1,6 +1,7 @@
 use mime::Mime;
 use prelude::*;
 use report::ReportWriter;
+use results::EncodingType;
 use rusoto_core::request::HttpClient;
 use rusoto_core::{DefaultCredentialsProvider, Region};
 use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3Client, S3};
@@ -91,7 +92,13 @@ impl S3Writer {
 }
 
 impl ReportWriter for S3Writer {
-    fn write_bytes<P: AsRef<Path>>(&self, path: P, s: Vec<u8>, mime: &Mime) -> Fallible<()> {
+    fn write_bytes<P: AsRef<Path>>(
+        &self,
+        path: P,
+        s: Vec<u8>,
+        mime: &Mime,
+        encoding_type: EncodingType,
+    ) -> Fallible<()> {
         let mut retry = 0;
         loop {
             let req = PutObjectRequest {
@@ -105,6 +112,10 @@ impl ReportWriter for S3Writer {
                     .to_string_lossy()
                     .into(),
                 content_type: Some(mime.to_string()),
+                content_encoding: match encoding_type {
+                    EncodingType::Plain => None,
+                    EncodingType::Gzip => Some("gzip".into()),
+                },
                 ..Default::default()
             };
             match self.client.put_object(req).sync() {
@@ -133,13 +144,13 @@ impl ReportWriter for S3Writer {
     }
 
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()> {
-        self.write_bytes(path, s.into_owned().into_bytes(), mime)
+        self.write_bytes(path, s.into_owned().into_bytes(), mime, EncodingType::Plain)
     }
 
     fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Fallible<()> {
         let mut bytes = Vec::new();
         io::copy(r, &mut bytes)?;
-        self.write_bytes(path, bytes, mime)
+        self.write_bytes(path, bytes, mime, EncodingType::Plain)
     }
 }
 

@@ -3,7 +3,7 @@ use crates::{Crate, GitHubRepo};
 use experiments::Experiment;
 use mime::{self, Mime};
 use prelude::*;
-use results::EncodedLog;
+use results::{EncodedLog, EncodingType};
 use results::{ReadResults, TestResult};
 use serde_json;
 use std::borrow::Cow;
@@ -205,10 +205,10 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
 
             match content {
                 EncodedLog::Plain(data) => {
-                    dest.write_bytes(log_path, data, &mime::TEXT_PLAIN_UTF_8)
+                    dest.write_bytes(log_path, data, &mime::TEXT_PLAIN_UTF_8, EncodingType::Plain)
                 }
                 EncodedLog::Gzip(data) => {
-                    dest.write_bytes(log_path, data, &"application/gzip".parse().unwrap())
+                    dest.write_bytes(log_path, data, &mime::TEXT_PLAIN_UTF_8, EncodingType::Gzip)
                 }
             }?;
         }
@@ -344,7 +344,13 @@ fn compare(
 }
 
 pub trait ReportWriter {
-    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, mime: &Mime) -> Fallible<()>;
+    fn write_bytes<P: AsRef<Path>>(
+        &self,
+        path: P,
+        b: Vec<u8>,
+        mime: &Mime,
+        encoding_type: EncodingType,
+    ) -> Fallible<()>;
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()>;
     fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Fallible<()>;
 }
@@ -365,7 +371,13 @@ impl FileWriter {
 }
 
 impl ReportWriter for FileWriter {
-    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, _: &Mime) -> Fallible<()> {
+    fn write_bytes<P: AsRef<Path>>(
+        &self,
+        path: P,
+        b: Vec<u8>,
+        _: &Mime,
+        _: EncodingType,
+    ) -> Fallible<()> {
         self.create_prefix(path.as_ref())?;
         fs::write(&self.0.join(path.as_ref()), &b)?;
         Ok(())
@@ -409,7 +421,13 @@ impl DummyWriter {
 
 #[cfg(test)]
 impl ReportWriter for DummyWriter {
-    fn write_bytes<P: AsRef<Path>>(&self, path: P, b: Vec<u8>, mime: &Mime) -> Fallible<()> {
+    fn write_bytes<P: AsRef<Path>>(
+        &self,
+        path: P,
+        b: Vec<u8>,
+        mime: &Mime,
+        _: EncodingType,
+    ) -> Fallible<()> {
         self.results
             .borrow_mut()
             .insert((path.as_ref().to_path_buf(), mime.clone()), b);

@@ -1972,6 +1972,7 @@ gtk-sys = { skip-tests = true } #automatic
 gtk-test = { skip = true } #automatic
 gudev = { skip = true } #automatic
 gudev-sys = { skip = true } #automatic
+guerrilla = { skip-tests = true } # flaky tests
 guetzli-sys = { skip = true } #automatic
 guid = { skip-tests = true } #automatic
 guile = { skip = true } #automatic

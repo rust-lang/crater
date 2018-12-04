@@ -1,7 +1,6 @@
 use experiments::{Experiment, Status};
 use prelude::*;
-use report;
-use report::{Comparison, TestResults};
+use report::{self, Comparison, TestResults};
 use results::DatabaseDB;
 use rusoto_core::request::HttpClient;
 use rusoto_s3::S3Client;
@@ -15,7 +14,7 @@ use utils;
 // Automatically wake up the reports generator thread every 10 minutes to check for new jobs
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
 
-fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallible<(TestResults)> {
+fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallible<TestResults> {
     let client = S3Client::new_with(
         HttpClient::new()?,
         data.tokens.reports_bucket.to_aws_credentials(),

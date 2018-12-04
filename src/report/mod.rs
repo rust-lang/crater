@@ -46,8 +46,7 @@ pub struct CrateResult {
     runs: [Option<BuildTestResult>; 2],
 }
 
-string_enum!(
-    pub enum Comparison {
+string_enum!(pub enum Comparison {
     Regressed => "regressed",
     Fixed => "fixed",
     Skipped => "skipped",
@@ -213,7 +212,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     ex: &Experiment,
     dest: &W,
     config: &Config,
-) -> Fallible<(TestResults)> {
+) -> Fallible<TestResults> {
     let res = generate_report(db, config, ex)?;
 
     info!("writing results to {}", dest);

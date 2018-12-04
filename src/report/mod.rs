@@ -46,7 +46,8 @@ pub struct CrateResult {
     runs: [Option<BuildTestResult>; 2],
 }
 
-string_enum!(pub enum Comparison {
+string_enum!(
+    pub enum Comparison {
     Regressed => "regressed",
     Fixed => "fixed",
     Skipped => "skipped",
@@ -61,7 +62,7 @@ string_enum!(pub enum Comparison {
 });
 
 impl Comparison {
-    fn show_in_summary(self) -> bool {
+    pub fn show_in_summary(self) -> bool {
         match self {
             Comparison::Regressed
             | Comparison::Fixed

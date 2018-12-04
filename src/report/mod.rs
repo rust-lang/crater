@@ -35,18 +35,18 @@ fn url_encode(input: &str) -> String {
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
-    crates: Vec<CrateResult>,
+    pub crates: Vec<CrateResult>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct CrateResult {
+pub struct CrateResult {
     name: String,
     url: String,
-    res: Comparison,
+    pub res: Comparison,
     runs: [Option<BuildTestResult>; 2],
 }
 
-string_enum!(enum Comparison {
+string_enum!(pub enum Comparison {
     Regressed => "regressed",
     Fixed => "fixed",
     Skipped => "skipped",
@@ -61,7 +61,7 @@ string_enum!(enum Comparison {
 });
 
 impl Comparison {
-    fn show_in_summary(self) -> bool {
+    pub fn show_in_summary(self) -> bool {
         match self {
             Comparison::Regressed
             | Comparison::Fixed
@@ -212,7 +212,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     ex: &Experiment,
     dest: &W,
     config: &Config,
-) -> Fallible<()> {
+) -> Fallible<TestResults> {
     let res = generate_report(db, config, ex)?;
 
     info!("writing results to {}", dest);
@@ -235,7 +235,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     info!("writing logs");
     write_logs(db, ex, dest, config)?;
 
-    Ok(())
+    Ok(res)
 }
 
 fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Fallible<String> {

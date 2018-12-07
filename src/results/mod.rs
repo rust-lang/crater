@@ -11,6 +11,7 @@ pub use results::dummy::DummyDB;
 use std::collections::HashMap;
 use std::{fmt, str::FromStr};
 use toolchain::Toolchain;
+use flate2::{read::GzDecoder};
 
 pub trait ReadResults {
     fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>>;
@@ -62,6 +63,20 @@ string_enum!(pub enum EncodingType {
 pub enum EncodedLog {
     Plain(Vec<u8>),
     Gzip(Vec<u8>),
+}
+
+impl EncodedLog {
+    fn to_plain(self) -> Fallible<Vec<u8>> {
+        match self {
+            EncodedLog::Plain(data) => data,
+            EncodedLog::Gzip(data) => {
+                let mut decoded_log = GzDecoder::new(data.as_slice());
+                let mut new_log = Vec::new();
+                decoded_log.read_to_end(&mut new_log)?;
+                new_log
+            }
+        }
+    }
 }
 
 macro_rules! test_result_enum {

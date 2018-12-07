@@ -49,15 +49,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
                 }
             };
 
-            let log_bytes: Vec<u8> = match log_bytes {
-                EncodedLog::Plain(data) => data,
-                EncodedLog::Gzip(data) => {
-                    let mut decoded_log = GzDecoder::new(data.as_slice());
-                    let mut new_log = Vec::new();
-                    decoded_log.read_to_end(&mut new_log)?;
-                    new_log
-                }
-            };
+            let log_bytes = log_bytes.to_plain();
 
             let log_bytes = log_bytes.as_slice();
 

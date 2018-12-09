@@ -65,7 +65,8 @@ impl InstallableTool for Rustup {
                 "--no-modify-path",
                 "--default-toolchain",
                 MAIN_TOOLCHAIN_NAME,
-            ]).local_rustup(true)
+            ])
+            .local_rustup(true)
             .run()
             .with_context(|_| "unable to install rustup")?;
 

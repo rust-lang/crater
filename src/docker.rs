@@ -109,7 +109,7 @@ impl ContainerBuilder {
 
         for &(ref var, ref value) in &self.env {
             args.push("-e".into());
-            args.push(format!{"{}={}", var, value})
+            args.push(format! {"{}={}", var, value})
         }
 
         if let Some(limit) = self.memory_limit {

@@ -173,7 +173,8 @@ impl RunCommand {
             self.quiet,
             self.enable_timeout,
             self.hide_output,
-        ).map_err(|e| {
+        )
+        .map_err(|e| {
             error!("error running command: {}", e);
             e
         })?;
@@ -220,7 +221,8 @@ impl SandboxedCommand {
         let mut cmd = match self.command.binary {
             Binary::Global(path) => path,
             Binary::InstalledByCrater(path) => path,
-        }.to_string_lossy()
+        }
+        .to_string_lossy()
         .as_ref()
         .to_string();
         for arg in self.command.args {
@@ -335,7 +337,8 @@ fn log_command(
             } else {
                 Error::from(err)
             }
-        }).and_then(move |(kind, line)| {
+        })
+        .and_then(move |(kind, line)| {
             // If the process is in a tight output loop the timeout on the process might fail to
             // be executed, so this extra check prevents the process to run without limits.
             if start.elapsed() > max_timeout {
@@ -346,7 +349,8 @@ fn log_command(
                 slog_info!(logger, "[{}] {}", kind.prefix(), line);
             }
             future::ok((kind, line))
-        }).fold(
+        })
+        .fold(
             (Vec::new(), Vec::new()),
             move |mut res, (kind, line)| -> Fallible<_> {
                 if capture {

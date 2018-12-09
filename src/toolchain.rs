@@ -106,11 +106,13 @@ impl fmt::Display for Toolchain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.source {
             ToolchainSource::Dist { ref name } => write!(f, "{}", name)?,
-            ToolchainSource::CI { ref sha, try } => if try {
-                write!(f, "try#{}", sha)?;
-            } else {
-                write!(f, "master#{}", sha)?;
-            },
+            ToolchainSource::CI { ref sha, try } => {
+                if try {
+                    write!(f, "try#{}", sha)?;
+                } else {
+                    write!(f, "master#{}", sha)?;
+                }
+            }
         };
 
         if let Some(ref flag) = self.rustflags {

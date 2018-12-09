@@ -33,7 +33,8 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()
             html_url: issue.html_url.clone(),
             number: issue.number,
         }),
-    }.apply(&data.db, &data.config)?;
+    }
+    .apply(&data.db, &data.config)?;
 
     Message::new()
         .line(
@@ -63,14 +64,16 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
         mode: args.mode,
         cap_lints: args.cap_lints,
         priority: args.priority,
-    }.apply(&data.db, &data.config)?;
+    }
+    .apply(&data.db, &data.config)?;
 
     if changed {
         Message::new()
             .line(
                 "memo",
                 format!("Configuration of the **`{}`** experiment changed.", name),
-            ).send(&issue.url, data)?;
+            )
+            .send(&issue.url, data)?;
     } else {
         Message::new()
             .line("warning", "No changes requested.")
@@ -98,7 +101,8 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Fallib
             .line(
                 "hammer_and_wrench",
                 format!("Generation of the report for **`{}`** queued again.", name),
-            ).set_label(Label::ExperimentQueued)
+            )
+            .set_label(Label::ExperimentQueued)
             .send(&issue.url, data)?;
 
         Ok(())

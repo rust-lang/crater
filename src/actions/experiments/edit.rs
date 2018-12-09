@@ -168,7 +168,8 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap();
 
         // Change everything!
@@ -182,7 +183,8 @@ mod tests {
             crates: Some(CrateSelect::Local),
             cap_lints: Some(CapLints::Warn),
             priority: Some(10),
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap();
 
         // And get the experiment to make sure data is changed

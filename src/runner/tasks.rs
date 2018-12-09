@@ -166,7 +166,8 @@ impl Task {
             db,
             quiet,
             test::test_build_and_test,
-        ).map(|_| ())
+        )
+        .map(|_| ())
     }
 
     fn run_build_only<DB: WriteResults>(
@@ -186,7 +187,8 @@ impl Task {
             db,
             quiet,
             test::test_build_only,
-        ).map(|_| ())
+        )
+        .map(|_| ())
     }
 
     fn run_check_only<DB: WriteResults>(
@@ -206,7 +208,8 @@ impl Task {
             db,
             quiet,
             test::test_check_only,
-        ).map(|_| ())
+        )
+        .map(|_| ())
     }
 
     fn run_rustdoc<DB: WriteResults>(
@@ -226,7 +229,8 @@ impl Task {
             db,
             quiet,
             test::test_rustdoc,
-        ).map(|_| ())
+        )
+        .map(|_| ())
     }
 
     fn run_unstable_features<DB: WriteResults>(
@@ -245,6 +249,7 @@ impl Task {
             db,
             false,
             ::runner::unstable_features::find_unstable_features,
-        ).map(|_| ())
+        )
+        .map(|_| ())
     }
 }

@@ -70,7 +70,7 @@ pub struct RunTestResult {
     pub skipped: bool,
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
+#[allow(clippy::too_many_arguments)]
 pub fn run_test<DB: WriteResults>(
     config: &Config,
     action: &str,
@@ -102,7 +102,8 @@ pub fn run_test<DB: WriteResults>(
                 );
                 test_fn(config, ex, source_path, tc, quiet)
             })
-        }).map(|result| RunTestResult {
+        })
+        .map(|result| RunTestResult {
             result,
             skipped: false,
         })

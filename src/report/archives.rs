@@ -58,7 +58,8 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
                 .entry(comparison)
                 .or_insert_with(|| {
                     TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()))
-                }).append_data(&mut header, &path, log_bytes)?;
+                })
+                .append_data(&mut header, &path, log_bytes)?;
         }
     }
 
@@ -126,22 +127,26 @@ mod tests {
             .record_result(&ex, &ex.toolchains[0], &crate1, || {
                 info!("tc1 crate1");
                 Ok(TestResult::TestPass)
-            }).unwrap();
+            })
+            .unwrap();
         results
             .record_result(&ex, &ex.toolchains[1], &crate1, || {
                 info!("tc2 crate1");
                 Ok(TestResult::BuildFail(FailureReason::Unknown))
-            }).unwrap();
+            })
+            .unwrap();
         results
             .record_result(&ex, &ex.toolchains[0], &crate2, || {
                 info!("tc1 crate2");
                 Ok(TestResult::TestPass)
-            }).unwrap();
+            })
+            .unwrap();
         results
             .record_result(&ex, &ex.toolchains[1], &crate2, || {
                 info!("tc2 crate2");
                 Ok(TestResult::TestPass)
-            }).unwrap();
+            })
+            .unwrap();
 
         // Generate all the archives
         let archives = write_logs_archives(&results, &ex, &writer, &config).unwrap();

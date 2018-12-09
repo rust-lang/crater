@@ -265,7 +265,8 @@ impl Experiment {
                 "SELECT COUNT(*) AS count FROM results WHERE experiment = ?1;",
                 &[&self.name.as_str()],
                 |r| r.get("count"),
-            )?.unwrap();
+            )?
+            .unwrap();
 
         let crates_len: u32 = db
             .get_row(
@@ -273,7 +274,8 @@ impl Experiment {
                  WHERE experiment = ?1 AND skipped = 0;",
                 &[&self.name.as_str()],
                 |r| r.get("count"),
-            )?.unwrap();
+            )?
+            .unwrap();
 
         Ok((results_len, crates_len * 2))
     }
@@ -298,7 +300,8 @@ impl Experiment {
                      WHERE experiment = ?1 AND crate = ?2;",
                     &[&self.name.as_str(), &serde_json::to_string(&krate)?],
                     |r| r.get("count"),
-                )?.unwrap();
+                )?
+                .unwrap();
 
             if results_len < 2 {
                 new_crates.push(krate);
@@ -358,7 +361,8 @@ impl ExperimentDBRecord {
                     let value: String = r.get("crate");
                     Ok(serde_json::from_str(&value)?)
                 },
-            )?.into_iter()
+            )?
+            .into_iter()
             .collect::<Fallible<Vec<Crate>>>()?;
 
         Ok(Experiment {

@@ -164,7 +164,8 @@ pub fn generate_report<DB: ReadResults>(
                 res: comp,
                 runs: [crate1, crate2],
             })
-        }).collect::<Fallible<Vec<_>>>()?;
+        })
+        .collect::<Fallible<Vec<_>>>()?;
 
     Ok(TestResults { crates: res })
 }

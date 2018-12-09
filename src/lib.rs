@@ -1,6 +1,6 @@
 #![recursion_limit = "256"]
 #![deny(unused_extern_crates)]
-#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+#![allow(clippy::needless_pass_by_value, clippy::new_ret_no_self)]
 
 extern crate base64;
 extern crate bytes;
@@ -42,7 +42,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_regex;
-#[macro_use(slog_o, slog_info, slog_error, slog_warn,)]
+#[macro_use(slog_o, slog_info, slog_error, slog_warn)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;

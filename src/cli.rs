@@ -76,18 +76,11 @@ pub enum Crater {
         about = "acquire toolchains, build containers, build crate lists"
     )]
     PrepareLocal {
-        #[structopt(
-            name = "docker env",
-            long = "docker-env",
-            default_value = "full"
-        )]
+        #[structopt(name = "docker env", long = "docker-env", default_value = "full")]
         env: DockerEnv,
     },
 
-    #[structopt(
-        name = "create-lists",
-        about = "create all the lists of crates"
-    )]
+    #[structopt(name = "create-lists", about = "create all the lists of crates")]
     CreateLists {
         #[structopt(name = "lists")]
         lists: Vec<String>,
@@ -128,12 +121,7 @@ pub enum Crater {
             )
         )]
         cap_lints: CapLints,
-        #[structopt(
-            name = "priority",
-            long = "priority",
-            short = "p",
-            default_value = "0"
-        )]
+        #[structopt(name = "priority", long = "priority", short = "p", default_value = "0")]
         priority: i32,
     },
 
@@ -163,14 +151,11 @@ pub enum Crater {
             raw(possible_values = "CapLints::possible_values()")
         )]
         cap_lints: Option<CapLints>,
-        #[structopt(name = "priority", long = "priority", short = "p",)]
+        #[structopt(name = "priority", long = "priority", short = "p")]
         priority: Option<i32>,
     },
 
-    #[structopt(
-        name = "delete-ex",
-        about = "delete shared data for experiment"
-    )]
+    #[structopt(name = "delete-ex", about = "delete shared data for experiment")]
     DeleteEx {
         #[structopt(long = "ex", default_value = "default")]
         ex: Ex,
@@ -202,19 +187,11 @@ pub enum Crater {
     RunGraph {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
-        #[structopt(
-            name = "threads",
-            short = "t",
-            long = "threads",
-            default_value = "1"
-        )]
+        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
         threads: usize,
     },
 
-    #[structopt(
-        name = "gen-report",
-        about = "generate the experiment report"
-    )]
+    #[structopt(name = "gen-report", about = "generate the experiment report")]
     GenReport {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
@@ -224,10 +201,7 @@ pub enum Crater {
         force: bool,
     },
 
-    #[structopt(
-        name = "publish-report",
-        about = "publish the experiment report to S3"
-    )]
+    #[structopt(name = "publish-report", about = "publish the experiment report to S3")]
     PublishReport {
         #[structopt(
             name = "experiment",
@@ -251,12 +225,7 @@ pub enum Crater {
         url: String,
         #[structopt(name = "token")]
         token: String,
-        #[structopt(
-            name = "threads",
-            short = "t",
-            long = "threads",
-            default_value = "1"
-        )]
+        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
         threads: usize,
     },
 
@@ -334,7 +303,8 @@ impl Crater {
                     cap_lints: *cap_lints,
                     priority: *priority,
                     github_issue: None,
-                }.apply(&db, &config)?;
+                }
+                .apply(&db, &config)?;
             }
             Crater::Edit {
                 ref name,
@@ -355,7 +325,8 @@ impl Crater {
                     crates: *crates,
                     cap_lints: *cap_lints,
                     priority: *priority,
-                }.apply(&db, &config)?;
+                }
+                .apply(&db, &config)?;
             }
             Crater::DeleteEx { ref ex } => {
                 let config = Config::load()?;

@@ -21,13 +21,13 @@ struct ExperimentData {
 
 impl ExperimentData {
     fn new(data: &Data, experiment: &Experiment) -> Fallible<Self> {
-        let (status_class, status_pretty) = match experiment.status {
-            Status::Queued => ("", "Queued"),
-            Status::Running => ("orange", "Running"),
-            Status::NeedsReport => ("orange", "Needs report"),
-            Status::GeneratingReport => ("orange", "Generating report"),
-            Status::ReportFailed => ("red", "Report failed"),
-            Status::Completed => ("green", "Completed"),
+        let (status_class, status_pretty, show_progress) = match experiment.status {
+            Status::Queued => ("", "Queued", true),
+            Status::Running => ("orange", "Running", true),
+            Status::NeedsReport => ("orange", "Needs report", false),
+            Status::GeneratingReport => ("orange", "Generating report", false),
+            Status::ReportFailed => ("red", "Report failed", false),
+            Status::Completed => ("green", "Completed", false),
         };
 
         Ok(ExperimentData {
@@ -43,7 +43,11 @@ impl ExperimentData {
             },
             assigned_to: experiment.assigned_to.as_ref().map(|a| a.to_string()),
             priority: experiment.priority,
-            progress: experiment.progress(&data.db)?,
+            progress: if show_progress {
+                experiment.progress(&data.db)?
+            } else {
+                100
+            },
         })
     }
 }

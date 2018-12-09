@@ -27,7 +27,8 @@ pub(crate) trait List {
                 t.execute(
                     "INSERT INTO crates (crate, list, loaded_at) VALUES (?1, ?2, ?3);",
                     &[&::serde_json::to_string(krate)?, &Self::NAME, &now],
-                ).with_context(|_| {
+                )
+                .with_context(|_| {
                     format!(
                         "failed to insert crate {} into the {} list",
                         krate,
@@ -138,5 +139,6 @@ pub(crate) fn setup_test_lists(db: &Database, config: &Config) -> Fallible<()> {
         github: false,
         registry: false,
         local: true,
-    }.apply(db, config)
+    }
+    .apply(db, config)
 }

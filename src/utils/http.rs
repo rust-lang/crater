@@ -5,11 +5,7 @@ use reqwest::{Client, ClientBuilder, RedirectPolicy, RequestBuilder, Response};
 const MAX_REDIRECTS: usize = 4;
 
 #[derive(Debug, Fail)]
-#[fail(
-    display = "request to {} returned status code {}",
-    url,
-    status
-)]
+#[fail(display = "request to {} returned status code {}", url, status)]
 pub struct InvalidStatusCode {
     url: String,
     status: StatusCode,
@@ -46,6 +42,7 @@ pub(crate) fn get_sync(url: &str) -> Fallible<Response> {
         status => Err(InvalidStatusCode {
             url: url.to_string(),
             status,
-        }.into()),
+        }
+        .into()),
     }
 }

@@ -60,13 +60,16 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
                         .line(
                             "rotating_light",
                             format!("Report generation of **`{}`** failed: {}", name, err),
-                        ).line(
+                        )
+                        .line(
                             "hammer_and_wrench",
                             "If the error is fixed use the `retry-report` command.",
-                        ).note(
+                        )
+                        .note(
                             "sos",
                             "Can someone from the infra team check in on this? @rust-lang/infra",
-                        ).send(&github_issue.api_url, data)?;
+                        )
+                        .send(&github_issue.api_url, data)?;
                 }
 
                 continue;
@@ -103,17 +106,20 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
                                 fixed,
                                 res.crates.len(),
                             ),
-                        ).line(
+                        )
+                        .line(
                             "newspaper",
                             format!("[Open the full report]({}).", report_url),
-                        ).note(
+                        )
+                        .note(
                             "warning",
                             format!(
                                 "If you notice any spurious failure [please add them to the \
                                  blacklist]({}/blob/master/config.toml)!",
                                 ::CRATER_REPO_URL,
                             ),
-                        ).set_label(Label::ExperimentCompleted)
+                        )
+                        .set_label(Label::ExperimentCompleted)
                         .send(&github_issue.api_url, data)?;
                 }
             }

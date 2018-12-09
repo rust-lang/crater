@@ -53,7 +53,8 @@ fn execute(ex: &str, crate_select: &str, multithread: bool) {
             "stable",
             "beta",
             &format!("--crate-select={}", crate_select),
-        ]).env("CRATER_CONFIG", &config_file)
+        ])
+        .env("CRATER_CONFIG", &config_file)
         .minicrater_exec();
 
     // Execute the experiment
@@ -63,7 +64,8 @@ fn execute(ex: &str, crate_select: &str, multithread: bool) {
             &ex_arg,
             "--threads",
             &threads_count.to_string(),
-        ]).env("CRATER_CONFIG", &config_file)
+        ])
+        .env("CRATER_CONFIG", &config_file)
         .minicrater_exec();
 
     // Generate the report

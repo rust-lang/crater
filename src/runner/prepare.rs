@@ -20,7 +20,7 @@ fn froml_path(ex_name: &str, name: &str, vers: &str) -> PathBuf {
     froml_dir(ex_name).join(format!("{}-{}.Cargo.toml", name, vers))
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(match_ref_pats))]
+#[allow(clippy::match_ref_pats)]
 pub(super) fn frob_toml(ex: &Experiment, krate: &Crate) -> Fallible<()> {
     if let Crate::Registry(ref details) = *krate {
         fs::create_dir_all(&froml_dir(&ex.name))?;
@@ -49,16 +49,18 @@ pub(super) fn capture_shas<DB: WriteResults>(
                 .run_capture();
 
             let sha = match r {
-                Ok((stdout, _)) => if let Some(shaline) = stdout.get(0) {
-                    if !shaline.is_empty() {
-                        info!("sha for GitHub repo {}: {}", repo.slug(), shaline);
-                        shaline.to_string()
+                Ok((stdout, _)) => {
+                    if let Some(shaline) = stdout.get(0) {
+                        if !shaline.is_empty() {
+                            info!("sha for GitHub repo {}: {}", repo.slug(), shaline);
+                            shaline.to_string()
+                        } else {
+                            bail!("bogus output from git log for {}", dir.to_string_lossy());
+                        }
                     } else {
                         bail!("bogus output from git log for {}", dir.to_string_lossy());
                     }
-                } else {
-                    bail!("bogus output from git log for {}", dir.to_string_lossy());
-                },
+                }
                 Err(e) => {
                     bail!("unable to capture sha for {}: {}", dir.to_string_lossy(), e);
                 }
@@ -178,7 +180,8 @@ pub(super) fn capture_lockfile(
     with_work_crate(ex, toolchain, krate, |path| {
         with_frobbed_toml(ex, krate, path)?;
         capture_lockfile_inner(ex, krate, path, toolchain)
-    }).with_context(|_| format!("failed to generate lockfile for {}", krate))?;
+    })
+    .with_context(|_| format!("failed to generate lockfile for {}", krate))?;
 
     Ok(())
 }
@@ -195,7 +198,8 @@ fn capture_lockfile_inner(
             "--manifest-path",
             "Cargo.toml",
             "-Zno-index-update",
-        ]).cd(path)
+        ])
+        .cd(path)
         .run()?;
 
     let src_lockfile = &path.join("Cargo.lock");

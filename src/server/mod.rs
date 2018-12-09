@@ -78,7 +78,8 @@ pub fn run(config: Config) -> Fallible<()> {
                 .unify()
                 .or(routes::ui::routes(data.clone()))
                 .unify(),
-        ).map(|mut resp: Response<Body>| {
+        )
+        .map(|mut resp: Response<Body>| {
             resp.headers_mut().insert(
                 http::header::SERVER,
                 HeaderValue::from_static(&SERVER_HEADER),

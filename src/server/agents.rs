@@ -101,7 +101,8 @@ impl Agents {
                     git_revision: row.get("git_revision"),
                     experiment: None, // Lazy loaded after this
                 }
-            })?.into_iter()
+            })?
+            .into_iter()
             .map(|agent| agent.with_experiment(&self.db))
             .collect()
     }

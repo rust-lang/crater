@@ -63,7 +63,7 @@ pub fn init() -> slog_scope::GlobalLoggerGuard {
     let term = TERM_DRAIN.clone();
 
     let drain = slog::Duplicate(term, file).fuse();
-    let _guard = slog_scope::set_global_logger(slog::Logger::root(drain, slog_o!{}));
+    let _guard = slog_scope::set_global_logger(slog::Logger::root(drain, slog_o! {}));
 
     info!(
         "program args: {}",

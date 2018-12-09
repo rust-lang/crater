@@ -35,11 +35,13 @@ enum Node {
 impl Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Node::Task { ref task, running } => if running {
-                write!(f, "running: {:?}", task)?;
-            } else {
-                write!(f, "{:?}", task)?;
-            },
+            Node::Task { ref task, running } => {
+                if running {
+                    write!(f, "running: {:?}", task)?;
+                } else {
+                    write!(f, "{:?}", task)?;
+                }
+            }
             Node::CrateCompleted => write!(f, "crate completed")?,
             Node::Root => write!(f, "root")?,
         }

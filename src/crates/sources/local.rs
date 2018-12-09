@@ -36,7 +36,8 @@ impl List for LocalList {
                             "invalid UTF-8 in local crate name: {}",
                             entry.file_name().to_string_lossy()
                         ))
-                    })?.to_string();
+                    })?
+                    .to_string();
 
                 list.push(Crate::Local(name));
             }

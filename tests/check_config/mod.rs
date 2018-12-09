@@ -17,7 +17,8 @@ fn test_bad_config_duplicate_crate() {
         .args(&[
             "check-config",
             "tests/check_config/bad-duplicate-crate.toml",
-        ]).assert()
+        ])
+        .assert()
         .failure()
         .code(1)
         .stdout(contains("duplicate key: `lazy_static` for key `crates`"));

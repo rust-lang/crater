@@ -112,7 +112,8 @@ mod tests {
                 html_url: html_url.to_string(),
                 number: 10,
             }),
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap();
 
         let ex = Experiment::get(&db, "foo").unwrap().unwrap();
@@ -154,7 +155,8 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap_err();
 
         assert_eq!(
@@ -179,7 +181,8 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap();
 
         // While the second one fails
@@ -191,7 +194,8 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap_err();
 
         assert_eq!(

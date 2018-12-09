@@ -9,11 +9,7 @@ use utils::http;
 
 #[derive(Debug, Fail)]
 pub enum GitHubError {
-    #[fail(
-        display = "request to GitHub API failed with status {}: {}",
-        _0,
-        _1
-    )]
+    #[fail(display = "request to GitHub API failed with status {}: {}", _0, _1)]
     RequestFailed(StatusCode, String),
 }
 
@@ -49,7 +45,8 @@ impl GitHubApi {
             .build_request(Method::POST, &format!("{}/comments", issue_url))
             .json(&json!({
                 "body": body,
-            })).send()?;
+            }))
+            .send()?;
 
         if response.status() == StatusCode::CREATED {
             Ok(())

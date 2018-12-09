@@ -90,7 +90,8 @@ impl<'a> ReadResults for DatabaseDB<'a> {
                         row.get("sha"),
                     )
                 },
-            )?.into_iter()
+            )?
+            .into_iter()
             .collect())
     }
 
@@ -131,7 +132,8 @@ impl<'a> ReadResults for DatabaseDB<'a> {
                     &serde_json::to_string(krate)?,
                 ],
                 |row| row.get("result"),
-            )?.pop();
+            )?
+            .pop();
 
         if let Some(res) = result {
             Ok(Some(res.parse()?))
@@ -299,7 +301,8 @@ mod tests {
             .record_result(&ex, &MAIN_TOOLCHAIN, &krate, || {
                 info!("hello world");
                 Ok(TestResult::TestPass)
-            }).unwrap();
+            })
+            .unwrap();
 
         // Ensure the data is recorded correctly
         assert_eq!(
@@ -312,41 +315,35 @@ mod tests {
             results.get_result(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestPass)
         );
-        assert!(
-            String::from_utf8_lossy(
-                &results
-                    .load_log(&ex, &MAIN_TOOLCHAIN, &krate)
-                    .unwrap()
-                    .unwrap()
-            ).contains("hello world")
-        );
+        assert!(String::from_utf8_lossy(
+            &results
+                .load_log(&ex, &MAIN_TOOLCHAIN, &krate)
+                .unwrap()
+                .unwrap()
+        )
+        .contains("hello world"));
 
         // Ensure no data is returned for missing results
-        assert!(
-            results
-                .load_test_result(&ex, &TEST_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
-        assert!(
-            results
-                .get_result(&ex, &TEST_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
-        assert!(
-            results
-                .load_log(&ex, &TEST_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
+        assert!(results
+            .load_test_result(&ex, &TEST_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
+        assert!(results
+            .get_result(&ex, &TEST_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
+        assert!(results
+            .load_log(&ex, &TEST_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
 
         // Add another result
         results
             .record_result(&ex, &TEST_TOOLCHAIN, &krate, || {
                 info!("Another log message!");
                 Ok(TestResult::TestFail(FailureReason::Unknown))
-            }).unwrap();
+            })
+            .unwrap();
         assert_eq!(
             results.get_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestFail(FailureReason::Unknown))
@@ -354,12 +351,10 @@ mod tests {
 
         // Test deleting the newly-added result
         results.delete_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap();
-        assert!(
-            results
-                .get_result(&ex, &TEST_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
+        assert!(results
+            .get_result(&ex, &TEST_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
         assert_eq!(
             results.get_result(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestPass)
@@ -367,12 +362,10 @@ mod tests {
 
         // Test deleting all the remaining results
         results.delete_all_results(&ex).unwrap();
-        assert!(
-            results
-                .get_result(&ex, &MAIN_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
+        assert!(results
+            .get_result(&ex, &MAIN_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
     }
 
     #[test]
@@ -422,7 +415,8 @@ mod tests {
                         ),
                     ],
                 },
-            ).unwrap();
+            )
+            .unwrap();
 
         assert_eq!(
             results.load_log(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),

@@ -180,7 +180,8 @@ fn write_report<W: ReportWriter>(
             CurrentPage::Full
         } else {
             CurrentPage::Summary
-        }.navbar(),
+        }
+        .navbar(),
         categories,
         full,
         crates_count: ex.crates.len(),

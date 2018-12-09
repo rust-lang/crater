@@ -37,7 +37,8 @@ mod tests {
 
         let err = DeleteExperiment {
             name: "dummy".to_string(),
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap_err();
 
         assert_eq!(
@@ -62,7 +63,8 @@ mod tests {
         // Delete it and make sure it doesn't exist anymore
         DeleteExperiment {
             name: "dummy".to_string(),
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap();
         assert!(!Experiment::exists(&db, "dummy").unwrap());
     }

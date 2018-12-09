@@ -43,7 +43,8 @@ fn process_webhook(
                     .note(
                         "sos",
                         "If you have any trouble with Crater please ping **`@rust-lang/infra`**!",
-                    ).send(&p.issue.url, data)?;
+                    )
+                    .send(&p.issue.url, data)?;
             }
         }
         e => bail!("invalid event received: {}", e),
@@ -75,14 +76,16 @@ fn process_command(
                 .line(
                     "lock",
                     "**Error:** you're not allowed to interact with this bot.",
-                ).note(
+                )
+                .note(
                     "key",
                     format!(
                         "If you are a member of the Rust team and need access, [add yourself to \
                          the whitelist]({}/blob/master/config.toml).",
                         ::CRATER_REPO_URL,
                     ),
-                ).send(&issue.url, data)?;
+                )
+                .send(&issue.url, data)?;
             return Ok(());
         }
 
@@ -135,7 +138,7 @@ fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
     let hex_signature = splitted
         .iter()
         .skip(1)
-        .map(|i| *i)
+        .cloned()
         .collect::<Vec<&str>>()
         .join("=");
 

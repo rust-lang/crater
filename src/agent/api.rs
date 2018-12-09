@@ -79,7 +79,8 @@ impl AgentApi {
             AUTHORIZATION,
             (CraterToken {
                 token: self.token.clone(),
-            }).to_string(),
+            })
+            .to_string(),
         )
     }
 
@@ -162,7 +163,8 @@ impl AgentApi {
                         },
                     ],
                     "shas": shas,
-                })).send()?
+                }))
+                .send()?
                 .to_api_response()?;
             Ok(())
         })

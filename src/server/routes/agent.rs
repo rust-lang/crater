@@ -64,7 +64,8 @@ pub fn routes(
                 .unify()
                 .or(heartbeat)
                 .unify(),
-        ).map(handle_results)
+        )
+        .map(handle_results)
         .recover(handle_errors)
         .unify()
 }
@@ -75,7 +76,8 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body
             agent_name: auth.name,
             crater_config: data.config.clone(),
         },
-    }.into_response()?)
+    }
+    .into_response()?)
 }
 
 fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
@@ -91,7 +93,8 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
                             "Experiment **`{}`** is now **running** on agent `{}`.",
                             ex.name, auth.name,
                         ),
-                    ).send(&github_issue.api_url, &data)?;
+                    )
+                    .send(&github_issue.api_url, &data)?;
             }
         }
 

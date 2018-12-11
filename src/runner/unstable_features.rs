@@ -1,18 +1,14 @@
-use config::Config;
-use experiments::Experiment;
 use prelude::*;
 use results::TestResult;
+use results::WriteResults;
+use runner::tasks::TaskCtx;
 use std::collections::HashSet;
 use std::path::Path;
-use toolchain::Toolchain;
 use walkdir::{DirEntry, WalkDir};
 
-pub(super) fn find_unstable_features(
-    _config: &Config,
-    _ex: &Experiment,
+pub(super) fn find_unstable_features<DB: WriteResults>(
+    _ctx: &TaskCtx<DB>,
     source_path: &Path,
-    _toolchain: &Toolchain,
-    _quiet: bool,
 ) -> Fallible<TestResult> {
     let mut features = HashSet::new();
 

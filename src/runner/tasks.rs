@@ -1,5 +1,6 @@
 use config::Config;
 use crates::Crate;
+use dirs;
 use experiments::Experiment;
 use failure::AsFail;
 use prelude::*;
@@ -12,6 +13,7 @@ use utils;
 
 pub(super) enum TaskStep {
     Prepare,
+    Cleanup,
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
     CheckOnly { tc: Toolchain, quiet: bool },
@@ -23,6 +25,7 @@ impl fmt::Debug for TaskStep {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TaskStep::Prepare => write!(f, "prepare")?,
+            TaskStep::Cleanup => write!(f, "cleanup")?,
             TaskStep::BuildAndTest { ref tc, quiet } => {
                 write!(f, "build and test {}", tc.to_string())?;
                 if quiet {
@@ -71,6 +74,7 @@ impl Task {
         // If an error happens while checking if the task should be executed, the error is ignored
         // and the function returns true.
         match self.step {
+            TaskStep::Cleanup => true,
             // The prepare step should always be executed.
             // It will not be executed if all the dependent tasks are already executed, since the
             // runner will not reach the prepare task in that case.
@@ -94,7 +98,7 @@ impl Task {
         result: TestResult,
     ) -> Fallible<()> {
         match self.step {
-            TaskStep::Prepare => {}
+            TaskStep::Prepare | TaskStep::Cleanup => {}
             TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
@@ -118,6 +122,13 @@ impl Task {
         db: &DB,
     ) -> Fallible<()> {
         match self.step {
+            TaskStep::Cleanup => {
+                // Ensure source directories are cleaned up
+                for tc in &ex.toolchains {
+                    let _ = utils::fs::remove_dir_all(&dirs::crate_source_dir(ex, tc, &self.krate));
+                }
+                Ok(())
+            }
             TaskStep::Prepare => {
                 let prepare = PrepareCrate::new(ex, &self.krate, config, db);
                 prepare.prepare()

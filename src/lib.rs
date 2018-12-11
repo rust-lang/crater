@@ -74,7 +74,6 @@ pub mod db;
 pub mod dirs;
 pub mod docker;
 pub mod experiments;
-mod git;
 mod native;
 mod prelude;
 pub mod report;

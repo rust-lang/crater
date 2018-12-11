@@ -1,9 +1,11 @@
 use config::Config;
 use crates::Crate;
+use dirs;
 use experiments::Experiment;
 use failure::AsFail;
 use prelude::*;
 use results::{TestResult, WriteResults};
+use runner::prepare::PrepareCrate;
 use runner::test;
 use std::fmt;
 use toolchain::Toolchain;
@@ -11,6 +13,7 @@ use utils;
 
 pub(super) enum TaskStep {
     Prepare,
+    Cleanup,
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
     CheckOnly { tc: Toolchain, quiet: bool },
@@ -22,6 +25,7 @@ impl fmt::Debug for TaskStep {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TaskStep::Prepare => write!(f, "prepare")?,
+            TaskStep::Cleanup => write!(f, "cleanup")?,
             TaskStep::BuildAndTest { ref tc, quiet } => {
                 write!(f, "build and test {}", tc.to_string())?;
                 if quiet {
@@ -70,6 +74,7 @@ impl Task {
         // If an error happens while checking if the task should be executed, the error is ignored
         // and the function returns true.
         match self.step {
+            TaskStep::Cleanup => true,
             // The prepare step should always be executed.
             // It will not be executed if all the dependent tasks are already executed, since the
             // runner will not reach the prepare task in that case.
@@ -93,7 +98,7 @@ impl Task {
         result: TestResult,
     ) -> Fallible<()> {
         match self.step {
-            TaskStep::Prepare => {}
+            TaskStep::Prepare | TaskStep::Cleanup => {}
             TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
@@ -117,7 +122,17 @@ impl Task {
         db: &DB,
     ) -> Fallible<()> {
         match self.step {
-            TaskStep::Prepare => self.run_prepare(config, ex, db),
+            TaskStep::Cleanup => {
+                // Ensure source directories are cleaned up
+                for tc in &ex.toolchains {
+                    let _ = utils::fs::remove_dir_all(&dirs::crate_source_dir(ex, tc, &self.krate));
+                }
+                Ok(())
+            }
+            TaskStep::Prepare => {
+                let prepare = PrepareCrate::new(ex, &self.krate, config, db);
+                prepare.prepare()
+            }
             TaskStep::BuildAndTest { ref tc, quiet } => {
                 self.run_build_and_test(config, ex, tc, db, quiet)
             }
@@ -126,27 +141,6 @@ impl Task {
             TaskStep::Rustdoc { ref tc, quiet } => self.run_rustdoc(config, ex, tc, db, quiet),
             TaskStep::UnstableFeatures { ref tc } => self.run_unstable_features(config, ex, db, tc),
         }
-    }
-
-    fn run_prepare<DB: WriteResults>(
-        &self,
-        config: &Config,
-        ex: &Experiment,
-        db: &DB,
-    ) -> Fallible<()> {
-        self.krate.prepare()?;
-
-        // Fetch repository data if it's a git repo
-        if let Crate::GitHub(_) = self.krate {
-            ::runner::prepare::capture_shas(ex, &[self.krate.clone()], db)?;
-        }
-
-        ::runner::prepare::validate_manifest(ex, &self.krate, &ex.toolchains[0])?;
-        ::runner::prepare::frob_toml(ex, &self.krate)?;
-        ::runner::prepare::capture_lockfile(config, ex, &self.krate, &ex.toolchains[0])?;
-        ::runner::prepare::fetch_crate_deps(config, ex, &self.krate, &ex.toolchains[0])?;
-
-        Ok(())
     }
 
     fn run_build_and_test<DB: WriteResults>(

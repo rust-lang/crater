@@ -270,7 +270,15 @@ pub(super) fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
             builds.push(build_id);
         }
 
-        graph.add_crate(&builds);
+        let cleanup_id = graph.add_task(
+            Task {
+                krate: krate.clone(),
+                step: TaskStep::Cleanup,
+            },
+            &builds,
+        );
+
+        graph.add_crate(&[cleanup_id]);
     }
 
     graph

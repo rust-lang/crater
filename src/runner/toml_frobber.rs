@@ -2,21 +2,25 @@ use crates::Crate;
 use prelude::*;
 use std::path::Path;
 use toml::value::Table;
-use toml::{self, Value};
+use toml::{self, value::Array, Value};
 
 pub(super) struct TomlFrobber<'a> {
     krate: &'a Crate,
     table: Table,
+    dir: &'a Path,
 }
 
 impl<'a> TomlFrobber<'a> {
-    pub(super) fn new(krate: &'a Crate, cargo_toml: &Path) -> Fallible<Self> {
+    pub(super) fn new(krate: &'a Crate, cargo_toml: &'a Path) -> Fallible<Self> {
         let toml_content = ::std::fs::read_to_string(cargo_toml)
             .with_context(|_| format!("missing Cargo.toml from {}", krate))?;
+
         let table: Table = toml::from_str(&toml_content)
             .with_context(|_| format!("unable to parse {}", cargo_toml.display(),))?;
 
-        Ok(TomlFrobber { krate, table })
+        let dir = cargo_toml.parent().unwrap();
+
+        Ok(TomlFrobber { krate, table, dir })
     }
 
     #[cfg(test)]
@@ -27,11 +31,46 @@ impl<'a> TomlFrobber<'a> {
     pub(super) fn frob(&mut self) {
         info!("started frobbing {}", self.krate);
 
+        self.remove_missing_items("example");
+        self.remove_missing_items("test");
         self.remove_workspaces();
         self.remove_unwanted_cargo_features();
         self.remove_dependencies();
 
         info!("finished frobbing {}", self.krate);
+    }
+
+    fn test_existance(dir: &Path, value: &Array, folder: &str) -> Array {
+        value
+            .iter()
+            .filter_map(|t| t.as_table())
+            .map(|table| {
+                let name = table.get("name").unwrap().to_string();
+                let path = table.get("path").map_or_else(
+                    || dir.join(folder).join(name + ".rs"),
+                    |path| dir.join(path.as_str().unwrap()),
+                );
+                (table, path)
+            })
+            .filter(|(_table, path)| path.exists())
+            .filter_map(|(table, _path)| Value::try_from(table).ok())
+            .collect()
+    }
+
+    fn remove_missing_items(&mut self, category: &str) {
+        let folder = &(String::from(category) + "s");
+
+        println!("tables {:?}: {:?}", category, self.table.get(category));
+
+        let _krate = self.krate.to_string();
+        let dir = self.dir;
+
+        if let Some(array) = self.table.get_mut(category) {
+            *(array) =
+                toml::Value::Array(Self::test_existance(dir, array.as_array().unwrap(), folder));
+        }
+
+        println!("tables example: {:?}", self.table.get("example"));
     }
 
     fn remove_workspaces(&mut self) {

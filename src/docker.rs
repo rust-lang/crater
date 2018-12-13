@@ -20,7 +20,12 @@ pub fn build_container(docker_env: &str) -> Fallible<()> {
 }
 
 pub(crate) fn is_running() -> bool {
-    RunCommand::new("docker").args(&["info"]).run().is_ok()
+    info!("checking if the docker daemon is running");
+    RunCommand::new("docker")
+        .args(&["info"])
+        .hide_output(true)
+        .run()
+        .is_ok()
 }
 
 #[derive(Copy, Clone)]

@@ -1,5 +1,4 @@
-use docker::DockerError;
-use docker::MountPerms;
+use docker::{DockerError, MountPerms};
 use failure::Error;
 use prelude::*;
 use results::{FailureReason, TestResult, WriteResults};
@@ -46,12 +45,12 @@ fn run_cargo<DB: WriteResults>(
         .args(args)
         .quiet(ctx.quiet)
         .cd(source_path)
-        .env("CARGO_TARGET_DIR", "/target")
+        .env("CARGO_TARGET_DIR", "/opt/crater/target")
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env(rustflags_env, rustflags)
-        .sandboxed()
-        .mount(target_dir, "/target", MountPerms::ReadWrite)
+        .sandboxed(&ctx.docker_env)
+        .mount(target_dir, "/opt/crater/target", MountPerms::ReadWrite)
         .memory_limit(Some(ctx.config.sandbox.memory_limit))
         .run()?;
 

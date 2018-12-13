@@ -1,5 +1,6 @@
 use dirs::{CARGO_HOME, RUSTUP_HOME};
-use docker::{ContainerBuilder, MountPerms, IMAGE_NAME};
+use docker::DockerEnv;
+use docker::{ContainerBuilder, MountPerms};
 use failure::Error;
 use futures::{future, Future, Stream};
 use native;
@@ -123,8 +124,8 @@ impl RunCommand {
         self
     }
 
-    pub(crate) fn sandboxed(self) -> SandboxedCommand {
-        SandboxedCommand::new(self)
+    pub(crate) fn sandboxed(self, docker_env: &DockerEnv) -> SandboxedCommand {
+        SandboxedCommand::new(self, docker_env)
     }
 
     pub(crate) fn run(self) -> Fallible<()> {
@@ -187,14 +188,14 @@ impl RunCommand {
     }
 }
 
-pub(crate) struct SandboxedCommand {
+pub(crate) struct SandboxedCommand<'a> {
     command: RunCommand,
-    container: ContainerBuilder,
+    container: ContainerBuilder<'a>,
 }
 
-impl SandboxedCommand {
-    fn new(command: RunCommand) -> Self {
-        let container = ContainerBuilder::new(IMAGE_NAME)
+impl<'a> SandboxedCommand<'a> {
+    fn new(command: RunCommand, docker_env: &'a DockerEnv) -> Self {
+        let container = ContainerBuilder::new(docker_env)
             .env("USER_ID", native::current_user().to_string())
             .enable_networking(false);
 
@@ -218,16 +219,21 @@ impl SandboxedCommand {
 
     pub(crate) fn run(mut self) -> Fallible<()> {
         // Build the full CLI
-        let mut cmd = match self.command.binary {
-            Binary::Global(path) => path,
-            Binary::InstalledByCrater(path) => path,
-        }
-        .to_string_lossy()
-        .as_ref()
-        .to_string();
+        let mut cmd = Vec::new();
+        cmd.push(
+            match self.command.binary {
+                Binary::Global(path) => path,
+                Binary::InstalledByCrater(path) => {
+                    PathBuf::from("/opt/crater/cargo-home/bin").join(path)
+                }
+            }
+            .to_string_lossy()
+            .as_ref()
+            .to_string(),
+        );
+
         for arg in self.command.args {
-            cmd.push(' ');
-            cmd.push_str(arg.to_string_lossy().as_ref());
+            cmd.push(arg.to_string_lossy().to_string());
         }
 
         let source_dir = match self.command.cd {
@@ -237,10 +243,11 @@ impl SandboxedCommand {
 
         self.container = self
             .container
-            .mount(source_dir, "/source", MountPerms::ReadOnly)
-            .env("SOURCE_DIR", "/source")
-            .env("USER_ID", native::current_user().to_string())
-            .env("CMD", cmd);
+            .mount(source_dir, "/opt/crater/workdir", MountPerms::ReadOnly)
+            .env("SOURCE_DIR", "/opt/crater/workdir")
+            .env("MAP_USER_ID", native::current_user().to_string())
+            .workdir("/opt/crater/workdir")
+            .cmd(cmd);
 
         for (key, value) in self.command.env {
             self.container = self.container.env(
@@ -252,10 +259,14 @@ impl SandboxedCommand {
         if self.command.local_rustup {
             self.container = self
                 .container
-                .mount(&*CARGO_HOME, "/cargo-home", MountPerms::ReadOnly)
-                .mount(&*RUSTUP_HOME, "/rustup-home", MountPerms::ReadOnly)
-                .env("CARGO_HOME", "/cargo-home")
-                .env("RUSTUP_HOME", "/rustup-home");
+                .mount(&*CARGO_HOME, "/opt/crater/cargo-home", MountPerms::ReadOnly)
+                .mount(
+                    &*RUSTUP_HOME,
+                    "/opt/crater/rustup-home",
+                    MountPerms::ReadOnly,
+                )
+                .env("CARGO_HOME", "/opt/crater/cargo-home")
+                .env("RUSTUP_HOME", "/opt/crater/rustup-home");
         }
 
         self.container.run(self.command.quiet)

@@ -10,7 +10,7 @@ of its output is into the `./work` directory, where it maintains its
 own rustup installation, crate mirrors, etc.
 
 ```
-cargo run -- prepare-local --docker-env mini
+cargo run -- prepare-local
 cargo run -- define-ex --crate-select=demo --cap-lints=forbid stable beta
 cargo run -- run-graph --threads NUM_CPUS
 cargo run -- gen-report work/ex/default/

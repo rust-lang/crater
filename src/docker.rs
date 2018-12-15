@@ -46,7 +46,10 @@ impl DockerEnv {
 
     fn pull(&self) -> Fallible<()> {
         info!("pulling image {} from Docker Hub", self.image);
-        RunCommand::new("docker").args(&["pull", &self.image]).run()
+        RunCommand::new("docker")
+            .args(&["pull", &self.image])
+            .enable_timeout(false)
+            .run()
     }
 }
 

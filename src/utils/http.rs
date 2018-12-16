@@ -1,5 +1,5 @@
+use crate::prelude::*;
 use http::{header::USER_AGENT, Method, StatusCode};
-use prelude::*;
 use reqwest::{Client, ClientBuilder, RedirectPolicy, RequestBuilder, Response};
 
 const MAX_REDIRECTS: usize = 4;
@@ -15,8 +15,8 @@ lazy_static! {
     static ref HTTP_SYNC_CLIENT: Client = setup_sync_client();
     static ref USER_AGENT_CONTENT: String = format!(
         "crater/{} ({})",
-        ::GIT_REVISION.unwrap_or("unknown"),
-        ::CRATER_REPO_URL
+        crate::GIT_REVISION.unwrap_or("unknown"),
+        crate::CRATER_REPO_URL
     );
 }
 

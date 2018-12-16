@@ -2,15 +2,15 @@ mod db;
 #[cfg(test)]
 mod dummy;
 
-use crates::{Crate, GitHubRepo};
-use experiments::Experiment;
-use prelude::*;
-pub use results::db::{DatabaseDB, ProgressData};
+use crate::crates::{Crate, GitHubRepo};
+use crate::experiments::Experiment;
+use crate::prelude::*;
+pub use crate::results::db::{DatabaseDB, ProgressData};
 #[cfg(test)]
-pub use results::dummy::DummyDB;
+pub use crate::results::dummy::DummyDB;
+use crate::toolchain::Toolchain;
 use std::collections::HashMap;
 use std::{fmt, str::FromStr};
-use toolchain::Toolchain;
 
 pub trait ReadResults {
     fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>>;

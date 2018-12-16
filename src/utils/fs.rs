@@ -1,7 +1,7 @@
-use prelude::*;
+use crate::prelude::*;
+use crate::utils::try_hard_limit;
 use std::fs;
 use std::path::{Path, PathBuf};
-use utils::try_hard_limit;
 use walkdir::{DirEntry, WalkDir};
 
 pub(crate) fn try_canonicalize<P: AsRef<Path>>(path: P) -> PathBuf {

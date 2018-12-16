@@ -1,12 +1,12 @@
-use native;
-use prelude::*;
-use run::{Binary, RunCommand, Runnable};
-use tools::{binary_path, InstallableTool, CARGO, CARGO_INSTALL_UPDATE};
+use crate::native;
+use crate::prelude::*;
+use crate::run::{Binary, RunCommand, Runnable};
+use crate::tools::{binary_path, InstallableTool, CARGO, CARGO_INSTALL_UPDATE};
 
 pub(crate) struct BinaryCrate {
-    pub(in tools) crate_name: &'static str,
-    pub(in tools) binary: &'static str,
-    pub(in tools) cargo_subcommand: Option<&'static str>,
+    pub(in crate::tools) crate_name: &'static str,
+    pub(in crate::tools) binary: &'static str,
+    pub(in crate::tools) cargo_subcommand: Option<&'static str>,
 }
 
 impl Runnable for BinaryCrate {

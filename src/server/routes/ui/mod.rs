@@ -1,10 +1,10 @@
-use assets;
+use crate::assets;
+use crate::prelude::*;
+use crate::server::{Data, HttpError};
 use http::header::{HeaderValue, CONTENT_TYPE};
 use http::{Response, StatusCode};
 use hyper::Body;
-use prelude::*;
 use serde::Serialize;
-use server::{Data, HttpError};
 use std::sync::Arc;
 use warp::{self, Filter, Rejection};
 
@@ -19,7 +19,7 @@ struct LayoutContext {
 impl LayoutContext {
     fn new() -> Self {
         LayoutContext {
-            git_revision: ::GIT_REVISION,
+            git_revision: crate::GIT_REVISION,
         }
     }
 }
@@ -111,7 +111,7 @@ fn error_500() -> Response<Body> {
         Ok(resp) => resp,
         Err(err) => {
             error!("failed to render 500 error page!");
-            ::utils::report_failure(&err);
+            crate::utils::report_failure(&err);
             Response::new("500: Internal Server Error\n".into())
         }
     };
@@ -132,13 +132,13 @@ fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
                 match error_404() {
                     Ok(content) => return content,
                     Err(err404) => {
-                        ::utils::report_failure(&err404);
+                        crate::utils::report_failure(&err404);
                         return error_500();
                     }
                 }
             }
 
-            ::utils::report_failure(&err);
+            crate::utils::report_failure(&err);
             error_500()
         }
     }
@@ -150,7 +150,7 @@ fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
             Ok(resp) => Ok(resp),
             Err(err) => {
                 error!("failed to render 404 page!");
-                ::utils::report_failure(&err);
+                crate::utils::report_failure(&err);
                 Ok(error_500())
             }
         },

@@ -1,6 +1,6 @@
+use crate::dirs::LOG_DIR;
+use crate::prelude::*;
 use chrono::Utc;
-use dirs::LOG_DIR;
-use prelude::*;
 use slog::{self, Drain};
 use slog_scope;
 use slog_term;

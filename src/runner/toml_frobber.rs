@@ -1,5 +1,5 @@
-use crates::Crate;
-use prelude::*;
+use crate::crates::Crate;
+use crate::prelude::*;
 use std::path::Path;
 use toml::value::Table;
 use toml::{self, Value};
@@ -135,8 +135,8 @@ impl<'a> TomlFrobber<'a> {
 #[cfg(test)]
 mod tests {
     use super::TomlFrobber;
-    use crates::Crate;
-    use toml::Value;
+    use crate::crates::Crate;
+    use toml::{self, Value};
 
     #[test]
     fn test_frob_table_noop() {

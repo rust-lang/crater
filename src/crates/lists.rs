@@ -1,13 +1,15 @@
+use crate::config::Config;
+use crate::crates::{Crate, RegistryCrate};
+use crate::db::{Database, QueryUtils};
+use crate::experiments::CrateSelect;
+use crate::prelude::*;
 use chrono::Utc;
-use config::Config;
-use crates::{Crate, RegistryCrate};
-use db::{Database, QueryUtils};
-use experiments::CrateSelect;
-use prelude::*;
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 
-pub(crate) use crates::sources::{github::GitHubList, local::LocalList, registry::RegistryList};
+pub(crate) use crate::crates::sources::{
+    github::GitHubList, local::LocalList, registry::RegistryList,
+};
 
 const SMALL_RANDOM_COUNT: usize = 20;
 
@@ -135,7 +137,7 @@ pub(crate) fn get_crates(
 
 #[cfg(test)]
 pub(crate) fn setup_test_lists(db: &Database, config: &Config) -> Fallible<()> {
-    ::actions::UpdateLists {
+    crate::actions::UpdateLists {
         github: false,
         registry: false,
         local: true,

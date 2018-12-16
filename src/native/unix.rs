@@ -1,8 +1,8 @@
+use crate::prelude::*;
 use nix::{
     sys::signal::{kill, Signal},
     unistd::{Gid, Pid, Uid},
 };
-use prelude::*;
 use std::convert::AsRef;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::Path;

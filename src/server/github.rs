@@ -1,11 +1,12 @@
+use crate::prelude::*;
+use crate::server::tokens::Tokens;
+use crate::utils;
 use http::header::AUTHORIZATION;
 use http::Method;
 use http::StatusCode;
-use prelude::*;
 use reqwest::RequestBuilder;
-use server::tokens::Tokens;
+use serde_json::json;
 use std::collections::HashMap;
-use utils::http;
 
 #[derive(Debug, Fail)]
 pub enum GitHubError {
@@ -32,7 +33,8 @@ impl GitHubApi {
             url.to_string()
         };
 
-        http::prepare_sync(method, &url).header(AUTHORIZATION, format!("token {}", self.token))
+        utils::http::prepare_sync(method, &url)
+            .header(AUTHORIZATION, format!("token {}", self.token))
     }
 
     pub fn username(&self) -> Fallible<String> {

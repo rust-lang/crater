@@ -1,7 +1,7 @@
 mod migrations;
 
-use dirs::WORK_DIR;
-use prelude::*;
+use crate::dirs::WORK_DIR;
+use crate::prelude::*;
 use r2d2::{CustomizeConnection, Pool};
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;

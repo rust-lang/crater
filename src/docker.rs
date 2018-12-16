@@ -1,10 +1,10 @@
-use prelude::*;
-use run::RunCommand;
+use crate::prelude::*;
+use crate::run::RunCommand;
+use crate::utils::size::Size;
 use std::env;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
-use utils::size::Size;
 
 pub(crate) fn is_running() -> bool {
     info!("checking if the docker daemon is running");
@@ -185,9 +185,11 @@ impl<'a> ContainerBuilder<'a> {
         let container = self.create()?;
 
         // Ensure the container is properly deleted even if something panics
-        defer! {{
-            if let Err(err) = container.delete().with_context(|_| format!("failed to delete container {}", container.id)) {
-                ::utils::report_failure(&err);
+        scopeguard::defer! {{
+            if let Err(err) = container.delete()
+                .with_context(|_| format!("failed to delete container {}", container.id))
+            {
+                crate::utils::report_failure(&err);
             }
         }}
 

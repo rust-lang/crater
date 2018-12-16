@@ -1,6 +1,6 @@
+use crate::prelude::*;
+use crate::report::ReportWriter;
 use mime::Mime;
-use prelude::*;
-use report::ReportWriter;
 use rusoto_core::request::HttpClient;
 use rusoto_core::{DefaultCredentialsProvider, Region};
 use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3Client, S3};

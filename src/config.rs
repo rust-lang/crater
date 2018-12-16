@@ -1,5 +1,6 @@
-use crates::Crate;
-use prelude::*;
+use crate::crates::Crate;
+use crate::prelude::*;
+use crate::utils::size::Size;
 use regex::Regex;
 use serde_regex;
 use std::collections::{HashMap, HashSet};
@@ -8,7 +9,6 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-use utils::size::Size;
 
 fn default_config_file() -> PathBuf {
     env::var_os("CRATER_CONFIG")
@@ -137,13 +137,13 @@ impl Config {
     }
 
     fn check_all(filename: PathBuf) -> Fallible<()> {
-        use experiments::CrateSelect;
+        use crate::experiments::CrateSelect;
 
         let buffer = Self::load_as_string(filename)?;
         let mut has_errors = Self::check_for_dup_keys(&buffer).is_err();
         let cfg: Self = ::toml::from_str(&buffer)?;
-        let db = ::db::Database::open()?;
-        let crates = ::crates::lists::get_crates(CrateSelect::Full, &db, &cfg)?;
+        let db = crate::db::Database::open()?;
+        let crates = crate::crates::lists::get_crates(CrateSelect::Full, &db, &cfg)?;
         has_errors |= cfg.check_for_missing_crates(&crates).is_err();
         has_errors |= cfg.check_for_missing_repos(&crates).is_err();
         if has_errors {
@@ -257,7 +257,7 @@ impl Default for Config {
 #[cfg(test)]
 mod tests {
     use super::Config;
-    use crates::{Crate, GitHubRepo, RegistryCrate};
+    use crate::crates::{Crate, GitHubRepo, RegistryCrate};
 
     #[test]
     fn test_config() {

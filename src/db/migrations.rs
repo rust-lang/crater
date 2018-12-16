@@ -1,4 +1,4 @@
-use prelude::*;
+use crate::prelude::*;
 use rand::{self, distributions::Alphanumeric, Rng};
 use rusqlite::{Connection, Transaction};
 use serde_json;

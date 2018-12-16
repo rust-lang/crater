@@ -1,14 +1,14 @@
-use dirs::{CARGO_HOME, RUSTUP_HOME};
-use native;
-use prelude::*;
-use run::{Binary, RunCommand, Runnable};
+use crate::dirs::{CARGO_HOME, RUSTUP_HOME};
+use crate::native;
+use crate::prelude::*;
+use crate::run::{Binary, RunCommand, Runnable};
+use crate::toolchain::Toolchain;
+use crate::toolchain::MAIN_TOOLCHAIN_NAME;
+use crate::tools::{binary_path, InstallableTool, RUSTUP};
 use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
 use std::io;
 use tempfile::tempdir;
-use toolchain::Toolchain;
-use toolchain::MAIN_TOOLCHAIN_NAME;
-use tools::{binary_path, InstallableTool, RUSTUP};
 
 static RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
 
@@ -45,11 +45,11 @@ impl InstallableTool for Rustup {
         let url = format!(
             "{}/{}/rustup-init{}",
             RUSTUP_BASE_URL,
-            ::HOST_TARGET,
+            crate::HOST_TARGET,
             EXE_SUFFIX
         );
         let mut resp =
-            ::utils::http::get_sync(&url).with_context(|_| "unable to download rustup")?;
+            crate::utils::http::get_sync(&url).with_context(|_| "unable to download rustup")?;
 
         let tempdir = tempdir()?;
         let installer = &tempdir.path().join(format!("rustup-init{}", EXE_SUFFIX));
@@ -87,8 +87,8 @@ impl InstallableTool for Rustup {
 }
 
 pub(crate) struct Cargo<'a> {
-    pub(in tools) toolchain: &'a Toolchain,
-    pub(in tools) unstable_features: bool,
+    pub(in crate::tools) toolchain: &'a Toolchain,
+    pub(in crate::tools) unstable_features: bool,
 }
 
 impl<'a> Cargo<'a> {

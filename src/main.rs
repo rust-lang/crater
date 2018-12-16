@@ -1,16 +1,7 @@
-#![deny(unused_extern_crates)]
-extern crate dotenv;
 #[macro_use(slog_info)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-extern crate structopt;
-#[macro_use]
-extern crate structopt_derive;
-#[macro_use]
-extern crate failure;
-
-extern crate crater;
 
 mod cli;
 

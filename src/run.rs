@@ -1,10 +1,11 @@
-use dirs::{CARGO_HOME, RUSTUP_HOME};
-use docker::DockerEnv;
-use docker::{ContainerBuilder, MountPerms};
+use crate::dirs::{CARGO_HOME, RUSTUP_HOME};
+use crate::docker::DockerEnv;
+use crate::docker::{ContainerBuilder, MountPerms};
+use crate::native;
+use crate::prelude::*;
+use crate::utils::size::Size;
 use failure::Error;
 use futures::{future, Future, Stream};
-use native;
-use prelude::*;
 use slog_scope;
 use std::convert::AsRef;
 use std::env::consts::EXE_SUFFIX;
@@ -15,7 +16,6 @@ use std::process::{Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 use tokio::{io::lines, runtime::current_thread::block_on_all, util::*};
 use tokio_process::CommandExt;
-use utils::size::Size;
 
 #[derive(Debug, Fail)]
 pub enum RunCommandError {
@@ -141,7 +141,7 @@ impl RunCommand {
     fn run_inner(self, capture: bool) -> Fallible<ProcessOutput> {
         let name = match self.binary {
             Binary::Global(path) => path,
-            Binary::InstalledByCrater(path) => ::utils::fs::try_canonicalize(format!(
+            Binary::InstalledByCrater(path) => crate::utils::fs::try_canonicalize(format!(
                 "{}/bin/{}{}",
                 *CARGO_HOME,
                 path.to_string_lossy(),
@@ -154,8 +154,14 @@ impl RunCommand {
         cmd.args(&self.args);
 
         if self.local_rustup {
-            cmd.env("CARGO_HOME", ::utils::fs::try_canonicalize(&*CARGO_HOME));
-            cmd.env("RUSTUP_HOME", ::utils::fs::try_canonicalize(&*RUSTUP_HOME));
+            cmd.env(
+                "CARGO_HOME",
+                crate::utils::fs::try_canonicalize(&*CARGO_HOME),
+            );
+            cmd.env(
+                "RUSTUP_HOME",
+                crate::utils::fs::try_canonicalize(&*RUSTUP_HOME),
+            );
         }
         for &(ref k, ref v) in &self.env {
             cmd.env(k, v);

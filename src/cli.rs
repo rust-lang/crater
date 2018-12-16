@@ -20,7 +20,7 @@ use crater::results::{DatabaseDB, DeleteResults};
 use crater::runner;
 use crater::server;
 use crater::toolchain::Toolchain;
-use failure::{Error, Fallible};
+use failure::{bail, Error, Fallible};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -61,7 +61,7 @@ impl FromStr for Dest {
     }
 }
 
-#[derive(StructOpt)]
+#[derive(structopt_derive::StructOpt)]
 #[structopt(
     name = "crater",
     about = "Kaboom!",

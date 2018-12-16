@@ -1,10 +1,10 @@
+use crate::prelude::*;
+use crate::server::agents::AgentStatus;
+use crate::server::routes::ui::{render_template, LayoutContext};
+use crate::server::Data;
 use chrono::SecondsFormat;
 use http::Response;
 use hyper::Body;
-use prelude::*;
-use server::agents::AgentStatus;
-use server::routes::ui::{render_template, LayoutContext};
-use server::Data;
 use std::sync::Arc;
 
 #[derive(Serialize)]

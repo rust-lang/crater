@@ -1,5 +1,5 @@
+use crate::prelude::*;
 use mime::{self, Mime};
-use prelude::*;
 use serde::Serialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -11,8 +11,8 @@ lazy_static! {
     static ref TERA_CACHE: Tera = match build_tera_cache() {
         Ok(tera) => tera,
         Err(err) => {
-            ::utils::report_failure(&err);
-            ::std::process::exit(1);
+            crate::utils::report_failure(&err);
+            std::process::exit(1);
         }
     };
 }

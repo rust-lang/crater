@@ -1,5 +1,5 @@
+use crate::common::CommandCraterExt;
 use assert_cmd::prelude::*;
-use common::CommandCraterExt;
 use difference::Changeset;
 use rand::{self, distributions::Alphanumeric, Rng};
 use serde_json::{self, Value};

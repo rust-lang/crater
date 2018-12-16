@@ -1,9 +1,9 @@
-use config::Config;
-use experiments::Experiment;
+use crate::config::Config;
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::report::{compare, ReportWriter};
+use crate::results::ReadResults;
 use flate2::{write::GzEncoder, Compression};
-use prelude::*;
-use report::{compare, ReportWriter};
-use results::ReadResults;
 use std::collections::HashMap;
 use tar::{Builder as TarBuilder, Header as TarHeader};
 
@@ -41,7 +41,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
             let log_bytes: &[u8] = match log {
                 Ok(ref l) => l,
                 Err(e) => {
-                    ::utils::report_failure(&e);
+                    crate::utils::report_failure(&e);
                     continue;
                 }
             };
@@ -95,13 +95,13 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
 #[cfg(test)]
 mod tests {
     use super::write_logs_archives;
-    use config::Config;
-    use db::Database;
-    use experiments::Experiment;
+    use crate::config::Config;
+    use crate::db::Database;
+    use crate::experiments::Experiment;
+    use crate::report::DummyWriter;
+    use crate::results::{DatabaseDB, FailureReason, TestResult, WriteResults};
     use flate2::read::GzDecoder;
     use mime::Mime;
-    use report::DummyWriter;
-    use results::{DatabaseDB, FailureReason, TestResult, WriteResults};
     use std::io::Read;
     use tar::Archive;
 
@@ -111,10 +111,10 @@ mod tests {
         let db = Database::temp().unwrap();
         let writer = DummyWriter::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment
-        ::actions::CreateExperiment::dummy("dummy")
+        crate::actions::CreateExperiment::dummy("dummy")
             .apply(&db, &config)
             .unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();

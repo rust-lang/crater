@@ -1,8 +1,8 @@
-use crates::{lists::List, Crate};
+use crate::crates::{lists::List, Crate};
+use crate::dirs::{LOCAL_DIR, SOURCE_CACHE_DIR};
+use crate::prelude::*;
 use crates_index::Index;
-use dirs::{LOCAL_DIR, SOURCE_CACHE_DIR};
 use flate2::read::GzDecoder;
-use prelude::*;
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Read};
@@ -74,7 +74,7 @@ impl RegistryCrate {
             .join(format!("{}-{}.crate", self.name, self.version))
     }
 
-    pub(in crates) fn fetch(&self) -> Fallible<()> {
+    pub(in crate::crates) fn fetch(&self) -> Fallible<()> {
         let local = self.cached_path();
         if local.exists() {
             info!("crate {} {} is already in cache", self.name, self.version);
@@ -89,13 +89,13 @@ impl RegistryCrate {
             "{0}/{1}/{1}-{2}.crate",
             CRATES_ROOT, self.name, self.version
         );
-        let mut resp = ::utils::http::get_sync(&remote)?;
+        let mut resp = crate::utils::http::get_sync(&remote)?;
         resp.copy_to(&mut BufWriter::new(File::create(&local)?))?;
 
         Ok(())
     }
 
-    pub(in crates) fn copy_to(&self, dest: &Path) -> Fallible<()> {
+    pub(in crate::crates) fn copy_to(&self, dest: &Path) -> Fallible<()> {
         let cached = self.cached_path();
         let mut file = File::open(cached)?;
         let mut tar = Archive::new(GzDecoder::new(BufReader::new(&mut file)));
@@ -107,7 +107,7 @@ impl RegistryCrate {
             dest.display()
         );
         if let Err(err) = unpack_without_first_dir(&mut tar, dest) {
-            let _ = ::utils::fs::remove_dir_all(dest);
+            let _ = crate::utils::fs::remove_dir_all(dest);
             Err(err
                 .context(format!(
                     "unable to download {} version {}",

@@ -1,14 +1,14 @@
 pub(crate) mod lists;
 mod sources;
 
-use dirs::LOCAL_CRATES_DIR;
-use prelude::*;
+use crate::dirs::LOCAL_CRATES_DIR;
+use crate::prelude::*;
 use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
 
-pub(crate) use crates::sources::github::GitHubRepo;
-pub(crate) use crates::sources::registry::RegistryCrate;
+pub(crate) use crate::crates::sources::github::GitHubRepo;
+pub(crate) use crate::crates::sources::registry::RegistryCrate;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub enum Crate {
@@ -48,14 +48,14 @@ impl Crate {
                 "crate source directory {} already exists, cleaning it up",
                 dest.display()
             );
-            ::utils::fs::remove_dir_all(dest)?;
+            crate::utils::fs::remove_dir_all(dest)?;
         }
         match *self {
             Crate::Registry(ref details) => details.copy_to(&dest)?,
             Crate::GitHub(ref repo) => repo.copy_to(&dest)?,
             Crate::Local(ref name) => {
                 info!("copying local crate {} to {}", name, dest.display());
-                ::utils::fs::copy_dir(&LOCAL_CRATES_DIR.join(name), &dest)?;
+                crate::utils::fs::copy_dir(&LOCAL_CRATES_DIR.join(name), &dest)?;
             }
         }
 

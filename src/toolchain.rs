@@ -1,13 +1,13 @@
-use dirs::TARGET_DIR;
-use prelude::*;
-use run::RunCommand;
+use crate::dirs::TARGET_DIR;
+use crate::prelude::*;
+use crate::run::RunCommand;
+use crate::tools::CARGO;
+use crate::tools::{RUSTUP, RUSTUP_TOOLCHAIN_INSTALL_MASTER};
+use crate::utils;
 use std::borrow::Cow;
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
-use tools::CARGO;
-use tools::{RUSTUP, RUSTUP_TOOLCHAIN_INSTALL_MASTER};
-use utils;
 
 pub(crate) static MAIN_TOOLCHAIN_NAME: &str = "stable";
 
@@ -42,7 +42,7 @@ pub enum ToolchainSource {
     #[serde(rename = "ci")]
     CI {
         sha: Cow<'static, str>,
-        try: bool,
+        r#try: bool,
     },
 }
 
@@ -106,8 +106,8 @@ impl fmt::Display for Toolchain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.source {
             ToolchainSource::Dist { ref name } => write!(f, "{}", name)?,
-            ToolchainSource::CI { ref sha, try } => {
-                if try {
+            ToolchainSource::CI { ref sha, r#try } => {
+                if r#try {
                     write!(f, "try#{}", sha)?;
                 } else {
                     write!(f, "master#{}", sha)?;
@@ -151,11 +151,11 @@ impl FromStr for Toolchain {
             match source_name {
                 "try" => ToolchainSource::CI {
                     sha: Cow::Owned(sha),
-                    try: true,
+                    r#try: true,
                 },
                 "master" => ToolchainSource::CI {
                     sha: Cow::Owned(sha),
-                    try: false,
+                    r#try: false,
                 },
                 name => return Err(ToolchainParseError::InvalidSourceName(name.to_string())),
             }
@@ -277,11 +277,11 @@ mod tests {
             },
             "master#0000000000000000000000000000000000000000" => ToolchainSource::CI {
                 sha: "0000000000000000000000000000000000000000".into(),
-                try: false,
+                r#try: false,
             },
             "try#0000000000000000000000000000000000000000" => ToolchainSource::CI {
                 sha: "0000000000000000000000000000000000000000".into(),
-                try: true,
+                r#try: true,
             },
         };
 

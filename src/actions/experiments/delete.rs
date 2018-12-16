@@ -1,8 +1,8 @@
-use actions::experiments::ExperimentError;
-use config::Config;
-use db::{Database, QueryUtils};
-use experiments::Experiment;
-use prelude::*;
+use crate::actions::experiments::ExperimentError;
+use crate::config::Config;
+use crate::db::{Database, QueryUtils};
+use crate::experiments::Experiment;
+use crate::prelude::*;
 
 pub struct DeleteExperiment {
     pub name: String,
@@ -25,10 +25,10 @@ impl DeleteExperiment {
 #[cfg(test)]
 mod tests {
     use super::DeleteExperiment;
-    use actions::{CreateExperiment, ExperimentError};
-    use config::Config;
-    use db::Database;
-    use experiments::Experiment;
+    use crate::actions::{CreateExperiment, ExperimentError};
+    use crate::config::Config;
+    use crate::db::Database;
+    use crate::experiments::Experiment;
 
     #[test]
     fn test_delete_missing_experiment() {
@@ -52,7 +52,7 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment and make sure it exists
         CreateExperiment::dummy("dummy")

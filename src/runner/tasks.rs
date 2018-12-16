@@ -1,16 +1,16 @@
-use config::Config;
-use crates::Crate;
-use dirs;
-use docker::DockerEnv;
-use experiments::Experiment;
+use crate::config::Config;
+use crate::crates::Crate;
+use crate::dirs;
+use crate::docker::DockerEnv;
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::results::{TestResult, WriteResults};
+use crate::runner::prepare::PrepareCrate;
+use crate::runner::test;
+use crate::toolchain::Toolchain;
+use crate::utils;
 use failure::AsFail;
-use prelude::*;
-use results::{TestResult, WriteResults};
-use runner::prepare::PrepareCrate;
-use runner::test;
 use std::fmt;
-use toolchain::Toolchain;
-use utils;
 
 pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
     pub(super) config: &'ctx Config,
@@ -187,7 +187,7 @@ impl Task {
                 test::run_test(
                     "checking unstable",
                     &ctx,
-                    ::runner::unstable_features::find_unstable_features,
+                    crate::runner::unstable_features::find_unstable_features,
                 )?;
             }
         }

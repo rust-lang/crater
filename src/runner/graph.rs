@@ -16,13 +16,13 @@
 //                                   |             |
 //                                   +---+ tc2 <---+
 
-use config::Config;
-use experiments::{Experiment, Mode};
+use crate::config::Config;
+use crate::experiments::{Experiment, Mode};
+use crate::prelude::*;
+use crate::results::{TestResult, WriteResults};
+use crate::runner::tasks::{Task, TaskStep};
 use failure::AsFail;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
-use prelude::*;
-use results::{TestResult, WriteResults};
-use runner::tasks::{Task, TaskStep};
 use std::fmt::{self, Debug};
 use std::sync::Arc;
 

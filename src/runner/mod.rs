@@ -5,18 +5,18 @@ mod test;
 mod toml_frobber;
 mod unstable_features;
 
-use config::Config;
+use crate::config::Config;
+use crate::docker::DockerEnv;
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::results::{FailureReason, TestResult, WriteResults};
+use crate::runner::graph::{build_graph, WalkResult};
+use crate::utils;
 use crossbeam_utils::thread::scope;
-use docker::DockerEnv;
-use experiments::Experiment;
-use prelude::*;
-use results::{FailureReason, TestResult, WriteResults};
-use runner::graph::{build_graph, WalkResult};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 use std::thread;
-use utils;
 
 #[derive(Debug, Fail)]
 #[fail(display = "overridden task result to {}", _0)]
@@ -29,14 +29,14 @@ pub fn run_ex<DB: WriteResults + Sync>(
     config: &Config,
     docker_env: &str,
 ) -> Fallible<()> {
-    if !::docker::is_running() {
+    if !crate::docker::is_running() {
         return Err(err_msg("docker is not running"));
     }
 
     let res = run_ex_inner(ex, db, threads_count, config, docker_env);
 
     // Remove all the target dirs even if the experiment failed
-    let target_dir = &::toolchain::ex_target_dir(&ex.name);
+    let target_dir = &crate::toolchain::ex_target_dir(&ex.name);
     if target_dir.exists() {
         utils::fs::remove_dir_all(target_dir)?;
     }
@@ -55,7 +55,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     docker_env.ensure_exists_locally()?;
 
     info!("ensuring all the tools are installed");
-    ::tools::install()?;
+    crate::tools::install()?;
 
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(ex, config));
@@ -140,11 +140,11 @@ fn run_ex_inner<DB: WriteResults + Sync>(
             match thread.join() {
                 Ok(Ok(())) => {}
                 Ok(Err(err)) => {
-                    ::utils::report_failure(&err);
+                    crate::utils::report_failure(&err);
                     clean_exit = false;
                 }
                 Err(panic) => {
-                    ::utils::report_panic(&panic);
+                    crate::utils::report_panic(&panic);
                     clean_exit = false;
                 }
             }

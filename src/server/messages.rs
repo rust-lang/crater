@@ -1,5 +1,5 @@
-use prelude::*;
-use server::Data;
+use crate::prelude::*;
+use crate::server::Data;
 
 pub enum Label {
     ExperimentQueued,
@@ -54,7 +54,7 @@ impl Message {
             format!(
                 "**Crater** is a tool to run experiments across parts of the Rust ecosystem. \
                  [Learn more]({})",
-                ::CRATER_REPO_URL,
+                crate::CRATER_REPO_URL,
             ),
         );
 

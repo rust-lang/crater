@@ -1,9 +1,9 @@
-use config::Config;
+use crate::config::Config;
+use crate::prelude::*;
 use http::header::{HeaderValue, CONTENT_TYPE};
 use http::Response;
 use http::StatusCode;
 use hyper::Body;
-use prelude::*;
 use serde::Serialize;
 use std::fmt;
 use std::fmt::Display;
@@ -26,15 +26,15 @@ pub enum ApiResponse<T> {
 }
 
 impl ApiResponse<()> {
-    pub(in server) fn internal_error(error: String) -> ApiResponse<()> {
+    pub(in crate::server) fn internal_error(error: String) -> ApiResponse<()> {
         ApiResponse::InternalError { error }
     }
 
-    pub(in server) fn unauthorized() -> ApiResponse<()> {
+    pub(in crate::server) fn unauthorized() -> ApiResponse<()> {
         ApiResponse::Unauthorized
     }
 
-    pub(in server) fn not_found() -> ApiResponse<()> {
+    pub(in crate::server) fn not_found() -> ApiResponse<()> {
         ApiResponse::NotFound
     }
 }
@@ -51,7 +51,7 @@ impl<T> ApiResponse<T> {
 }
 
 impl<T: Serialize> ApiResponse<T> {
-    pub(in server) fn into_response(self) -> Fallible<Response<Body>> {
+    pub(in crate::server) fn into_response(self) -> Fallible<Response<Body>> {
         let serialized = ::serde_json::to_vec(&self)?;
 
         let mut resp = Response::new(serialized.into());

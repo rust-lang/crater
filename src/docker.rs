@@ -6,21 +6,51 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use utils::size::Size;
 
-pub(crate) static IMAGE_NAME: &'static str = "crater";
-
-/// Builds the docker container image, 'crater', what will be used
-/// to isolate builds from each other. This expects the Dockerfile
-/// to exist in the `docker` directory, at runtime.
-pub fn build_container(docker_env: &str) -> Fallible<()> {
-    let dockerfile = format!("docker/Dockerfile.{}", docker_env);
+pub(crate) fn is_running() -> bool {
+    info!("checking if the docker daemon is running");
     RunCommand::new("docker")
-        .args(&["build", "-f", &dockerfile, "-t", IMAGE_NAME, "docker"])
-        .enable_timeout(false)
+        .args(&["info"])
+        .hide_output(true)
         .run()
+        .is_ok()
 }
 
-pub(crate) fn is_running() -> bool {
-    RunCommand::new("docker").args(&["info"]).run().is_ok()
+pub(crate) struct DockerEnv {
+    image: String,
+    local: bool,
+}
+
+impl DockerEnv {
+    pub(crate) fn new(image: &str) -> Self {
+        DockerEnv {
+            image: image.to_string(),
+            local: !image.contains('/'),
+        }
+    }
+
+    pub(crate) fn ensure_exists_locally(&self) -> Fallible<()> {
+        if !self.local {
+            self.pull()?;
+        } else {
+            info!("docker environment is local, skipping pull");
+        }
+
+        info!("checking the image {} is available locally", self.image);
+        RunCommand::new("docker")
+            .args(&["image", "inspect", &self.image])
+            .hide_output(true)
+            .run()?;
+
+        Ok(())
+    }
+
+    fn pull(&self) -> Fallible<()> {
+        info!("pulling image {} from Docker Hub", self.image);
+        RunCommand::new("docker")
+            .args(&["pull", &self.image])
+            .enable_timeout(false)
+            .run()
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -50,21 +80,25 @@ impl MountConfig {
     }
 }
 
-pub(crate) struct ContainerBuilder {
-    image: String,
+pub(crate) struct ContainerBuilder<'a> {
+    image: &'a DockerEnv,
     mounts: Vec<MountConfig>,
     env: Vec<(String, String)>,
     memory_limit: Option<Size>,
+    workdir: Option<String>,
+    cmd: Vec<String>,
     enable_networking: bool,
 }
 
-impl ContainerBuilder {
-    pub(crate) fn new<S: Into<String>>(image: S) -> Self {
+impl<'a> ContainerBuilder<'a> {
+    pub(crate) fn new(image: &'a DockerEnv) -> Self {
         ContainerBuilder {
-            image: image.into(),
+            image,
             mounts: Vec::new(),
             env: Vec::new(),
+            workdir: None,
             memory_limit: None,
+            cmd: Vec::new(),
             enable_networking: true,
         }
     }
@@ -88,8 +122,18 @@ impl ContainerBuilder {
         self
     }
 
+    pub(crate) fn workdir<S: Into<String>>(mut self, workdir: S) -> Self {
+        self.workdir = Some(workdir.into());
+        self
+    }
+
     pub(crate) fn memory_limit(mut self, limit: Option<Size>) -> Self {
         self.memory_limit = limit;
+        self
+    }
+
+    pub(crate) fn cmd(mut self, cmd: Vec<String>) -> Self {
+        self.cmd = cmd;
         self
     }
 
@@ -112,6 +156,11 @@ impl ContainerBuilder {
             args.push(format! {"{}={}", var, value})
         }
 
+        if let Some(workdir) = self.workdir {
+            args.push("-w".into());
+            args.push(workdir);
+        }
+
         if let Some(limit) = self.memory_limit {
             args.push("-m".into());
             args.push(limit.to_string());
@@ -122,7 +171,11 @@ impl ContainerBuilder {
             args.push("none".into());
         }
 
-        args.push(self.image);
+        args.push(self.image.image.clone());
+
+        for arg in self.cmd {
+            args.push(arg);
+        }
 
         let (out, _) = RunCommand::new("docker").args(&*args).run_capture()?;
         Ok(Container { id: out[0].clone() })

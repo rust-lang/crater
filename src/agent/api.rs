@@ -1,14 +1,15 @@
+use crate::crates::{Crate, GitHubRepo};
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::results::TestResult;
+use crate::server::api_types::{AgentConfig, ApiResponse, CraterToken};
+use crate::toolchain::Toolchain;
+use crate::utils;
 use base64;
-use crates::{Crate, GitHubRepo};
-use experiments::Experiment;
 use http::{header::AUTHORIZATION, Method, StatusCode};
-use prelude::*;
 use reqwest::RequestBuilder;
-use results::TestResult;
 use serde::de::DeserializeOwned;
-use server::api_types::{AgentConfig, ApiResponse, CraterToken};
-use toolchain::Toolchain;
-use utils::http;
+use serde_json::json;
 
 #[derive(Debug, Fail)]
 pub enum AgentApiError {
@@ -75,7 +76,7 @@ impl AgentApi {
     }
 
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
-        http::prepare_sync(method, &format!("{}/agent-api/{}", self.url, url)).header(
+        utils::http::prepare_sync(method, &format!("{}/agent-api/{}", self.url, url)).header(
             AUTHORIZATION,
             (CraterToken {
                 token: self.token.clone(),

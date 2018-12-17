@@ -1,13 +1,13 @@
 mod binary_crates;
 mod rustup;
 
-use dirs::CARGO_HOME;
-use prelude::*;
+use crate::dirs::CARGO_HOME;
+use crate::prelude::*;
+use crate::toolchain::MAIN_TOOLCHAIN;
+use crate::tools::binary_crates::BinaryCrate;
+use crate::tools::rustup::{Cargo, Rustup};
 use std::env::consts::EXE_SUFFIX;
 use std::path::PathBuf;
-use toolchain::MAIN_TOOLCHAIN;
-use tools::binary_crates::BinaryCrate;
-use tools::rustup::{Cargo, Rustup};
 
 pub(crate) static RUSTUP: Rustup = Rustup;
 

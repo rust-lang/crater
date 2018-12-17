@@ -1,7 +1,7 @@
-use crates::{lists::List, Crate};
-use dirs::SOURCE_CACHE_DIR;
-use prelude::*;
-use run::RunCommand;
+use crate::crates::{lists::List, Crate};
+use crate::dirs::SOURCE_CACHE_DIR;
+use crate::prelude::*;
+use crate::run::RunCommand;
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -34,7 +34,7 @@ impl List for GitHubList {
     fn fetch(&self) -> Fallible<Vec<Crate>> {
         info!("loading cached GitHub list from {}", self.source);
 
-        let mut resp = ::utils::http::get_sync(&self.source)
+        let mut resp = crate::utils::http::get_sync(&self.source)
             .with_context(|_| format!("failed to fetch GitHub crates list from {}", self.source))?;
         let mut reader = ::csv::Reader::from_reader(&mut resp);
 
@@ -81,7 +81,7 @@ impl GitHubRepo {
         format!("{}/{}", self.org, self.name)
     }
 
-    pub(in crates) fn fetch(&self) -> Fallible<()> {
+    pub(in crate::crates) fn fetch(&self) -> Fallible<()> {
         let path = self.cached_path();
         if path.join("HEAD").is_file() {
             info!("updating cached repository {}", self.slug());
@@ -105,9 +105,9 @@ impl GitHubRepo {
         Ok(())
     }
 
-    pub(in crates) fn copy_to(&self, dest: &Path) -> Fallible<()> {
+    pub(in crate::crates) fn copy_to(&self, dest: &Path) -> Fallible<()> {
         if dest.exists() {
-            ::utils::fs::remove_dir_all(dest)?;
+            crate::utils::fs::remove_dir_all(dest)?;
         }
         RunCommand::new("git")
             .args(&["clone"])

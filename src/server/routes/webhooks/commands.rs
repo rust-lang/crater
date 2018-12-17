@@ -1,10 +1,10 @@
-use db::{Database, QueryUtils};
-use experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
-use prelude::*;
-use server::github::Issue;
-use server::messages::{Label, Message};
-use server::routes::webhooks::args::{AbortArgs, EditArgs, RetryReportArgs, RunArgs};
-use server::Data;
+use crate::db::{Database, QueryUtils};
+use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
+use crate::prelude::*;
+use crate::server::github::Issue;
+use crate::server::messages::{Label, Message};
+use crate::server::routes::webhooks::args::{AbortArgs, EditArgs, RetryReportArgs, RunArgs};
+use crate::server::Data;
 
 pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
     Message::new()
@@ -17,7 +17,7 @@ pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
 pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()> {
     let name = setup_run_name(&data.db, issue, args.name)?;
 
-    ::actions::CreateExperiment {
+    crate::actions::CreateExperiment {
         name: name.clone(),
         toolchains: [
             args.start
@@ -57,7 +57,7 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()
 pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    let changed = ::actions::EditExperiment {
+    let changed = crate::actions::EditExperiment {
         name: name.clone(),
         toolchains: [args.start, args.end],
         crates: args.crates,
@@ -114,7 +114,7 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Fallib
 pub fn abort(data: &Data, issue: &Issue, args: AbortArgs) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    ::actions::DeleteExperiment { name: name.clone() }.apply(&data.db, &data.config)?;
+    crate::actions::DeleteExperiment { name: name.clone() }.apply(&data.db, &data.config)?;
 
     Message::new()
         .line("wastebasket", format!("Experiment **`{}`** deleted!", name))
@@ -205,21 +205,23 @@ mod tests {
         default_experiment_name, generate_new_experiment_name, get_name, setup_run_name,
         store_experiment_name,
     };
-    use db::Database;
-    use prelude::*;
-    use server::github;
+    use crate::db::Database;
+    use crate::prelude::*;
+    use crate::server::github;
 
     /// Simulate to the `run` command, and return experiment name
     fn dummy_run(db: &Database, issue: &github::Issue, name: Option<String>) -> Fallible<String> {
         let name = setup_run_name(db, issue, name)?;
-        ::actions::CreateExperiment::dummy(&name).apply(&db, &::config::Config::default())?;
+        crate::actions::CreateExperiment::dummy(&name)
+            .apply(&db, &crate::config::Config::default())?;
         Ok(name)
     }
 
     /// Simulate to the `edit` command, and return experiment name
     fn dummy_edit(db: &Database, issue: &github::Issue, name: Option<String>) -> Fallible<String> {
         let name = get_name(db, issue, name)?;
-        ::actions::EditExperiment::dummy(&name).apply(&db, &::config::Config::default())?;
+        crate::actions::EditExperiment::dummy(&name)
+            .apply(&db, &crate::config::Config::default())?;
         Ok(name)
     }
 
@@ -387,13 +389,13 @@ mod tests {
             }),
         };
 
-        ::actions::CreateExperiment::dummy("pr-12345")
-            .apply(&db, &::config::Config::default())
+        crate::actions::CreateExperiment::dummy("pr-12345")
+            .apply(&db, &crate::config::Config::default())
             .expect("could not store dummy experiment");
         let new_name = generate_new_experiment_name(&db, &pr).unwrap();
         assert_eq!(new_name, "pr-12345-1");
-        ::actions::CreateExperiment::dummy("pr-12345-1")
-            .apply(&db, &::config::Config::default())
+        crate::actions::CreateExperiment::dummy("pr-12345-1")
+            .apply(&db, &crate::config::Config::default())
             .expect("could not store dummy experiment");;
         assert_eq!(
             &generate_new_experiment_name(&db, &pr).unwrap(),

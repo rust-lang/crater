@@ -1,12 +1,11 @@
-use docker::DockerError;
-use docker::MountPerms;
+use crate::docker::{DockerError, MountPerms};
+use crate::prelude::*;
+use crate::results::{FailureReason, TestResult, WriteResults};
+use crate::run::{RunCommand, RunCommandError};
+use crate::runner::tasks::TaskCtx;
+use crate::tools::CARGO;
 use failure::Error;
-use prelude::*;
-use results::{FailureReason, TestResult, WriteResults};
-use run::{RunCommand, RunCommandError};
-use runner::tasks::TaskCtx;
 use std::path::Path;
-use tools::CARGO;
 
 fn failure_reason(err: &Error) -> FailureReason {
     for cause in err.iter_chain() {
@@ -46,12 +45,12 @@ fn run_cargo<DB: WriteResults>(
         .args(args)
         .quiet(ctx.quiet)
         .cd(source_path)
-        .env("CARGO_TARGET_DIR", "/target")
+        .env("CARGO_TARGET_DIR", "/opt/crater/target")
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env(rustflags_env, rustflags)
-        .sandboxed()
-        .mount(target_dir, "/target", MountPerms::ReadWrite)
+        .sandboxed(&ctx.docker_env)
+        .mount(target_dir, "/opt/crater/target", MountPerms::ReadWrite)
         .memory_limit(Some(ctx.config.sandbox.memory_limit))
         .run()?;
 
@@ -70,7 +69,7 @@ pub(super) fn run_test<DB: WriteResults>(
     {
         info!("skipping crate {}. existing result: {}", ctx.krate, res);
     } else {
-        let source_path = ::dirs::crate_source_dir(ctx.experiment, ctx.toolchain, ctx.krate);
+        let source_path = crate::dirs::crate_source_dir(ctx.experiment, ctx.toolchain, ctx.krate);
         ctx.db
             .record_result(ctx.experiment, ctx.toolchain, ctx.krate, || {
                 info!(
@@ -154,7 +153,7 @@ pub(super) fn test_rustdoc<DB: WriteResults>(
     // Make sure to remove the built documentation
     // There is no point in storing it after the build is done
     let target_dir = ctx.toolchain.target_dir(&ctx.experiment.name);
-    ::utils::fs::remove_dir_all(&target_dir.join("doc"))?;
+    crate::utils::fs::remove_dir_all(&target_dir.join("doc"))?;
 
     if let Err(err) = res {
         Ok(TestResult::BuildFail(failure_reason(&err)))

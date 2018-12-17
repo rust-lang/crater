@@ -1,13 +1,13 @@
 mod api;
 mod results;
 
-use agent::api::AgentApi;
-use config::Config;
-use experiments::Experiment;
-use prelude::*;
+use crate::agent::api::AgentApi;
+use crate::config::Config;
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::utils;
 use std::thread;
 use std::time::Duration;
-use utils;
 
 struct Agent {
     api: AgentApi,
@@ -47,7 +47,7 @@ fn run_heartbeat(url: &str, token: &str) {
     });
 }
 
-pub fn run(url: &str, token: &str, threads_count: usize) -> Fallible<()> {
+pub fn run(url: &str, token: &str, threads_count: usize, docker_env: &str) -> Fallible<()> {
     let agent = Agent::new(url, token)?;
     let db = results::ResultsUploader::new(&agent.api);
 
@@ -55,7 +55,7 @@ pub fn run(url: &str, token: &str, threads_count: usize) -> Fallible<()> {
 
     loop {
         let ex = agent.experiment()?;
-        ::runner::run_ex(&ex, &db, threads_count, &agent.config)?;
+        crate::runner::run_ex(&ex, &db, threads_count, &agent.config, docker_env)?;
         agent.api.complete_experiment()?;
     }
 }

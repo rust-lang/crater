@@ -1,15 +1,15 @@
-use experiments::{Experiment, Status};
-use prelude::*;
-use report::{self, Comparison, TestResults};
-use results::DatabaseDB;
+use crate::experiments::{Experiment, Status};
+use crate::prelude::*;
+use crate::report::{self, Comparison, TestResults};
+use crate::results::DatabaseDB;
+use crate::server::messages::{Label, Message};
+use crate::server::Data;
+use crate::utils;
 use rusoto_core::request::HttpClient;
 use rusoto_s3::S3Client;
-use server::messages::{Label, Message};
-use server::Data;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use utils;
 
 // Automatically wake up the reports generator thread every 10 minutes to check for new jobs
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
@@ -116,7 +116,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
                             format!(
                                 "If you notice any spurious failure [please add them to the \
                                  blacklist]({}/blob/master/config.toml)!",
-                                ::CRATER_REPO_URL,
+                                crate::CRATER_REPO_URL,
                             ),
                         )
                         .set_label(Label::ExperimentCompleted)

@@ -2,5 +2,5 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-cargo run -- prepare-local --docker-env=mini
+cargo run -- create-lists
 MINICRATER_SHOW_OUTPUT=1 cargo test -- --ignored --nocapture --test-threads 1

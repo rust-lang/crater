@@ -1,15 +1,15 @@
-use config::Config;
-use crates::Crate;
-use dirs::crate_source_dir;
-use experiments::Experiment;
-use prelude::*;
-use results::{FailureReason, TestResult, WriteResults};
-use run::RunCommand;
-use runner::toml_frobber::TomlFrobber;
-use runner::OverrideResult;
+use crate::config::Config;
+use crate::crates::Crate;
+use crate::dirs::crate_source_dir;
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::results::{FailureReason, TestResult, WriteResults};
+use crate::run::RunCommand;
+use crate::runner::toml_frobber::TomlFrobber;
+use crate::runner::OverrideResult;
+use crate::toolchain::Toolchain;
+use crate::tools::CARGO;
 use std::path::PathBuf;
-use toolchain::Toolchain;
-use tools::CARGO;
 
 pub(super) struct PrepareCrate<'a, DB: WriteResults + 'a> {
     experiment: &'a Experiment,

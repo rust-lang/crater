@@ -1,13 +1,13 @@
-use agent::api::AgentApi;
-use crates::{Crate, GitHubRepo};
-use experiments::Experiment;
-use log;
-use prelude::*;
-use results::{TestResult, WriteResults};
+use crate::agent::api::AgentApi;
+use crate::crates::{Crate, GitHubRepo};
+use crate::experiments::Experiment;
+use crate::log;
+use crate::prelude::*;
+use crate::results::{TestResult, WriteResults};
+use crate::toolchain::Toolchain;
 use std::io::Read;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
-use toolchain::Toolchain;
 
 #[derive(Clone)]
 pub struct ResultsUploader<'a> {

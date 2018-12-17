@@ -1,12 +1,12 @@
+use crate::crates::Crate;
+use crate::db::{Database, QueryUtils};
+use crate::prelude::*;
+use crate::toolchain::Toolchain;
 use chrono::{DateTime, Utc};
-use crates::Crate;
-use db::{Database, QueryUtils};
-use prelude::*;
 use rusqlite::Row;
 use serde_json;
 use std::fmt;
 use std::str::FromStr;
-use toolchain::Toolchain;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -402,11 +402,11 @@ impl ExperimentDBRecord {
 #[cfg(test)]
 mod tests {
     use super::{Assignee, AssigneeParseError, Experiment, Status};
-    use actions::CreateExperiment;
-    use config::Config;
-    use db::Database;
-    use server::agents::Agents;
-    use server::tokens::Tokens;
+    use crate::actions::CreateExperiment;
+    use crate::config::Config;
+    use crate::db::Database;
+    use crate::server::agents::Agents;
+    use crate::server::tokens::Tokens;
     use std::str::FromStr;
 
     #[test]
@@ -442,7 +442,7 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::load().unwrap();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         let mut tokens = Tokens::default();
         tokens.agents.insert("token1".into(), "agent-1".into());

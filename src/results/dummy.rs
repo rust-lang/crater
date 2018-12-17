@@ -1,9 +1,9 @@
-use crates::{Crate, GitHubRepo};
-use experiments::Experiment;
-use prelude::*;
-use results::{ReadResults, TestResult};
+use crate::crates::{Crate, GitHubRepo};
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::results::{ReadResults, TestResult};
+use crate::toolchain::Toolchain;
 use std::collections::HashMap;
-use toolchain::Toolchain;
 
 #[derive(Default)]
 struct DummyData {

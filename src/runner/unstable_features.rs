@@ -1,7 +1,7 @@
-use prelude::*;
-use results::TestResult;
-use results::WriteResults;
-use runner::tasks::TaskCtx;
+use crate::prelude::*;
+use crate::results::TestResult;
+use crate::results::WriteResults;
+use crate::runner::tasks::TaskCtx;
 use std::collections::HashSet;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};

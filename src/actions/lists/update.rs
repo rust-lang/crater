@@ -1,7 +1,7 @@
-use config::Config;
-use crates::lists::{GitHubList, List, LocalList, RegistryList};
-use db::Database;
-use prelude::*;
+use crate::config::Config;
+use crate::crates::lists::{GitHubList, List, LocalList, RegistryList};
+use crate::db::Database;
+use crate::prelude::*;
 
 pub struct UpdateLists {
     pub github: bool,

@@ -1,6 +1,6 @@
-use crates::{lists::List, Crate};
-use dirs::LOCAL_CRATES_DIR;
-use prelude::*;
+use crate::crates::{lists::List, Crate};
+use crate::dirs::LOCAL_CRATES_DIR;
+use crate::prelude::*;
 use std::path::PathBuf;
 
 pub(crate) struct LocalList {

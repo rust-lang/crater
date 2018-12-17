@@ -1,13 +1,13 @@
+use crate::crates::{Crate, GitHubRepo};
+use crate::db::{Database, QueryUtils};
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::results::{DeleteResults, ReadResults, TestResult, WriteResults};
+use crate::toolchain::Toolchain;
 use base64;
-use crates::{Crate, GitHubRepo};
-use db::{Database, QueryUtils};
-use experiments::Experiment;
-use prelude::*;
-use results::{DeleteResults, ReadResults, TestResult, WriteResults};
 use serde_json;
 use std::collections::HashMap;
 use std::io::Read;
-use toolchain::Toolchain;
 
 #[derive(Deserialize)]
 pub struct TaskResult {
@@ -173,7 +173,7 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         F: FnOnce() -> Fallible<TestResult>,
     {
         let mut log_file = ::tempfile::NamedTempFile::new()?;
-        let result = ::log::redirect(log_file.path(), f)?;
+        let result = crate::log::redirect(log_file.path(), f)?;
 
         let mut buffer = Vec::new();
         log_file.read_to_end(&mut buffer)?;
@@ -207,14 +207,14 @@ impl<'a> DeleteResults for DatabaseDB<'a> {
 #[cfg(test)]
 mod tests {
     use super::{DatabaseDB, ProgressData, TaskResult};
-    use actions::CreateExperiment;
+    use crate::actions::CreateExperiment;
+    use crate::config::Config;
+    use crate::crates::{Crate, GitHubRepo, RegistryCrate};
+    use crate::db::Database;
+    use crate::experiments::Experiment;
+    use crate::results::{DeleteResults, FailureReason, ReadResults, TestResult, WriteResults};
+    use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
     use base64;
-    use config::Config;
-    use crates::{Crate, GitHubRepo, RegistryCrate};
-    use db::Database;
-    use experiments::Experiment;
-    use results::{DeleteResults, FailureReason, ReadResults, TestResult, WriteResults};
-    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_shas() {
@@ -222,7 +222,7 @@ mod tests {
         let results = DatabaseDB::new(&db);
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
         CreateExperiment::dummy("dummy")
@@ -283,7 +283,7 @@ mod tests {
         let results = DatabaseDB::new(&db);
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
         CreateExperiment::dummy("dummy")
@@ -374,7 +374,7 @@ mod tests {
         let results = DatabaseDB::new(&db);
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
         CreateExperiment::dummy("dummy")

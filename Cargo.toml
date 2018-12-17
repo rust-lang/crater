@@ -1,7 +1,11 @@
 [package]
 name = "crater"
 version = "0.1.0"
-authors = ["Brian Anderson <banderson@mozilla.com>"]
+authors = [
+    "Brian Anderson <banderson@mozilla.com>",
+    "Pietro Albini <pietro@pietroalbini.org>",
+]
+edition = "2018"
 
 build = "build.rs"
 

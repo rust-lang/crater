@@ -1,11 +1,11 @@
+use crate::experiments::{Experiment, Mode, Status};
+use crate::prelude::*;
+use crate::server::routes::ui::{render_template, LayoutContext};
+use crate::server::{Data, HttpError};
 use chrono::{Duration, SecondsFormat, Utc};
 use chrono_humanize::{Accuracy, HumanTime, Tense};
-use experiments::{Experiment, Mode, Status};
 use http::Response;
 use hyper::Body;
-use prelude::*;
-use server::routes::ui::{render_template, LayoutContext};
-use server::{Data, HttpError};
 use std::sync::Arc;
 
 #[derive(Serialize)]

@@ -1,9 +1,9 @@
+use crate::db::{Database, QueryUtils};
+use crate::experiments::{Assignee, Experiment};
+use crate::prelude::*;
+use crate::server::tokens::Tokens;
 use chrono::Duration;
 use chrono::{DateTime, Utc};
-use db::{Database, QueryUtils};
-use experiments::{Assignee, Experiment};
-use prelude::*;
-use server::tokens::Tokens;
 use std::collections::HashSet;
 
 /// Number of seconds without an heartbeat after an agent should be considered unreachable.
@@ -151,11 +151,11 @@ impl Agents {
 #[cfg(test)]
 mod tests {
     use super::{AgentStatus, Agents};
-    use actions::CreateExperiment;
-    use config::Config;
-    use db::Database;
-    use experiments::{Assignee, Experiment};
-    use server::tokens::Tokens;
+    use crate::actions::CreateExperiment;
+    use crate::config::Config;
+    use crate::db::Database;
+    use crate::experiments::{Assignee, Experiment};
+    use crate::server::tokens::Tokens;
 
     #[test]
     fn test_agents_synchronize() {
@@ -221,7 +221,7 @@ mod tests {
         tokens.agents.insert("token".into(), "agent".into());
         let agents = Agents::new(db.clone(), &tokens).unwrap();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // When no heartbeat is recorded, the agent is unreachable
         let agent = agents.get("agent").unwrap().unwrap();

@@ -1,5 +1,5 @@
+use crate::common::CommandCraterExt;
 use assert_cmd::prelude::*;
-use common::CommandCraterExt;
 use predicates::str::contains;
 use std::process::Command;
 

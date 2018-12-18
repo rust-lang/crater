@@ -113,10 +113,10 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
 
     fn frob_toml(&self) -> Fallible<()> {
         for (_, source_dir) in &self.source_dirs {
-                let path = source_dir.join("Cargo.toml");
-                let mut frobber = TomlFrobber::new(&self.krate, &path)?;
-                frobber.frob();
-                frobber.save(&path)?;
+            let path = source_dir.join("Cargo.toml");
+            let mut frobber = TomlFrobber::new(&self.krate, &path)?;
+            frobber.frob();
+            frobber.save(&path)?;
         }
         Ok(())
     }

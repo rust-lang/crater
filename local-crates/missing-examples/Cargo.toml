@@ -1,0 +1,27 @@
+[package]
+name = "missing-examples"
+version = "0.1.0"
+authors = ["Giacomo Pasini"]
+
+[dependencies]
+
+[[example]]
+name = "foo"
+
+[[example]]
+name = "bar"
+path = "examples/ex.rs"
+
+[[example]]
+name = "missing"
+
+[[test]]
+name = "test1"
+
+[[test]]
+name = "test2"
+path = "test/t.rs"
+
+[[test]]
+name = "missing"
+

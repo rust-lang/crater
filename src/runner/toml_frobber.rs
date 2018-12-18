@@ -60,17 +60,15 @@ impl<'a> TomlFrobber<'a> {
     fn remove_missing_items(&mut self, category: &str) {
         let folder = &(String::from(category) + "s");
 
-        println!("tables {:?}: {:?}", category, self.table.get(category));
-
         let _krate = self.krate.to_string();
         let dir = self.dir;
 
         if let Some(array) = self.table.get_mut(category) {
-            *(array) =
-                toml::Value::Array(Self::test_existance(dir, array.as_array().unwrap(), folder));
+            let array = array.as_array_mut().unwrap();
+            let dim = array.len();
+            *(array) = Self::test_existance(dir, array, folder);
+            info!("removed {} missing {}", dim - array.len(), folder);
         }
-
-        println!("tables example: {:?}", self.table.get("example"));
     }
 
     fn remove_workspaces(&mut self) {

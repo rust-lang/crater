@@ -91,6 +91,21 @@
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/memory-hungry"
     },
     {
+      "name": "missing-examples (local)",
+      "res": "test-pass",
+      "runs": [
+        {
+          "log": "stable/local/missing-examples",
+          "res": "test-pass"
+        },
+        {
+          "log": "beta/local/missing-examples",
+          "res": "test-pass"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/missing-examples"
+    },
+    {
       "name": "network-access (local)",
       "res": "fixed",
       "runs": [

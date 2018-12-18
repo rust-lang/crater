@@ -14,7 +14,6 @@ impl<'a> TomlFrobber<'a> {
     pub(super) fn new(krate: &'a Crate, cargo_toml: &'a Path) -> Fallible<Self> {
         let toml_content = ::std::fs::read_to_string(cargo_toml)
             .with_context(|_| format!("missing Cargo.toml from {}", krate))?;
-
         let table: Table = toml::from_str(&toml_content)
             .with_context(|_| format!("unable to parse {}", cargo_toml.display(),))?;
 

@@ -7,7 +7,7 @@ use toml::{self, value::Array, Value};
 pub(super) struct TomlFrobber<'a> {
     krate: &'a Crate,
     table: Table,
-    dir: &'a Path,
+    dir: Option<&'a Path>,
 }
 
 impl<'a> TomlFrobber<'a> {
@@ -18,14 +18,18 @@ impl<'a> TomlFrobber<'a> {
         let table: Table = toml::from_str(&toml_content)
             .with_context(|_| format!("unable to parse {}", cargo_toml.display(),))?;
 
-        let dir = cargo_toml.parent().unwrap();
+        let dir = cargo_toml.parent();
 
         Ok(TomlFrobber { krate, table, dir })
     }
 
     #[cfg(test)]
     fn new_with_table(krate: &'a Crate, table: Table) -> Self {
-        TomlFrobber { krate, table }
+        TomlFrobber {
+            krate,
+            table,
+            dir: None,
+        }
     }
 
     pub(super) fn frob(&mut self) {
@@ -59,15 +63,13 @@ impl<'a> TomlFrobber<'a> {
 
     fn remove_missing_items(&mut self, category: &str) {
         let folder = &(String::from(category) + "s");
-
-        let _krate = self.krate.to_string();
-        let dir = self.dir;
-
-        if let Some(array) = self.table.get_mut(category) {
-            let array = array.as_array_mut().unwrap();
-            let dim = array.len();
-            *(array) = Self::test_existance(dir, array, folder);
-            info!("removed {} missing {}", dim - array.len(), folder);
+        if let Some(dir) = self.dir {
+            if let Some(array) = self.table.get_mut(category) {
+                let array = array.as_array_mut().unwrap();
+                let dim = array.len();
+                *(array) = Self::test_existance(dir, array, folder);
+                info!("removed {} missing {}", dim - array.len(), folder);
+            }
         }
     }
 

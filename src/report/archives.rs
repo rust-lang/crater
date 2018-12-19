@@ -108,6 +108,8 @@ mod tests {
 
     #[test]
     fn test_logs_archives_generation() {
+        crate::logs::init_test();
+
         let config = Config::default();
         let db = Database::temp().unwrap();
         let writer = DummyWriter::default();

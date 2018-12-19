@@ -278,6 +278,8 @@ mod tests {
 
     #[test]
     fn test_results() {
+        crate::logs::init_test();
+
         let db = Database::temp().unwrap();
         let results = DatabaseDB::new(&db);
         let config = Config::default();
@@ -308,10 +310,6 @@ mod tests {
             results
                 .load_test_result(&ex, &MAIN_TOOLCHAIN, &krate)
                 .unwrap(),
-            Some(TestResult::TestPass)
-        );
-        assert_eq!(
-            results.get_result(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestPass)
         );
         assert!(String::from_utf8_lossy(

@@ -1,7 +1,7 @@
 use log::info;
 mod cli;
 
-use crater::{logs, utils};
+use crater::utils;
 use failure::Fallible;
 use std::panic;
 use std::process;
@@ -11,7 +11,7 @@ fn main() {
     // Ignore errors loading `.env` file.
     let _ = dotenv::dotenv();
 
-    let _guard = logs::init();
+    crater::logs::init();
     let success = match panic::catch_unwind(main_) {
         Ok(Ok(())) => true,
         Ok(Err(e)) => {

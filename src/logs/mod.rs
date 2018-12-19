@@ -3,9 +3,12 @@ mod storage;
 use crate::prelude::*;
 use log::{Log, Metadata, Record};
 use std::cell::RefCell;
+use std::sync::Once;
 use std::thread::LocalKey;
 
 pub use self::storage::LogStorage;
+
+static INIT_LOGS: Once = Once::new();
 
 thread_local! {
     static SCOPED: RefCell<Vec<Box<Log>>> = RefCell::new(Vec::new());
@@ -71,19 +74,29 @@ where
     result
 }
 
-pub fn init() -> Fallible<()> {
-    // Initialize env_logger
-    // This doesn't use from_default_env() because it doesn't allow to override filter_module()
-    // with the RUST_LOG environment variable
-    let mut env = env_logger::Builder::new();
-    env.filter_module("crater", log::LevelFilter::Info);
-    if let Ok(content) = std::env::var("RUST_LOG") {
-        env.parse(&content);
-    }
+pub fn init() {
+    INIT_LOGS.call_once(|| {
+        // Initialize env_logger
+        // This doesn't use from_default_env() because it doesn't allow to override filter_module()
+        // with the RUST_LOG environment variable
+        let mut env = env_logger::Builder::new();
+        env.filter_module("crater", log::LevelFilter::Info);
+        if let Ok(content) = std::env::var("RUST_LOG") {
+            env.parse(&content);
+        }
 
-    let multi = MultiLogger::new(vec![Box::new(env.build())], &SCOPED);
-    log::set_boxed_logger(Box::new(multi))?;
-    log::set_max_level(log::LevelFilter::Trace);
+        let multi = MultiLogger::new(vec![Box::new(env.build())], &SCOPED);
+        log::set_boxed_logger(Box::new(multi)).unwrap();
+        log::set_max_level(log::LevelFilter::Trace);
+    });
+}
 
-    Ok(())
+#[cfg(test)]
+pub(crate) fn init_test() {
+    INIT_LOGS.call_once(|| {
+        // Avoid setting up ENV_LOGGER inside tests
+        let multi = MultiLogger::new(vec![], &SCOPED);
+        log::set_boxed_logger(Box::new(multi)).unwrap();
+        log::set_max_level(log::LevelFilter::Trace);
+    })
 }

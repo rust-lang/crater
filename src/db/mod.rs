@@ -50,6 +50,7 @@ impl Database {
         }
 
         let path = WORK_DIR.join(DATABASE_PATH);
+        std::fs::create_dir_all(&*WORK_DIR)?;
         Database::new(SqliteConnectionManager::file(path), None)
     }
 

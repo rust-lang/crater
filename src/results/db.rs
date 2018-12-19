@@ -1,13 +1,14 @@
 use crate::crates::{Crate, GitHubRepo};
 use crate::db::{Database, QueryUtils};
 use crate::experiments::Experiment;
+use crate::logs::{self, LogStorage};
 use crate::prelude::*;
 use crate::results::{DeleteResults, ReadResults, TestResult, WriteResults};
 use crate::toolchain::Toolchain;
 use base64;
+use log::LevelFilter;
 use serde_json;
 use std::collections::HashMap;
-use std::io::Read;
 
 #[derive(Deserialize)]
 pub struct TaskResult {
@@ -172,14 +173,10 @@ impl<'a> WriteResults for DatabaseDB<'a> {
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let mut log_file = ::tempfile::NamedTempFile::new()?;
-        let result = crate::log::redirect(log_file.path(), f)?;
-
-        let mut buffer = Vec::new();
-        log_file.read_to_end(&mut buffer)?;
-
-        self.store_result(ex, krate, toolchain, result, &buffer)?;
-
+        let storage = LogStorage::new(LevelFilter::Info);
+        let result = logs::capture(&storage, f)?;
+        let output = storage.to_string();
+        self.store_result(ex, krate, toolchain, result, output.as_bytes())?;
         Ok(result)
     }
 }
@@ -212,6 +209,7 @@ mod tests {
     use crate::crates::{Crate, GitHubRepo, RegistryCrate};
     use crate::db::Database;
     use crate::experiments::Experiment;
+    use crate::prelude::*;
     use crate::results::{DeleteResults, FailureReason, ReadResults, TestResult, WriteResults};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
     use base64;
@@ -298,7 +296,7 @@ mod tests {
 
         // Record a result with a message in it
         results
-            .record_result(&ex, &MAIN_TOOLCHAIN, &krate, || {
+            .record_result(&ex, &MAIN_TOOLCHAIN, &krate, None, || {
                 info!("hello world");
                 Ok(TestResult::TestPass)
             })
@@ -339,7 +337,7 @@ mod tests {
 
         // Add another result
         results
-            .record_result(&ex, &TEST_TOOLCHAIN, &krate, || {
+            .record_result(&ex, &TEST_TOOLCHAIN, &krate, None, || {
                 info!("Another log message!");
                 Ok(TestResult::TestFail(FailureReason::Unknown))
             })

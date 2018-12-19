@@ -2,6 +2,7 @@ use log::{Level, LevelFilter, Log, Metadata, Record};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
+#[derive(Clone)]
 struct StoredRecord {
     level: Level,
     message: String,
@@ -12,7 +13,7 @@ struct InnerStorage {
 }
 
 #[derive(Clone)]
-pub(crate) struct LogStorage {
+pub struct LogStorage {
     inner: Arc<Mutex<InnerStorage>>,
     min_level: LevelFilter,
 }
@@ -24,6 +25,16 @@ impl LogStorage {
                 records: Vec::new(),
             })),
             min_level,
+        }
+    }
+
+    pub(crate) fn duplicate(&self) -> LogStorage {
+        let inner = self.inner.lock().unwrap();
+        LogStorage {
+            inner: Arc::new(Mutex::new(InnerStorage {
+                records: inner.records.clone(),
+            })),
+            min_level: self.min_level,
         }
     }
 }

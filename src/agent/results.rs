@@ -48,12 +48,13 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         _ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
+        existing_logs: Option<LogStorage>,
         f: F,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let storage = LogStorage::new(LevelFilter::Info);
+        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info));
         let result = logs::capture(&storage, f)?;
         let output = storage.to_string();
 

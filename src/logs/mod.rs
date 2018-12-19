@@ -5,7 +5,7 @@ use log::{Log, Metadata, Record};
 use std::cell::RefCell;
 use std::thread::LocalKey;
 
-pub(crate) use self::storage::LogStorage;
+pub use self::storage::LogStorage;
 
 thread_local! {
     static SCOPED: RefCell<Vec<Box<Log>>> = RefCell::new(Vec::new());

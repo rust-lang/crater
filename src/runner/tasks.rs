@@ -3,13 +3,14 @@ use crate::crates::Crate;
 use crate::dirs;
 use crate::docker::DockerEnv;
 use crate::experiments::Experiment;
+use crate::logs::{self, LogStorage};
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
-use crate::runner::prepare::PrepareCrate;
-use crate::runner::test;
+use crate::runner::{prepare::PrepareCrate, test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use failure::AsFail;
+use log::LevelFilter;
 use std::fmt;
 
 pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
@@ -19,10 +20,12 @@ pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
     pub(super) toolchain: &'ctx Toolchain,
     pub(super) krate: &'ctx Crate,
     pub(super) docker_env: &'ctx DockerEnv,
+    pub(super) state: &'ctx RunnerState,
     pub(super) quiet: bool,
 }
 
 impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         config: &'ctx Config,
         db: &'ctx DB,
@@ -30,6 +33,7 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
         toolchain: &'ctx Toolchain,
         krate: &'ctx Crate,
         docker_env: &'ctx DockerEnv,
+        state: &'ctx RunnerState,
         quiet: bool,
     ) -> Self {
         TaskCtx {
@@ -39,6 +43,7 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
             toolchain,
             krate,
             docker_env,
+            state,
             quiet,
         }
     }
@@ -127,6 +132,7 @@ impl Task {
         &self,
         ex: &Experiment,
         db: &DB,
+        state: &RunnerState,
         err: &F,
         result: TestResult,
     ) -> Fallible<()> {
@@ -137,7 +143,12 @@ impl Task {
             | TaskStep::CheckOnly { ref tc, .. }
             | TaskStep::Rustdoc { ref tc, .. }
             | TaskStep::UnstableFeatures { ref tc } => {
-                db.record_result(ex, tc, &self.krate, || {
+                let log_storage = state
+                    .lock()
+                    .prepare_logs
+                    .get(&self.krate)
+                    .map(|s| s.duplicate());
+                db.record_result(ex, tc, &self.krate, log_storage, || {
                     error!("this task or one of its parent failed!");
                     utils::report_failure(err);
                     Ok(result)
@@ -154,6 +165,7 @@ impl Task {
         ex: &Experiment,
         db: &DB,
         docker_env: &DockerEnv,
+        state: &RunnerState,
     ) -> Fallible<()> {
         match self.step {
             TaskStep::Cleanup => {
@@ -161,29 +173,38 @@ impl Task {
                 for tc in &ex.toolchains {
                     let _ = utils::fs::remove_dir_all(&dirs::crate_source_dir(ex, tc, &self.krate));
                 }
+                // Remove stored logs
+                state.lock().prepare_logs.remove(&self.krate);
             }
             TaskStep::Prepare => {
-                let prepare = PrepareCrate::new(ex, &self.krate, config, db);
-                prepare.prepare()?;
+                let storage = LogStorage::new(LevelFilter::Info);
+                state
+                    .lock()
+                    .prepare_logs
+                    .insert(self.krate.clone(), storage.clone());
+                logs::capture(&storage, || {
+                    let prepare = PrepareCrate::new(ex, &self.krate, config, db);
+                    prepare.prepare()
+                })?;
             }
             TaskStep::BuildAndTest { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, quiet);
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
                 test::run_test("testing", &ctx, test::test_build_and_test)?;
             }
             TaskStep::BuildOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, quiet);
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
                 test::run_test("building", &ctx, test::test_build_only)?;
             }
             TaskStep::CheckOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, quiet);
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
                 test::run_test("checking", &ctx, test::test_check_only)?;
             }
             TaskStep::Rustdoc { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, quiet);
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
                 test::run_test("documenting", &ctx, test::test_rustdoc)?;
             }
             TaskStep::UnstableFeatures { ref tc } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, false);
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, false);
                 test::run_test(
                     "checking unstable",
                     &ctx,

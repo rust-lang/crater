@@ -2,36 +2,75 @@ use crate::crates::Crate;
 use crate::prelude::*;
 use std::path::Path;
 use toml::value::Table;
-use toml::{self, Value};
+use toml::{self, value::Array, Value};
 
 pub(super) struct TomlFrobber<'a> {
     krate: &'a Crate,
     table: Table,
+    dir: Option<&'a Path>,
 }
 
 impl<'a> TomlFrobber<'a> {
-    pub(super) fn new(krate: &'a Crate, cargo_toml: &Path) -> Fallible<Self> {
+    pub(super) fn new(krate: &'a Crate, cargo_toml: &'a Path) -> Fallible<Self> {
         let toml_content = ::std::fs::read_to_string(cargo_toml)
             .with_context(|_| format!("missing Cargo.toml from {}", krate))?;
         let table: Table = toml::from_str(&toml_content)
             .with_context(|_| format!("unable to parse {}", cargo_toml.display(),))?;
 
-        Ok(TomlFrobber { krate, table })
+        let dir = cargo_toml.parent();
+
+        Ok(TomlFrobber { krate, table, dir })
     }
 
     #[cfg(test)]
     fn new_with_table(krate: &'a Crate, table: Table) -> Self {
-        TomlFrobber { krate, table }
+        TomlFrobber {
+            krate,
+            table,
+            dir: None,
+        }
     }
 
     pub(super) fn frob(&mut self) {
         info!("started frobbing {}", self.krate);
 
+        self.remove_missing_items("example");
+        self.remove_missing_items("test");
         self.remove_workspaces();
         self.remove_unwanted_cargo_features();
         self.remove_dependencies();
 
         info!("finished frobbing {}", self.krate);
+    }
+
+    #[allow(clippy::ptr_arg)]
+    fn test_existance(dir: &Path, value: &Array, folder: &str) -> Array {
+        value
+            .iter()
+            .filter_map(|t| t.as_table())
+            .filter(|t| t.get("name").is_some())
+            .map(|table| {
+                let name = table.get("name").unwrap().to_string();
+                let path = table.get("path").map_or_else(
+                    || dir.join(folder).join(name + ".rs"),
+                    |path| dir.join(path.as_str().unwrap()),
+                );
+                (table, path)
+            })
+            .filter(|(_table, path)| path.exists())
+            .filter_map(|(table, _path)| Value::try_from(table).ok())
+            .collect()
+    }
+
+    fn remove_missing_items(&mut self, category: &str) {
+        let folder = &(String::from(category) + "s");
+        if let Some(dir) = self.dir {
+            if let Some(&mut Value::Array(ref mut array)) = self.table.get_mut(category) {
+                let dim = array.len();
+                *(array) = Self::test_existance(dir, array, folder);
+                info!("removed {} missing {}", dim - array.len(), folder);
+            }
+        }
     }
 
     fn remove_workspaces(&mut self) {

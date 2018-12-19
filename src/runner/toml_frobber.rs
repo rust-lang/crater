@@ -48,6 +48,7 @@ impl<'a> TomlFrobber<'a> {
         value
             .iter()
             .filter_map(|t| t.as_table())
+            .filter(|t| t.get("name").is_some())
             .map(|table| {
                 let name = table.get("name").unwrap().to_string();
                 let path = table.get("path").map_or_else(
@@ -64,8 +65,7 @@ impl<'a> TomlFrobber<'a> {
     fn remove_missing_items(&mut self, category: &str) {
         let folder = &(String::from(category) + "s");
         if let Some(dir) = self.dir {
-            if let Some(array) = self.table.get_mut(category) {
-                let array = array.as_array_mut().unwrap();
+            if let Some(&mut Value::Array(ref mut array)) = self.table.get_mut(category) {
                 let dim = array.len();
                 *(array) = Self::test_existance(dir, array, folder);
                 info!("removed {} missing {}", dim - array.len(), folder);

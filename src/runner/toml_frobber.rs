@@ -43,6 +43,7 @@ impl<'a> TomlFrobber<'a> {
         info!("finished frobbing {}", self.krate);
     }
 
+    #[allow(clippy::ptr_arg)]
     fn test_existance(dir: &Path, value: &Array, folder: &str) -> Array {
         value
             .iter()

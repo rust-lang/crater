@@ -20,7 +20,10 @@ use crate::config::Config;
 use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
-use crate::runner::tasks::{Task, TaskStep};
+use crate::runner::{
+    tasks::{Task, TaskStep},
+    RunnerState,
+};
 use failure::AsFail;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
 use std::fmt::{self, Debug};
@@ -187,6 +190,7 @@ impl TasksGraph {
         node: NodeIndex,
         ex: &Experiment,
         db: &DB,
+        state: &RunnerState,
         error: &F,
         result: TestResult,
     ) -> Fallible<()> {
@@ -195,11 +199,11 @@ impl TasksGraph {
             .neighbors_directed(node, Direction::Incoming)
             .collect::<Vec<_>>();
         for child in children.drain(..) {
-            self.mark_as_failed(child, ex, db, error, result)?;
+            self.mark_as_failed(child, ex, db, state, error, result)?;
         }
 
         match self.graph[node] {
-            Node::Task { ref task, .. } => task.mark_as_failed(ex, db, error, result)?,
+            Node::Task { ref task, .. } => task.mark_as_failed(ex, db, state, error, result)?,
             Node::CrateCompleted | Node::Root => return Ok(()),
         }
 

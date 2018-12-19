@@ -6,7 +6,6 @@ use crate::prelude::*;
 use crate::utils::size::Size;
 use failure::Error;
 use futures::{future, Future, Stream};
-use slog_scope;
 use std::convert::AsRef;
 use std::env::consts::EXE_SUFFIX;
 use std::ffi::{OsStr, OsString};
@@ -339,7 +338,6 @@ fn log_command(
 
     let start = Instant::now();
 
-    let logger = slog_scope::logger();
     let output = stdout
         .select(stderr)
         .timeout(heartbeat_timeout)
@@ -363,7 +361,7 @@ fn log_command(
             }
 
             if !hide_output {
-                slog_info!(logger, "[{}] {}", kind.prefix(), line);
+                info!("[{}] {}", kind.prefix(), line);
             }
             future::ok((kind, line))
         })

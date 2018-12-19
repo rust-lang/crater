@@ -1,18 +1,13 @@
 #![recursion_limit = "256"]
 #![allow(clippy::needless_pass_by_value, clippy::new_ret_no_self)]
 
-#[macro_use(slog_o, slog_info, slog_error, slog_warn)]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
 #[cfg_attr(test, macro_use)]
 extern crate toml;
 
 pub mod actions;
 pub mod agent;
 mod assets;
-#[macro_use]
-pub mod log;
+pub mod logs;
 #[macro_use]
 pub mod utils;
 pub mod config;

@@ -7,6 +7,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
 use rusqlite::{Connection, Row, Transaction};
 use std::sync::Arc;
+use std::time::Instant;
 use tempfile::NamedTempFile;
 
 static LEGACY_DATABASE_PATHS: &[&str] = &["server.db"];
@@ -50,6 +51,7 @@ impl Database {
         }
 
         let path = WORK_DIR.join(DATABASE_PATH);
+        std::fs::create_dir_all(&*WORK_DIR)?;
         Database::new(SqliteConnectionManager::file(path), None)
     }
 
@@ -118,16 +120,20 @@ pub trait QueryUtils {
 
     fn exists(&self, sql: &str, params: &[&ToSql]) -> Fallible<bool> {
         self.with_conn(|conn| {
-            let mut prepared = conn.prepare(sql)?;
-            Ok(prepared.exists(params)?)
+            self.trace(sql, || {
+                let mut prepared = conn.prepare(sql)?;
+                Ok(prepared.exists(params)?)
+            })
         })
     }
 
     fn execute(&self, sql: &str, params: &[&ToSql]) -> Fallible<usize> {
         self.with_conn(|conn| {
-            let mut prepared = conn.prepare(sql)?;
-            let changes = prepared.execute(params)?;
-            Ok(changes)
+            self.trace(sql, || {
+                let mut prepared = conn.prepare(sql)?;
+                let changes = prepared.execute(params)?;
+                Ok(changes)
+            })
         })
     }
 
@@ -138,14 +144,16 @@ pub trait QueryUtils {
         func: F,
     ) -> Fallible<Option<T>> {
         self.with_conn(|conn| {
-            let mut prepared = conn.prepare(sql)?;
-            let mut iter = prepared.query_map(params, func)?;
+            self.trace(sql, || {
+                let mut prepared = conn.prepare(sql)?;
+                let mut iter = prepared.query_map(params, func)?;
 
-            if let Some(item) = iter.next() {
-                Ok(Some(item?))
-            } else {
-                Ok(None)
-            }
+                if let Some(item) = iter.next() {
+                    Ok(Some(item?))
+                } else {
+                    Ok(None)
+                }
+            })
         })
     }
 
@@ -156,16 +164,25 @@ pub trait QueryUtils {
         func: F,
     ) -> Fallible<Vec<T>> {
         self.with_conn(|conn| {
-            let mut prepared = conn.prepare(sql)?;
-            let rows = prepared.query_map(params, func)?;
+            self.trace(sql, || {
+                let mut prepared = conn.prepare(sql)?;
+                let rows = prepared.query_map(params, func)?;
 
-            let mut results = Vec::new();
-            for row in rows {
-                results.push(row?);
-            }
+                let mut results = Vec::new();
+                for row in rows {
+                    results.push(row?);
+                }
 
-            Ok(results)
+                Ok(results)
+            })
         })
+    }
+
+    fn trace<T, F: FnOnce() -> T>(&self, sql: &str, f: F) -> T {
+        let start = Instant::now();
+        let res = f();
+        trace!("sql query \"{}\" executed in {:?}", sql, start.elapsed());
+        res
     }
 }
 

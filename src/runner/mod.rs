@@ -6,8 +6,10 @@ mod toml_frobber;
 mod unstable_features;
 
 use crate::config::Config;
+use crate::crates::Crate;
 use crate::docker::DockerEnv;
 use crate::experiments::Experiment;
+use crate::logs::LogStorage;
 use crate::prelude::*;
 use crate::results::{FailureReason, TestResult, WriteResults};
 use crate::runner::graph::{build_graph, WalkResult};
@@ -21,6 +23,28 @@ use std::thread;
 #[derive(Debug, Fail)]
 #[fail(display = "overridden task result to {}", _0)]
 pub struct OverrideResult(TestResult);
+
+struct RunnerStateInner {
+    prepare_logs: HashMap<Crate, LogStorage>,
+}
+
+struct RunnerState {
+    inner: Mutex<RunnerStateInner>,
+}
+
+impl RunnerState {
+    fn new() -> Self {
+        RunnerState {
+            inner: Mutex::new(RunnerStateInner {
+                prepare_logs: HashMap::new(),
+            }),
+        }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<RunnerStateInner> {
+        self.inner.lock().unwrap()
+    }
+}
 
 pub fn run_ex<DB: WriteResults + Sync>(
     ex: &Experiment,
@@ -70,6 +94,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     // An HashMap is used instead of an HashSet because Thread is not Eq+Hash
     let parked_threads: Mutex<HashMap<thread::ThreadId, thread::Thread>> =
         Mutex::new(HashMap::new());
+    let state = RunnerState::new();
 
     scope(|scope| -> Fallible<()> {
         let mut threads = Vec::new();
@@ -83,7 +108,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                     match walk_result {
                         WalkResult::Task(id, task) => {
                             info!("running task: {:?}", task);
-                            if let Err(e) = task.run(config, ex, db, &docker_env) {
+                            if let Err(e) = task.run(config, ex, db, &docker_env, &state) {
                                 error!("task failed, marking childs as failed too: {:?}", task);
                                 utils::report_failure(&e);
 
@@ -103,7 +128,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                                 graph
                                     .lock()
                                     .unwrap()
-                                    .mark_as_failed(id, ex, db, &e, result)?;
+                                    .mark_as_failed(id, ex, db, &state, &e, result)?;
                             } else {
                                 graph.lock().unwrap().mark_as_completed(id);
                             }

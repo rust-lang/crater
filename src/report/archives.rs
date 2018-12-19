@@ -98,6 +98,7 @@ mod tests {
     use crate::config::Config;
     use crate::db::Database;
     use crate::experiments::Experiment;
+    use crate::prelude::*;
     use crate::report::DummyWriter;
     use crate::results::{DatabaseDB, FailureReason, TestResult, WriteResults};
     use flate2::read::GzDecoder;
@@ -107,6 +108,8 @@ mod tests {
 
     #[test]
     fn test_logs_archives_generation() {
+        crate::logs::init_test();
+
         let config = Config::default();
         let db = Database::temp().unwrap();
         let writer = DummyWriter::default();
@@ -124,25 +127,25 @@ mod tests {
         // Fill some dummy results into the database
         let results = DatabaseDB::new(&db);
         results
-            .record_result(&ex, &ex.toolchains[0], &crate1, || {
+            .record_result(&ex, &ex.toolchains[0], &crate1, None, || {
                 info!("tc1 crate1");
                 Ok(TestResult::TestPass)
             })
             .unwrap();
         results
-            .record_result(&ex, &ex.toolchains[1], &crate1, || {
+            .record_result(&ex, &ex.toolchains[1], &crate1, None, || {
                 info!("tc2 crate1");
                 Ok(TestResult::BuildFail(FailureReason::Unknown))
             })
             .unwrap();
         results
-            .record_result(&ex, &ex.toolchains[0], &crate2, || {
+            .record_result(&ex, &ex.toolchains[0], &crate2, None, || {
                 info!("tc1 crate2");
                 Ok(TestResult::TestPass)
             })
             .unwrap();
         results
-            .record_result(&ex, &ex.toolchains[1], &crate2, || {
+            .record_result(&ex, &ex.toolchains[1], &crate2, None, || {
                 info!("tc2 crate2");
                 Ok(TestResult::TestPass)
             })

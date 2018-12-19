@@ -4,6 +4,7 @@ mod dummy;
 
 use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
+use crate::logs::LogStorage;
 use crate::prelude::*;
 pub use crate::results::db::{DatabaseDB, ProgressData};
 #[cfg(test)]
@@ -41,6 +42,7 @@ pub trait WriteResults {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
+        existing_logs: Option<LogStorage>,
         f: F,
     ) -> Fallible<TestResult>
     where

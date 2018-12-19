@@ -70,8 +70,18 @@ pub(super) fn run_test<DB: WriteResults>(
         info!("skipping crate {}. existing result: {}", ctx.krate, res);
     } else {
         let source_path = crate::dirs::crate_source_dir(ctx.experiment, ctx.toolchain, ctx.krate);
-        ctx.db
-            .record_result(ctx.experiment, ctx.toolchain, ctx.krate, || {
+        let log_storage = ctx
+            .state
+            .lock()
+            .prepare_logs
+            .get(&ctx.krate)
+            .map(|s| s.duplicate());
+        ctx.db.record_result(
+            ctx.experiment,
+            ctx.toolchain,
+            ctx.krate,
+            log_storage,
+            || {
                 info!(
                     "{} {} against {} for {}",
                     action,
@@ -80,7 +90,8 @@ pub(super) fn run_test<DB: WriteResults>(
                     ctx.experiment.name
                 );
                 test_fn(ctx, &source_path)
-            })?;
+            },
+        )?;
     }
     Ok(())
 }

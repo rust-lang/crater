@@ -1,11 +1,7 @@
-#[macro_use(slog_info)]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-
+use log::info;
 mod cli;
 
-use crater::{log, utils};
+use crater::utils;
 use failure::Fallible;
 use std::panic;
 use std::process;
@@ -15,7 +11,7 @@ fn main() {
     // Ignore errors loading `.env` file.
     let _ = dotenv::dotenv();
 
-    let _guard = log::init();
+    crater::logs::init();
     let success = match panic::catch_unwind(main_) {
         Ok(Ok(())) => true,
         Ok(Err(e)) => {
@@ -35,7 +31,6 @@ fn main() {
             "command failed"
         }
     );
-    log::finish();
     process::exit(if success { 0 } else { 1 });
 }
 

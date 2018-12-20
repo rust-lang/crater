@@ -67,6 +67,8 @@ pub struct DemoCrates {
 #[serde(rename_all = "kebab-case")]
 pub struct SandboxConfig {
     pub memory_limit: Size,
+    pub build_log_max_size: Size,
+    pub build_log_max_lines: usize,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -241,6 +243,8 @@ impl Default for Config {
             local_crates: HashMap::new(),
             sandbox: SandboxConfig {
                 memory_limit: Size::Gigabytes(2),
+                build_log_max_size: Size::Megabytes(1),
+                build_log_max_lines: 1000,
             },
             server: ServerConfig {
                 bot_acl: Vec::new(),
@@ -275,6 +279,8 @@ mod tests {
             "local-crates = []\n",
             "[sandbox]\n",
             "memory-limit = \"2G\"\n",
+            "build-log-max-size = \"2M\"\n",
+            "build-log-max-lines = 1000\n",
             "[crates]\n",
             "lazy_static = { skip = true }\n",
             "[github-repos]\n",

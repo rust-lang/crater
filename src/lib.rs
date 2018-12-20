@@ -1,5 +1,9 @@
 #![recursion_limit = "256"]
-#![allow(clippy::needless_pass_by_value, clippy::new_ret_no_self)]
+#![allow(
+    clippy::needless_pass_by_value,
+    clippy::new_ret_no_self,
+    clippy::too_many_arguments
+)]
 
 #[cfg_attr(test, macro_use)]
 extern crate toml;

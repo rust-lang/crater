@@ -128,7 +128,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                                 graph
                                     .lock()
                                     .unwrap()
-                                    .mark_as_failed(id, ex, db, &state, &e, result)?;
+                                    .mark_as_failed(id, ex, db, &state, &config, &e, result)?;
                             } else {
                                 graph.lock().unwrap().mark_as_completed(id);
                             }

@@ -128,10 +128,10 @@ impl Experiment {
         Ok(db.exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])?)
     }
 
-    pub fn all(db: &Database) -> Fallible<Vec<Experiment>> {
+    pub fn unfinished(db: &Database) -> Fallible<Vec<Experiment>> {
         let records = db.query(
-            "SELECT * FROM experiments ORDER BY priority DESC, created_at;",
-            &[],
+            "SELECT * FROM experiments WHERE status != ?1 ORDER BY priority DESC, created_at;",
+            &[&Status::Completed.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
         records

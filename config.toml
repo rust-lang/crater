@@ -29,6 +29,9 @@ local-crates = []
 [sandbox]
 # Maximum amount of RAM allowed during builds
 memory-limit = "1536M"  # 1.5G
+# Restrictions on the amount of information stored in build logs
+build-log-max-size = "5M"
+build-log-max-lines = 10000
 
 
 # These sections allows to customize how crater treats specific crates/repos

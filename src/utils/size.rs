@@ -11,6 +11,18 @@ pub enum Size {
     Terabytes(usize),
 }
 
+impl Size {
+    pub(crate) fn to_bytes(&self) -> usize {
+        match self {
+            Size::Bytes(b) => *b,
+            Size::Kilobytes(kb) => kb * 1024,
+            Size::Megabytes(mb) => mb * 1024 * 1024,
+            Size::Gigabytes(gb) => gb * 1024 * 1024 * 1024,
+            Size::Terabytes(tb) => tb * 1024 * 1024 * 1024 * 1024,
+        }
+    }
+}
+
 impl fmt::Display for Size {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -61,29 +73,37 @@ mod tests {
         assert_eq!("1234B".parse::<Size>().unwrap(), Size::Bytes(1234));
         assert_eq!("1234b".parse::<Size>().unwrap(), Size::Bytes(1234));
         assert_eq!(Size::Bytes(1234).to_string(), "1234");
+        assert_eq!(Size::Bytes(42).to_bytes(), 42);
 
         assert_eq!("1234K".parse::<Size>().unwrap(), Size::Kilobytes(1234));
         assert_eq!("1234k".parse::<Size>().unwrap(), Size::Kilobytes(1234));
         assert_eq!("1234KB".parse::<Size>().unwrap(), Size::Kilobytes(1234));
         assert_eq!("1234kb".parse::<Size>().unwrap(), Size::Kilobytes(1234));
         assert_eq!(Size::Kilobytes(1234).to_string(), "1234K");
+        assert_eq!(Size::Kilobytes(42).to_bytes(), 42 * 1024);
 
         assert_eq!("1234M".parse::<Size>().unwrap(), Size::Megabytes(1234));
         assert_eq!("1234m".parse::<Size>().unwrap(), Size::Megabytes(1234));
         assert_eq!("1234MB".parse::<Size>().unwrap(), Size::Megabytes(1234));
         assert_eq!("1234mb".parse::<Size>().unwrap(), Size::Megabytes(1234));
         assert_eq!(Size::Megabytes(1234).to_string(), "1234M");
+        assert_eq!(Size::Megabytes(42).to_bytes(), 42 * 1024 * 1024);
 
         assert_eq!("1234G".parse::<Size>().unwrap(), Size::Gigabytes(1234));
         assert_eq!("1234g".parse::<Size>().unwrap(), Size::Gigabytes(1234));
         assert_eq!("1234GB".parse::<Size>().unwrap(), Size::Gigabytes(1234));
         assert_eq!("1234Gb".parse::<Size>().unwrap(), Size::Gigabytes(1234));
         assert_eq!(Size::Gigabytes(1234).to_string(), "1234G");
+        assert_eq!(Size::Gigabytes(42).to_bytes(), 42 * 1024 * 1024 * 1024);
 
         assert_eq!("1234T".parse::<Size>().unwrap(), Size::Terabytes(1234));
         assert_eq!("1234t".parse::<Size>().unwrap(), Size::Terabytes(1234));
         assert_eq!("1234TB".parse::<Size>().unwrap(), Size::Terabytes(1234));
         assert_eq!("1234Tb".parse::<Size>().unwrap(), Size::Terabytes(1234));
         assert_eq!(Size::Terabytes(1234).to_string(), "1234T");
+        assert_eq!(
+            Size::Terabytes(42).to_bytes(),
+            42 * 1024 * 1024 * 1024 * 1024
+        );
     }
 }

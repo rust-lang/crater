@@ -2,6 +2,7 @@ mod db;
 #[cfg(test)]
 mod dummy;
 
+use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
 use crate::logs::LogStorage;
@@ -43,6 +44,7 @@ pub trait WriteResults {
         toolchain: &Toolchain,
         krate: &Crate,
         existing_logs: Option<LogStorage>,
+        config: &Config,
         f: F,
     ) -> Fallible<TestResult>
     where

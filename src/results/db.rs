@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
 use crate::db::{Database, QueryUtils};
 use crate::experiments::Experiment;
@@ -169,12 +170,13 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         toolchain: &Toolchain,
         krate: &Crate,
         existing_logs: Option<LogStorage>,
+        config: &Config,
         f: F,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info));
+        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info, config));
         let result = logs::capture(&storage, f)?;
         let output = storage.to_string();
         self.store_result(ex, krate, toolchain, result, output.as_bytes())?;
@@ -299,7 +301,7 @@ mod tests {
 
         // Record a result with a message in it
         results
-            .record_result(&ex, &MAIN_TOOLCHAIN, &krate, None, || {
+            .record_result(&ex, &MAIN_TOOLCHAIN, &krate, None, &config, || {
                 info!("hello world");
                 Ok(TestResult::TestPass)
             })
@@ -336,7 +338,7 @@ mod tests {
 
         // Add another result
         results
-            .record_result(&ex, &TEST_TOOLCHAIN, &krate, None, || {
+            .record_result(&ex, &TEST_TOOLCHAIN, &krate, None, &config, || {
                 info!("Another log message!");
                 Ok(TestResult::TestFail(FailureReason::Unknown))
             })

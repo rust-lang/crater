@@ -57,7 +57,6 @@ fn run_cargo<DB: WriteResults>(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn run_test<DB: WriteResults>(
     action: &str,
     ctx: &TaskCtx<DB>,
@@ -81,6 +80,7 @@ pub(super) fn run_test<DB: WriteResults>(
             ctx.toolchain,
             ctx.krate,
             log_storage,
+            ctx.config,
             || {
                 info!(
                     "{} {} against {} for {}",

@@ -1,4 +1,5 @@
 use crate::agent::api::AgentApi;
+use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
 use crate::logs::{self, LogStorage};
@@ -49,12 +50,13 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         toolchain: &Toolchain,
         krate: &Crate,
         existing_logs: Option<LogStorage>,
+        config: &Config,
         f: F,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info));
+        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info, config));
         let result = logs::capture(&storage, f)?;
         let output = storage.to_string();
 

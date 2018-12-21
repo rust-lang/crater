@@ -191,6 +191,7 @@ impl TasksGraph {
         ex: &Experiment,
         db: &DB,
         state: &RunnerState,
+        config: &Config,
         error: &F,
         result: TestResult,
     ) -> Fallible<()> {
@@ -199,11 +200,13 @@ impl TasksGraph {
             .neighbors_directed(node, Direction::Incoming)
             .collect::<Vec<_>>();
         for child in children.drain(..) {
-            self.mark_as_failed(child, ex, db, state, error, result)?;
+            self.mark_as_failed(child, ex, db, state, config, error, result)?;
         }
 
         match self.graph[node] {
-            Node::Task { ref task, .. } => task.mark_as_failed(ex, db, state, error, result)?,
+            Node::Task { ref task, .. } => {
+                task.mark_as_failed(ex, db, state, config, error, result)?
+            }
             Node::CrateCompleted | Node::Root => return Ok(()),
         }
 

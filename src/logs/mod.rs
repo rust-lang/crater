@@ -1,6 +1,5 @@
 mod storage;
 
-use crate::prelude::*;
 use log::{Log, Metadata, Record};
 use std::cell::RefCell;
 use std::sync::Once;
@@ -60,9 +59,9 @@ impl Log for MultiLogger {
     }
 }
 
-pub fn capture<F, R, L>(storage: &L, f: F) -> Fallible<R>
+pub fn capture<F, R, L>(storage: &L, f: F) -> R
 where
-    F: FnOnce() -> Fallible<R>,
+    F: FnOnce() -> R,
     L: Log + Clone + 'static,
 {
     let storage = Box::new(storage.clone());

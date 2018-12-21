@@ -25,7 +25,6 @@ pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
 }
 
 impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
-    #[allow(clippy::too_many_arguments)]
     fn new(
         config: &'ctx Config,
         db: &'ctx DB,
@@ -133,6 +132,7 @@ impl Task {
         ex: &Experiment,
         db: &DB,
         state: &RunnerState,
+        config: &Config,
         err: &F,
         result: TestResult,
     ) -> Fallible<()> {
@@ -148,7 +148,7 @@ impl Task {
                     .prepare_logs
                     .get(&self.krate)
                     .map(|s| s.duplicate());
-                db.record_result(ex, tc, &self.krate, log_storage, || {
+                db.record_result(ex, tc, &self.krate, log_storage, config, || {
                     error!("this task or one of its parent failed!");
                     utils::report_failure(err);
                     Ok(result)
@@ -177,7 +177,7 @@ impl Task {
                 state.lock().prepare_logs.remove(&self.krate);
             }
             TaskStep::Prepare => {
-                let storage = LogStorage::new(LevelFilter::Info);
+                let storage = LogStorage::new(LevelFilter::Info, config);
                 state
                     .lock()
                     .prepare_logs

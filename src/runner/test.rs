@@ -1,17 +1,11 @@
-use config::Config;
-use crates::Crate;
-use docker::DockerError;
-use docker::MountPerms;
-use experiments::Experiment;
+use crate::docker::{DockerError, MountPerms};
+use crate::prelude::*;
+use crate::results::{EncodingType, FailureReason, TestResult, WriteResults};
+use crate::run::{RunCommand, RunCommandError};
+use crate::runner::tasks::TaskCtx;
+use crate::tools::CARGO;
 use failure::Error;
-use prelude::*;
-use results::EncodingType;
-use results::{FailureReason, TestResult, WriteResults};
-use run::{RunCommand, RunCommandError};
-use runner::prepare::{with_captured_lockfile, with_frobbed_toml, with_work_crate};
 use std::path::Path;
-use toolchain::Toolchain;
-use tools::CARGO;
 
 fn failure_reason(err: &Error) -> FailureReason {
     for cause in err.iter_chain() {
@@ -27,19 +21,16 @@ fn failure_reason(err: &Error) -> FailureReason {
     FailureReason::Unknown
 }
 
-fn run_cargo(
-    config: &Config,
-    ex: &Experiment,
+fn run_cargo<DB: WriteResults>(
+    ctx: &TaskCtx<DB>,
     source_path: &Path,
-    toolchain: &Toolchain,
-    quiet: bool,
     args: &[&str],
 ) -> Fallible<()> {
-    let target_dir = toolchain.target_dir(&ex.name);
+    let target_dir = ctx.toolchain.target_dir(&ctx.experiment.name);
     ::std::fs::create_dir_all(&target_dir)?;
 
-    let mut rustflags = format!("--cap-lints={}", ex.cap_lints.to_str());
-    if let Some(ref tc_rustflags) = toolchain.rustflags {
+    let mut rustflags = format!("--cap-lints={}", ctx.experiment.cap_lints.to_str());
+    if let Some(ref tc_rustflags) = ctx.toolchain.rustflags {
         rustflags.push(' ');
         rustflags.push_str(tc_rustflags);
     }
@@ -50,125 +41,79 @@ fn run_cargo(
         "RUSTFLAGS"
     };
 
-    RunCommand::new(CARGO.toolchain(toolchain))
+    RunCommand::new(CARGO.toolchain(ctx.toolchain))
         .args(args)
-        .quiet(quiet)
+        .quiet(ctx.quiet)
         .cd(source_path)
-        .env("CARGO_TARGET_DIR", "/target")
+        .env("CARGO_TARGET_DIR", "/opt/crater/target")
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env(rustflags_env, rustflags)
-        .sandboxed()
-        .mount(target_dir, "/target", MountPerms::ReadWrite)
-        .memory_limit(Some(config.sandbox.memory_limit))
+        .sandboxed(&ctx.docker_env)
+        .mount(target_dir, "/opt/crater/target", MountPerms::ReadWrite)
+        .memory_limit(Some(ctx.config.sandbox.memory_limit))
         .run()?;
 
     Ok(())
 }
 
-pub struct RunTestResult {
-    pub result: TestResult,
-    pub skipped: bool,
-}
-
-#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
-pub fn run_test<DB: WriteResults>(
-    config: &Config,
+pub(super) fn run_test<DB: WriteResults>(
     action: &str,
-    ex: &Experiment,
-    tc: &Toolchain,
-    krate: &Crate,
-    db: &DB,
-    quiet: bool,
-    test_fn: fn(&Config, &Experiment, &Path, &Toolchain, bool) -> Fallible<TestResult>,
-) -> Fallible<RunTestResult> {
-    if let Some(res) = db.get_result(ex, tc, krate)? {
-        info!("skipping crate {}. existing result: {}", krate, res);
-        Ok(RunTestResult {
-            result: res,
-            skipped: true,
-        })
-    } else {
-        with_work_crate(ex, tc, krate, |source_path| {
-            with_frobbed_toml(ex, krate, source_path)?;
-            with_captured_lockfile(config, ex, krate, source_path)?;
-
-            db.record_result(
-                ex,
-                tc,
-                krate,
-                || {
-                    info!(
-                        "{} {} against {} for {}",
-                        action,
-                        krate,
-                        tc.to_string(),
-                        ex.name
-                    );
-                    test_fn(config, ex, source_path, tc, quiet)
-                },
-                EncodingType::Plain,
-            )
-        }).map(|result| RunTestResult {
-            result,
-            skipped: false,
-        })
-    }
-}
-
-fn build(
-    config: &Config,
-    ex: &Experiment,
-    source_path: &Path,
-    toolchain: &Toolchain,
-    quiet: bool,
+    ctx: &TaskCtx<DB>,
+    test_fn: fn(&TaskCtx<DB>, &Path) -> Fallible<TestResult>,
 ) -> Fallible<()> {
-    run_cargo(
-        config,
-        ex,
-        source_path,
-        toolchain,
-        quiet,
-        &["build", "--frozen"],
-    )?;
-    run_cargo(
-        config,
-        ex,
-        source_path,
-        toolchain,
-        quiet,
-        &["test", "--frozen", "--no-run"],
-    )?;
+    if let Some(res) = ctx
+        .db
+        .get_result(ctx.experiment, ctx.toolchain, ctx.krate)?
+    {
+        info!("skipping crate {}. existing result: {}", ctx.krate, res);
+    } else {
+        let source_path = crate::dirs::crate_source_dir(ctx.experiment, ctx.toolchain, ctx.krate);
+        let log_storage = ctx
+            .state
+            .lock()
+            .prepare_logs
+            .get(&ctx.krate)
+            .map(|s| s.duplicate());
+        ctx.db.record_result(
+            ctx.experiment,
+            ctx.toolchain,
+            ctx.krate,
+            log_storage,
+            ctx.config,
+            || {
+                info!(
+                    "{} {} against {} for {}",
+                    action,
+                    ctx.krate,
+                    ctx.toolchain.to_string(),
+                    ctx.experiment.name
+                );
+                test_fn(ctx, &source_path)
+            },
+            EncodingType::Plain,
+        )?;
+    }
     Ok(())
 }
 
-fn test(
-    config: &Config,
-    ex: &Experiment,
-    source_path: &Path,
-    toolchain: &Toolchain,
-    quiet: bool,
-) -> Fallible<()> {
-    run_cargo(
-        config,
-        ex,
-        source_path,
-        toolchain,
-        quiet,
-        &["test", "--frozen"],
-    )
+fn build<DB: WriteResults>(ctx: &TaskCtx<DB>, source_path: &Path) -> Fallible<()> {
+    run_cargo(ctx, source_path, &["build", "--frozen"])?;
+    run_cargo(ctx, source_path, &["test", "--frozen", "--no-run"])?;
+    Ok(())
 }
 
-pub fn test_build_and_test(
-    config: &Config,
-    ex: &Experiment,
+fn test<DB: WriteResults>(ctx: &TaskCtx<DB>, source_path: &Path) -> Fallible<()> {
+    run_cargo(ctx, source_path, &["test", "--frozen"])
+}
+
+pub(super) fn test_build_and_test<DB: WriteResults>(
+    ctx: &TaskCtx<DB>,
     source_path: &Path,
-    toolchain: &Toolchain,
-    quiet: bool,
 ) -> Fallible<TestResult> {
-    let build_r = build(config, ex, source_path, toolchain, quiet);
+    let build_r = build(ctx, source_path);
     let test_r = if build_r.is_ok() {
-        Some(test(config, ex, source_path, toolchain, quiet))
+        Some(test(ctx, source_path))
     } else {
         None
     };
@@ -181,33 +126,24 @@ pub fn test_build_and_test(
     })
 }
 
-pub fn test_build_only(
-    config: &Config,
-    ex: &Experiment,
+pub(super) fn test_build_only<DB: WriteResults>(
+    ctx: &TaskCtx<DB>,
     source_path: &Path,
-    toolchain: &Toolchain,
-    quiet: bool,
 ) -> Fallible<TestResult> {
-    if let Err(err) = build(config, ex, source_path, toolchain, quiet) {
+    if let Err(err) = build(ctx, source_path) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
         Ok(TestResult::TestSkipped)
     }
 }
 
-pub fn test_check_only(
-    config: &Config,
-    ex: &Experiment,
+pub(super) fn test_check_only<DB: WriteResults>(
+    ctx: &TaskCtx<DB>,
     source_path: &Path,
-    toolchain: &Toolchain,
-    quiet: bool,
 ) -> Fallible<TestResult> {
     if let Err(err) = run_cargo(
-        config,
-        ex,
+        ctx,
         source_path,
-        toolchain,
-        quiet,
         &["check", "--frozen", "--all", "--all-targets"],
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
@@ -216,26 +152,20 @@ pub fn test_check_only(
     }
 }
 
-pub fn test_rustdoc(
-    config: &Config,
-    ex: &Experiment,
+pub(super) fn test_rustdoc<DB: WriteResults>(
+    ctx: &TaskCtx<DB>,
     source_path: &Path,
-    toolchain: &Toolchain,
-    quiet: bool,
 ) -> Fallible<TestResult> {
     let res = run_cargo(
-        config,
-        ex,
+        ctx,
         source_path,
-        toolchain,
-        quiet,
         &["doc", "--frozen", "--no-deps", "--document-private-items"],
     );
 
     // Make sure to remove the built documentation
     // There is no point in storing it after the build is done
-    let target_dir = toolchain.target_dir(&ex.name);
-    ::utils::fs::remove_dir_all(&target_dir.join("doc"))?;
+    let target_dir = ctx.toolchain.target_dir(&ctx.experiment.name);
+    crate::utils::fs::remove_dir_all(&target_dir.join("doc"))?;
 
     if let Err(err) = res {
         Ok(TestResult::BuildFail(failure_reason(&err)))

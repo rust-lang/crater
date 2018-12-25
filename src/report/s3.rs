@@ -1,7 +1,7 @@
+use crate::prelude::*;
+use crate::report::ReportWriter;
+use crate::results::EncodingType;
 use mime::Mime;
-use prelude::*;
-use report::ReportWriter;
-use results::EncodingType;
 use rusoto_core::request::HttpClient;
 use rusoto_core::{DefaultCredentialsProvider, Region};
 use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3Client, S3};
@@ -72,7 +72,8 @@ pub fn get_client_for_bucket(bucket: &str) -> Fallible<Box<S3>> {
     let response = client
         .get_bucket_location(GetBucketLocationRequest {
             bucket: bucket.into(),
-        }).sync()
+        })
+        .sync()
         .context(S3Error::UnknownBucketRegion)?;
     let region = match response.location_constraint.as_ref() {
         Some(region) if region == "" => Region::UsEast1,

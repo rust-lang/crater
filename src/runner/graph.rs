@@ -16,13 +16,16 @@
 //                                   |             |
 //                                   +---+ tc2 <---+
 
-use config::Config;
-use experiments::{Experiment, Mode};
+use crate::config::Config;
+use crate::experiments::{Experiment, Mode};
+use crate::prelude::*;
+use crate::results::{TestResult, WriteResults};
+use crate::runner::{
+    tasks::{Task, TaskStep},
+    RunnerState,
+};
 use failure::AsFail;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
-use prelude::*;
-use results::{TestResult, WriteResults};
-use runner::tasks::{Task, TaskStep};
 use std::fmt::{self, Debug};
 use std::sync::Arc;
 
@@ -35,11 +38,13 @@ enum Node {
 impl Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Node::Task { ref task, running } => if running {
-                write!(f, "running: {:?}", task)?;
-            } else {
-                write!(f, "{:?}", task)?;
-            },
+            Node::Task { ref task, running } => {
+                if running {
+                    write!(f, "running: {:?}", task)?;
+                } else {
+                    write!(f, "{:?}", task)?;
+                }
+            }
             Node::CrateCompleted => write!(f, "crate completed")?,
             Node::Root => write!(f, "root")?,
         }
@@ -185,6 +190,8 @@ impl TasksGraph {
         node: NodeIndex,
         ex: &Experiment,
         db: &DB,
+        state: &RunnerState,
+        config: &Config,
         error: &F,
         result: TestResult,
     ) -> Fallible<()> {
@@ -193,11 +200,13 @@ impl TasksGraph {
             .neighbors_directed(node, Direction::Incoming)
             .collect::<Vec<_>>();
         for child in children.drain(..) {
-            self.mark_as_failed(child, ex, db, error, result)?;
+            self.mark_as_failed(child, ex, db, state, config, error, result)?;
         }
 
         match self.graph[node] {
-            Node::Task { ref task, .. } => task.mark_as_failed(ex, db, error, result)?,
+            Node::Task { ref task, .. } => {
+                task.mark_as_failed(ex, db, state, config, error, result)?
+            }
             Node::CrateCompleted | Node::Root => return Ok(()),
         }
 
@@ -268,7 +277,15 @@ pub(super) fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
             builds.push(build_id);
         }
 
-        graph.add_crate(&builds);
+        let cleanup_id = graph.add_task(
+            Task {
+                krate: krate.clone(),
+                step: TaskStep::Cleanup,
+            },
+            &builds,
+        );
+
+        graph.add_crate(&[cleanup_id]);
     }
 
     graph

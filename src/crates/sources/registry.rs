@@ -1,12 +1,12 @@
-use crates::{lists::List, Crate};
+use crate::crates::{lists::List, Crate};
+use crate::dirs::{LOCAL_DIR, SOURCE_CACHE_DIR};
+use crate::prelude::*;
 use crates_index::Index;
-use dirs::LOCAL_DIR;
 use flate2::read::GzDecoder;
-use prelude::*;
 use std::collections::HashMap;
-use std::fs;
-use std::io::Read;
-use std::path::Path;
+use std::fs::{self, File};
+use std::io::{BufReader, BufWriter, Read};
+use std::path::{Path, PathBuf};
 use tar::Archive;
 
 static CRATES_ROOT: &str = "https://crates-io.s3-us-west-1.amazonaws.com/crates";
@@ -67,40 +67,57 @@ pub struct RegistryCrate {
 }
 
 impl RegistryCrate {
-    pub(in crates) fn prepare(&self, dest: &Path) -> Fallible<()> {
-        dl_registry(&self.name, &self.version, &dest).with_context(|_| {
-            format!("unable to download {} version {}", self.name, self.version)
-        })?;
+    fn cached_path(&self) -> PathBuf {
+        SOURCE_CACHE_DIR
+            .join("reg")
+            .join(&self.name)
+            .join(format!("{}-{}.crate", self.name, self.version))
+    }
+
+    pub(in crate::crates) fn fetch(&self) -> Fallible<()> {
+        let local = self.cached_path();
+        if local.exists() {
+            info!("crate {} {} is already in cache", self.name, self.version);
+            return Ok(());
+        }
+
+        info!("fetching crate {} {}...", self.name, self.version);
+        if let Some(parent) = local.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let remote = format!(
+            "{0}/{1}/{1}-{2}.crate",
+            CRATES_ROOT, self.name, self.version
+        );
+        let mut resp = crate::utils::http::get_sync(&remote)?;
+        resp.copy_to(&mut BufWriter::new(File::create(&local)?))?;
+
         Ok(())
     }
-}
 
-fn dl_registry(name: &str, vers: &str, dir: &Path) -> Fallible<()> {
-    if dir.exists() {
+    pub(in crate::crates) fn copy_to(&self, dest: &Path) -> Fallible<()> {
+        let cached = self.cached_path();
+        let mut file = File::open(cached)?;
+        let mut tar = Archive::new(GzDecoder::new(BufReader::new(&mut file)));
+
         info!(
-            "crate {}-{} exists at {}. skipping",
-            name,
-            vers,
-            dir.display()
+            "extracting crate {} {} into {}",
+            self.name,
+            self.version,
+            dest.display()
         );
-        return Ok(());
+        if let Err(err) = unpack_without_first_dir(&mut tar, dest) {
+            let _ = crate::utils::fs::remove_dir_all(dest);
+            Err(err
+                .context(format!(
+                    "unable to download {} version {}",
+                    self.name, self.version
+                ))
+                .into())
+        } else {
+            Ok(())
+        }
     }
-    info!("downloading crate {}-{} to {}", name, vers, dir.display());
-    let url = format!("{0}/{1}/{1}-{2}.crate", CRATES_ROOT, name, vers);
-    let bin =
-        ::utils::http::get_sync(&url).with_context(|_| format!("unable to download {}", url))?;
-
-    fs::create_dir_all(&dir)?;
-
-    let mut tar = Archive::new(GzDecoder::new(bin));
-    let r =
-        unpack_without_first_dir(&mut tar, dir).with_context(|_| "unable to unpack crate tarball");
-
-    if r.is_err() {
-        let _ = ::utils::fs::remove_dir_all(dir);
-    }
-
-    r.map_err(|e| e.into())
 }
 
 fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> Fallible<()> {

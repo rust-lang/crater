@@ -1,4 +1,4 @@
-use prelude::*;
+use crate::prelude::*;
 
 #[derive(Debug, Fail)]
 #[cfg_attr(test, derive(PartialEq, Eq))]

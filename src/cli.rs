@@ -14,18 +14,19 @@ use crater::agent;
 use crater::config::Config;
 use crater::crates::Crate;
 use crater::db::Database;
-use crater::docker;
 use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
 use crater::runner;
 use crater::server;
 use crater::toolchain::Toolchain;
-use failure::{Error, Fallible};
+use failure::{bail, Error, Fallible};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::clap::AppSettings;
+
+static DEFAULT_DOCKER_ENV: &str = "rustops/crates-build-env";
 
 // An experiment name
 #[derive(Debug, Clone)]
@@ -60,7 +61,7 @@ impl FromStr for Dest {
     }
 }
 
-#[derive(StructOpt)]
+#[derive(structopt_derive::StructOpt)]
 #[structopt(
     name = "crater",
     about = "Kaboom!",
@@ -75,19 +76,9 @@ pub enum Crater {
         name = "prepare-local",
         about = "acquire toolchains, build containers, build crate lists"
     )]
-    PrepareLocal {
-        #[structopt(
-            name = "docker env",
-            long = "docker-env",
-            default_value = "full"
-        )]
-        env: DockerEnv,
-    },
+    PrepareLocal,
 
-    #[structopt(
-        name = "create-lists",
-        about = "create all the lists of crates"
-    )]
+    #[structopt(name = "create-lists", about = "create all the lists of crates")]
     CreateLists {
         #[structopt(name = "lists")]
         lists: Vec<String>,
@@ -128,12 +119,7 @@ pub enum Crater {
             )
         )]
         cap_lints: CapLints,
-        #[structopt(
-            name = "priority",
-            long = "priority",
-            short = "p",
-            default_value = "0"
-        )]
+        #[structopt(name = "priority", long = "priority", short = "p", default_value = "0")]
         priority: i32,
     },
 
@@ -163,14 +149,11 @@ pub enum Crater {
             raw(possible_values = "CapLints::possible_values()")
         )]
         cap_lints: Option<CapLints>,
-        #[structopt(name = "priority", long = "priority", short = "p",)]
+        #[structopt(name = "priority", long = "priority", short = "p")]
         priority: Option<i32>,
     },
 
-    #[structopt(
-        name = "delete-ex",
-        about = "delete shared data for experiment"
-    )]
+    #[structopt(name = "delete-ex", about = "delete shared data for experiment")]
     DeleteEx {
         #[structopt(long = "ex", default_value = "default")]
         ex: Ex,
@@ -202,19 +185,13 @@ pub enum Crater {
     RunGraph {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
-        #[structopt(
-            name = "threads",
-            short = "t",
-            long = "threads",
-            default_value = "1"
-        )]
+        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
         threads: usize,
+        #[structopt(name = "docker-env", long = "docker-env")]
+        docker_env: Option<String>,
     },
 
-    #[structopt(
-        name = "gen-report",
-        about = "generate the experiment report"
-    )]
+    #[structopt(name = "gen-report", about = "generate the experiment report")]
     GenReport {
         #[structopt(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
@@ -224,10 +201,7 @@ pub enum Crater {
         force: bool,
     },
 
-    #[structopt(
-        name = "publish-report",
-        about = "publish the experiment report to S3"
-    )]
+    #[structopt(name = "publish-report", about = "publish the experiment report to S3")]
     PublishReport {
         #[structopt(
             name = "experiment",
@@ -251,13 +225,10 @@ pub enum Crater {
         url: String,
         #[structopt(name = "token")]
         token: String,
-        #[structopt(
-            name = "threads",
-            short = "t",
-            long = "threads",
-            default_value = "1"
-        )]
+        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
         threads: usize,
+        #[structopt(name = "docker-env", long = "docker-env")]
+        docker_env: Option<String>,
     },
 
     #[structopt(
@@ -306,12 +277,9 @@ impl Crater {
                     action.apply(&db, &config)?;
                 }
             }
-            Crater::PrepareLocal { ref env } => {
+            Crater::PrepareLocal => {
                 let config = Config::load()?;
                 let db = Database::open()?;
-
-                let docker_env = &env.0;
-                docker::build_container(docker_env)?;
                 actions::UpdateLists::default().apply(&db, &config)?;
             }
             Crater::DefineEx {
@@ -334,7 +302,8 @@ impl Crater {
                     cap_lints: *cap_lints,
                     priority: *priority,
                     github_issue: None,
-                }.apply(&db, &config)?;
+                }
+                .apply(&db, &config)?;
             }
             Crater::Edit {
                 ref name,
@@ -355,7 +324,8 @@ impl Crater {
                     crates: *crates,
                     cap_lints: *cap_lints,
                     priority: *priority,
-                }.apply(&db, &config)?;
+                }
+                .apply(&db, &config)?;
             }
             Crater::DeleteEx { ref ex } => {
                 let config = Config::load()?;
@@ -396,7 +366,15 @@ impl Crater {
                     bail!("missing experiment {}", ex.0);
                 }
             }
-            Crater::RunGraph { ref ex, threads } => {
+            Crater::RunGraph {
+                ref ex,
+                threads,
+                ref docker_env,
+            } => {
+                let docker_env = docker_env
+                    .as_ref()
+                    .map(|e| e.as_str())
+                    .unwrap_or(DEFAULT_DOCKER_ENV);
                 let config = Config::load()?;
                 let db = Database::open()?;
 
@@ -416,7 +394,7 @@ impl Crater {
                     }
 
                     let result_db = DatabaseDB::new(&db);
-                    runner::run_ex(&experiment, &result_db, threads, &config)?;
+                    runner::run_ex(&experiment, &result_db, threads, &config, docker_env)?;
                     experiment.set_status(&db, Status::NeedsReport)?;
                 } else {
                     bail!("missing experiment {}", ex.0);
@@ -510,8 +488,13 @@ impl Crater {
                 ref url,
                 ref token,
                 threads,
+                ref docker_env,
             } => {
-                agent::run(url, token, threads)?;
+                let docker_env = docker_env
+                    .as_ref()
+                    .map(|e| e.as_str())
+                    .unwrap_or(DEFAULT_DOCKER_ENV);
+                agent::run(url, token, threads, docker_env)?;
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
                 let config = Config::load()?;

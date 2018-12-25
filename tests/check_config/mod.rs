@@ -1,5 +1,5 @@
+use crate::common::CommandCraterExt;
 use assert_cmd::prelude::*;
-use common::CommandCraterExt;
 use predicates::str::contains;
 use std::process::Command;
 
@@ -17,10 +17,11 @@ fn test_bad_config_duplicate_crate() {
         .args(&[
             "check-config",
             "tests/check_config/bad-duplicate-crate.toml",
-        ]).assert()
+        ])
+        .assert()
         .failure()
         .code(1)
-        .stdout(contains("duplicate key: `lazy_static` for key `crates`"));
+        .stderr(contains("duplicate key: `lazy_static` for key `crates`"));
 }
 
 #[test]
@@ -30,7 +31,7 @@ fn test_bad_config_duplicate_repo() {
         .assert()
         .failure()
         .code(1)
-        .stdout(contains(
+        .stderr(contains(
             "duplicate key: `brson/hello-rs` for key `github-repos`",
         ));
 }
@@ -42,7 +43,7 @@ fn test_bad_config_missing_crate() {
         .assert()
         .failure()
         .code(1)
-        .stdout(contains("crate `crater_missing_crate` is not available"));
+        .stderr(contains("crate `crater_missing_crate` is not available"));
 }
 
 #[test]
@@ -52,5 +53,5 @@ fn test_bad_config_missing_repo() {
         .assert()
         .failure()
         .code(1)
-        .stdout(contains("GitHub repo `ghost/missing-repo` is missing"));
+        .stderr(contains("GitHub repo `ghost/missing-repo` is missing"));
 }

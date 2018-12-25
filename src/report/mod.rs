@@ -1,10 +1,11 @@
-use config::Config;
-use crates::{Crate, GitHubRepo};
-use experiments::Experiment;
+use crate::config::Config;
+use crate::crates::{Crate, GitHubRepo};
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::results::{EncodedLog, EncodingType, ReadResults, TestResult};
+use crate::toolchain::Toolchain;
+use crate::utils;
 use mime::{self, Mime};
-use prelude::*;
-use results::{EncodedLog, EncodingType};
-use results::{ReadResults, TestResult};
 use serde_json;
 use std::borrow::Cow;
 #[cfg(test)]
@@ -15,9 +16,7 @@ use std::fmt::{self, Display};
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use toolchain::Toolchain;
 use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
-use utils;
 
 mod archives;
 mod html;
@@ -25,7 +24,7 @@ mod s3;
 
 pub use self::s3::{get_client_for_bucket, S3Prefix, S3Writer};
 
-define_encode_set! {
+url::define_encode_set! {
     pub REPORT_ENCODE_SET = [DEFAULT_ENCODE_SET] | { '+' }
 }
 
@@ -36,18 +35,18 @@ fn url_encode(input: &str) -> String {
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
-    crates: Vec<CrateResult>,
+    pub crates: Vec<CrateResult>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct CrateResult {
+pub struct CrateResult {
     name: String,
     url: String,
-    res: Comparison,
+    pub res: Comparison,
     runs: [Option<BuildTestResult>; 2],
 }
 
-string_enum!(enum Comparison {
+string_enum!(pub enum Comparison {
     Regressed => "regressed",
     Fixed => "fixed",
     Skipped => "skipped",
@@ -62,7 +61,7 @@ string_enum!(enum Comparison {
 });
 
 impl Comparison {
-    fn show_in_summary(self) -> bool {
+    pub fn show_in_summary(self) -> bool {
         match self {
             Comparison::Regressed
             | Comparison::Fixed
@@ -165,7 +164,8 @@ pub fn generate_report<DB: ReadResults>(
                 res: comp,
                 runs: [crate1, crate2],
             })
-        }).collect::<Fallible<Vec<_>>>()?;
+        })
+        .collect::<Fallible<Vec<_>>>()?;
 
     Ok(TestResults { crates: res })
 }
@@ -221,7 +221,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     ex: &Experiment,
     dest: &W,
     config: &Config,
-) -> Fallible<()> {
+) -> Fallible<TestResults> {
     let res = generate_report(db, config, ex)?;
 
     info!("writing results to {}", dest);
@@ -244,7 +244,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     info!("writing logs");
     write_logs(db, ex, dest, config)?;
 
-    Ok(())
+    Ok(res)
 }
 
 fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Fallible<String> {
@@ -274,9 +274,11 @@ fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Fallible<Strin
                 format!("https://github.com/{}/{}", repo.org, repo.name)
             }
         }
-        Crate::Local(ref name) => {
-            format!("{}/tree/master/local-crates/{}", ::CRATER_REPO_URL, name)
-        }
+        Crate::Local(ref name) => format!(
+            "{}/tree/master/local-crates/{}",
+            crate::CRATER_REPO_URL,
+            name
+        ),
     })
 }
 
@@ -286,7 +288,7 @@ fn compare(
     r1: Option<TestResult>,
     r2: Option<TestResult>,
 ) -> Comparison {
-    use results::TestResult::*;
+    use crate::results::TestResult::*;
 
     match (r1, r2) {
         (Some(res1), Some(res2)) => match (res1, res2) {
@@ -463,12 +465,12 @@ impl Display for DummyWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use config::{Config, CrateConfig};
-    use crates::{Crate, GitHubRepo, RegistryCrate};
-    use experiments::{CapLints, Experiment, Mode, Status};
-    use results::{DummyDB, FailureReason, TestResult};
+    use crate::config::{Config, CrateConfig};
+    use crate::crates::{Crate, GitHubRepo, RegistryCrate};
+    use crate::experiments::{CapLints, Experiment, Mode, Status};
+    use crate::results::{DummyDB, FailureReason, TestResult};
+    use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
     use std::collections::HashMap;
-    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_crate_to_path_fragment() {
@@ -555,7 +557,7 @@ mod tests {
 
     #[test]
     fn test_compare() {
-        use results::{FailureReason::*, TestResult::*};
+        use crate::results::{FailureReason::*, TestResult::*};
 
         macro_rules! test_compare {
             ($cmp:ident, $config:expr, $reg:expr, [$($a:expr, $b:expr => $c:ident;)*]) => {

@@ -29,6 +29,9 @@ local-crates = []
 [sandbox]
 # Maximum amount of RAM allowed during builds
 memory-limit = "1536M"  # 1.5G
+# Restrictions on the amount of information stored in build logs
+build-log-max-size = "5M"
+build-log-max-lines = 10000
 
 
 # These sections allows to customize how crater treats specific crates/repos
@@ -1972,6 +1975,7 @@ gtk-sys = { skip-tests = true } #automatic
 gtk-test = { skip = true } #automatic
 gudev = { skip = true } #automatic
 gudev-sys = { skip = true } #automatic
+guerrilla = { skip-tests = true } # flaky tests
 guetzli-sys = { skip = true } #automatic
 guid = { skip-tests = true } #automatic
 guile = { skip = true } #automatic

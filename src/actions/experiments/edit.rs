@@ -1,9 +1,9 @@
-use actions::experiments::ExperimentError;
-use config::Config;
-use db::{Database, QueryUtils};
-use experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
-use prelude::*;
-use toolchain::Toolchain;
+use crate::actions::experiments::ExperimentError;
+use crate::config::Config;
+use crate::db::{Database, QueryUtils};
+use crate::experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
+use crate::prelude::*;
+use crate::toolchain::Toolchain;
 
 pub struct EditExperiment {
     pub name: String,
@@ -63,7 +63,7 @@ impl EditExperiment {
 
             // Try to update the list of crates
             if let Some(crates) = self.crates {
-                let crates_vec = ::crates::lists::get_crates(crates, db, config)?;
+                let crates_vec = crate::crates::lists::get_crates(crates, db, config)?;
 
                 // Recreate the list of crates without checking if it was the same
                 // This is done to allow reloading the list of crates in an existing experiment
@@ -131,18 +131,18 @@ impl EditExperiment {
 #[cfg(test)]
 mod tests {
     use super::EditExperiment;
-    use actions::{CreateExperiment, ExperimentError};
-    use config::Config;
-    use db::Database;
-    use experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
-    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
+    use crate::actions::{CreateExperiment, ExperimentError};
+    use crate::config::Config;
+    use crate::db::Database;
+    use crate::experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
+    use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_edit_with_no_changes() {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to edit
         CreateExperiment::dummy("foo").apply(&db, &config).unwrap();
@@ -157,7 +157,7 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create an experiment with the data we're going to change
         CreateExperiment {
@@ -168,7 +168,8 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap();
 
         // Change everything!
@@ -182,7 +183,8 @@ mod tests {
             crates: Some(CrateSelect::Local),
             cap_lints: Some(CapLints::Warn),
             priority: Some(10),
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap();
 
         // And get the experiment to make sure data is changed
@@ -196,7 +198,7 @@ mod tests {
 
         assert_eq!(
             ex.crates,
-            ::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
+            crate::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
         );
     }
 
@@ -205,7 +207,7 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // First create an experiment
         let mut dummy = CreateExperiment::dummy("foo");
@@ -228,7 +230,7 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         let err = EditExperiment::dummy("foo")
             .apply(&db, &config)
@@ -244,7 +246,7 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create an experiment and set it to running
         CreateExperiment::dummy("foo").apply(&db, &config).unwrap();

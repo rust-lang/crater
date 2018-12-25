@@ -1,10 +1,10 @@
-use actions::experiments::ExperimentError;
+use crate::actions::experiments::ExperimentError;
+use crate::config::Config;
+use crate::db::{Database, QueryUtils};
+use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
+use crate::prelude::*;
+use crate::toolchain::Toolchain;
 use chrono::Utc;
-use config::Config;
-use db::{Database, QueryUtils};
-use experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
-use prelude::*;
-use toolchain::Toolchain;
 
 pub struct CreateExperiment {
     pub name: String,
@@ -19,7 +19,7 @@ pub struct CreateExperiment {
 impl CreateExperiment {
     #[cfg(test)]
     pub fn dummy(name: &str) -> Self {
-        use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
+        use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
         CreateExperiment {
             name: name.to_string(),
@@ -43,7 +43,7 @@ impl CreateExperiment {
             return Err(ExperimentError::DuplicateToolchains.into());
         }
 
-        let crates = ::crates::lists::get_crates(self.crates, db, config)?;
+        let crates = crate::crates::lists::get_crates(self.crates, db, config)?;
 
         db.transaction(|transaction| {
             transaction.execute(
@@ -84,18 +84,18 @@ impl CreateExperiment {
 #[cfg(test)]
 mod tests {
     use super::CreateExperiment;
-    use actions::ExperimentError;
-    use config::Config;
-    use db::Database;
-    use experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
-    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
+    use crate::actions::ExperimentError;
+    use crate::config::Config;
+    use crate::db::Database;
+    use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
+    use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_creation() {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         let api_url = "https://api.github.com/repos/example/example/issues/10";
         let html_url = "https://github.com/example/example/issue/10";
@@ -112,7 +112,8 @@ mod tests {
                 html_url: html_url.to_string(),
                 number: 10,
             }),
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap();
 
         let ex = Experiment::get(&db, "foo").unwrap().unwrap();
@@ -124,7 +125,7 @@ mod tests {
         assert_eq!(ex.mode, Mode::BuildAndTest);
         assert_eq!(
             ex.crates,
-            ::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
+            crate::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
         );
         assert_eq!(ex.cap_lints, CapLints::Forbid);
         assert_eq!(ex.github_issue.as_ref().unwrap().api_url.as_str(), api_url);
@@ -143,7 +144,7 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Ensure an experiment with duplicate toolchains can't be created
         let err = CreateExperiment {
@@ -154,7 +155,8 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap_err();
 
         assert_eq!(
@@ -168,7 +170,7 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // The first experiment can be created successfully
         CreateExperiment {
@@ -179,7 +181,8 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap();
 
         // While the second one fails
@@ -191,7 +194,8 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
-        }.apply(&db, &config)
+        }
+        .apply(&db, &config)
         .unwrap_err();
 
         assert_eq!(

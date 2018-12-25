@@ -1,14 +1,14 @@
-use agent::api::AgentApi;
-use crates::{Crate, GitHubRepo};
-use experiments::Experiment;
-use log;
-use prelude::*;
-use results::EncodingType;
-use results::{TestResult, WriteResults};
-use std::io::Read;
+use crate::agent::api::AgentApi;
+use crate::config::Config;
+use crate::crates::{Crate, GitHubRepo};
+use crate::experiments::Experiment;
+use crate::logs::{self, LogStorage};
+use crate::prelude::*;
+use crate::results::{EncodingType, TestResult, WriteResults};
+use crate::toolchain::Toolchain;
+use log::LevelFilter;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
-use toolchain::Toolchain;
 
 #[derive(Clone)]
 pub struct ResultsUploader<'a> {
@@ -49,23 +49,23 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         _ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
+        existing_logs: Option<LogStorage>,
+        config: &Config,
         f: F,
         _: EncodingType,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let mut log_file = ::tempfile::NamedTempFile::new()?;
-        let result = log::redirect(log_file.path(), f)?;
-
-        let mut buffer = Vec::new();
-        log_file.read_to_end(&mut buffer)?;
+        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info, config));
+        let result = logs::capture(&storage, f)?;
+        let output = storage.to_string();
 
         let shas = ::std::mem::replace(self.shas.lock().unwrap().deref_mut(), Vec::new());
 
         info!("sending results to the crater server...");
         self.api
-            .record_progress(krate, toolchain, &buffer, result, &shas)?;
+            .record_progress(krate, toolchain, output.as_bytes(), result, &shas)?;
 
         Ok(result)
     }

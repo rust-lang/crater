@@ -1,14 +1,13 @@
-use experiments::{Assignee, Experiment, Status};
+use crate::experiments::{Assignee, Experiment, Status};
+use crate::prelude::*;
+use crate::results::{DatabaseDB, EncodingType, ProgressData};
+use crate::server::api_types::{AgentConfig, ApiResponse};
+use crate::server::auth::{auth_filter, AuthDetails, TokenType};
+use crate::server::messages::Message;
+use crate::server::{Data, HttpError};
 use failure::Compat;
 use http::{Response, StatusCode};
 use hyper::Body;
-use prelude::*;
-use results::EncodingType;
-use results::{DatabaseDB, ProgressData};
-use server::api_types::{AgentConfig, ApiResponse};
-use server::auth::{auth_filter, AuthDetails, TokenType};
-use server::messages::Message;
-use server::{Data, HttpError};
 use std::sync::Arc;
 use warp::{self, Filter, Rejection};
 
@@ -65,7 +64,8 @@ pub fn routes(
                 .unify()
                 .or(heartbeat)
                 .unify(),
-        ).map(handle_results)
+        )
+        .map(handle_results)
         .recover(handle_errors)
         .unify()
 }
@@ -76,7 +76,8 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body
             agent_name: auth.name,
             crater_config: data.config.clone(),
         },
-    }.into_response()?)
+    }
+    .into_response()?)
 }
 
 fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
@@ -92,7 +93,8 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
                             "Experiment **`{}`** is now **running** on agent `{}`.",
                             ex.name, auth.name,
                         ),
-                    ).send(&github_issue.api_url, &data)?;
+                    )
+                    .send(&github_issue.api_url, &data)?;
             }
         }
 

@@ -1,6 +1,7 @@
-use crates::{lists::List, Crate};
-use dirs::GH_MIRRORS_DIR;
-use prelude::*;
+use crate::crates::{lists::List, Crate};
+use crate::dirs::SOURCE_CACHE_DIR;
+use crate::prelude::*;
+use crate::run::RunCommand;
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -33,7 +34,7 @@ impl List for GitHubList {
     fn fetch(&self) -> Fallible<Vec<Crate>> {
         info!("loading cached GitHub list from {}", self.source);
 
-        let mut resp = ::utils::http::get_sync(&self.source)
+        let mut resp = crate::utils::http::get_sync(&self.source)
             .with_context(|_| format!("failed to fetch GitHub crates list from {}", self.source))?;
         let mut reader = ::csv::Reader::from_reader(&mut resp);
 
@@ -72,21 +73,47 @@ pub struct GitHubRepo {
 }
 
 impl GitHubRepo {
+    pub(crate) fn cached_path(&self) -> PathBuf {
+        SOURCE_CACHE_DIR.join("gh").join(&self.org).join(&self.name)
+    }
+
     pub(crate) fn slug(&self) -> String {
         format!("{}/{}", self.org, self.name)
     }
 
-    pub(crate) fn url(&self) -> String {
-        format!("https://github.com/{}/{}", self.org, self.name)
+    pub(in crate::crates) fn fetch(&self) -> Fallible<()> {
+        let path = self.cached_path();
+        if path.join("HEAD").is_file() {
+            info!("updating cached repository {}", self.slug());
+            RunCommand::new("git")
+                .args(&["fetch", "--all"])
+                .cd(&path)
+                .run()
+                .with_context(|_| format!("failed to update {}", self.slug()))?;
+        } else {
+            info!("cloning repository {}", self.slug());
+            RunCommand::new("git")
+                .args(&[
+                    "clone",
+                    "--bare",
+                    &format!("git://github.com/{}/{}.git", self.org, self.name),
+                ])
+                .args(&[&path])
+                .run()
+                .with_context(|_| format!("failed to clone {}", self.slug()))?;
+        }
+        Ok(())
     }
 
-    pub(crate) fn mirror_dir(&self) -> PathBuf {
-        GH_MIRRORS_DIR.join(format!("{}.{}", self.org, self.name))
-    }
-
-    pub(in crates) fn prepare(&self, dest: &Path) -> Fallible<()> {
-        ::git::shallow_clone_or_pull(&self.url(), &self.mirror_dir())?;
-        ::utils::fs::copy_dir(&self.mirror_dir(), &dest)?;
+    pub(in crate::crates) fn copy_to(&self, dest: &Path) -> Fallible<()> {
+        if dest.exists() {
+            crate::utils::fs::remove_dir_all(dest)?;
+        }
+        RunCommand::new("git")
+            .args(&["clone"])
+            .args(&[self.cached_path().as_path(), dest])
+            .run()
+            .with_context(|_| format!("failed to checkout {}", self.slug()))?;
         Ok(())
     }
 }

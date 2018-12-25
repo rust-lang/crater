@@ -1,12 +1,12 @@
+use crate::crates::Crate;
+use crate::db::{Database, QueryUtils};
+use crate::prelude::*;
+use crate::toolchain::Toolchain;
 use chrono::{DateTime, Utc};
-use crates::Crate;
-use db::{Database, QueryUtils};
-use prelude::*;
 use rusqlite::Row;
 use serde_json;
 use std::fmt;
 use std::str::FromStr;
-use toolchain::Toolchain;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -128,10 +128,10 @@ impl Experiment {
         Ok(db.exists("SELECT rowid FROM experiments WHERE name = ?1;", &[&name])?)
     }
 
-    pub fn all(db: &Database) -> Fallible<Vec<Experiment>> {
+    pub fn unfinished(db: &Database) -> Fallible<Vec<Experiment>> {
         let records = db.query(
-            "SELECT * FROM experiments ORDER BY priority DESC, created_at;",
-            &[],
+            "SELECT * FROM experiments WHERE status != ?1 ORDER BY priority DESC, created_at;",
+            &[&Status::Completed.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
         records
@@ -265,7 +265,8 @@ impl Experiment {
                 "SELECT COUNT(*) AS count FROM results WHERE experiment = ?1;",
                 &[&self.name.as_str()],
                 |r| r.get("count"),
-            )?.unwrap();
+            )?
+            .unwrap();
 
         let crates_len: u32 = db
             .get_row(
@@ -273,7 +274,8 @@ impl Experiment {
                  WHERE experiment = ?1 AND skipped = 0;",
                 &[&self.name.as_str()],
                 |r| r.get("count"),
-            )?.unwrap();
+            )?
+            .unwrap();
 
         Ok((results_len, crates_len * 2))
     }
@@ -298,7 +300,8 @@ impl Experiment {
                      WHERE experiment = ?1 AND crate = ?2;",
                     &[&self.name.as_str(), &serde_json::to_string(&krate)?],
                     |r| r.get("count"),
-                )?.unwrap();
+                )?
+                .unwrap();
 
             if results_len < 2 {
                 new_crates.push(krate);
@@ -358,7 +361,8 @@ impl ExperimentDBRecord {
                     let value: String = r.get("crate");
                     Ok(serde_json::from_str(&value)?)
                 },
-            )?.into_iter()
+            )?
+            .into_iter()
             .collect::<Fallible<Vec<Crate>>>()?;
 
         Ok(Experiment {
@@ -398,11 +402,11 @@ impl ExperimentDBRecord {
 #[cfg(test)]
 mod tests {
     use super::{Assignee, AssigneeParseError, Experiment, Status};
-    use actions::CreateExperiment;
-    use config::Config;
-    use db::Database;
-    use server::agents::Agents;
-    use server::tokens::Tokens;
+    use crate::actions::CreateExperiment;
+    use crate::config::Config;
+    use crate::db::Database;
+    use crate::server::agents::Agents;
+    use crate::server::tokens::Tokens;
     use std::str::FromStr;
 
     #[test]
@@ -438,7 +442,7 @@ mod tests {
         let db = Database::temp().unwrap();
         let config = Config::load().unwrap();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         let mut tokens = Tokens::default();
         tokens.agents.insert("token1".into(), "agent-1".into());

@@ -1,17 +1,18 @@
 mod db;
 #[cfg(test)]
 mod dummy;
-
-use crates::{Crate, GitHubRepo};
-use experiments::Experiment;
-use prelude::*;
-pub use results::db::{DatabaseDB, ProgressData};
+use crate::config::Config;
+use crate::crates::{Crate, GitHubRepo};
+use crate::experiments::Experiment;
+use crate::logs::LogStorage;
+use crate::prelude::*;
+pub use crate::results::db::{DatabaseDB, ProgressData};
 #[cfg(test)]
-pub use results::dummy::DummyDB;
+pub use crate::results::dummy::DummyDB;
+use crate::toolchain::Toolchain;
+use flate2::read::GzDecoder;
 use std::collections::HashMap;
-use std::{fmt, str::FromStr};
-use toolchain::Toolchain;
-use flate2::{read::GzDecoder};
+use std::{fmt, io::Read, str::FromStr};
 
 pub trait ReadResults {
     fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>>;
@@ -42,6 +43,8 @@ pub trait WriteResults {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
+        existing_logs: Option<LogStorage>,
+        config: &Config,
         f: F,
         encoding_type: EncodingType,
     ) -> Fallible<TestResult>
@@ -66,14 +69,14 @@ pub enum EncodedLog {
 }
 
 impl EncodedLog {
-    fn to_plain(self) -> Fallible<Vec<u8>> {
+    pub fn to_plain(&self) -> Fallible<Vec<u8>> {
         match self {
-            EncodedLog::Plain(data) => data,
+            EncodedLog::Plain(data) => Ok(data.to_vec()),
             EncodedLog::Gzip(data) => {
                 let mut decoded_log = GzDecoder::new(data.as_slice());
                 let mut new_log = Vec::new();
                 decoded_log.read_to_end(&mut new_log)?;
-                new_log
+                Ok(new_log)
             }
         }
     }

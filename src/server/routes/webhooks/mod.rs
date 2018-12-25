@@ -1,16 +1,16 @@
 mod args;
 mod commands;
 
+use crate::prelude::*;
+use crate::server::github::{EventIssueComment, Issue};
+use crate::server::messages::Message;
+use crate::server::routes::webhooks::args::Command;
+use crate::server::Data;
 use bytes::buf::Buf;
 use http::{HeaderMap, Response, StatusCode};
 use hyper::Body;
-use prelude::*;
 use ring;
 use serde_json;
-use server::github::{EventIssueComment, Issue};
-use server::messages::Message;
-use server::routes::webhooks::args::Command;
-use server::Data;
 use std::str::FromStr;
 use std::sync::Arc;
 use warp::{self, filters::body::FullBody, Filter, Rejection};
@@ -43,7 +43,8 @@ fn process_webhook(
                     .note(
                         "sos",
                         "If you have any trouble with Crater please ping **`@rust-lang/infra`**!",
-                    ).send(&p.issue.url, data)?;
+                    )
+                    .send(&p.issue.url, data)?;
             }
         }
         e => bail!("invalid event received: {}", e),
@@ -75,14 +76,16 @@ fn process_command(
                 .line(
                     "lock",
                     "**Error:** you're not allowed to interact with this bot.",
-                ).note(
+                )
+                .note(
                     "key",
                     format!(
                         "If you are a member of the Rust team and need access, [add yourself to \
                          the whitelist]({}/blob/master/config.toml).",
-                        ::CRATER_REPO_URL,
+                        crate::CRATER_REPO_URL,
                     ),
-                ).send(&issue.url, data)?;
+                )
+                .send(&issue.url, data)?;
             return Ok(());
         }
 
@@ -135,12 +138,12 @@ fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
     let hex_signature = splitted
         .iter()
         .skip(1)
-        .map(|i| *i)
+        .cloned()
         .collect::<Vec<&str>>()
         .join("=");
 
     // Convert the signature from hex
-    let signature = if let Ok(converted) = ::utils::hex::from_hex(&hex_signature) {
+    let signature = if let Ok(converted) = crate::utils::hex::from_hex(&hex_signature) {
         converted
     } else {
         // This is not hex
@@ -194,7 +197,7 @@ pub fn routes(
                 Ok(()) => resp = Response::new("OK\n".into()),
                 Err(err) => {
                     error!("error while processing webhook");
-                    ::utils::report_failure(&err);
+                    crate::utils::report_failure(&err);
 
                     resp = Response::new(format!("Error: {}\n", err).into());
                     *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;

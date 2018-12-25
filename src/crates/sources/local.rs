@@ -1,6 +1,6 @@
-use crates::{lists::List, Crate};
-use dirs::LOCAL_CRATES_DIR;
-use prelude::*;
+use crate::crates::{lists::List, Crate};
+use crate::dirs::LOCAL_CRATES_DIR;
+use crate::prelude::*;
 use std::path::PathBuf;
 
 pub(crate) struct LocalList {
@@ -36,7 +36,8 @@ impl List for LocalList {
                             "invalid UTF-8 in local crate name: {}",
                             entry.file_name().to_string_lossy()
                         ))
-                    })?.to_string();
+                    })?
+                    .to_string();
 
                 list.push(Crate::Local(name));
             }

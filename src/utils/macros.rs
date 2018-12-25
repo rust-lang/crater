@@ -42,7 +42,7 @@ macro_rules! string_enum {
 
 macro_rules! impl_serde_from_parse {
     ($for:ident, expecting=$expecting:expr) => {
-        item! {
+        paste::item! {
             struct [<$for Visitor>];
 
             impl<'de> ::serde::de::Visitor<'de> for [<$for Visitor>] {
@@ -64,7 +64,7 @@ macro_rules! impl_serde_from_parse {
             where
                 D: ::serde::de::Deserializer<'de>,
             {
-                deserializer.deserialize_str(expr! { [<$for Visitor>] })
+                deserializer.deserialize_str(paste::expr! { [<$for Visitor>] })
             }
         }
 

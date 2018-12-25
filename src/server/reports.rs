@@ -1,20 +1,20 @@
-use experiments::{Experiment, Status};
-use prelude::*;
-use report;
-use results::DatabaseDB;
+use crate::experiments::{Experiment, Status};
+use crate::prelude::*;
+use crate::report::{self, Comparison, TestResults};
+use crate::results::DatabaseDB;
+use crate::server::messages::{Label, Message};
+use crate::server::Data;
+use crate::utils;
 use rusoto_core::request::HttpClient;
 use rusoto_s3::S3Client;
-use server::messages::{Label, Message};
-use server::Data;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use utils;
 
 // Automatically wake up the reports generator thread every 10 minutes to check for new jobs
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
 
-fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallible<()> {
+fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallible<TestResults> {
     let client = S3Client::new_with(
         HttpClient::new()?,
         data.tokens.reports_bucket.to_aws_credentials(),
@@ -23,9 +23,9 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
     let dest = format!("s3://{}/{}", data.tokens.reports_bucket.bucket, &ex.name);
     let writer = report::S3Writer::create(Box::new(client), dest.parse()?)?;
 
-    report::gen(results, &ex, &writer, &data.config)?;
+    let res = report::gen(results, &ex, &writer, &data.config)?;
 
-    Ok(())
+    Ok(res)
 }
 
 fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
@@ -49,54 +49,80 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
         info!("generating report for experiment {}...", name);
         ex.set_status(&data.db, Status::GeneratingReport)?;
 
-        if let Err(err) = generate_report(data, &ex, &results) {
-            ex.set_status(&data.db, Status::ReportFailed)?;
-            error!("failed to generate the report of {}", name);
-            utils::report_failure(&err);
+        match generate_report(data, &ex, &results) {
+            Err(err) => {
+                ex.set_status(&data.db, Status::ReportFailed)?;
+                error!("failed to generate the report of {}", name);
+                utils::report_failure(&err);
 
-            if let Some(ref github_issue) = ex.github_issue {
-                Message::new()
-                    .line(
-                        "rotating_light",
-                        format!("Report generation of **`{}`** failed: {}", name, err),
-                    ).line(
-                        "hammer_and_wrench",
-                        "If the error is fixed use the `retry-report` command.",
-                    ).note(
-                        "sos",
-                        "Can someone from the infra team check in on this? @rust-lang/infra",
-                    ).send(&github_issue.api_url, data)?;
+                if let Some(ref github_issue) = ex.github_issue {
+                    Message::new()
+                        .line(
+                            "rotating_light",
+                            format!("Report generation of **`{}`** failed: {}", name, err),
+                        )
+                        .line(
+                            "hammer_and_wrench",
+                            "If the error is fixed use the `retry-report` command.",
+                        )
+                        .note(
+                            "sos",
+                            "Can someone from the infra team check in on this? @rust-lang/infra",
+                        )
+                        .send(&github_issue.api_url, data)?;
+                }
+
+                continue;
             }
+            Ok(res) => {
+                let base_url = data
+                    .tokens
+                    .reports_bucket
+                    .public_url
+                    .replace("{bucket}", &data.tokens.reports_bucket.bucket);
+                let report_url = format!("{}/{}/index.html", base_url, name);
 
-            continue;
-        }
+                ex.set_status(&data.db, Status::Completed)?;
+                ex.set_report_url(&data.db, &report_url)?;
+                info!("report for the experiment {} generated successfully!", name);
 
-        let base_url = data
-            .tokens
-            .reports_bucket
-            .public_url
-            .replace("{bucket}", &data.tokens.reports_bucket.bucket);
-        let report_url = format!("{}/{}/index.html", base_url, name);
+                let (mut regressed, mut fixed) = (0, 0);
+                res.crates.iter().for_each(|krate| {
+                    match krate.res {
+                        Comparison::Regressed => regressed += 1,
+                        Comparison::Fixed => fixed += 1,
+                        _ => (),
+                    };
+                });
 
-        ex.set_status(&data.db, Status::Completed)?;
-        ex.set_report_url(&data.db, &report_url)?;
-        info!("report for the experiment {} generated successfully!", name);
-
-        if let Some(ref github_issue) = ex.github_issue {
-            Message::new()
-                .line("tada", format!("Experiment **`{}`** is completed!", name))
-                .line(
-                    "newspaper",
-                    format!("[Open the full report]({}).", report_url),
-                ).note(
-                    "warning",
-                    format!(
-                        "If you notice any spurious failure [please add them to the \
-                         blacklist]({}/blob/master/config.toml)!",
-                        ::CRATER_REPO_URL,
-                    ),
-                ).set_label(Label::ExperimentCompleted)
-                .send(&github_issue.api_url, data)?;
+                if let Some(ref github_issue) = ex.github_issue {
+                    Message::new()
+                        .line("tada", format!("Experiment **`{}`** is completed!", name))
+                        .line(
+                            "bar_chart",
+                            format!(
+                                " {} regressed and {} fixed ({} total)",
+                                regressed,
+                                fixed,
+                                res.crates.len(),
+                            ),
+                        )
+                        .line(
+                            "newspaper",
+                            format!("[Open the full report]({}).", report_url),
+                        )
+                        .note(
+                            "warning",
+                            format!(
+                                "If you notice any spurious failure [please add them to the \
+                                 blacklist]({}/blob/master/config.toml)!",
+                                crate::CRATER_REPO_URL,
+                            ),
+                        )
+                        .set_label(Label::ExperimentCompleted)
+                        .send(&github_issue.api_url, data)?;
+                }
+            }
         }
     }
 }

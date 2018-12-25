@@ -1,11 +1,10 @@
-use assets;
-use experiments::Experiment;
+use crate::assets;
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::report::{archives::Archive, Comparison, CrateResult, ReportWriter, TestResults};
+use crate::results::{EncodingType, FailureReason, TestResult};
 use mime;
 use minifier;
-use prelude::*;
-use report::{archives::Archive, Comparison, CrateResult, ReportWriter, TestResults};
-use results::EncodingType;
-use results::{FailureReason, TestResult};
 use std::collections::HashMap;
 
 #[derive(Serialize)]
@@ -171,7 +170,7 @@ fn write_report<W: ReportWriter>(
                 .or_insert_with(|| run.res.name());
         }
 
-        let mut category = categories.entry(result.res).or_insert_with(Vec::new);
+        let category = categories.entry(result.res).or_insert_with(Vec::new);
         category.push(result.clone());
     }
 
@@ -181,7 +180,8 @@ fn write_report<W: ReportWriter>(
             CurrentPage::Full
         } else {
             CurrentPage::Summary
-        }.navbar(),
+        }
+        .navbar(),
         categories,
         full,
         crates_count: ex.crates.len(),

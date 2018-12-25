@@ -7,20 +7,21 @@ mod reports;
 mod routes;
 pub mod tokens;
 
-use config::Config;
-use db::Database;
+use crate::config::Config;
+use crate::db::Database;
+use crate::prelude::*;
+use crate::server::agents::Agents;
+use crate::server::auth::ACL;
+use crate::server::github::GitHubApi;
+use crate::server::tokens::Tokens;
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
-use prelude::*;
-use server::agents::Agents;
-use server::auth::ACL;
-use server::github::GitHubApi;
-use server::tokens::Tokens;
 use std::sync::Arc;
 use warp::{self, Filter};
 
 lazy_static! {
-    static ref SERVER_HEADER: String = format!("crater/{}", ::GIT_REVISION.unwrap_or("unknown"));
+    static ref SERVER_HEADER: String =
+        format!("crater/{}", crate::GIT_REVISION.unwrap_or("unknown"));
 }
 
 #[derive(Debug, Fail, PartialEq, Eq, Copy, Clone)]
@@ -78,7 +79,8 @@ pub fn run(config: Config) -> Fallible<()> {
                 .unify()
                 .or(routes::ui::routes(data.clone()))
                 .unify(),
-        ).map(|mut resp: Response<Body>| {
+        )
+        .map(|mut resp: Response<Body>| {
             resp.headers_mut().insert(
                 http::header::SERVER,
                 HeaderValue::from_static(&SERVER_HEADER),

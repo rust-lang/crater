@@ -1,6 +1,7 @@
-use prelude::*;
+use crate::prelude::*;
 use rusoto_core::Region;
 use rusoto_credential::StaticProvider;
+use serde_derive::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 

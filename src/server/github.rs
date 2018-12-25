@@ -1,19 +1,16 @@
+use crate::prelude::*;
+use crate::server::tokens::Tokens;
+use crate::utils;
 use http::header::AUTHORIZATION;
 use http::Method;
 use http::StatusCode;
-use prelude::*;
 use reqwest::RequestBuilder;
-use server::tokens::Tokens;
+use serde_json::json;
 use std::collections::HashMap;
-use utils::http;
 
 #[derive(Debug, Fail)]
 pub enum GitHubError {
-    #[fail(
-        display = "request to GitHub API failed with status {}: {}",
-        _0,
-        _1
-    )]
+    #[fail(display = "request to GitHub API failed with status {}: {}", _0, _1)]
     RequestFailed(StatusCode, String),
 }
 
@@ -36,7 +33,8 @@ impl GitHubApi {
             url.to_string()
         };
 
-        http::prepare_sync(method, &url).header(AUTHORIZATION, format!("token {}", self.token))
+        utils::http::prepare_sync(method, &url)
+            .header(AUTHORIZATION, format!("token {}", self.token))
     }
 
     pub fn username(&self) -> Fallible<String> {
@@ -49,7 +47,8 @@ impl GitHubApi {
             .build_request(Method::POST, &format!("{}/comments", issue_url))
             .json(&json!({
                 "body": body,
-            })).send()?;
+            }))
+            .send()?;
 
         if response.status() == StatusCode::CREATED {
             Ok(())

@@ -1,9 +1,9 @@
-use config::Config;
+use crate::config::Config;
+use crate::prelude::*;
+use crate::server::github::GitHubApi;
+use crate::server::{Data, HttpError};
 use http::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
-use prelude::*;
 use regex::Regex;
-use server::github::GitHubApi;
-use server::{Data, HttpError};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 use warp::{self, Filter, Rejection};

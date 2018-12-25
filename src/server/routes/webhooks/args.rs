@@ -1,5 +1,5 @@
-use experiments::{CapLints, CrateSelect, Mode};
-use toolchain::Toolchain;
+use crate::experiments::{CapLints, CrateSelect, Mode};
+use crate::toolchain::Toolchain;
 
 #[derive(Debug, Fail)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -21,9 +21,9 @@ macro_rules! generate_parser {
         }))*
         _ => $d_variant:ident($d_var_struct:ident {$($d_flag:ident: $d_type:ty = $d_name:expr,)*})
     }) => {
-        use prelude::*;
+        use crate::prelude::*;
         use std::str::FromStr;
-        use utils::string::split_quoted;
+        use crate::utils::string::split_quoted;
 
         $(
             #[cfg_attr(test, derive(Debug, PartialEq))]
@@ -43,7 +43,7 @@ macro_rules! generate_parser {
             $($variant($var_struct),)*
         }
 
-        #[allow(unused_variables)]
+        #[allow(unused_variables, unused_mut)]
         impl FromStr for $enum {
             type Err = ::failure::Error;
 

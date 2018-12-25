@@ -1,13 +1,10 @@
-use config::Config;
-use experiments::Experiment;
-use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use prelude::*;
-use report::{compare, ReportWriter};
-use results::EncodedLog;
-use results::EncodingType;
-use results::ReadResults;
+use crate::config::Config;
+use crate::experiments::Experiment;
+use crate::prelude::*;
+use crate::report::{compare, ReportWriter};
+use crate::results::{EncodedLog, EncodingType, ReadResults};
+use flate2::{write::GzEncoder, Compression};
 use std::collections::HashMap;
-use std::io::Read;
 use tar::{Builder as TarBuilder, Header as TarHeader};
 
 #[derive(Serialize)]
@@ -44,13 +41,12 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
             let log_bytes: EncodedLog = match log {
                 Ok(l) => l,
                 Err(e) => {
-                    ::utils::report_failure(&e);
+                    crate::utils::report_failure(&e);
                     continue;
                 }
             };
 
-            let log_bytes = log_bytes.to_plain();
-
+            let log_bytes = log_bytes.to_plain()?;
             let log_bytes = log_bytes.as_slice();
 
             let path = format!("{}/{}/{}.txt", comparison, krate.id(), tc);
@@ -65,7 +61,8 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
                 .entry(comparison)
                 .or_insert_with(|| {
                     TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()))
-                }).append_data(&mut header, &path, log_bytes)?;
+                })
+                .append_data(&mut header, &path, log_bytes)?;
         }
     }
 
@@ -103,27 +100,29 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
 #[cfg(test)]
 mod tests {
     use super::write_logs_archives;
-    use config::Config;
-    use db::Database;
-    use experiments::Experiment;
+    use crate::config::Config;
+    use crate::db::Database;
+    use crate::experiments::Experiment;
+    use crate::prelude::*;
+    use crate::report::DummyWriter;
+    use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
     use flate2::read::GzDecoder;
     use mime::Mime;
-    use report::DummyWriter;
-    use results::EncodingType;
-    use results::{DatabaseDB, FailureReason, TestResult, WriteResults};
     use std::io::Read;
     use tar::Archive;
 
     #[test]
     fn test_logs_archives_generation() {
+        crate::logs::init_test();
+
         let config = Config::default();
         let db = Database::temp().unwrap();
         let writer = DummyWriter::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment
-        ::actions::CreateExperiment::dummy("dummy")
+        crate::actions::CreateExperiment::dummy("dummy")
             .apply(&db, &config)
             .unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
@@ -142,7 +141,8 @@ mod tests {
                     Ok(TestResult::TestPass)
                 },
                 EncodingType::Gzip,
-            ).unwrap();
+            )
+            .unwrap();
         results
             .record_result(
                 &ex,
@@ -153,7 +153,8 @@ mod tests {
                     Ok(TestResult::BuildFail(FailureReason::Unknown))
                 },
                 EncodingType::Plain,
-            ).unwrap();
+            )
+            .unwrap();
         results
             .record_result(
                 &ex,
@@ -164,7 +165,8 @@ mod tests {
                     Ok(TestResult::TestPass)
                 },
                 EncodingType::Gzip,
-            ).unwrap();
+            )
+            .unwrap();
         results
             .record_result(
                 &ex,
@@ -175,7 +177,8 @@ mod tests {
                     Ok(TestResult::TestPass)
                 },
                 EncodingType::Plain,
-            ).unwrap();
+            )
+            .unwrap();
 
         // Generate all the archives
         let archives = write_logs_archives(&results, &ex, &writer, &config).unwrap();
@@ -248,8 +251,8 @@ mod tests {
 
         // Check test-pass.tar.gz
         check_content!(test_pass: {
-            format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[0]) => "tc1 crate2",
-            format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[1]) => "tc2 crate2",
+              format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[0]) => "tc1 crate2",
+              format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[1]) => "tc2 crate2",
         });
     }
 }

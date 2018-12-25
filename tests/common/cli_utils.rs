@@ -15,7 +15,8 @@ fn bin_path() -> PathBuf {
                 }
                 path
             })
-        }).unwrap_or_else(|| panic!("CARGO_BIN_PATH wasn't set. Cannot continue running test"))
+        })
+        .unwrap_or_else(|| panic!("CARGO_BIN_PATH wasn't set. Cannot continue running test"))
 }
 
 pub(crate) trait CommandCraterExt {

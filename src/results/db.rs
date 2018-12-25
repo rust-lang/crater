@@ -1,18 +1,20 @@
+use crate::config::Config;
+use crate::crates::{Crate, GitHubRepo};
+use crate::db::{Database, QueryUtils};
+use crate::experiments::Experiment;
+use crate::logs::{self, LogStorage};
+use crate::prelude::*;
+use crate::results::{
+    DeleteResults, EncodedLog, EncodingType, ReadResults, TestResult, WriteResults,
+};
+use crate::toolchain::Toolchain;
 use base64;
-use crates::{Crate, GitHubRepo};
-use db::{Database, QueryUtils};
-use experiments::Experiment;
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use prelude::*;
-use results::EncodedLog;
-use results::EncodingType;
-use results::{DeleteResults, ReadResults, TestResult, WriteResults};
+use log::LevelFilter;
 use serde_json;
 use std::collections::HashMap;
-use std::io::Read;
 use std::io::Write;
-use toolchain::Toolchain;
 
 #[derive(Deserialize)]
 pub struct TaskResult {
@@ -132,7 +134,8 @@ impl<'a> ReadResults for DatabaseDB<'a> {
                         row.get("sha"),
                     )
                 },
-            )?.into_iter()
+            )?
+            .into_iter()
             .collect())
     }
 
@@ -182,7 +185,8 @@ impl<'a> ReadResults for DatabaseDB<'a> {
                     &serde_json::to_string(krate)?,
                 ],
                 |row| row.get("result"),
-            )?.pop();
+            )?
+            .pop();
 
         if let Some(res) = result {
             Ok(Some(res.parse()?))
@@ -216,20 +220,25 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
+        existing_logs: Option<LogStorage>,
+        config: &Config,
         f: F,
         encoding_type: EncodingType,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let mut log_file = ::tempfile::NamedTempFile::new()?;
-        let result = ::log::redirect(log_file.path(), f)?;
-
-        let mut buffer = Vec::new();
-        log_file.read_to_end(&mut buffer)?;
-
-        self.store_result(ex, krate, toolchain, result, &buffer, encoding_type)?;
-
+        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info, config));
+        let result = logs::capture(&storage, f)?;
+        let output = storage.to_string();
+        self.store_result(
+            ex,
+            krate,
+            toolchain,
+            result,
+            output.as_bytes(),
+            encoding_type,
+        )?;
         Ok(result)
     }
 }
@@ -257,16 +266,18 @@ impl<'a> DeleteResults for DatabaseDB<'a> {
 #[cfg(test)]
 mod tests {
     use super::{DatabaseDB, ProgressData, TaskResult};
-    use actions::CreateExperiment;
+    use crate::actions::CreateExperiment;
+    use crate::config::Config;
+    use crate::crates::{Crate, GitHubRepo, RegistryCrate};
+    use crate::db::Database;
+    use crate::experiments::Experiment;
+    use crate::prelude::*;
+    use crate::results::{
+        DeleteResults, EncodedLog, EncodingType, FailureReason, ReadResults, TestResult,
+        WriteResults,
+    };
+    use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
     use base64;
-    use config::Config;
-    use crates::{Crate, GitHubRepo, RegistryCrate};
-    use db::Database;
-    use experiments::Experiment;
-    use results::EncodedLog;
-    use results::EncodingType;
-    use results::{DeleteResults, FailureReason, ReadResults, TestResult, WriteResults};
-    use toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
     fn test_shas() {
@@ -274,7 +285,7 @@ mod tests {
         let results = DatabaseDB::new(&db);
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
         CreateExperiment::dummy("dummy")
@@ -331,11 +342,13 @@ mod tests {
 
     #[test]
     fn test_results() {
+        crate::logs::init_test();
+
         let db = Database::temp().unwrap();
         let results = DatabaseDB::new(&db);
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
         CreateExperiment::dummy("dummy")
@@ -359,7 +372,8 @@ mod tests {
                     Ok(TestResult::TestPass)
                 },
                 EncodingType::Plain,
-            ).unwrap();
+            )
+            .unwrap();
 
         // Ensure the data is recorded correctly
         assert_eq!(
@@ -368,41 +382,30 @@ mod tests {
                 .unwrap(),
             Some(TestResult::TestPass)
         );
-        assert_eq!(
-            results.get_result(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
-            Some(TestResult::TestPass)
-        );
 
         let result_var = results
             .load_log(&ex, &MAIN_TOOLCHAIN, &krate)
             .unwrap()
             .unwrap();
-        assert!(
-            String::from_utf8_lossy(match result_var {
-                EncodedLog::Plain(ref data) => data,
-                EncodedLog::Gzip(_) => panic!("The encoded log should not be Gzipped."),
-            }).contains("hello world")
-        );
+        assert!(String::from_utf8_lossy(match result_var {
+            EncodedLog::Plain(ref data) => data,
+            EncodedLog::Gzip(_) => panic!("The encoded log should not be Gzipped."),
+        })
+        .contains("hello world"));
 
         // Ensure no data is returned for missing results
-        assert!(
-            results
-                .load_test_result(&ex, &TEST_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
-        assert!(
-            results
-                .get_result(&ex, &TEST_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
-        assert!(
-            results
-                .load_log(&ex, &TEST_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
+        assert!(results
+            .load_test_result(&ex, &TEST_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
+        assert!(results
+            .get_result(&ex, &TEST_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
+        assert!(results
+            .load_log(&ex, &TEST_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
 
         // Add another result
         results
@@ -415,7 +418,9 @@ mod tests {
                     Ok(TestResult::TestFail(FailureReason::Unknown))
                 },
                 EncodingType::Plain,
-            ).unwrap();
+            )
+            .unwrap();
+
         assert_eq!(
             results.get_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestFail(FailureReason::Unknown))
@@ -423,12 +428,10 @@ mod tests {
 
         // Test deleting the newly-added result
         results.delete_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap();
-        assert!(
-            results
-                .get_result(&ex, &TEST_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
+        assert!(results
+            .get_result(&ex, &TEST_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
         assert_eq!(
             results.get_result(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestPass)
@@ -436,12 +439,10 @@ mod tests {
 
         // Test deleting all the remaining results
         results.delete_all_results(&ex).unwrap();
-        assert!(
-            results
-                .get_result(&ex, &MAIN_TOOLCHAIN, &krate)
-                .unwrap()
-                .is_none()
-        );
+        assert!(results
+            .get_result(&ex, &MAIN_TOOLCHAIN, &krate)
+            .unwrap()
+            .is_none());
     }
 
     #[test]
@@ -450,7 +451,7 @@ mod tests {
         let results = DatabaseDB::new(&db);
         let config = Config::default();
 
-        ::crates::lists::setup_test_lists(&db, &config).unwrap();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
         CreateExperiment::dummy("dummy")
@@ -492,7 +493,8 @@ mod tests {
                     ],
                 },
                 EncodingType::Plain,
-            ).unwrap();
+            )
+            .unwrap();
 
         assert_eq!(
             results.load_log(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),

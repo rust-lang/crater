@@ -1,11 +1,11 @@
+use crate::experiments::{Experiment, Mode, Status};
+use crate::prelude::*;
+use crate::server::routes::ui::{render_template, LayoutContext};
+use crate::server::{Data, HttpError};
 use chrono::{Duration, SecondsFormat, Utc};
 use chrono_humanize::{Accuracy, HumanTime, Tense};
-use experiments::{Experiment, Mode, Status};
 use http::Response;
 use hyper::Body;
-use prelude::*;
-use server::routes::ui::{render_template, LayoutContext};
-use server::{Data, HttpError};
 use std::sync::Arc;
 
 #[derive(Serialize)]
@@ -21,13 +21,13 @@ struct ExperimentData {
 
 impl ExperimentData {
     fn new(data: &Data, experiment: &Experiment) -> Fallible<Self> {
-        let (status_class, status_pretty) = match experiment.status {
-            Status::Queued => ("", "Queued"),
-            Status::Running => ("orange", "Running"),
-            Status::NeedsReport => ("orange", "Needs report"),
-            Status::GeneratingReport => ("orange", "Generating report"),
-            Status::ReportFailed => ("red", "Report failed"),
-            Status::Completed => ("green", "Completed"),
+        let (status_class, status_pretty, show_progress) = match experiment.status {
+            Status::Queued => ("", "Queued", true),
+            Status::Running => ("orange", "Running", true),
+            Status::NeedsReport => ("orange", "Needs report", false),
+            Status::GeneratingReport => ("orange", "Generating report", false),
+            Status::ReportFailed => ("red", "Report failed", false),
+            Status::Completed => ("green", "Completed", false),
         };
 
         Ok(ExperimentData {
@@ -43,7 +43,11 @@ impl ExperimentData {
             },
             assigned_to: experiment.assigned_to.as_ref().map(|a| a.to_string()),
             priority: experiment.priority,
-            progress: experiment.progress(&data.db)?,
+            progress: if show_progress {
+                experiment.progress(&data.db)?
+            } else {
+                100
+            },
         })
     }
 }
@@ -61,7 +65,7 @@ pub fn endpoint_queue(data: Arc<Data>) -> Fallible<Response<Body>> {
     let mut generating_report = Vec::new();
     let mut report_failed = Vec::new();
 
-    for experiment in Experiment::all(&data.db)? {
+    for experiment in Experiment::unfinished(&data.db)? {
         // Don't include completed experiments in the queue
         if experiment.status == Status::Completed {
             continue;

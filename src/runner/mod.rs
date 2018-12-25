@@ -5,36 +5,62 @@ mod test;
 mod toml_frobber;
 mod unstable_features;
 
-use config::Config;
+use crate::config::Config;
+use crate::crates::Crate;
+use crate::docker::DockerEnv;
+use crate::experiments::Experiment;
+use crate::logs::LogStorage;
+use crate::prelude::*;
+use crate::results::{FailureReason, TestResult, WriteResults};
+use crate::runner::graph::{build_graph, WalkResult};
+use crate::utils;
 use crossbeam_utils::thread::scope;
-use experiments::Experiment;
-use prelude::*;
-use results::{FailureReason, TestResult, WriteResults};
-use runner::graph::{build_graph, WalkResult};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 use std::thread;
-use utils;
 
 #[derive(Debug, Fail)]
 #[fail(display = "overridden task result to {}", _0)]
 pub struct OverrideResult(TestResult);
+
+struct RunnerStateInner {
+    prepare_logs: HashMap<Crate, LogStorage>,
+}
+
+struct RunnerState {
+    inner: Mutex<RunnerStateInner>,
+}
+
+impl RunnerState {
+    fn new() -> Self {
+        RunnerState {
+            inner: Mutex::new(RunnerStateInner {
+                prepare_logs: HashMap::new(),
+            }),
+        }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<RunnerStateInner> {
+        self.inner.lock().unwrap()
+    }
+}
 
 pub fn run_ex<DB: WriteResults + Sync>(
     ex: &Experiment,
     db: &DB,
     threads_count: usize,
     config: &Config,
+    docker_env: &str,
 ) -> Fallible<()> {
-    if !::docker::is_running() {
+    if !crate::docker::is_running() {
         return Err(err_msg("docker is not running"));
     }
 
-    let res = run_ex_inner(ex, db, threads_count, config);
+    let res = run_ex_inner(ex, db, threads_count, config, docker_env);
 
     // Remove all the target dirs even if the experiment failed
-    let target_dir = &::toolchain::ex_target_dir(&ex.name);
+    let target_dir = &crate::toolchain::ex_target_dir(&ex.name);
     if target_dir.exists() {
         utils::fs::remove_dir_all(target_dir)?;
     }
@@ -47,9 +73,13 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     db: &DB,
     threads_count: usize,
     config: &Config,
+    docker_env: &str,
 ) -> Fallible<()> {
+    let docker_env = DockerEnv::new(docker_env);
+    docker_env.ensure_exists_locally()?;
+
     info!("ensuring all the tools are installed");
-    ::tools::install()?;
+    crate::tools::install()?;
 
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(ex, config));
@@ -64,6 +94,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     // An HashMap is used instead of an HashSet because Thread is not Eq+Hash
     let parked_threads: Mutex<HashMap<thread::ThreadId, thread::Thread>> =
         Mutex::new(HashMap::new());
+    let state = RunnerState::new();
 
     scope(|scope| -> Fallible<()> {
         let mut threads = Vec::new();
@@ -77,7 +108,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                     match walk_result {
                         WalkResult::Task(id, task) => {
                             info!("running task: {:?}", task);
-                            if let Err(e) = task.run(config, ex, db) {
+                            if let Err(e) = task.run(config, ex, db, &docker_env, &state) {
                                 error!("task failed, marking childs as failed too: {:?}", task);
                                 utils::report_failure(&e);
 
@@ -97,7 +128,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                                 graph
                                     .lock()
                                     .unwrap()
-                                    .mark_as_failed(id, ex, db, &e, result)?;
+                                    .mark_as_failed(id, ex, db, &state, &config, &e, result)?;
                             } else {
                                 graph.lock().unwrap().mark_as_completed(id);
                             }
@@ -134,11 +165,11 @@ fn run_ex_inner<DB: WriteResults + Sync>(
             match thread.join() {
                 Ok(Ok(())) => {}
                 Ok(Err(err)) => {
-                    ::utils::report_failure(&err);
+                    crate::utils::report_failure(&err);
                     clean_exit = false;
                 }
                 Err(panic) => {
-                    ::utils::report_panic(&panic);
+                    crate::utils::report_panic(&panic);
                     clean_exit = false;
                 }
             }

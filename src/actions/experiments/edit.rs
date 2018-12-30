@@ -12,6 +12,7 @@ pub struct EditExperiment {
     pub mode: Option<Mode>,
     pub cap_lints: Option<CapLints>,
     pub priority: Option<i32>,
+    pub ignore_blacklist: Option<bool>,
 }
 
 impl EditExperiment {
@@ -24,6 +25,7 @@ impl EditExperiment {
             crates: None,
             cap_lints: None,
             priority: None,
+            ignore_blacklist: None,
         }
     }
 
@@ -61,10 +63,29 @@ impl EditExperiment {
                 }
             }
 
-            // Try to update the list of crates
-            if let Some(crates) = self.crates {
-                let crates_vec = crate::crates::lists::get_crates(crates, db, config)?;
+            // Try to update the ignore_blacklist field
+            // The list of skipped crates will be recalculated afterwards
+            if let Some(ignore_blacklist) = self.ignore_blacklist {
+                let changes = t.execute(
+                    "UPDATE experiments SET ignore_blacklist = ?1 WHERE name = ?2;",
+                    &[&ignore_blacklist, &self.name],
+                )?;
+                assert_eq!(changes, 1);
 
+                ex.ignore_blacklist = ignore_blacklist;
+                has_changed = true;
+            }
+
+            // Try to update the list of crates
+            // This is also done if ignore_blacklist is changed to recalculate the skipped crates
+            let new_crates = if let Some(crates) = self.crates {
+                Some(crate::crates::lists::get_crates(crates, db, config)?)
+            } else if self.ignore_blacklist.is_some() {
+                Some(ex.crates.clone())
+            } else {
+                None
+            };
+            if let Some(crates_vec) = new_crates {
                 // Recreate the list of crates without checking if it was the same
                 // This is done to allow reloading the list of crates in an existing experiment
                 t.execute(
@@ -78,7 +99,7 @@ impl EditExperiment {
                         &[
                             &self.name,
                             &::serde_json::to_string(&krate)?,
-                            &config.should_skip(krate),
+                            &(!ex.ignore_blacklist && config.should_skip(krate)),
                         ],
                     )?;
                 }
@@ -132,8 +153,9 @@ impl EditExperiment {
 mod tests {
     use super::EditExperiment;
     use crate::actions::{CreateExperiment, ExperimentError};
-    use crate::config::Config;
-    use crate::db::Database;
+    use crate::config::{Config, CrateConfig};
+    use crate::crates::Crate;
+    use crate::db::{Database, QueryUtils};
     use crate::experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
@@ -168,6 +190,7 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
+            ignore_blacklist: false,
         }
         .apply(&db, &config)
         .unwrap();
@@ -183,6 +206,7 @@ mod tests {
             crates: Some(CrateSelect::Local),
             cap_lints: Some(CapLints::Warn),
             priority: Some(10),
+            ignore_blacklist: Some(true),
         }
         .apply(&db, &config)
         .unwrap();
@@ -195,11 +219,77 @@ mod tests {
         assert_eq!(ex.mode, Mode::CheckOnly);
         assert_eq!(ex.cap_lints, CapLints::Warn);
         assert_eq!(ex.priority, 10);
+        assert_eq!(ex.ignore_blacklist, true);
 
         assert_eq!(
             ex.crates,
             crate::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
         );
+    }
+
+    #[test]
+    fn test_ignore_blacklist() {
+        fn is_skipped(db: &Database, ex: &str, krate: &str) -> bool {
+            let crates: Vec<Crate> = db
+                .query(
+                    "SELECT crate FROM experiment_crates WHERE experiment = ?1 AND skipped = 0",
+                    &[&ex],
+                    |row| {
+                        let krate: String = row.get("crate");
+                        serde_json::from_str(&krate).unwrap()
+                    },
+                )
+                .unwrap();
+            crates
+                .iter()
+                .find(|c| {
+                    if let Crate::Local(name) = c {
+                        name == krate
+                    } else {
+                        panic!("there should be no non-local crates")
+                    }
+                })
+                .is_none()
+        }
+
+        let db = Database::temp().unwrap();
+        let mut config = Config::default();
+        config.local_crates.insert(
+            "build-pass".into(),
+            CrateConfig {
+                skip: true,
+                skip_tests: false,
+                quiet: false,
+                update_lockfile: false,
+                broken: false,
+            },
+        );
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        CreateExperiment {
+            ignore_blacklist: false,
+            ..CreateExperiment::dummy("foo")
+        }
+        .apply(&db, &config)
+        .unwrap();
+        assert!(is_skipped(&db, "foo", "build-pass"));
+
+        EditExperiment {
+            ignore_blacklist: Some(true),
+            ..EditExperiment::dummy("foo")
+        }
+        .apply(&db, &config)
+        .unwrap();
+        assert!(!is_skipped(&db, "foo", "build-pass"));
+
+        EditExperiment {
+            ignore_blacklist: Some(false),
+            ..EditExperiment::dummy("foo")
+        }
+        .apply(&db, &config)
+        .unwrap();
+        assert!(is_skipped(&db, "foo", "build-pass"));
     }
 
     #[test]

@@ -244,6 +244,15 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "add_experiment_field_ignore_blacklist",
+        MigrationKind::SQL(
+            "
+            ALTER TABLE experiments ADD COLUMN ignore_blacklist INTEGER NOT NULL DEFAULT 0;
+            ",
+        ),
+    ));
+
     migrations
 }
 

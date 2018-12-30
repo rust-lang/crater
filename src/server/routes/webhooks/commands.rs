@@ -33,6 +33,7 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()
             html_url: issue.html_url.clone(),
             number: issue.number,
         }),
+        ignore_blacklist: args.ignore_blacklist.unwrap_or(false),
     }
     .apply(&data.db, &data.config)?;
 
@@ -64,6 +65,7 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
         mode: args.mode,
         cap_lints: args.cap_lints,
         priority: args.priority,
+        ignore_blacklist: args.ignore_blacklist,
     }
     .apply(&data.db, &data.config)?;
 

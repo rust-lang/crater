@@ -109,6 +109,7 @@ generate_parser!(pub enum Command {
         crates: Option<CrateSelect> = "crates",
         cap_lints: Option<CapLints> = "cap-lints",
         priority: Option<i32> = "p",
+        ignore_blacklist: Option<bool> = "ignore-blacklist",
     })
 
     "abort" => Abort(AbortArgs {
@@ -131,6 +132,7 @@ generate_parser!(pub enum Command {
         crates: Option<CrateSelect> = "crates",
         cap_lints: Option<CapLints> = "cap-lints",
         priority: Option<i32> = "p",
+        ignore_blacklist: Option<bool> = "ignore-blacklist",
     })
 });
 

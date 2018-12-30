@@ -121,6 +121,7 @@ pub struct Experiment {
     pub status: Status,
     pub assigned_to: Option<Assignee>,
     pub report_url: Option<String>,
+    pub ignore_blacklist: bool,
 }
 
 impl Experiment {
@@ -329,6 +330,7 @@ struct ExperimentDBRecord {
     status: String,
     assigned_to: Option<String>,
     report_url: Option<String>,
+    ignore_blacklist: bool,
 }
 
 impl ExperimentDBRecord {
@@ -349,6 +351,7 @@ impl ExperimentDBRecord {
             github_issue_number: row.get("github_issue_number"),
             assigned_to: row.get("assigned_to"),
             report_url: row.get("report_url"),
+            ignore_blacklist: row.get("ignore_blacklist"),
         }
     }
 
@@ -395,6 +398,7 @@ impl ExperimentDBRecord {
             },
             status: self.status.parse()?,
             report_url: self.report_url,
+            ignore_blacklist: self.ignore_blacklist,
         })
     }
 }

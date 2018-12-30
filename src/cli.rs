@@ -121,6 +121,8 @@ pub enum Crater {
         cap_lints: CapLints,
         #[structopt(name = "priority", long = "priority", short = "p", default_value = "0")]
         priority: i32,
+        #[structopt(name = "ignore-blacklist", long = "ignore-blacklist")]
+        ignore_blacklist: bool,
     },
 
     #[structopt(name = "edit", about = "edit an experiment configuration")]
@@ -151,6 +153,18 @@ pub enum Crater {
         cap_lints: Option<CapLints>,
         #[structopt(name = "priority", long = "priority", short = "p")]
         priority: Option<i32>,
+        #[structopt(
+            name = "ignore-blacklist",
+            long = "ignore-blacklist",
+            conflicts_with = "no-ignore-blacklist"
+        )]
+        ignore_blacklist: bool,
+        #[structopt(
+            name = "no-ignore-blacklist",
+            long = "no-ignore-blacklist",
+            conflicts_with = "ignore-blacklist"
+        )]
+        no_ignore_blacklist: bool,
     },
 
     #[structopt(name = "delete-ex", about = "delete shared data for experiment")]
@@ -290,6 +304,7 @@ impl Crater {
                 ref crates,
                 ref cap_lints,
                 ref priority,
+                ref ignore_blacklist,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
@@ -302,6 +317,7 @@ impl Crater {
                     cap_lints: *cap_lints,
                     priority: *priority,
                     github_issue: None,
+                    ignore_blacklist: *ignore_blacklist,
                 }
                 .apply(&db, &config)?;
             }
@@ -313,9 +329,19 @@ impl Crater {
                 ref crates,
                 ref cap_lints,
                 ref priority,
+                ref ignore_blacklist,
+                ref no_ignore_blacklist,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
+
+                let ignore_blacklist = if *ignore_blacklist {
+                    Some(true)
+                } else if *no_ignore_blacklist {
+                    Some(false)
+                } else {
+                    None
+                };
 
                 actions::EditExperiment {
                     name: name.clone(),
@@ -324,6 +350,7 @@ impl Crater {
                     crates: *crates,
                     cap_lints: *cap_lints,
                     priority: *priority,
+                    ignore_blacklist,
                 }
                 .apply(&db, &config)?;
             }

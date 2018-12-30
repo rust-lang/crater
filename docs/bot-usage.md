@@ -115,6 +115,7 @@ beta run you can use:
 * `mode`: the experiment mode (default: `build-and-test`)
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)
+* `ignore-blacklist`: whether the blacklist should be ignored (default: `false`)
 * `p`: the priority of the run (default: `0`)
 
 [Go back to the TOC][h-toc]
@@ -140,6 +141,7 @@ priority of the `foo` experiment you can use:
 * `mode`: the experiment mode (default: `build-and-test`)
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)
+* `ignore-blacklist`: whether the blacklist should be ignored (default: `false`)
 * `p`: the priority of the run (default: `0`)
 
 [Go back to the TOC][h-toc]

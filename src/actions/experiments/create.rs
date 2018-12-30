@@ -14,6 +14,7 @@ pub struct CreateExperiment {
     pub cap_lints: CapLints,
     pub priority: i32,
     pub github_issue: Option<GitHubIssue>,
+    pub ignore_blacklist: bool,
 }
 
 impl CreateExperiment {
@@ -29,6 +30,7 @@ impl CreateExperiment {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
+            ignore_blacklist: false,
         }
     }
 
@@ -49,8 +51,8 @@ impl CreateExperiment {
             transaction.execute(
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
-                 status, github_issue, github_issue_url, github_issue_number) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
+                 status, github_issue, github_issue_url, github_issue_number, ignore_blacklist) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);",
                 &[
                     &self.name,
                     &self.mode.to_str(),
@@ -63,11 +65,12 @@ impl CreateExperiment {
                     &self.github_issue.as_ref().map(|i| i.api_url.as_str()),
                     &self.github_issue.as_ref().map(|i| i.html_url.as_str()),
                     &self.github_issue.as_ref().map(|i| i.number),
+                    &self.ignore_blacklist,
                 ],
             )?;
 
             for krate in &crates {
-                let skipped = config.should_skip(krate) as i32;
+                let skipped = !self.ignore_blacklist && config.should_skip(krate);
                 transaction.execute(
                     "INSERT INTO experiment_crates (experiment, crate, skipped) VALUES (?1, ?2, ?3);",
                     &[&self.name, &::serde_json::to_string(&krate)?, &skipped],
@@ -85,8 +88,9 @@ impl CreateExperiment {
 mod tests {
     use super::CreateExperiment;
     use crate::actions::ExperimentError;
-    use crate::config::Config;
-    use crate::db::Database;
+    use crate::config::{Config, CrateConfig};
+    use crate::crates::Crate;
+    use crate::db::{Database, QueryUtils};
     use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
@@ -112,6 +116,7 @@ mod tests {
                 html_url: html_url.to_string(),
                 number: 10,
             }),
+            ignore_blacklist: true,
         }
         .apply(&db, &config)
         .unwrap();
@@ -137,6 +142,64 @@ mod tests {
         assert_eq!(ex.priority, 5);
         assert_eq!(ex.status, Status::Queued);
         assert!(ex.assigned_to.is_none());
+        assert!(ex.ignore_blacklist);
+    }
+
+    #[test]
+    fn test_ignore_blacklist() {
+        fn is_skipped(db: &Database, ex: &str, krate: &str) -> bool {
+            let crates: Vec<Crate> = db
+                .query(
+                    "SELECT crate FROM experiment_crates WHERE experiment = ?1 AND skipped = 0",
+                    &[&ex],
+                    |row| {
+                        let krate: String = row.get("crate");
+                        serde_json::from_str(&krate).unwrap()
+                    },
+                )
+                .unwrap();
+            crates
+                .iter()
+                .find(|c| {
+                    if let Crate::Local(name) = c {
+                        name == krate
+                    } else {
+                        panic!("there should be no non-local crates")
+                    }
+                })
+                .is_none()
+        }
+
+        let db = Database::temp().unwrap();
+        let mut config = Config::default();
+        config.local_crates.insert(
+            "build-pass".into(),
+            CrateConfig {
+                skip: true,
+                skip_tests: false,
+                quiet: false,
+                update_lockfile: false,
+                broken: false,
+            },
+        );
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        CreateExperiment {
+            ignore_blacklist: false,
+            ..CreateExperiment::dummy("foo")
+        }
+        .apply(&db, &config)
+        .unwrap();
+        assert!(is_skipped(&db, "foo", "build-pass"));
+
+        CreateExperiment {
+            ignore_blacklist: true,
+            ..CreateExperiment::dummy("bar")
+        }
+        .apply(&db, &config)
+        .unwrap();
+        assert!(!is_skipped(&db, "bar", "build-pass"));
     }
 
     #[test]
@@ -155,6 +218,7 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
+            ignore_blacklist: false,
         }
         .apply(&db, &config)
         .unwrap_err();
@@ -181,6 +245,7 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
+            ignore_blacklist: false,
         }
         .apply(&db, &config)
         .unwrap();
@@ -194,6 +259,7 @@ mod tests {
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
+            ignore_blacklist: false,
         }
         .apply(&db, &config)
         .unwrap_err();

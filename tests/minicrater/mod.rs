@@ -25,6 +25,7 @@ struct MinicraterRun {
     ex: &'static str,
     crate_select: &'static str,
     multithread: bool,
+    ignore_blacklist: bool,
 }
 
 impl MinicraterRun {
@@ -53,14 +54,13 @@ impl MinicraterRun {
             .minicrater_exec();
 
         // Define the experiment
+        let crate_select = format!("--crate-select={}", self.crate_select);
+        let mut define_args = vec!["define-ex", &ex_arg, "stable", "beta", &crate_select];
+        if self.ignore_blacklist {
+            define_args.push("--ignore-blacklist");
+        }
         Command::crater()
-            .args(&[
-                "define-ex",
-                &ex_arg,
-                "stable",
-                "beta",
-                &format!("--crate-select={}", self.crate_select),
-            ])
+            .args(&define_args)
             .env("CRATER_CONFIG", &config_file)
             .minicrater_exec();
 
@@ -133,6 +133,7 @@ fn single_thread_small() {
         ex: "small",
         crate_select: "demo",
         multithread: false,
+        ignore_blacklist: false,
     }
     .execute();
 }
@@ -144,6 +145,7 @@ fn single_thread_full() {
         ex: "full",
         crate_select: "local",
         multithread: false,
+        ignore_blacklist: false,
     }
     .execute();
 }
@@ -155,6 +157,19 @@ fn single_thread_blacklist() {
         ex: "blacklist",
         crate_select: "demo",
         multithread: false,
+        ignore_blacklist: false,
+    }
+    .execute();
+}
+
+#[ignore]
+#[test]
+fn single_thread_ignore_blacklist() {
+    MinicraterRun {
+        ex: "ignore-blacklist",
+        crate_select: "demo",
+        multithread: false,
+        ignore_blacklist: true,
     }
     .execute();
 }
@@ -166,6 +181,7 @@ fn multi_thread_full() {
         ex: "full",
         crate_select: "local",
         multithread: true,
+        ignore_blacklist: false,
     }
     .execute();
 }

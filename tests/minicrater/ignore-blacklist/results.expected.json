@@ -1,0 +1,49 @@
+{
+  "crates": [
+    {
+      "name": "build-fail (local)",
+      "res": "build-fail",
+      "runs": [
+        {
+          "log": "stable/local/build-fail",
+          "res": "build-fail:unknown"
+        },
+        {
+          "log": "beta/local/build-fail",
+          "res": "build-fail:unknown"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-fail"
+    },
+    {
+      "name": "build-pass (local)",
+      "res": "test-pass",
+      "runs": [
+        {
+          "log": "stable/local/build-pass",
+          "res": "test-pass"
+        },
+        {
+          "log": "beta/local/build-pass",
+          "res": "test-pass"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"
+    },
+    {
+      "name": "test-fail (local)",
+      "res": "test-fail",
+      "runs": [
+        {
+          "log": "stable/local/test-fail",
+          "res": "test-fail:unknown"
+        },
+        {
+          "log": "beta/local/test-fail",
+          "res": "test-fail:unknown"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/test-fail"
+    }
+  ]
+}

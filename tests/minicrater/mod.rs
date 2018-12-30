@@ -21,122 +21,151 @@ impl CommandMinicraterExt for Command {
     }
 }
 
-fn execute(ex: &str, crate_select: &str, multithread: bool) {
-    let ex_dir = PathBuf::from("tests").join("minicrater").join(ex);
-    let config_file = ex_dir.join("config.toml");
-    let expected_file = ex_dir.join("results.expected.json");
-    let actual_file = ex_dir.join("results.actual.json");
+struct MinicraterRun {
+    ex: &'static str,
+    crate_select: &'static str,
+    multithread: bool,
+}
 
-    let threads_count = if multithread { ::num_cpus::get() } else { 1 };
+impl MinicraterRun {
+    fn execute(&self) {
+        let ex_dir = PathBuf::from("tests").join("minicrater").join(self.ex);
+        let config_file = ex_dir.join("config.toml");
+        let expected_file = ex_dir.join("results.expected.json");
+        let actual_file = ex_dir.join("results.actual.json");
 
-    let report_dir = ::tempfile::tempdir().expect("failed to create report dir");
-    let ex_arg = format!(
-        "--ex=minicrater-{}-{}",
-        ex,
-        rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(10)
-            .collect::<String>()
-    );
+        let threads_count = if self.multithread { num_cpus::get() } else { 1 };
 
-    // Create local list in the temp work dir
-    Command::crater()
-        .args(&["create-lists", "local"])
-        .env("CRATER_CONFIG", &config_file)
-        .minicrater_exec();
-
-    // Define the experiment
-    Command::crater()
-        .args(&[
-            "define-ex",
-            &ex_arg,
-            "stable",
-            "beta",
-            &format!("--crate-select={}", crate_select),
-        ])
-        .env("CRATER_CONFIG", &config_file)
-        .minicrater_exec();
-
-    // Execute the experiment
-    Command::crater()
-        .args(&[
-            "run-graph",
-            &ex_arg,
-            "--threads",
-            &threads_count.to_string(),
-        ])
-        .env("CRATER_CONFIG", &config_file)
-        .minicrater_exec();
-
-    // Generate the report
-    Command::crater()
-        .args(&["gen-report", &ex_arg])
-        .env("CRATER_CONFIG", &config_file)
-        .arg(report_dir.path())
-        .minicrater_exec();
-
-    // Read the JSON report
-    let json_report = ::std::fs::read(report_dir.path().join("results.json"))
-        .expect("failed to read json report");
-
-    // Delete the experiment
-    Command::crater()
-        .args(&["delete-ex", &ex_arg])
-        .env("CRATER_CONFIG", &config_file)
-        .minicrater_exec();
-
-    // Load the generated JSON report
-    let parsed_report: Value = serde_json::from_slice(&json_report).expect("invalid json report");
-    let mut actual_report = serde_json::to_vec_pretty(&parsed_report).unwrap();
-    actual_report.push(b'\n');
-
-    // Load the expected JSON report
-    let expected_report = ::std::fs::read(&expected_file).unwrap_or(Vec::new());
-
-    // Write the actual JSON report
-    ::std::fs::write(&actual_file, &actual_report)
-        .expect("failed to write copy of the json report");
-
-    let changeset = Changeset::new(
-        &String::from_utf8(expected_report).expect("invalid utf-8 in the expected report"),
-        &String::from_utf8(actual_report.clone()).expect("invalid utf-8 in the actual report"),
-        "\n",
-    );
-    if changeset.distance != 0 {
-        eprintln!(
-            "Difference between expected and actual reports:\n{}",
-            changeset
+        let report_dir = tempfile::tempdir().expect("failed to create report dir");
+        let ex_arg = format!(
+            "--ex=minicrater-{}-{}",
+            self.ex,
+            rand::thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(10)
+                .collect::<String>()
         );
-        eprintln!("To expect the new report in the future run:");
-        eprintln!(
-            "$ cp {} {}\n",
-            actual_file.to_string_lossy(),
-            expected_file.to_string_lossy()
+
+        // Create local list in the temp work dir
+        Command::crater()
+            .args(&["create-lists", "local"])
+            .env("CRATER_CONFIG", &config_file)
+            .minicrater_exec();
+
+        // Define the experiment
+        Command::crater()
+            .args(&[
+                "define-ex",
+                &ex_arg,
+                "stable",
+                "beta",
+                &format!("--crate-select={}", self.crate_select),
+            ])
+            .env("CRATER_CONFIG", &config_file)
+            .minicrater_exec();
+
+        // Execute the experiment
+        Command::crater()
+            .args(&[
+                "run-graph",
+                &ex_arg,
+                "--threads",
+                &threads_count.to_string(),
+            ])
+            .env("CRATER_CONFIG", &config_file)
+            .minicrater_exec();
+
+        // Generate the report
+        Command::crater()
+            .args(&["gen-report", &ex_arg])
+            .env("CRATER_CONFIG", &config_file)
+            .arg(report_dir.path())
+            .minicrater_exec();
+
+        // Read the JSON report
+        let json_report = ::std::fs::read(report_dir.path().join("results.json"))
+            .expect("failed to read json report");
+
+        // Delete the experiment
+        Command::crater()
+            .args(&["delete-ex", &ex_arg])
+            .env("CRATER_CONFIG", &config_file)
+            .minicrater_exec();
+
+        // Load the generated JSON report
+        let parsed_report: Value =
+            serde_json::from_slice(&json_report).expect("invalid json report");
+        let mut actual_report = serde_json::to_vec_pretty(&parsed_report).unwrap();
+        actual_report.push(b'\n');
+
+        // Load the expected JSON report
+        let expected_report = ::std::fs::read(&expected_file).unwrap_or(Vec::new());
+
+        // Write the actual JSON report
+        ::std::fs::write(&actual_file, &actual_report)
+            .expect("failed to write copy of the json report");
+
+        let changeset = Changeset::new(
+            &String::from_utf8(expected_report).expect("invalid utf-8 in the expected report"),
+            &String::from_utf8(actual_report.clone()).expect("invalid utf-8 in the actual report"),
+            "\n",
         );
-        panic!("invalid report generated by Crater");
+        if changeset.distance != 0 {
+            eprintln!(
+                "Difference between expected and actual reports:\n{}",
+                changeset
+            );
+            eprintln!("To expect the new report in the future run:");
+            eprintln!(
+                "$ cp {} {}\n",
+                actual_file.to_string_lossy(),
+                expected_file.to_string_lossy()
+            );
+            panic!("invalid report generated by Crater");
+        }
     }
 }
 
 #[ignore]
 #[test]
 fn single_thread_small() {
-    execute("small", "demo", false);
+    MinicraterRun {
+        ex: "small",
+        crate_select: "demo",
+        multithread: false,
+    }
+    .execute();
 }
 
 #[ignore]
 #[test]
 fn single_thread_full() {
-    execute("full", "local", false);
+    MinicraterRun {
+        ex: "full",
+        crate_select: "local",
+        multithread: false,
+    }
+    .execute();
 }
 
 #[ignore]
 #[test]
 fn single_thread_blacklist() {
-    execute("blacklist", "demo", false);
+    MinicraterRun {
+        ex: "blacklist",
+        crate_select: "demo",
+        multithread: false,
+    }
+    .execute();
 }
 
 #[ignore]
 #[test]
 fn multi_thread_full() {
-    execute("full", "local", true);
+    MinicraterRun {
+        ex: "full",
+        crate_select: "local",
+        multithread: true,
+    }
+    .execute();
 }

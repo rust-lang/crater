@@ -61,3 +61,40 @@ pub(crate) fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Fallible<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+#[derive(Default)]
+pub(crate) struct TempDirBuilder {
+    dirs: Vec<PathBuf>,
+    files: Vec<(PathBuf, String)>,
+}
+
+#[cfg(test)]
+impl TempDirBuilder {
+    pub(crate) fn dir<P: Into<PathBuf>>(mut self, path: P) -> TempDirBuilder {
+        self.dirs.push(path.into());
+        self
+    }
+
+    pub(crate) fn file<P: Into<PathBuf>>(mut self, path: P, content: &str) -> TempDirBuilder {
+        self.files.push((path.into(), content.into()));
+        self
+    }
+
+    pub(crate) fn build(self) -> Fallible<tempfile::TempDir> {
+        let temp = tempfile::TempDir::new()?;
+        for path in &self.dirs {
+            std::fs::create_dir_all(temp.path().join(path))?;
+        }
+        for (path, content) in &self.files {
+            let path = temp.path().join(path);
+            if let Some(parent) = path.parent() {
+                if !parent.exists() {
+                    std::fs::create_dir_all(parent)?;
+                }
+            }
+            std::fs::write(&path, content.as_bytes())?;
+        }
+        Ok(temp)
+    }
+}

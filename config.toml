@@ -3916,8 +3916,6 @@ reactive-streams = { skip = true } #automatic
 reactor = { skip = true } #automatic
 reactor-cache = { skip-tests = true } #automatic
 read-process-memory = { skip-tests = true } # flaky tests
-readline = { skip = true } #automatic
-readline-sys = { skip = true } #automatic
 readwriteseekfs = { skip = true } #automatic
 realize = { skip = true } #automatic
 rebar = { skip = true } #automatic

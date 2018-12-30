@@ -1,3 +1,4 @@
+mod cleanup;
 mod graph;
 mod prepare;
 mod tasks;

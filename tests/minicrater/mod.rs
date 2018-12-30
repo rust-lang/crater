@@ -131,6 +131,12 @@ fn single_thread_full() {
 
 #[ignore]
 #[test]
+fn single_thread_blacklist() {
+    execute("blacklist", "demo", false);
+}
+
+#[ignore]
+#[test]
 fn multi_thread_full() {
     execute("full", "local", true);
 }

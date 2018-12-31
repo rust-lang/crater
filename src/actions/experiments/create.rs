@@ -1,6 +1,5 @@
-use crate::actions::experiments::ExperimentError;
-use crate::config::Config;
-use crate::db::{Database, QueryUtils};
+use crate::actions::{experiments::ExperimentError, Action, ActionsCtx};
+use crate::db::QueryUtils;
 use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
@@ -33,11 +32,13 @@ impl CreateExperiment {
             ignore_blacklist: false,
         }
     }
+}
 
-    pub fn apply(self, db: &Database, config: &Config) -> Fallible<()> {
+impl Action for CreateExperiment {
+    fn apply(self, ctx: &ActionsCtx) -> Fallible<()> {
         // Ensure no duplicate experiments are created
-        if Experiment::exists(db, &self.name)? {
-            return Err(ExperimentError::AlreadyExists(self.name).into());
+        if Experiment::exists(&ctx.db, &self.name)? {
+            return Err(ExperimentError::AlreadyExists(self.name.clone()).into());
         }
 
         // Ensure no experiment with duplicate toolchains is created
@@ -45,9 +46,9 @@ impl CreateExperiment {
             return Err(ExperimentError::DuplicateToolchains.into());
         }
 
-        let crates = crate::crates::lists::get_crates(self.crates, db, config)?;
+        let crates = crate::crates::lists::get_crates(self.crates, &ctx.db, &ctx.config)?;
 
-        db.transaction(|transaction| {
+        ctx.db.transaction(|transaction| {
             transaction.execute(
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
@@ -70,7 +71,7 @@ impl CreateExperiment {
             )?;
 
             for krate in &crates {
-                let skipped = !self.ignore_blacklist && config.should_skip(krate);
+                let skipped = !self.ignore_blacklist && ctx.config.should_skip(krate);
                 transaction.execute(
                     "INSERT INTO experiment_crates (experiment, crate, skipped) VALUES (?1, ?2, ?3);",
                     &[&self.name, &::serde_json::to_string(&krate)?, &skipped],
@@ -87,7 +88,7 @@ impl CreateExperiment {
 #[cfg(test)]
 mod tests {
     use super::CreateExperiment;
-    use crate::actions::ExperimentError;
+    use crate::actions::{Action, ActionsCtx, ExperimentError};
     use crate::config::{Config, CrateConfig};
     use crate::crates::Crate;
     use crate::db::{Database, QueryUtils};
@@ -98,6 +99,7 @@ mod tests {
     fn test_creation() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
@@ -118,7 +120,7 @@ mod tests {
             }),
             ignore_blacklist: true,
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap();
 
         let ex = Experiment::get(&db, "foo").unwrap().unwrap();
@@ -182,6 +184,7 @@ mod tests {
                 broken: false,
             },
         );
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
@@ -189,7 +192,7 @@ mod tests {
             ignore_blacklist: false,
             ..CreateExperiment::dummy("foo")
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap();
         assert!(is_skipped(&db, "foo", "build-pass"));
 
@@ -197,7 +200,7 @@ mod tests {
             ignore_blacklist: true,
             ..CreateExperiment::dummy("bar")
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap();
         assert!(!is_skipped(&db, "bar", "build-pass"));
     }
@@ -206,6 +209,7 @@ mod tests {
     fn test_duplicate_toolchains() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
@@ -220,7 +224,7 @@ mod tests {
             github_issue: None,
             ignore_blacklist: false,
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap_err();
 
         assert_eq!(
@@ -233,6 +237,7 @@ mod tests {
     fn test_duplicate_name() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
@@ -247,7 +252,7 @@ mod tests {
             github_issue: None,
             ignore_blacklist: false,
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap();
 
         // While the second one fails
@@ -261,7 +266,7 @@ mod tests {
             github_issue: None,
             ignore_blacklist: false,
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap_err();
 
         assert_eq!(

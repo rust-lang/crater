@@ -406,7 +406,7 @@ impl ExperimentDBRecord {
 #[cfg(test)]
 mod tests {
     use super::{Assignee, AssigneeParseError, Experiment, Status};
-    use crate::actions::CreateExperiment;
+    use crate::actions::{Action, ActionsCtx, CreateExperiment};
     use crate::config::Config;
     use crate::db::Database;
     use crate::server::agents::Agents;
@@ -461,12 +461,13 @@ mod tests {
         let _ = Agents::new(db.clone(), &tokens).unwrap();
 
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
-        CreateExperiment::dummy("test").apply(&db, &config).unwrap();
+        CreateExperiment::dummy("test").apply(&ctx).unwrap();
 
         let mut create_important = CreateExperiment::dummy("important");
         create_important.priority = 10;
-        create_important.apply(&db, &config).unwrap();
+        create_important.apply(&ctx).unwrap();
 
         // Test the important experiment is correctly assigned
         let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();

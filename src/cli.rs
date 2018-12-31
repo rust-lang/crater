@@ -9,7 +9,7 @@
 //! application state employs ownership techniques to ensure that
 //! parallel access is consistent and race-free.
 
-use crater::actions;
+use crater::actions::{self, Action, ActionsCtx};
 use crater::agent;
 use crater::config::Config;
 use crater::crates::Crate;
@@ -274,6 +274,7 @@ impl Crater {
 
                 let config = Config::load()?;
                 let db = Database::open()?;
+                let ctx = ActionsCtx::new(&db, &config);
 
                 let action = if lists.is_empty() {
                     actions::UpdateLists::default()
@@ -288,13 +289,14 @@ impl Crater {
                 if let Some(unknown) = lists.iter().next() {
                     bail!("unknown list: {}", unknown);
                 } else {
-                    action.apply(&db, &config)?;
+                    action.apply(&ctx)?;
                 }
             }
             Crater::PrepareLocal => {
                 let config = Config::load()?;
                 let db = Database::open()?;
-                actions::UpdateLists::default().apply(&db, &config)?;
+                let ctx = ActionsCtx::new(&db, &config);
+                actions::UpdateLists::default().apply(&ctx)?;
             }
             Crater::DefineEx {
                 ref ex,
@@ -308,6 +310,7 @@ impl Crater {
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
+                let ctx = ActionsCtx::new(&db, &config);
 
                 actions::CreateExperiment {
                     name: ex.0.clone(),
@@ -319,7 +322,7 @@ impl Crater {
                     github_issue: None,
                     ignore_blacklist: *ignore_blacklist,
                 }
-                .apply(&db, &config)?;
+                .apply(&ctx)?;
             }
             Crater::Edit {
                 ref name,
@@ -334,6 +337,7 @@ impl Crater {
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
+                let ctx = ActionsCtx::new(&db, &config);
 
                 let ignore_blacklist = if *ignore_blacklist {
                     Some(true)
@@ -352,13 +356,14 @@ impl Crater {
                     priority: *priority,
                     ignore_blacklist,
                 }
-                .apply(&db, &config)?;
+                .apply(&ctx)?;
             }
             Crater::DeleteEx { ref ex } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
+                let ctx = ActionsCtx::new(&db, &config);
 
-                actions::DeleteExperiment { name: ex.0.clone() }.apply(&db, &config)?;
+                actions::DeleteExperiment { name: ex.0.clone() }.apply(&ctx)?;
             }
             Crater::DeleteAllResults { ref ex } => {
                 let db = Database::open()?;

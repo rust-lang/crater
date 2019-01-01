@@ -151,7 +151,7 @@ impl Agents {
 #[cfg(test)]
 mod tests {
     use super::{AgentStatus, Agents};
-    use crate::actions::CreateExperiment;
+    use crate::actions::{Action, ActionsCtx, CreateExperiment};
     use crate::config::Config;
     use crate::db::Database;
     use crate::experiments::{Assignee, Experiment};
@@ -217,6 +217,8 @@ mod tests {
     fn test_agent_status() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+
         let mut tokens = Tokens::default();
         tokens.agents.insert("token".into(), "agent".into());
         let agents = Agents::new(db.clone(), &tokens).unwrap();
@@ -233,9 +235,7 @@ mod tests {
         assert_eq!(agent.status(), AgentStatus::Idle);
 
         // Create a new experiment and assign it to the agent
-        CreateExperiment::dummy("dummy")
-            .apply(&db, &config)
-            .unwrap();
+        CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         Experiment::next(&db, &Assignee::Agent("agent".to_string())).unwrap();
 
         // After an experiment is assigned to the agent, the agent is working

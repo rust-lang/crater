@@ -1,6 +1,5 @@
-use crate::actions::experiments::ExperimentError;
-use crate::config::Config;
-use crate::db::{Database, QueryUtils};
+use crate::actions::{experiments::ExperimentError, Action, ActionsCtx};
+use crate::db::QueryUtils;
 use crate::experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
@@ -28,11 +27,13 @@ impl EditExperiment {
             ignore_blacklist: None,
         }
     }
+}
 
-    pub fn apply(mut self, db: &Database, config: &Config) -> Fallible<bool> {
-        let mut ex = match Experiment::get(db, &self.name)? {
+impl Action for EditExperiment {
+    fn apply(mut self, ctx: &ActionsCtx) -> Fallible<()> {
+        let mut ex = match Experiment::get(&ctx.db, &self.name)? {
             Some(ex) => ex,
-            None => return Err(ExperimentError::NotFound(self.name).into()),
+            None => return Err(ExperimentError::NotFound(self.name.clone()).into()),
         };
 
         // Ensure no change is made to running or complete experiments
@@ -40,9 +41,7 @@ impl EditExperiment {
             return Err(ExperimentError::CanOnlyEditQueuedExperiments.into());
         }
 
-        Ok(db.transaction(|t| {
-            let mut has_changed = false;
-
+        ctx.db.transaction(|t| {
             // Try to update both toolchains
             for (i, col) in ["toolchain_start", "toolchain_end"].iter().enumerate() {
                 if let Some(tc) = self.toolchains[i].take() {
@@ -58,8 +57,6 @@ impl EditExperiment {
                         &[&ex.toolchains[i].to_string(), &self.name],
                     )?;
                     assert_eq!(changes, 1);
-
-                    has_changed = true;
                 }
             }
 
@@ -71,15 +68,17 @@ impl EditExperiment {
                     &[&ignore_blacklist, &self.name],
                 )?;
                 assert_eq!(changes, 1);
-
                 ex.ignore_blacklist = ignore_blacklist;
-                has_changed = true;
             }
 
             // Try to update the list of crates
             // This is also done if ignore_blacklist is changed to recalculate the skipped crates
             let new_crates = if let Some(crates) = self.crates {
-                Some(crate::crates::lists::get_crates(crates, db, config)?)
+                Some(crate::crates::lists::get_crates(
+                    crates,
+                    &ctx.db,
+                    &ctx.config,
+                )?)
             } else if self.ignore_blacklist.is_some() {
                 Some(ex.crates.clone())
             } else {
@@ -99,13 +98,11 @@ impl EditExperiment {
                         &[
                             &self.name,
                             &::serde_json::to_string(&krate)?,
-                            &(!ex.ignore_blacklist && config.should_skip(krate)),
+                            &(!ex.ignore_blacklist && ctx.config.should_skip(krate)),
                         ],
                     )?;
                 }
-
                 ex.crates = crates_vec;
-                has_changed = true;
             }
 
             // Try to update the mode
@@ -115,9 +112,7 @@ impl EditExperiment {
                     &[&mode.to_str(), &self.name],
                 )?;
                 assert_eq!(changes, 1);
-
                 ex.mode = mode;
-                has_changed = true;
             }
 
             // Try to update the cap_lints
@@ -127,9 +122,7 @@ impl EditExperiment {
                     &[&cap_lints.to_str(), &self.name],
                 )?;
                 assert_eq!(changes, 1);
-
                 ex.cap_lints = cap_lints;
-                has_changed = true;
             }
 
             // Try to update the priority
@@ -139,20 +132,19 @@ impl EditExperiment {
                     &[&priority, &self.name],
                 )?;
                 assert_eq!(changes, 1);
-
                 ex.priority = priority;
-                has_changed = true;
             }
 
-            Ok(has_changed)
-        })?)
+            Ok(())
+        })?;
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::EditExperiment;
-    use crate::actions::{CreateExperiment, ExperimentError};
+    use crate::actions::{Action, ActionsCtx, CreateExperiment, ExperimentError};
     use crate::config::{Config, CrateConfig};
     use crate::crates::Crate;
     use crate::db::{Database, QueryUtils};
@@ -163,21 +155,19 @@ mod tests {
     fn test_edit_with_no_changes() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
-        // Create a dummy experiment to edit
-        CreateExperiment::dummy("foo").apply(&db, &config).unwrap();
-
-        // Ensure no changes are applied when no changes are defined
-        let has_changed = EditExperiment::dummy("foo").apply(&db, &config).unwrap();
-        assert!(!has_changed);
+        CreateExperiment::dummy("foo").apply(&ctx).unwrap();
+        EditExperiment::dummy("foo").apply(&ctx).unwrap();
     }
 
     #[test]
     fn test_edit_with_every_change() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
@@ -192,7 +182,7 @@ mod tests {
             github_issue: None,
             ignore_blacklist: false,
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap();
 
         // Change everything!
@@ -208,7 +198,7 @@ mod tests {
             priority: Some(10),
             ignore_blacklist: Some(true),
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap();
 
         // And get the experiment to make sure data is changed
@@ -264,6 +254,7 @@ mod tests {
                 broken: false,
             },
         );
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
@@ -271,7 +262,7 @@ mod tests {
             ignore_blacklist: false,
             ..CreateExperiment::dummy("foo")
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap();
         assert!(is_skipped(&db, "foo", "build-pass"));
 
@@ -279,7 +270,7 @@ mod tests {
             ignore_blacklist: Some(true),
             ..EditExperiment::dummy("foo")
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap();
         assert!(!is_skipped(&db, "foo", "build-pass"));
 
@@ -287,7 +278,7 @@ mod tests {
             ignore_blacklist: Some(false),
             ..EditExperiment::dummy("foo")
         }
-        .apply(&db, &config)
+        .apply(&ctx)
         .unwrap();
         assert!(is_skipped(&db, "foo", "build-pass"));
     }
@@ -296,19 +287,20 @@ mod tests {
     fn test_duplicate_toolchains() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // First create an experiment
         let mut dummy = CreateExperiment::dummy("foo");
         dummy.toolchains = [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()];
-        dummy.apply(&db, &config).unwrap();
+        dummy.apply(&ctx).unwrap();
 
         // Then try to switch the second toolchain to MAIN_TOOLCHAIN
         let mut edit = EditExperiment::dummy("foo");
         edit.toolchains[1] = Some(MAIN_TOOLCHAIN.clone());
 
-        let err = edit.apply(&db, &config).unwrap_err();
+        let err = edit.apply(&ctx).unwrap_err();
         assert_eq!(
             err.downcast_ref(),
             Some(&ExperimentError::DuplicateToolchains)
@@ -319,12 +311,11 @@ mod tests {
     fn test_editing_missing_experiment() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
-        let err = EditExperiment::dummy("foo")
-            .apply(&db, &config)
-            .unwrap_err();
+        let err = EditExperiment::dummy("foo").apply(&ctx).unwrap_err();
         assert_eq!(
             err.downcast_ref(),
             Some(&ExperimentError::NotFound("foo".into()))
@@ -335,18 +326,17 @@ mod tests {
     fn test_editing_running_experiment() {
         let db = Database::temp().unwrap();
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create an experiment and set it to running
-        CreateExperiment::dummy("foo").apply(&db, &config).unwrap();
+        CreateExperiment::dummy("foo").apply(&ctx).unwrap();
         let mut ex = Experiment::get(&db, "foo").unwrap().unwrap();
         ex.set_status(&db, Status::Running).unwrap();
 
         // Try to edit it
-        let err = EditExperiment::dummy("foo")
-            .apply(&db, &config)
-            .unwrap_err();
+        let err = EditExperiment::dummy("foo").apply(&ctx).unwrap_err();
         assert_eq!(
             err.downcast_ref(),
             Some(&ExperimentError::CanOnlyEditQueuedExperiments)

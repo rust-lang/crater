@@ -1,3 +1,4 @@
+use crate::actions::{self, Action, ActionsCtx};
 use crate::db::{Database, QueryUtils};
 use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
 use crate::prelude::*;
@@ -17,7 +18,7 @@ pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
 pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()> {
     let name = setup_run_name(&data.db, issue, args.name)?;
 
-    crate::actions::CreateExperiment {
+    actions::CreateExperiment {
         name: name.clone(),
         toolchains: [
             args.start
@@ -35,7 +36,7 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()
         }),
         ignore_blacklist: args.ignore_blacklist.unwrap_or(false),
     }
-    .apply(&data.db, &data.config)?;
+    .apply(&ActionsCtx::new(&data.db, &data.config))?;
 
     Message::new()
         .line(
@@ -58,7 +59,7 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()
 pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    let changed = crate::actions::EditExperiment {
+    actions::EditExperiment {
         name: name.clone(),
         toolchains: [args.start, args.end],
         crates: args.crates,
@@ -67,20 +68,14 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
         priority: args.priority,
         ignore_blacklist: args.ignore_blacklist,
     }
-    .apply(&data.db, &data.config)?;
+    .apply(&ActionsCtx::new(&data.db, &data.config))?;
 
-    if changed {
-        Message::new()
-            .line(
-                "memo",
-                format!("Configuration of the **`{}`** experiment changed.", name),
-            )
-            .send(&issue.url, data)?;
-    } else {
-        Message::new()
-            .line("warning", "No changes requested.")
-            .send(&issue.url, data)?;
-    }
+    Message::new()
+        .line(
+            "memo",
+            format!("Configuration of the **`{}`** experiment changed.", name),
+        )
+        .send(&issue.url, data)?;
 
     Ok(())
 }
@@ -116,7 +111,8 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Fallib
 pub fn abort(data: &Data, issue: &Issue, args: AbortArgs) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
-    crate::actions::DeleteExperiment { name: name.clone() }.apply(&data.db, &data.config)?;
+    actions::DeleteExperiment { name: name.clone() }
+        .apply(&ActionsCtx::new(&data.db, &data.config))?;
 
     Message::new()
         .line("wastebasket", format!("Experiment **`{}`** deleted!", name))
@@ -207,23 +203,27 @@ mod tests {
         default_experiment_name, generate_new_experiment_name, get_name, setup_run_name,
         store_experiment_name,
     };
+    use crate::actions::{self, Action, ActionsCtx};
+    use crate::config::Config;
     use crate::db::Database;
     use crate::prelude::*;
     use crate::server::github;
 
     /// Simulate to the `run` command, and return experiment name
     fn dummy_run(db: &Database, issue: &github::Issue, name: Option<String>) -> Fallible<String> {
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
         let name = setup_run_name(db, issue, name)?;
-        crate::actions::CreateExperiment::dummy(&name)
-            .apply(&db, &crate::config::Config::default())?;
+        actions::CreateExperiment::dummy(&name).apply(&ctx)?;
         Ok(name)
     }
 
     /// Simulate to the `edit` command, and return experiment name
     fn dummy_edit(db: &Database, issue: &github::Issue, name: Option<String>) -> Fallible<String> {
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
         let name = get_name(db, issue, name)?;
-        crate::actions::EditExperiment::dummy(&name)
-            .apply(&db, &crate::config::Config::default())?;
+        actions::EditExperiment::dummy(&name).apply(&ctx)?;
         Ok(name)
     }
 
@@ -381,6 +381,9 @@ mod tests {
     #[test]
     fn test_generate_new_experiment_name() {
         let db = Database::temp().unwrap();
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+
         let pr = github::Issue {
             number: 12345,
             url: String::new(),
@@ -391,13 +394,13 @@ mod tests {
             }),
         };
 
-        crate::actions::CreateExperiment::dummy("pr-12345")
-            .apply(&db, &crate::config::Config::default())
+        actions::CreateExperiment::dummy("pr-12345")
+            .apply(&ctx)
             .expect("could not store dummy experiment");
         let new_name = generate_new_experiment_name(&db, &pr).unwrap();
         assert_eq!(new_name, "pr-12345-1");
-        crate::actions::CreateExperiment::dummy("pr-12345-1")
-            .apply(&db, &crate::config::Config::default())
+        actions::CreateExperiment::dummy("pr-12345-1")
+            .apply(&ctx)
             .expect("could not store dummy experiment");;
         assert_eq!(
             &generate_new_experiment_name(&db, &pr).unwrap(),

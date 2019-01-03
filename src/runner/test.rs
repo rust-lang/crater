@@ -1,4 +1,3 @@
-use super::cleanup;
 use crate::docker::{DockerError, MountPerms};
 use crate::prelude::*;
 use crate::results::{FailureReason, TestResult, WriteResults};
@@ -93,7 +92,6 @@ pub(super) fn run_test<DB: WriteResults>(
                 test_fn(ctx, &source_path)
             },
         )?;
-        cleanup::clean_target_dirs(&ctx.toolchain.target_dir(&ctx.experiment.name))?;
     }
     Ok(())
 }

@@ -137,10 +137,12 @@ pub(crate) fn get_crates(
 
 #[cfg(test)]
 pub(crate) fn setup_test_lists(db: &Database, config: &Config) -> Fallible<()> {
-    crate::actions::UpdateLists {
+    use crate::actions::{Action, ActionsCtx, UpdateLists};
+
+    UpdateLists {
         github: false,
         registry: false,
         local: true,
     }
-    .apply(db, config)
+    .apply(&ActionsCtx::new(db, config))
 }

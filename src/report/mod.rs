@@ -664,6 +664,7 @@ mod tests {
             status: Status::GeneratingReport,
             assigned_to: None,
             report_url: None,
+            ignore_blacklist: false,
         };
 
         let mut db = DummyDB::default();

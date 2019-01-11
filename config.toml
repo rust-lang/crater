@@ -884,7 +884,6 @@ crustacean-plugin = { skip = true } #automatic
 cryptdll-sys = { skip = true } #automatic
 cryptnet-sys = { skip = true } #automatic
 crypto-ops = { skip = true } #automatic
-crypto_proto = { skip = true } #automatic
 crypto_vault = { skip = true } #automatic
 cryptominisat = { skip = true } #automatic
 cryptosphere = { skip = true } #automatic
@@ -3916,8 +3915,6 @@ reactive-streams = { skip = true } #automatic
 reactor = { skip = true } #automatic
 reactor-cache = { skip-tests = true } #automatic
 read-process-memory = { skip-tests = true } # flaky tests
-readline = { skip = true } #automatic
-readline-sys = { skip = true } #automatic
 readwriteseekfs = { skip = true } #automatic
 realize = { skip = true } #automatic
 rebar = { skip = true } #automatic

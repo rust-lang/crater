@@ -227,7 +227,7 @@ pub(super) fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
     let mut graph = TasksGraph::new();
 
     for krate in &ex.crates {
-        if config.should_skip(krate) {
+        if !ex.ignore_blacklist && config.should_skip(krate) {
             continue;
         }
 
@@ -250,7 +250,9 @@ pub(super) fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
                             tc: tc.clone(),
                             quiet,
                         },
-                        Mode::BuildAndTest if config.should_skip_tests(krate) => {
+                        Mode::BuildAndTest
+                            if !ex.ignore_blacklist && config.should_skip_tests(krate) =>
+                        {
                             TaskStep::BuildOnly {
                                 tc: tc.clone(),
                                 quiet,

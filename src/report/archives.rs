@@ -100,6 +100,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
 #[cfg(test)]
 mod tests {
     use super::write_logs_archives;
+    use crate::actions::{Action, ActionsCtx, CreateExperiment};
     use crate::config::Config;
     use crate::db::Database;
     use crate::experiments::Experiment;
@@ -118,13 +119,12 @@ mod tests {
         let config = Config::default();
         let db = Database::temp().unwrap();
         let writer = DummyWriter::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment
-        crate::actions::CreateExperiment::dummy("dummy")
-            .apply(&db, &config)
-            .unwrap();
+        CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
         let crate1 = ex.crates[0].clone();
         let crate2 = ex.crates[1].clone();

@@ -121,6 +121,7 @@ pub struct Experiment {
     pub status: Status,
     pub assigned_to: Option<Assignee>,
     pub report_url: Option<String>,
+    pub ignore_blacklist: bool,
 }
 
 impl Experiment {
@@ -329,6 +330,7 @@ struct ExperimentDBRecord {
     status: String,
     assigned_to: Option<String>,
     report_url: Option<String>,
+    ignore_blacklist: bool,
 }
 
 impl ExperimentDBRecord {
@@ -349,6 +351,7 @@ impl ExperimentDBRecord {
             github_issue_number: row.get("github_issue_number"),
             assigned_to: row.get("assigned_to"),
             report_url: row.get("report_url"),
+            ignore_blacklist: row.get("ignore_blacklist"),
         }
     }
 
@@ -395,6 +398,7 @@ impl ExperimentDBRecord {
             },
             status: self.status.parse()?,
             report_url: self.report_url,
+            ignore_blacklist: self.ignore_blacklist,
         })
     }
 }
@@ -402,7 +406,7 @@ impl ExperimentDBRecord {
 #[cfg(test)]
 mod tests {
     use super::{Assignee, AssigneeParseError, Experiment, Status};
-    use crate::actions::CreateExperiment;
+    use crate::actions::{Action, ActionsCtx, CreateExperiment};
     use crate::config::Config;
     use crate::db::Database;
     use crate::server::agents::Agents;
@@ -457,12 +461,13 @@ mod tests {
         let _ = Agents::new(db.clone(), &tokens).unwrap();
 
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
-        CreateExperiment::dummy("test").apply(&db, &config).unwrap();
+        CreateExperiment::dummy("test").apply(&ctx).unwrap();
 
         let mut create_important = CreateExperiment::dummy("important");
         create_important.priority = 10;
-        create_important.apply(&db, &config).unwrap();
+        create_important.apply(&ctx).unwrap();
 
         // Test the important experiment is correctly assigned
         let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();

@@ -246,7 +246,7 @@ impl<'a> DeleteResults for DatabaseDB<'a> {
 #[cfg(test)]
 mod tests {
     use super::{DatabaseDB, ProgressData, TaskResult};
-    use crate::actions::CreateExperiment;
+    use crate::actions::{Action, ActionsCtx, CreateExperiment};
     use crate::config::Config;
     use crate::crates::{Crate, GitHubRepo, RegistryCrate};
     use crate::db::Database;
@@ -264,13 +264,12 @@ mod tests {
         let db = Database::temp().unwrap();
         let results = DatabaseDB::new(&db);
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
-        CreateExperiment::dummy("dummy")
-            .apply(&db, &config)
-            .unwrap();
+        CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
 
         // Define some dummy GitHub repositories
@@ -327,13 +326,12 @@ mod tests {
         let db = Database::temp().unwrap();
         let results = DatabaseDB::new(&db);
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
-        CreateExperiment::dummy("dummy")
-            .apply(&db, &config)
-            .unwrap();
+        CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
 
         let krate = Crate::Registry(RegistryCrate {
@@ -430,13 +428,12 @@ mod tests {
         let db = Database::temp().unwrap();
         let results = DatabaseDB::new(&db);
         let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
 
         crate::crates::lists::setup_test_lists(&db, &config).unwrap();
 
         // Create a dummy experiment to attach the results to
-        CreateExperiment::dummy("dummy")
-            .apply(&db, &config)
-            .unwrap();
+        CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
 
         let krate = Crate::Registry(RegistryCrate {

@@ -11,8 +11,10 @@ pub use crate::results::db::{DatabaseDB, ProgressData};
 pub use crate::results::dummy::DummyDB;
 use crate::toolchain::Toolchain;
 use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use std::collections::HashMap;
-use std::{fmt, io::Read, str::FromStr};
+use std::{fmt, io::Read, io::Write, str::FromStr};
 
 pub trait ReadResults {
     fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>>;
@@ -78,6 +80,32 @@ impl EncodedLog {
                 decoded_log.read_to_end(&mut new_log)?;
                 Ok(new_log)
             }
+        }
+    }
+
+    pub fn get_encoding_type(&self) -> EncodingType {
+        match self {
+            EncodedLog::Plain(_) => EncodingType::Plain,
+            EncodedLog::Gzip(_) => EncodingType::Gzip,
+        }
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        match self {
+            EncodedLog::Plain(data) => data,
+            EncodedLog::Gzip(data) => data,
+        }
+    }
+
+    pub fn from_plain_slice(data: &[u8], desired_encoding: EncodingType) -> Fallible<EncodedLog> {
+        match desired_encoding {
+            EncodingType::Gzip => {
+                let mut encoded_log = GzEncoder::new(Vec::new(), Compression::default());
+                encoded_log.write_all(data)?;
+                let encoded_log = encoded_log.finish()?;
+                Ok(EncodedLog::Gzip(encoded_log))
+            }
+            EncodingType::Plain => Ok(EncodedLog::Plain(data.to_vec())),
         }
     }
 }

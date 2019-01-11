@@ -9,12 +9,9 @@ use crate::results::{
 };
 use crate::toolchain::Toolchain;
 use base64;
-use flate2::write::GzEncoder;
-use flate2::Compression;
 use log::LevelFilter;
 use serde_json;
 use std::collections::HashMap;
-use std::io::Write;
 
 #[derive(Deserialize)]
 pub struct TaskResult {
@@ -71,26 +68,10 @@ impl<'a> DatabaseDB<'a> {
         toolchain: &Toolchain,
         res: TestResult,
         log: &[u8],
-        encoding_type: EncodingType,
+        desired_encoding_type: EncodingType,
     ) -> Fallible<()> {
-        match encoding_type {
-            EncodingType::Gzip => {
-                let mut encoded_log = GzEncoder::new(Vec::new(), Compression::default());
-                encoded_log.write_all(log).unwrap();
-                self.insert_into_results(
-                    ex,
-                    krate,
-                    toolchain,
-                    res,
-                    encoded_log.finish().unwrap().as_slice(),
-                    encoding_type,
-                )?;
-            }
-            EncodingType::Plain => {
-                self.insert_into_results(ex, krate, toolchain, res, log, encoding_type)?;
-            }
-        };
-
+        let encoded_log = EncodedLog::from_plain_slice(log, desired_encoding_type)?;
+        self.insert_into_results(ex, krate, toolchain, res, encoded_log)?;
         Ok(())
     }
 
@@ -100,8 +81,7 @@ impl<'a> DatabaseDB<'a> {
         krate: &Crate,
         toolchain: &Toolchain,
         res: TestResult,
-        log: &[u8],
-        encoding_type: EncodingType,
+        log: EncodedLog,
     ) -> Fallible<usize> {
         self.db.execute(
             "INSERT INTO results (experiment, crate, toolchain, result, log, encoding) \
@@ -111,8 +91,8 @@ impl<'a> DatabaseDB<'a> {
                 &serde_json::to_string(krate)?,
                 &toolchain.to_string(),
                 &res.to_string(),
-                &log,
-                &encoding_type.to_str(),
+                &log.as_slice(),
+                &log.get_encoding_type().to_str(),
             ],
         )
     }

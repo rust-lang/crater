@@ -345,6 +345,8 @@ mod tests {
                 &ex,
                 &MAIN_TOOLCHAIN,
                 &krate,
+                None,
+                &config,
                 || {
                     info!("hello world");
                     Ok(TestResult::TestPass)
@@ -391,6 +393,8 @@ mod tests {
                 &ex,
                 &TEST_TOOLCHAIN,
                 &krate,
+                None,
+                &config,
                 || {
                     info!("Another log message!");
                     Ok(TestResult::TestFail(FailureReason::Unknown))

@@ -136,6 +136,8 @@ mod tests {
                 &ex,
                 &ex.toolchains[0],
                 &crate1,
+                None,
+                &config,
                 || {
                     info!("tc1 crate1");
                     Ok(TestResult::TestPass)
@@ -148,6 +150,8 @@ mod tests {
                 &ex,
                 &ex.toolchains[1],
                 &crate1,
+                None,
+                &config,
                 || {
                     info!("tc2 crate1");
                     Ok(TestResult::BuildFail(FailureReason::Unknown))
@@ -160,6 +164,8 @@ mod tests {
                 &ex,
                 &ex.toolchains[0],
                 &crate2,
+                None,
+                &config,
                 || {
                     info!("tc1 crate2");
                     Ok(TestResult::TestPass)
@@ -172,6 +178,8 @@ mod tests {
                 &ex,
                 &ex.toolchains[1],
                 &crate2,
+                None,
+                &config,
                 || {
                     info!("tc2 crate2");
                     Ok(TestResult::TestPass)

@@ -44,4 +44,5 @@ guide](CONTRIBUTING.md).
 
 **Technical documentation:**
 
-* [Agent HTTP Api specification](docs/agent-http-api.md)
+* [minicrater docs](tests/minicrater/README.md)
+* [Agent HTTP API specification](docs/agent-http-api.md)

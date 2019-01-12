@@ -4228,7 +4228,6 @@ rust_swig = { skip-tests = true } #automatic
 rust_win32error = { skip = true } #automatic
 rustache = { skip-tests = true } #automatic
 rustache-lists = { skip-tests = true } #automatic
-rustbook = { skip = true } #automatic
 rustboot = { skip = true } #automatic
 rustbox = { skip = true } #automatic
 rustbreak = { skip = true } #automatic

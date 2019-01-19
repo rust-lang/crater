@@ -71,6 +71,27 @@ impl Toolchain {
         }
     }
 
+    pub fn install_rustup_component(&self, component: &str) -> Fallible<()> {
+        let toolchain_name = &self.rustup_name();
+        info!(
+            "installing component {} for toolchain {}",
+            component, toolchain_name
+        );
+
+        utils::try_hard(|| {
+            RunCommand::new(&RUSTUP)
+                .args(&["component", "add", "--toolchain", toolchain_name, component])
+                .run()
+                .with_context(|_| {
+                    format!(
+                        "unable to install component {} for toolchain {} via rustup",
+                        component, toolchain_name,
+                    )
+                })
+        })?;
+        Ok(())
+    }
+
     pub fn target_dir(&self, ex_name: &str) -> PathBuf {
         let mut dir = ex_target_dir(ex_name);
 

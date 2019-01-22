@@ -47,6 +47,22 @@ fn run_heartbeat(url: &str, token: &str) {
     });
 }
 
+fn try_with_report<T>(api: &AgentApi, res: Fallible<T>) -> Option<T> {
+    match res {
+        Err(err) => {
+            utils::report_failure(&err);
+            if let Err(e) = api
+                .report_error(format!("{}", err.find_root_cause()))
+                .with_context(|_| "error encountered")
+            {
+                utils::report_failure(&e);
+            }
+            None
+        }
+        Ok(res) => Some(res),
+    }
+}
+
 pub fn run(url: &str, token: &str, threads_count: usize, docker_env: &str) -> Fallible<()> {
     let agent = Agent::new(url, token)?;
     let db = results::ResultsUploader::new(&agent.api);
@@ -54,8 +70,13 @@ pub fn run(url: &str, token: &str, threads_count: usize, docker_env: &str) -> Fa
     run_heartbeat(url, token);
 
     loop {
-        let ex = agent.experiment()?;
-        crate::runner::run_ex(&ex, &db, threads_count, &agent.config, docker_env)?;
-        agent.api.complete_experiment()?;
+        try_with_report(&agent.api, agent.experiment())
+            .and_then(|ex| {
+                try_with_report(
+                    &agent.api,
+                    crate::runner::run_ex(&ex, &db, threads_count, &agent.config, docker_env),
+                )
+            })
+            .and_then(|()| try_with_report(&agent.api, agent.api.complete_experiment()));
     }
 }

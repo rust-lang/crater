@@ -190,4 +190,15 @@ impl AgentApi {
             Ok(())
         })
     }
+
+    pub fn report_error(&self, error: String) -> Fallible<()> {
+        self.retry(|this| {
+            let _: bool = this
+                .build_request(Method::POST, "error")
+                .json(&json!({ "error": error }))
+                .send()?
+                .to_api_response()?;
+            Ok(())
+        })
+    }
 }

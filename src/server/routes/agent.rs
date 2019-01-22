@@ -8,6 +8,7 @@ use crate::server::{Data, HttpError};
 use failure::Compat;
 use http::{Response, StatusCode};
 use hyper::Body;
+use std::collections::HashMap;
 use std::sync::Arc;
 use warp::{self, Filter, Rejection};
 
@@ -156,7 +157,11 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<B
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }
 
-fn endpoint_error(error: String, data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
+fn endpoint_error(
+    error: HashMap<String, String>,
+    data: Arc<Data>,
+    auth: AuthDetails,
+) -> Fallible<Response<Body>> {
     let ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
@@ -165,11 +170,14 @@ fn endpoint_error(error: String, data: Arc<Data>, auth: AuthDetails) -> Fallible
             .line(
                 "exclamation",
                 format!(
-                    "Experiment **`{}`** **running** on agent `{}` has encountered an error",
+                    "Experiment **`{}`** running on agent `{}` has encountered an error",
                     ex.name, auth.name,
                 ),
             )
-            .line("", format!("error: {}", error,))
+            .line(
+                "sos",
+                format!("caused by: {}", error.get("error").unwrap(),),
+            )
             .send(&github_issue.api_url, &data)?;
     }
     Ok(ApiResponse::Success { result: true }.into_response()?)

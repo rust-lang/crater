@@ -12,6 +12,7 @@ string_enum!(pub enum Status {
     Queued => "queued",
     Running => "running",
     NeedsReport => "needs-report",
+    Failed => "failed",
     GeneratingReport => "generating-report",
     ReportFailed => "report-failed",
     Completed => "completed",

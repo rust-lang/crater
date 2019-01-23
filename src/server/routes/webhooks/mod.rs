@@ -111,6 +111,10 @@ fn process_command(
                 commands::retry_report(data, issue, args)?;
             }
 
+            Command::Retry(args) => {
+                commands::retry(data, issue, args)?;
+            }
+
             Command::Abort(args) => {
                 commands::abort(data, issue, args)?;
             }

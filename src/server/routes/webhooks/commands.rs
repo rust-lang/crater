@@ -4,7 +4,9 @@ use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, S
 use crate::prelude::*;
 use crate::server::github::Issue;
 use crate::server::messages::{Label, Message};
-use crate::server::routes::webhooks::args::{AbortArgs, EditArgs, RetryReportArgs, RunArgs};
+use crate::server::routes::webhooks::args::{
+    AbortArgs, EditArgs, RetryArgs, RetryReportArgs, RunArgs,
+};
 use crate::server::Data;
 
 pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
@@ -98,6 +100,31 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Fallib
             .line(
                 "hammer_and_wrench",
                 format!("Generation of the report for **`{}`** queued again.", name),
+            )
+            .set_label(Label::ExperimentQueued)
+            .send(&issue.url, data)?;
+
+        Ok(())
+    } else {
+        bail!("an experiment named **`{}`** doesn't exist!", name);
+    }
+}
+
+pub fn retry(data: &Data, issue: &Issue, args: RetryArgs) -> Fallible<()> {
+    let name = get_name(&data.db, issue, args.name)?;
+
+    if let Some(mut experiment) = Experiment::get(&data.db, &name)? {
+        if experiment.status != Status::Failed {
+            bail!("Experiment **`{}`** didn't fail!", name);
+        }
+
+        experiment.set_status(&data.db, Status::Queued)?;
+        data.reports_worker.wake();
+
+        Message::new()
+            .line(
+                "hammer_and_wrench",
+                format!("Experiment **`{}`** queued again.", name),
             )
             .set_label(Label::ExperimentQueued)
             .send(&issue.url, data)?;

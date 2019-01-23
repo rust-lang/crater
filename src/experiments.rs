@@ -227,7 +227,10 @@ impl Experiment {
             )?;
             self.started_at = Some(now);
         // Check if the old status was "running" and there is no completed date
-        } else if self.status == Status::Running && self.completed_at.is_none() {
+        } else if self.status == Status::Running
+            && self.completed_at.is_none()
+            && status != Status::Failed
+        {
             db.execute(
                 "UPDATE experiments SET completed_at = ?1 WHERE name = ?2;",
                 &[&now, &self.name.as_str()],

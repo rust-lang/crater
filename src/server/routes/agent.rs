@@ -162,21 +162,28 @@ fn endpoint_error(
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
+
+    ex.set_status(&data.db, Status::Failed)?;
 
     if let Some(ref github_issue) = ex.github_issue {
         Message::new()
             .line(
-                "exclamation",
+                "rotating_light",
                 format!(
-                    "Experiment **`{}`** running on agent `{}` has encountered an error",
-                    ex.name, auth.name,
+                    "Experiment **`{}`** has encountered an error: {}",
+                    ex.name,
+                    error.get("error").unwrap_or(&String::from("no error")),
                 ),
             )
             .line(
+                "hammer_and_wrench",
+                "If the error is fixed use the `retry` command.",
+            )
+            .note(
                 "sos",
-                format!("caused by: {}", error.get("error").unwrap(),),
+                "Can someone from the infra team check in on this? @rust-lang/infra",
             )
             .send(&github_issue.api_url, &data)?;
     }

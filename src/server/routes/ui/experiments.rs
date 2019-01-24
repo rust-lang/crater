@@ -25,6 +25,7 @@ impl ExperimentData {
             Status::Queued => ("", "Queued", true),
             Status::Running => ("orange", "Running", true),
             Status::NeedsReport => ("orange", "Needs report", false),
+            Status::Failed => ("red", "Failed", false),
             Status::GeneratingReport => ("orange", "Generating report", false),
             Status::ReportFailed => ("red", "Report failed", false),
             Status::Completed => ("green", "Completed", false),
@@ -62,6 +63,7 @@ pub fn endpoint_queue(data: Arc<Data>) -> Fallible<Response<Body>> {
     let mut queued = Vec::new();
     let mut running = Vec::new();
     let mut needs_report = Vec::new();
+    let mut failed = Vec::new();
     let mut generating_report = Vec::new();
     let mut report_failed = Vec::new();
 
@@ -77,6 +79,7 @@ pub fn endpoint_queue(data: Arc<Data>) -> Fallible<Response<Body>> {
             Status::Queued => queued.push(ex),
             Status::Running => running.push(ex),
             Status::NeedsReport => needs_report.push(ex),
+            Status::Failed => failed.push(ex),
             Status::GeneratingReport => generating_report.push(ex),
             Status::ReportFailed => report_failed.push(ex),
             Status::Completed => unreachable!(),
@@ -87,6 +90,7 @@ pub fn endpoint_queue(data: Arc<Data>) -> Fallible<Response<Body>> {
     experiments.append(&mut report_failed);
     experiments.append(&mut generating_report);
     experiments.append(&mut needs_report);
+    experiments.append(&mut failed);
     experiments.append(&mut running);
     experiments.append(&mut queued);
 

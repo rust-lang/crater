@@ -60,6 +60,7 @@ behave this way:
 * `POST /agent-api/complete-experiment` should be called as soon as the agent
   has nothing left to do with the current experiment; after the method returns
   `next-experiment` will return a new experiment
+* `POST /error` should be called only when the agent has encountered an error
 
 ## Available endpoints
 
@@ -218,6 +219,31 @@ The endpoint replies with `true`.
 This endpoint tells the Crater server the agent is still alive. The method
 should be called by the agent every minute, and after some time the method is
 not called the Crater server will mark the agent as unreachable.
+
+The endpoint replies with `true`.
+
+```json
+{
+    "status": "success",
+    "result": true
+}
+```
+
+### `POST /error`
+
+This endpoint tells the Crater server the agent has encountered an error.
+The endpoint expects the error description to be provided as the request body,
+encoded in JSON:
+
+* `error`: a description of the error
+
+For example, this is a valid request data:
+
+```json
+{
+    "error": "pc is not powered on"
+}
+```
 
 The endpoint replies with `true`.
 

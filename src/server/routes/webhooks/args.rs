@@ -122,6 +122,10 @@ generate_parser!(pub enum Command {
         name: Option<String> = "name",
     })
 
+    "retry" => Retry(RetryArgs {
+        name: Option<String> = "name",
+    })
+
     "reload-acl" => ReloadACL(ReloadACLArgs {})
 
     _ => Edit(EditArgs {

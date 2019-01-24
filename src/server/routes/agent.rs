@@ -8,6 +8,7 @@ use crate::server::{Data, HttpError};
 use failure::Compat;
 use http::{Response, StatusCode};
 use hyper::Body;
+use std::collections::HashMap;
 use std::sync::Arc;
 use warp::{self, Filter, Rejection};
 
@@ -53,6 +54,14 @@ pub fn routes(
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_heartbeat);
 
+    let error = warp::post2()
+        .and(warp::path("error"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(data_filter.clone())
+        .and(auth_filter(data.clone(), TokenType::Agent))
+        .map(endpoint_error);
+
     warp::any()
         .and(
             config
@@ -63,6 +72,8 @@ pub fn routes(
                 .or(record_progress)
                 .unify()
                 .or(heartbeat)
+                .unify()
+                .or(error)
                 .unify(),
         )
         .map(handle_results)
@@ -143,6 +154,39 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<B
     }
 
     data.agents.record_heartbeat(&auth.name)?;
+    Ok(ApiResponse::Success { result: true }.into_response()?)
+}
+
+fn endpoint_error(
+    error: HashMap<String, String>,
+    data: Arc<Data>,
+    auth: AuthDetails,
+) -> Fallible<Response<Body>> {
+    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+        .ok_or_else(|| err_msg("no experiment run by this agent"))?;
+
+    ex.set_status(&data.db, Status::Failed)?;
+
+    if let Some(ref github_issue) = ex.github_issue {
+        Message::new()
+            .line(
+                "rotating_light",
+                format!(
+                    "Experiment **`{}`** has encountered an error: {}",
+                    ex.name,
+                    error.get("error").unwrap_or(&String::from("no error")),
+                ),
+            )
+            .line(
+                "hammer_and_wrench",
+                "If the error is fixed use the `retry` command.",
+            )
+            .note(
+                "sos",
+                "Can someone from the infra team check in on this? @rust-lang/infra",
+            )
+            .send(&github_issue.api_url, &data)?;
+    }
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }
 

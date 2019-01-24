@@ -2,6 +2,7 @@ mod api;
 mod results;
 
 use crate::agent::api::AgentApi;
+use crate::agent::results::ResultsUploader;
 use crate::config::Config;
 use crate::experiments::Experiment;
 use crate::prelude::*;
@@ -47,20 +48,16 @@ fn run_heartbeat(url: &str, token: &str) {
     });
 }
 
-fn try_with_report<T>(api: &AgentApi, res: Fallible<T>) -> Option<T> {
-    match res {
-        Err(err) => {
-            utils::report_failure(&err);
-            if let Err(e) = api
-                .report_error(format!("{}", err.find_root_cause()))
-                .with_context(|_| "error encountered")
-            {
-                utils::report_failure(&e);
-            }
-            None
-        }
-        Ok(res) => Some(res),
-    }
+fn run_experiment(
+    agent: &Agent,
+    db: &ResultsUploader,
+    threads_count: usize,
+    docker_env: &str,
+) -> Fallible<()> {
+    let ex = agent.experiment()?;
+    crate::runner::run_ex(&ex, db, threads_count, &agent.config, docker_env)?;
+    agent.api.complete_experiment()?;
+    Ok(())
 }
 
 pub fn run(url: &str, token: &str, threads_count: usize, docker_env: &str) -> Fallible<()> {
@@ -70,13 +67,15 @@ pub fn run(url: &str, token: &str, threads_count: usize, docker_env: &str) -> Fa
     run_heartbeat(url, token);
 
     loop {
-        try_with_report(&agent.api, agent.experiment())
-            .and_then(|ex| {
-                try_with_report(
-                    &agent.api,
-                    crate::runner::run_ex(&ex, &db, threads_count, &agent.config, docker_env),
-                )
-            })
-            .and_then(|()| try_with_report(&agent.api, agent.api.complete_experiment()));
+        if let Err(err) = run_experiment(&agent, &db, threads_count, docker_env) {
+            utils::report_failure(&err);
+            if let Err(e) = agent
+                .api
+                .report_error(format!("{}", err.find_root_cause()))
+                .with_context(|_| "error encountered")
+            {
+                utils::report_failure(&e);
+            }
+        }
     }
 }

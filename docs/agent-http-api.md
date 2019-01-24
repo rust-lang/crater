@@ -60,7 +60,7 @@ behave this way:
 * `POST /agent-api/complete-experiment` should be called as soon as the agent
   has nothing left to do with the current experiment; after the method returns
   `next-experiment` will return a new experiment
- * `POST /error` should be called only when the agent has encountered an error
+* `POST /error` should be called only when the agent has encountered an error
 
 ## Available endpoints
 
@@ -231,7 +231,9 @@ The endpoint replies with `true`.
 
 ### `POST /error`
 
-This endpoint tells the Crater server the agent has encountered an error. The endpoint expects the error description to be provided as the request body, encoded in JSON:
+This endpoint tells the Crater server the agent has encountered an error.
+The endpoint expects the error description to be provided as the request body,
+encoded in JSON:
 
 * `error`: a description of the error
 

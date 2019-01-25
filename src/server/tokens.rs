@@ -81,7 +81,8 @@ impl Default for Tokens {
 
 impl Tokens {
     pub fn load() -> Fallible<Tokens> {
-        let content = ::std::fs::read_to_string(Path::new(TOKENS_PATH))?;
+        let content = ::std::fs::read_to_string(Path::new(TOKENS_PATH))
+            .with_context(|_| format!("could not find {}", TOKENS_PATH))?;
         let res = ::toml::from_str(&content)?;
         Ok(res)
     }

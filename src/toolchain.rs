@@ -101,7 +101,7 @@ impl Toolchain {
             dir = dir.join("shared");
         }
 
-        dir.join(self.to_string())
+        dir.join(self.to_path_component())
     }
 
     pub fn prep_offline_registry(&self) -> Fallible<()> {
@@ -120,6 +120,12 @@ impl Toolchain {
         // https://github.com/rust-lang/cargo/pull/5961
         // is ready
         Ok(())
+    }
+
+    pub fn to_path_component(&self) -> String {
+        use url::percent_encoding::utf8_percent_encode as encode;
+
+        encode(&self.to_string(), utils::fs::FILENAME_ENCODE_SET).to_string()
     }
 }
 

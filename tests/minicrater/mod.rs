@@ -5,35 +5,40 @@ minicrater! {
     single_thread_small {
         ex: "small",
         crate_select: "demo",
-        multithread: false,
-        ignore_blacklist: false,
+        ..Default::default()
     },
 
     single_thread_full {
         ex: "full",
         crate_select: "local",
-        multithread: false,
-        ignore_blacklist: false,
+        ..Default::default()
     },
 
     single_thread_blacklist {
         ex: "blacklist",
         crate_select: "demo",
-        multithread: false,
-        ignore_blacklist: false,
+        ..Default::default()
     },
 
     single_thread_ignore_blacklist {
         ex: "ignore-blacklist",
         crate_select: "demo",
-        multithread: false,
         ignore_blacklist: true,
+        ..Default::default()
     },
 
     multi_thread_full {
         ex: "full",
         crate_select: "local",
         multithread: true,
-        ignore_blacklist: false,
+        ..Default::default()
+    },
+
+    clippy_small {
+        ex: "clippy",
+        crate_select: "demo",
+        mode: "clippy",
+        toolchains: &["stable", "stable+rustflags=-Dclippy::all"],
+        ..Default::default()
     },
 }

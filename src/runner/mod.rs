@@ -8,7 +8,7 @@ mod unstable_features;
 use crate::config::Config;
 use crate::crates::Crate;
 use crate::docker::DockerEnv;
-use crate::experiments::Experiment;
+use crate::experiments::{Experiment, Mode};
 use crate::logs::LogStorage;
 use crate::prelude::*;
 use crate::results::{FailureReason, TestResult, WriteResults};
@@ -87,6 +87,9 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     info!("preparing the execution...");
     for tc in &ex.toolchains {
         tc.prepare()?;
+        if ex.mode == Mode::Clippy {
+            tc.install_rustup_component("clippy")?;
+        }
     }
 
     info!("running tasks in {} threads...", threads_count);

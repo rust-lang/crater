@@ -39,6 +39,7 @@ impl ExperimentData {
                 Mode::BuildAndTest => "cargo test",
                 Mode::BuildOnly => "cargo build",
                 Mode::CheckOnly => "cargo check",
+                Mode::Clippy => "cargo clippy",
                 Mode::Rustdoc => "cargo doc",
                 Mode::UnstableFeatures => "unstable features",
             },

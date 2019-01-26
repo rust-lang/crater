@@ -76,6 +76,21 @@
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"
     },
     {
+      "name": "clippy-warn (local)",
+      "res": "test-pass",
+      "runs": [
+        {
+          "log": "stable/local/clippy-warn",
+          "res": "test-pass"
+        },
+        {
+          "log": "beta/local/clippy-warn",
+          "res": "test-pass"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/clippy-warn"
+    },
+    {
       "name": "memory-hungry (local)",
       "res": "spurious-fixed",
       "runs": [

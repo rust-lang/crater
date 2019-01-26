@@ -71,6 +71,27 @@ impl Toolchain {
         }
     }
 
+    pub fn install_rustup_component(&self, component: &str) -> Fallible<()> {
+        let toolchain_name = &self.rustup_name();
+        info!(
+            "installing component {} for toolchain {}",
+            component, toolchain_name
+        );
+
+        utils::try_hard(|| {
+            RunCommand::new(&RUSTUP)
+                .args(&["component", "add", "--toolchain", toolchain_name, component])
+                .run()
+                .with_context(|_| {
+                    format!(
+                        "unable to install component {} for toolchain {} via rustup",
+                        component, toolchain_name,
+                    )
+                })
+        })?;
+        Ok(())
+    }
+
     pub fn target_dir(&self, ex_name: &str) -> PathBuf {
         let mut dir = ex_target_dir(ex_name);
 
@@ -80,7 +101,7 @@ impl Toolchain {
             dir = dir.join("shared");
         }
 
-        dir.join(self.to_string())
+        dir.join(self.to_path_component())
     }
 
     pub fn prep_offline_registry(&self) -> Fallible<()> {
@@ -99,6 +120,12 @@ impl Toolchain {
         // https://github.com/rust-lang/cargo/pull/5961
         // is ready
         Ok(())
+    }
+
+    pub fn to_path_component(&self) -> String {
+        use url::percent_encoding::utf8_percent_encode as encode;
+
+        encode(&self.to_string(), utils::fs::FILENAME_ENCODE_SET).to_string()
     }
 }
 

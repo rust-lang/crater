@@ -22,6 +22,7 @@ string_enum!(pub enum Mode {
     BuildAndTest => "build-and-test",
     BuildOnly => "build-only",
     CheckOnly => "check-only",
+    Clippy => "clippy",
     Rustdoc => "rustdoc",
     UnstableFeatures => "unstable-features",
 });

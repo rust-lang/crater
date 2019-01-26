@@ -9,7 +9,7 @@ use crate::server::Data;
 use bytes::buf::Buf;
 use http::{HeaderMap, Response, StatusCode};
 use hyper::Body;
-use ring;
+use openssl::{hash::MessageDigest, pkey::PKey, sign::Signer};
 use serde_json;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -127,6 +127,15 @@ fn process_command(
 }
 
 fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
+    macro_rules! try_false {
+        ($expr:expr) => {
+            match $expr {
+                Ok(res) => res,
+                Err(_) => return false,
+            }
+        };
+    };
+
     // The signature must have a =
     if !raw_signature.contains('=') {
         return false;
@@ -152,16 +161,17 @@ fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
 
     // Get the correct digest
     let digest = match *algorithm {
-        "sha1" => &ring::digest::SHA1,
-        _ => {
-            // Unknown digest, return false
-            return false;
-        }
+        "sha1" => MessageDigest::sha1(),
+        // Unknown digest, return false
+        _ => return false,
     };
 
-    // Verify the HMAC signature
-    let key = ring::hmac::VerificationKey::new(digest, secret.as_bytes());
-    ring::hmac::verify(&key, payload, &signature).is_ok()
+    // Verify the HMAC using OpenSSL
+    let key = try_false!(PKey::hmac(secret.as_bytes()));
+    let mut signer = try_false!(Signer::new(digest, &key));
+    try_false!(signer.update(payload));
+    let hmac = try_false!(signer.sign_to_vec());
+    openssl::memcmp::eq(&hmac, &signature)
 }
 
 fn receive_endpoint(data: Arc<Data>, headers: HeaderMap, body: FullBody) -> Fallible<()> {

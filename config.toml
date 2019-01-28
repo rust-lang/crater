@@ -1780,15 +1780,6 @@ glsl-to-spirv-macros-impl = { skip = true } #automatic
 gltf = { skip-tests = true } #automatic
 gltf-importer = { skip-tests = true } #automatic
 glu32-sys = { skip = true } #automatic
-gluon = { skip = true } #automatic
-gluon_check = { skip = true } #automatic
-gluon_completion = { skip-tests = true } #automatic
-gluon_doc = { skip = true } #automatic
-gluon_format = { skip-tests = true } #automatic
-gluon_language-server = { skip = true } #automatic
-gluon_parser = { skip = true } #automatic
-gluon_repl = { skip = true } #automatic
-gluon_vm = { skip = true } #automatic
 glutin_cocoa = { skip = true } #automatic
 glyph_brush = { skip = true } #automatic
 glyph_brush_layout = { skip = true } #automatic

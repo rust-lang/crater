@@ -124,7 +124,6 @@ fn endpoint_complete_experiment_chunk(
 ) -> Fallible<Response<Body>> {
     let mut chunk = ExperimentChunk::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or_else(|| err_msg("no experiment chunk run by this agent"))?;
-
     let mut ex = Experiment::get(&data.db, &chunk.parent_name)?
         .ok_or_else(|| err_msg("no experiment with this name"))?;
 
@@ -148,7 +147,7 @@ fn endpoint_record_progress(
     let chunk = ExperimentChunk::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or_else(|| err_msg("no experiment chunk run by this agent"))?;
 
-    let ex = Experiment::get(&data.db, &chunk.name)?
+    let ex = Experiment::get(&data.db, &chunk.parent_name)?
         .ok_or_else(|| err_msg("no experiment with this name"))?;
 
     info!(

@@ -207,7 +207,7 @@ impl ExperimentChunk {
                 .get_row(
                     "SELECT COUNT(*) AS count FROM results \
                      WHERE experiment = ?1 AND crate = ?2;",
-                    &[&self.name.as_str(), &serde_json::to_string(&krate)?],
+                    &[&self.parent_name.as_str(), &serde_json::to_string(&krate)?],
                     |r| r.get("count"),
                 )?
                 .unwrap();
@@ -268,7 +268,7 @@ impl ExperimentChunkDBRecord {
     fn into_experiment_chunk(self, db: &Database) -> Fallible<ExperimentChunk> {
         let crates = db
             .query(
-                "SELECT crate FROM experiment_crates WHERE experiment = ?1",
+                "SELECT crate FROM experiment_chunk_crates WHERE experiment_chunk = ?1",
                 &[&self.name],
                 |r| {
                     let value: String = r.get("crate");

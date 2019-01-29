@@ -1,3 +1,5 @@
+mod experiment_chunks;
+pub use self::experiment_chunks::ExperimentChunk;
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::prelude::*;
@@ -123,6 +125,7 @@ pub struct Experiment {
     pub assigned_to: Option<Assignee>,
     pub report_url: Option<String>,
     pub ignore_blacklist: bool,
+    pub children: u32,
 }
 
 impl Experiment {
@@ -242,6 +245,18 @@ impl Experiment {
         Ok(())
     }
 
+    pub fn complete_children(&mut self, db: &Database) -> Fallible<()> {
+        self.children -= 1;
+        db.execute(
+            "UPDATE experiments SET children = ?1 WHERE name = ?2;",
+            &[&self.children, &self.name.as_str()],
+        )?;
+        if self.children == 0 {
+            self.set_status(db, Status::NeedsReport)?;
+        }
+        Ok(())
+    }
+
     pub fn set_assigned_to(
         &mut self,
         db: &Database,
@@ -335,6 +350,7 @@ struct ExperimentDBRecord {
     assigned_to: Option<String>,
     report_url: Option<String>,
     ignore_blacklist: bool,
+    children: u32,
 }
 
 impl ExperimentDBRecord {
@@ -356,6 +372,7 @@ impl ExperimentDBRecord {
             assigned_to: row.get("assigned_to"),
             report_url: row.get("report_url"),
             ignore_blacklist: row.get("ignore_blacklist"),
+            children: row.get("children"),
         }
     }
 
@@ -403,6 +420,7 @@ impl ExperimentDBRecord {
             status: self.status.parse()?,
             report_url: self.report_url,
             ignore_blacklist: self.ignore_blacklist,
+            children: self.children,
         })
     }
 }

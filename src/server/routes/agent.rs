@@ -1,4 +1,4 @@
-use crate::experiments::{Assignee, Experiment, Status};
+use crate::experiments::{Assignee, Experiment, ExperimentChunk, Status};
 use crate::prelude::*;
 use crate::results::{DatabaseDB, ProgressData};
 use crate::server::api_types::{AgentConfig, ApiResponse};
@@ -26,18 +26,18 @@ pub fn routes(
         .map(endpoint_config);
 
     let next_experiment = warp::get2()
-        .and(warp::path("next-experiment"))
+        .and(warp::path("next-experiment-chunk"))
         .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
-        .map(endpoint_next_experiment);
+        .map(endpoint_next_experiment_chunk);
 
     let complete_experiment = warp::post2()
-        .and(warp::path("complete-experiment"))
+        .and(warp::path("complete-experiment-chunk"))
         .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
-        .map(endpoint_complete_experiment);
+        .map(endpoint_complete_experiment_chunk);
 
     let record_progress = warp::post2()
         .and(warp::path("record-progress"))
@@ -91,8 +91,8 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body
     .into_response()?)
 }
 
-fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
-    let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
+fn endpoint_next_experiment_chunk(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
+    let next = ExperimentChunk::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
 
     let result = if let Some((new, mut ex)) = next {
         if new {
@@ -118,12 +118,23 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
     Ok(ApiResponse::Success { result }.into_response()?)
 }
 
-fn endpoint_complete_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
-    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
-        .ok_or_else(|| err_msg("no experiment run by this agent"))?;
+fn endpoint_complete_experiment_chunk(
+    data: Arc<Data>,
+    auth: AuthDetails,
+) -> Fallible<Response<Body>> {
+    let mut chunk = ExperimentChunk::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+        .ok_or_else(|| err_msg("no experiment chunk run by this agent"))?;
 
-    ex.set_status(&data.db, Status::NeedsReport)?;
-    info!("experiment {} completed, marked as needs-report", ex.name);
+    let mut ex = Experiment::get(&data.db, &chunk.parent_name)?
+        .ok_or_else(|| err_msg("no experiment with this name"))?;
+
+    chunk.set_status(&data.db, Status::NeedsReport)?;
+    info!("experiment chunk {} completed", chunk.name);
+    ex.complete_children(&data.db)?;
+    if ex.children == 0 {
+        info!("experiment {} completed, marked as NeedsReport", ex.name);
+    }
+
     data.reports_worker.wake(); // Ensure the reports worker is awake
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
@@ -134,16 +145,21 @@ fn endpoint_record_progress(
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let experiment = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
-        .ok_or_else(|| err_msg("no experiment run by this agent"))?;
+    let chunk = ExperimentChunk::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+        .ok_or_else(|| err_msg("no experiment chunk run by this agent"))?;
+
+    let ex = Experiment::get(&data.db, &chunk.name)?
+        .ok_or_else(|| err_msg("no experiment with this name"))?;
 
     info!(
         "received progress on experiment {} from agent {}",
-        experiment.name, auth.name,
+        ex.name, auth.name,
     );
 
     let db = DatabaseDB::new(&data.db);
-    db.store(&experiment, &result)?;
+    //let old = db.load_all_results(&ex)?;
+    //result.merge(old);
+    db.store(&ex, &result)?;
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }
@@ -162,8 +178,11 @@ fn endpoint_error(
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
-        .ok_or_else(|| err_msg("no experiment run by this agent"))?;
+    let chunk = ExperimentChunk::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+        .ok_or_else(|| err_msg("no experiment chunk run by this agent"))?;
+
+    let mut ex = Experiment::get(&data.db, &chunk.parent_name)?
+        .ok_or_else(|| err_msg("no experiment with this name"))?;
 
     ex.set_status(&data.db, Status::Failed)?;
 

@@ -1,5 +1,5 @@
 use crate::crates::Crate;
-use crate::experiments::{Experiment, ExperimentChunk};
+use crate::experiments::ExperimentChunk;
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
 use std::env;

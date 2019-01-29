@@ -181,7 +181,7 @@ impl ExperimentChunk {
             .get_row(
                 "SELECT COUNT(*) AS count FROM experiment_chunk_crates \
                  WHERE experiment = ?1 AND skipped = 0;",
-                &[&self.name.as_str()],
+                &[&self.parent_name.as_str()],
                 |r| r.get("count"),
             )?
             .unwrap();

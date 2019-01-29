@@ -11,7 +11,7 @@ use log::LevelFilter;
 use serde_json;
 use std::collections::HashMap;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct TaskResult {
     #[serde(rename = "crate")]
     pub krate: Crate,
@@ -20,7 +20,7 @@ pub struct TaskResult {
     pub log: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct ProgressData {
     pub results: Vec<TaskResult>,
     pub shas: Vec<(GitHubRepo, String)>,

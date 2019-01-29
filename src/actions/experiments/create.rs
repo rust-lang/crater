@@ -5,6 +5,8 @@ use crate::prelude::*;
 use crate::toolchain::Toolchain;
 use chrono::Utc;
 
+static CHUNK_SIZE: usize = 2;
+
 pub struct CreateExperiment {
     pub name: String,
     pub toolchains: [Toolchain; 2],
@@ -34,6 +36,14 @@ impl CreateExperiment {
     }
 }
 
+fn get_portion<T: std::clone::Clone>(vec: &Vec<T>, i: usize) -> Vec<T> {
+    if i == vec.len() / CHUNK_SIZE {
+        vec[i * CHUNK_SIZE..].to_vec()
+    } else {
+        vec[i * CHUNK_SIZE..i * CHUNK_SIZE + CHUNK_SIZE].to_vec()
+    }
+}
+
 impl Action for CreateExperiment {
     fn apply(self, ctx: &ActionsCtx) -> Fallible<()> {
         // Ensure no duplicate experiments are created
@@ -47,39 +57,82 @@ impl Action for CreateExperiment {
         }
 
         let crates = crate::crates::lists::get_crates(self.crates, &ctx.db, &ctx.config)?;
-
+        println!("{:?}", &crates);
         ctx.db.transaction(|transaction| {
-            transaction.execute(
-                "INSERT INTO experiments \
-                 (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
-                 status, github_issue, github_issue_url, github_issue_number, ignore_blacklist) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);",
-                &[
-                    &self.name,
-                    &self.mode.to_str(),
-                    &self.cap_lints.to_str(),
-                    &self.toolchains[0].to_string(),
-                    &self.toolchains[1].to_string(),
-                    &self.priority,
-                    &Utc::now(),
-                    &Status::Queued.to_str(),
-                    &self.github_issue.as_ref().map(|i| i.api_url.as_str()),
-                    &self.github_issue.as_ref().map(|i| i.html_url.as_str()),
-                    &self.github_issue.as_ref().map(|i| i.number),
-                    &self.ignore_blacklist,
-                ],
-            )?;
+                  transaction.execute(
+                      "INSERT INTO experiments \
+                      (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
+                      status, github_issue, github_issue_url, github_issue_number, children, ignore_blacklist) \
+                      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
+                      &[
+                          &self.name,
+                          &self.mode.to_str(),
+                          &self.cap_lints.to_str(),
+                          &self.toolchains[0].to_string(),
+                          &self.toolchains[1].to_string(),
+                          &self.priority,
+                          &Utc::now(),
+                          &Status::Queued.to_str(),
+                          &self.github_issue.as_ref().map(|i| i.api_url.as_str()),
+                          &self.github_issue.as_ref().map(|i| i.html_url.as_str()),
+                          &self.github_issue.as_ref().map(|i| i.number),
+                          &((crates.len() / CHUNK_SIZE + 1) as i32),
+                          &self.ignore_blacklist,
+                      ],
+                  )?;
 
-            for krate in &crates {
-                let skipped = !self.ignore_blacklist && ctx.config.should_skip(krate);
+                  for krate in &crates {
+                      let skipped = !self.ignore_blacklist && ctx.config.should_skip(krate);
+                      transaction.execute(
+                          "INSERT INTO experiment_crates (experiment, crate, skipped) VALUES (?1, ?2, ?3);",
+                          &[&self.name, &::serde_json::to_string(&krate)?, &skipped],
+                      )?;
+                  }
+
+                  Ok(())
+              })?;
+
+        for i in 0..crates.len() / CHUNK_SIZE + 1 {
+            let name =
+                i.to_string() + "//" + &(crates.len() / 2).to_string() + "-partial-" + &self.name;
+            let crat = get_portion(&crates, i);
+            println!("round ---{:?}", &crat);
+            ctx.db.transaction(|transaction| {
                 transaction.execute(
-                    "INSERT INTO experiment_crates (experiment, crate, skipped) VALUES (?1, ?2, ?3);",
-                    &[&self.name, &::serde_json::to_string(&krate)?, &skipped],
+                    "INSERT INTO experiment_chunks \
+                    (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
+                    status, github_issue, github_issue_url, github_issue_number, ignore_blacklist, parent) \
+                    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
+                    &[
+                        &name,
+                        &self.mode.to_str(),
+                        &self.cap_lints.to_str(),
+                        &self.toolchains[0].to_string(),
+                        &self.toolchains[1].to_string(),
+                        &self.priority,
+                        &Utc::now(),
+                        &Status::Queued.to_str(),
+                        &self.github_issue.as_ref().map(|i| i.api_url.as_str()),
+                        &self.github_issue.as_ref().map(|i| i.html_url.as_str()),
+                        &self.github_issue.as_ref().map(|i| i.number),
+                        &self.ignore_blacklist,
+                        &self.name,
+                    ],
                 )?;
-            }
 
-            Ok(())
-        })?;
+                for krate in &crat {
+                    let skipped = !self.ignore_blacklist && ctx.config.should_skip(krate);
+                    transaction.execute(
+                        "INSERT INTO experiment_chunk_crates (experiment_chunk, crate, skipped) VALUES (?1, ?2, ?3);",
+                        &[&name, &::serde_json::to_string(&krate)?, &skipped],
+                    )?;
+                }
+
+                Ok(())
+            })?;
+
+            info!("experiment crated");
+        }
 
         Ok(())
     }

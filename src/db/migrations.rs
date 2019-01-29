@@ -39,11 +39,36 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                 FOREIGN KEY (assigned_to) REFERENCES agents(name) ON DELETE SET NULL
             );
 
+            CREATE TABLE experiment_chunks (
+                name TEXT PRIMARY KEY,
+                mode TEXT NOT NULL,
+                cap_lints TEXT NOT NULL,
+                toolchain_start TEXT NOT NULL,
+                toolchain_end TEXT NOT NULL,
+                priority INTEGER NOT NULL,
+                created_at DATETIME NOT NULL,
+                status TEXT NOT NULL,
+                github_issue TEXT,
+                github_issue_url TEXT,
+                github_issue_number INTEGER,
+                assigned_to TEXT,
+                parent TEXT,
+
+                FOREIGN KEY (parent) REFERENCES experiments(name) ON DELETE CASCADE
+            );
+
             CREATE TABLE experiment_crates (
                 experiment TEXT NOT NULL,
                 crate TEXT NOT NULL,
 
                 FOREIGN KEY (experiment) REFERENCES experiments(name) ON DELETE CASCADE
+            );
+
+            CREATE TABLE experiment_chunk_crates (
+                experiment_chunk TEXT NOT NULL,
+                crate TEXT NOT NULL,
+
+                FOREIGN KEY (experiment_chunk) REFERENCES experiment_chunks(name) ON DELETE CASCADE
             );
 
             CREATE TABLE results (
@@ -93,6 +118,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         MigrationKind::SQL(
             "
             ALTER TABLE experiment_crates ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0;
+            ALTER TABLE experiment_chunk_crates ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0;
             ",
         ),
     ));
@@ -116,6 +142,8 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
             "
             ALTER TABLE experiments ADD COLUMN started_at DATETIME;
             ALTER TABLE experiments ADD COLUMN completed_at DATETIME;
+            ALTER TABLE experiment_chunks ADD COLUMN started_at DATETIME;
+            ALTER TABLE experiment_chunks ADD COLUMN completed_at DATETIME;
             ",
         ),
     ));
@@ -125,6 +153,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         MigrationKind::SQL(
             "
             ALTER TABLE experiments ADD COLUMN report_url TEXT;
+            ALTER TABLE experiment_chunks ADD COLUMN report_url TEXT;
             ",
         ),
     ));
@@ -193,23 +222,20 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                 name TEXT PRIMARY KEY,
                 mode TEXT NOT NULL,
                 cap_lints TEXT NOT NULL,
-
                 toolchain_start TEXT NOT NULL,
                 toolchain_end TEXT NOT NULL,
-
                 created_at DATETIME NOT NULL,
                 started_at DATETIME,
                 completed_at DATETIME,
-
                 priority INTEGER NOT NULL,
                 status TEXT NOT NULL,
                 report_url TEXT,
                 github_issue TEXT,
                 github_issue_url TEXT,
                 github_issue_number INTEGER,
-                assigned_to TEXT
+                assigned_to TEXT,
+                children INTEGER NOT NULL
             );
-
             INSERT INTO experiments_new (
                 name, mode, cap_lints, toolchain_start, toolchain_end, created_at, started_at,
                 completed_at, priority, status, report_url, github_issue, github_issue_url,
@@ -220,7 +246,6 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                 github_issue_number,
                 CASE WHEN assigned_to IS NOT NULL THEN 'agent:' || assigned_to ELSE NULL END
             FROM experiments;
-
             DROP TABLE experiments;
             ALTER TABLE experiments_new RENAME TO experiments;
             ",
@@ -249,6 +274,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         MigrationKind::SQL(
             "
             ALTER TABLE experiments ADD COLUMN ignore_blacklist INTEGER NOT NULL DEFAULT 0;
+            ALTER TABLE experiment_chunks ADD COLUMN ignore_blacklist INTEGER NOT NULL DEFAULT 0;
             ",
         ),
     ));

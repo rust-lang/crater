@@ -93,8 +93,11 @@ impl Action for CreateExperiment {
               })?;
 
         for i in 0..crates.len() / CHUNK_SIZE + 1 {
-            let name =
-                i.to_string() + "//" + &(crates.len() / 2).to_string() + "-partial-" + &self.name;
+            let name = i.to_string()
+                + "/"
+                + &(crates.len() / CHUNK_SIZE).to_string()
+                + "-partial-"
+                + &self.name;
             let crat = get_portion(&crates, i);
             println!("round ---{:?}", &crat);
             ctx.db.transaction(|transaction| {
@@ -131,7 +134,7 @@ impl Action for CreateExperiment {
                 Ok(())
             })?;
 
-            info!("experiment crated");
+            info!("experiment created");
         }
 
         Ok(())

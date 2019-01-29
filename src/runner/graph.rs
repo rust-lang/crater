@@ -70,7 +70,7 @@ impl WalkResult {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(super) struct TasksGraph {
     graph: StableDiGraph<Node, ()>,
     root: NodeIndex,

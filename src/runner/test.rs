@@ -64,18 +64,19 @@ pub(super) fn run_test<DB: WriteResults>(
 ) -> Fallible<()> {
     if let Some(res) = ctx
         .db
-        .get_result(ctx.experiment, ctx.toolchain, ctx.krate)?
+        .get_result_chunk(ctx.experiment, ctx.toolchain, ctx.krate)?
     {
         info!("skipping crate {}. existing result: {}", ctx.krate, res);
     } else {
-        let source_path = crate::dirs::crate_source_dir(ctx.experiment, ctx.toolchain, ctx.krate);
+        let source_path =
+            crate::dirs::crate_source_dir_chunk(ctx.experiment, ctx.toolchain, ctx.krate);
         let log_storage = ctx
             .state
             .lock()
             .prepare_logs
             .get(&ctx.krate)
             .map(|s| s.duplicate());
-        ctx.db.record_result(
+        ctx.db.record_result_chunk(
             ctx.experiment,
             ctx.toolchain,
             ctx.krate,

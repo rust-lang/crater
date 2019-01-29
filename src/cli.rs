@@ -14,7 +14,9 @@ use crater::agent;
 use crater::config::Config;
 use crater::crates::Crate;
 use crater::db::Database;
-use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
+use crater::experiments::{
+    Assignee, CapLints, CrateSelect, Experiment, ExperimentChunk, Mode, Status,
+};
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
 use crater::runner;
@@ -409,8 +411,8 @@ impl Crater {
                     .unwrap_or(DEFAULT_DOCKER_ENV);
                 let config = Config::load()?;
                 let db = Database::open()?;
-
-                if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
+                //TODO fix
+                if let Some(mut experiment) = ExperimentChunk::get(&db, &ex.0)? {
                     // Ensure the experiment is properly assigned
                     match experiment.assigned_to {
                         None => experiment.set_assigned_to(&db, Some(&Assignee::CLI))?,
@@ -531,8 +533,8 @@ impl Crater {
             Crater::DumpTasksGraph { ref dest, ref ex } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
-
-                if let Some(experiment) = Experiment::get(&db, &ex.0)? {
+                //TODO fix
+                if let Some(experiment) = ExperimentChunk::get(&db, &ex.0)? {
                     runner::dump_dot(&experiment, &config, dest)?;
                 } else {
                     bail!("missing experiment: {}", ex.0);

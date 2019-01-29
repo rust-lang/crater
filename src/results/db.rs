@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
 use crate::db::{Database, QueryUtils};
-use crate::experiments::Experiment;
+use crate::experiments::{Experiment, ExperimentChunk};
 use crate::logs::{self, LogStorage};
 use crate::prelude::*;
 use crate::results::{DeleteResults, ReadResults, TestResult, WriteResults};
@@ -56,6 +56,28 @@ impl<'a> DatabaseDB<'a> {
     fn store_result(
         &self,
         ex: &Experiment,
+        krate: &Crate,
+        toolchain: &Toolchain,
+        res: TestResult,
+        log: &[u8],
+    ) -> Fallible<()> {
+        self.db.execute(
+            "INSERT INTO results (experiment, crate, toolchain, result, log) \
+             VALUES (?1, ?2, ?3, ?4, ?5);",
+            &[
+                &ex.name,
+                &serde_json::to_string(krate)?,
+                &toolchain.to_string(),
+                &res.to_string(),
+                &log,
+            ],
+        )?;
+        Ok(())
+    }
+
+    fn store_result_chunk(
+        &self,
+        ex: &ExperimentChunk,
         krate: &Crate,
         toolchain: &Toolchain,
         res: TestResult,
@@ -143,6 +165,73 @@ impl<'a> ReadResults for DatabaseDB<'a> {
             Ok(None)
         }
     }
+
+    fn load_all_shas_chunk(&self, ex: &ExperimentChunk) -> Fallible<HashMap<GitHubRepo, String>> {
+        Ok(self
+            .db
+            .query(
+                "SELECT * FROM shas WHERE experiment = ?1;",
+                &[&ex.name],
+                |row| {
+                    (
+                        GitHubRepo {
+                            org: row.get("org"),
+                            name: row.get("name"),
+                        },
+                        row.get("sha"),
+                    )
+                },
+            )?
+            .into_iter()
+            .collect())
+    }
+
+    fn load_log_chunk(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<Option<Vec<u8>>> {
+        Ok(self.db.get_row(
+            "SELECT log FROM results \
+             WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
+             LIMIT 1;",
+            &[
+                &ex.name,
+                &toolchain.to_string(),
+                &serde_json::to_string(krate)?,
+            ],
+            |row| row.get("log"),
+        )?)
+    }
+
+    fn load_test_result_chunk(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<Option<TestResult>> {
+        let result: Option<String> = self
+            .db
+            .query(
+                "SELECT result FROM results \
+                 WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
+                 LIMIT 1;",
+                &[
+                    &ex.name,
+                    &toolchain.to_string(),
+                    &serde_json::to_string(krate)?,
+                ],
+                |row| row.get("result"),
+            )?
+            .pop();
+
+        if let Some(res) = result {
+            Ok(Some(res.parse()?))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 impl<'a> WriteResults for DatabaseDB<'a> {
@@ -182,6 +271,43 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         self.store_result(ex, krate, toolchain, result, output.as_bytes())?;
         Ok(result)
     }
+
+    fn get_result_chunk(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<Option<TestResult>> {
+        self.load_test_result_chunk(ex, toolchain, krate)
+    }
+
+    fn record_sha_chunk(&self, ex: &ExperimentChunk, repo: &GitHubRepo, sha: &str) -> Fallible<()> {
+        self.db.execute(
+            "INSERT INTO shas (experiment, org, name, sha) VALUES (?1, ?2, ?3, ?4)",
+            &[&ex.name, &repo.org, &repo.name, &sha],
+        )?;
+
+        Ok(())
+    }
+
+    fn record_result_chunk<F>(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+        existing_logs: Option<LogStorage>,
+        config: &Config,
+        f: F,
+    ) -> Fallible<TestResult>
+    where
+        F: FnOnce() -> Fallible<TestResult>,
+    {
+        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info, config));
+        let result = logs::capture(&storage, f)?;
+        let output = storage.to_string();
+        self.store_result_chunk(ex, krate, toolchain, result, output.as_bytes())?;
+        Ok(result)
+    }
 }
 
 impl<'a> DeleteResults for DatabaseDB<'a> {
@@ -192,6 +318,29 @@ impl<'a> DeleteResults for DatabaseDB<'a> {
     }
 
     fn delete_result(&self, ex: &Experiment, tc: &Toolchain, krate: &Crate) -> Fallible<()> {
+        self.db.execute(
+            "DELETE FROM results WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3;",
+            &[
+                &ex.name,
+                &tc.to_string(),
+                &serde_json::to_string(krate).unwrap(),
+            ],
+        )?;
+        Ok(())
+    }
+
+    fn delete_all_results_chunk(&self, ex: &ExperimentChunk) -> Fallible<()> {
+        self.db
+            .execute("DELETE FROM results WHERE experiment = ?1;", &[&ex.name])?;
+        Ok(())
+    }
+
+    fn delete_result_chunk(
+        &self,
+        ex: &ExperimentChunk,
+        tc: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<()> {
         self.db.execute(
             "DELETE FROM results WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3;",
             &[

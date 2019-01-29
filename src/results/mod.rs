@@ -4,7 +4,7 @@ mod dummy;
 
 use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
-use crate::experiments::Experiment;
+use crate::experiments::{Experiment, ExperimentChunk};
 use crate::logs::LogStorage;
 use crate::prelude::*;
 pub use crate::results::db::{DatabaseDB, ProgressData};
@@ -25,6 +25,19 @@ pub trait ReadResults {
     fn load_test_result(
         &self,
         ex: &Experiment,
+        toolchain: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<Option<TestResult>>;
+    fn load_all_shas_chunk(&self, ex: &ExperimentChunk) -> Fallible<HashMap<GitHubRepo, String>>;
+    fn load_log_chunk(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<Option<Vec<u8>>>;
+    fn load_test_result_chunk(
+        &self,
+        ex: &ExperimentChunk,
         toolchain: &Toolchain,
         krate: &Crate,
     ) -> Fallible<Option<TestResult>>;
@@ -49,11 +62,36 @@ pub trait WriteResults {
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>;
+    fn get_result_chunk(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<Option<TestResult>>;
+    fn record_sha_chunk(&self, ex: &ExperimentChunk, repo: &GitHubRepo, sha: &str) -> Fallible<()>;
+    fn record_result_chunk<F>(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+        existing_logs: Option<LogStorage>,
+        config: &Config,
+        f: F,
+    ) -> Fallible<TestResult>
+    where
+        F: FnOnce() -> Fallible<TestResult>;
 }
 
 pub trait DeleteResults {
     fn delete_all_results(&self, ex: &Experiment) -> Fallible<()>;
     fn delete_result(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> Fallible<()>;
+    fn delete_all_results_chunk(&self, ex: &ExperimentChunk) -> Fallible<()>;
+    fn delete_result_chunk(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<()>;
 }
 
 macro_rules! test_result_enum {

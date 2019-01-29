@@ -8,7 +8,7 @@ mod unstable_features;
 use crate::config::Config;
 use crate::crates::Crate;
 use crate::docker::DockerEnv;
-use crate::experiments::Experiment;
+use crate::experiments::ExperimentChunk;
 use crate::logs::LogStorage;
 use crate::prelude::*;
 use crate::results::{FailureReason, TestResult, WriteResults};
@@ -47,7 +47,7 @@ impl RunnerState {
 }
 
 pub fn run_ex<DB: WriteResults + Sync>(
-    ex: &Experiment,
+    ex: &ExperimentChunk,
     db: &DB,
     threads_count: usize,
     config: &Config,
@@ -69,7 +69,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 }
 
 fn run_ex_inner<DB: WriteResults + Sync>(
-    ex: &Experiment,
+    ex: &ExperimentChunk,
     db: &DB,
     threads_count: usize,
     config: &Config,
@@ -190,7 +190,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     Ok(())
 }
 
-pub fn dump_dot(ex: &Experiment, config: &Config, dest: &Path) -> Fallible<()> {
+pub fn dump_dot(ex: &ExperimentChunk, config: &Config, dest: &Path) -> Fallible<()> {
     info!("computing the tasks graph...");
     let graph = build_graph(&ex, config);
 

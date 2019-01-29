@@ -4,7 +4,7 @@ mod results;
 use crate::agent::api::AgentApi;
 use crate::agent::results::ResultsUploader;
 use crate::config::Config;
-use crate::experiments::Experiment;
+use crate::experiments::ExperimentChunk;
 use crate::prelude::*;
 use crate::utils;
 use std::thread;
@@ -31,9 +31,9 @@ impl Agent {
         })
     }
 
-    fn experiment(&self) -> Fallible<Experiment> {
+    fn experiment_chunk(&self) -> Fallible<ExperimentChunk> {
         info!("asking the server for a new experiment...");
-        Ok(self.api.next_experiment()?)
+        Ok(self.api.next_experiment_chunk()?)
     }
 }
 
@@ -48,15 +48,15 @@ fn run_heartbeat(url: &str, token: &str) {
     });
 }
 
-fn run_experiment(
+fn run_experiment_chunk(
     agent: &Agent,
     db: &ResultsUploader,
     threads_count: usize,
     docker_env: &str,
 ) -> Fallible<()> {
-    let ex = agent.experiment()?;
+    let ex = agent.experiment_chunk()?;
     crate::runner::run_ex(&ex, db, threads_count, &agent.config, docker_env)?;
-    agent.api.complete_experiment()?;
+    agent.api.complete_experiment_chunk()?;
     Ok(())
 }
 
@@ -67,7 +67,7 @@ pub fn run(url: &str, token: &str, threads_count: usize, docker_env: &str) -> Fa
     run_heartbeat(url, token);
 
     loop {
-        if let Err(err) = run_experiment(&agent, &db, threads_count, docker_env) {
+        if let Err(err) = run_experiment_chunk(&agent, &db, threads_count, docker_env) {
             utils::report_failure(&err);
             if let Err(e) = agent
                 .api

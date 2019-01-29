@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::crates::Crate;
 use crate::dirs;
 use crate::docker::DockerEnv;
-use crate::experiments::Experiment;
+use crate::experiments::ExperimentChunk;
 use crate::logs::{self, LogStorage};
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
@@ -16,7 +16,7 @@ use std::fmt;
 pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
     pub(super) config: &'ctx Config,
     pub(super) db: &'ctx DB,
-    pub(super) experiment: &'ctx Experiment,
+    pub(super) experiment: &'ctx ExperimentChunk,
     pub(super) toolchain: &'ctx Toolchain,
     pub(super) krate: &'ctx Crate,
     pub(super) docker_env: &'ctx DockerEnv,
@@ -28,7 +28,7 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
     fn new(
         config: &'ctx Config,
         db: &'ctx DB,
-        experiment: &'ctx Experiment,
+        experiment: &'ctx ExperimentChunk,
         toolchain: &'ctx Toolchain,
         krate: &'ctx Crate,
         docker_env: &'ctx DockerEnv,
@@ -107,7 +107,7 @@ impl fmt::Debug for Task {
 }
 
 impl Task {
-    pub(super) fn needs_exec<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> bool {
+    pub(super) fn needs_exec<DB: WriteResults>(&self, ex: &ExperimentChunk, db: &DB) -> bool {
         // If an error happens while checking if the task should be executed, the error is ignored
         // and the function returns true.
         match self.step {
@@ -121,15 +121,16 @@ impl Task {
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
             | TaskStep::Rustdoc { ref tc, .. }
-            | TaskStep::UnstableFeatures { ref tc } => {
-                db.get_result(ex, tc, &self.krate).unwrap_or(None).is_none()
-            }
+            | TaskStep::UnstableFeatures { ref tc } => db
+                .get_result_chunk(ex, tc, &self.krate)
+                .unwrap_or(None)
+                .is_none(),
         }
     }
 
     pub(super) fn mark_as_failed<DB: WriteResults, F: AsFail>(
         &self,
-        ex: &Experiment,
+        ex: &ExperimentChunk,
         db: &DB,
         state: &RunnerState,
         config: &Config,
@@ -148,7 +149,7 @@ impl Task {
                     .prepare_logs
                     .get(&self.krate)
                     .map(|s| s.duplicate());
-                db.record_result(ex, tc, &self.krate, log_storage, config, || {
+                db.record_result_chunk(ex, tc, &self.krate, log_storage, config, || {
                     error!("this task or one of its parent failed!");
                     utils::report_failure(err);
                     Ok(result)
@@ -162,7 +163,7 @@ impl Task {
     pub(super) fn run<DB: WriteResults>(
         &self,
         config: &Config,
-        ex: &Experiment,
+        ex: &ExperimentChunk,
         db: &DB,
         docker_env: &DockerEnv,
         state: &RunnerState,
@@ -171,7 +172,11 @@ impl Task {
             TaskStep::Cleanup => {
                 // Ensure source directories are cleaned up
                 for tc in &ex.toolchains {
-                    let _ = utils::fs::remove_dir_all(&dirs::crate_source_dir(ex, tc, &self.krate));
+                    let _ = utils::fs::remove_dir_all(&dirs::crate_source_dir_chunk(
+                        ex,
+                        tc,
+                        &self.krate,
+                    ));
                 }
                 // Remove stored logs
                 state.lock().prepare_logs.remove(&self.krate);

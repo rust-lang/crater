@@ -1,5 +1,5 @@
 use crate::crates::Crate;
-use crate::experiments::Experiment;
+use crate::experiments::{Experiment, ExperimentChunk};
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
 use std::env;
@@ -39,7 +39,11 @@ lazy_static! {
     pub static ref SOURCE_CACHE_DIR: PathBuf = WORK_DIR.join("cache").join("sources");
 }
 
-pub(crate) fn crate_source_dir(ex: &Experiment, tc: &Toolchain, krate: &Crate) -> PathBuf {
+pub(crate) fn crate_source_dir_chunk(
+    ex: &ExperimentChunk,
+    tc: &Toolchain,
+    krate: &Crate,
+) -> PathBuf {
     EXPERIMENT_DIR
         .join(&ex.name)
         .join("sources")

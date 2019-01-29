@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::crates::Crate;
-use crate::dirs::crate_source_dir;
-use crate::experiments::Experiment;
+use crate::dirs::crate_source_dir_chunk;
+use crate::experiments::ExperimentChunk;
 use crate::prelude::*;
 use crate::results::{FailureReason, TestResult, WriteResults};
 use crate::run::RunCommand;
@@ -12,7 +12,7 @@ use crate::tools::CARGO;
 use std::path::PathBuf;
 
 pub(super) struct PrepareCrate<'a, DB: WriteResults + 'a> {
-    experiment: &'a Experiment,
+    experiment: &'a ExperimentChunk,
     krate: &'a Crate,
     config: &'a Config,
     db: &'a DB,
@@ -21,7 +21,7 @@ pub(super) struct PrepareCrate<'a, DB: WriteResults + 'a> {
 
 impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
     pub(super) fn new(
-        experiment: &'a Experiment,
+        experiment: &'a ExperimentChunk,
         krate: &'a Crate,
         config: &'a Config,
         db: &'a DB,
@@ -29,7 +29,7 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
         let source_dirs = experiment
             .toolchains
             .iter()
-            .map(|tc| (tc, crate_source_dir(experiment, tc, krate)))
+            .map(|tc| (tc, crate_source_dir_chunk(experiment, tc, krate)))
             .collect();
 
         PrepareCrate {
@@ -81,7 +81,7 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
             };
 
             self.db
-                .record_sha(self.experiment, repo, &sha)
+                .record_sha_chunk(self.experiment, repo, &sha)
                 .with_context(|_| {
                     format!("failed to record the sha of GitHub repo {}", repo.slug())
                 })?;

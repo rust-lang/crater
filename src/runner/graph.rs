@@ -17,7 +17,7 @@
 //                                   +---+ tc2 <---+
 
 use crate::config::Config;
-use crate::experiments::{Experiment, Mode};
+use crate::experiments::{ExperimentChunk, Mode};
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
 use crate::runner::{
@@ -110,7 +110,11 @@ impl TasksGraph {
         id
     }
 
-    pub(super) fn next_task<DB: WriteResults>(&mut self, ex: &Experiment, db: &DB) -> WalkResult {
+    pub(super) fn next_task<DB: WriteResults>(
+        &mut self,
+        ex: &ExperimentChunk,
+        db: &DB,
+    ) -> WalkResult {
         let root = self.root;
         self.walk_graph(root, ex, db)
     }
@@ -118,7 +122,7 @@ impl TasksGraph {
     fn walk_graph<DB: WriteResults>(
         &mut self,
         node: NodeIndex,
-        ex: &Experiment,
+        ex: &ExperimentChunk,
         db: &DB,
     ) -> WalkResult {
         // Ensure tasks are only executed if needed
@@ -188,7 +192,7 @@ impl TasksGraph {
     pub(super) fn mark_as_failed<DB: WriteResults, F: AsFail>(
         &mut self,
         node: NodeIndex,
-        ex: &Experiment,
+        ex: &ExperimentChunk,
         db: &DB,
         state: &RunnerState,
         config: &Config,
@@ -223,7 +227,7 @@ impl TasksGraph {
     }
 }
 
-pub(super) fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
+pub(super) fn build_graph(ex: &ExperimentChunk, config: &Config) -> TasksGraph {
     let mut graph = TasksGraph::new();
 
     for krate in &ex.crates {

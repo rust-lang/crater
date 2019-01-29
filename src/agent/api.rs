@@ -1,5 +1,5 @@
 use crate::crates::{Crate, GitHubRepo};
-use crate::experiments::Experiment;
+use crate::experiments::ExperimentChunk;
 use crate::prelude::*;
 use crate::results::TestResult;
 use crate::server::api_types::{AgentConfig, ApiResponse, CraterToken};
@@ -128,10 +128,10 @@ impl AgentApi {
         })
     }
 
-    pub fn next_experiment(&self) -> Fallible<Experiment> {
+    pub fn next_experiment_chunk(&self) -> Fallible<ExperimentChunk> {
         self.retry(|this| loop {
             let resp: Option<_> = this
-                .build_request(Method::GET, "next-experiment")
+                .build_request(Method::GET, "next-experiment-chunk")
                 .send()?
                 .to_api_response()?;
 
@@ -171,10 +171,10 @@ impl AgentApi {
         })
     }
 
-    pub fn complete_experiment(&self) -> Fallible<()> {
+    pub fn complete_experiment_chunk(&self) -> Fallible<()> {
         self.retry(|this| {
             let _: bool = this
-                .build_request(Method::POST, "complete-experiment")
+                .build_request(Method::POST, "complete-experiment-chunk")
                 .send()?
                 .to_api_response()?;
             Ok(())

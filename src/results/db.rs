@@ -11,7 +11,7 @@ use log::LevelFilter;
 use serde_json;
 use std::collections::HashMap;
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct TaskResult {
     #[serde(rename = "crate")]
     pub krate: Crate,
@@ -20,17 +20,10 @@ pub struct TaskResult {
     pub log: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct ProgressData {
     pub results: Vec<TaskResult>,
     pub shas: Vec<(GitHubRepo, String)>,
-}
-
-impl ProgressData {
-    pub fn merge(&mut self, mut other: ProgressData) {
-        self.results.append(&mut other.results);
-        self.shas.append(&mut other.shas);
-    }
 }
 
 pub struct DatabaseDB<'a> {
@@ -102,41 +95,6 @@ impl<'a> DatabaseDB<'a> {
             ],
         )?;
         Ok(())
-    }
-
-    pub fn load_all_results(&self, ex: &Experiment) -> Fallible<ProgressData> {
-        let shas = self
-            .load_all_shas(ex)?
-            .iter()
-            .map(|(repo, sha)| (repo.clone(), sha.clone()))
-            .collect();
-        let results: Vec<TaskResult> = ex
-            .crates
-            .iter()
-            .cloned()
-            .map(move |krate| (krate, ex.toolchains[0].clone()))
-            .chain(
-                ex.crates
-                    .iter()
-                    .cloned()
-                    .map(move |krate| (krate, ex.toolchains[1].clone())),
-            )
-            .map(move |(krate, toolchain)| {
-                Ok(TaskResult {
-                    krate: krate.clone(),
-                    toolchain: toolchain.clone(),
-                    result: self
-                        .load_test_result(ex, &toolchain, &krate)?
-                        .ok_or_else(|| err_msg("could not load crate result"))?,
-                    log: String::from_utf8(
-                        self.load_log(ex, &toolchain, &krate)?
-                            .ok_or_else(|| err_msg("could not load log"))?,
-                    )?,
-                })
-            })
-            .filter_map(|task_result: Fallible<TaskResult>| task_result.ok())
-            .collect();
-        Ok(ProgressData { results, shas })
     }
 }
 

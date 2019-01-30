@@ -1,6 +1,8 @@
 use crate::actions::{self, Action, ActionsCtx};
 use crate::db::{Database, QueryUtils};
-use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
+use crate::experiments::{
+    CapLints, CrateSelect, Experiment, ExperimentChunk, GitHubIssue, Mode, Status,
+};
 use crate::prelude::*;
 use crate::server::github::Issue;
 use crate::server::messages::{Label, Message};
@@ -119,6 +121,14 @@ pub fn retry(data: &Data, issue: &Issue, args: RetryArgs) -> Fallible<()> {
         }
 
         experiment.set_status(&data.db, Status::Queued)?;
+        for child in experiment.get_children_names() {
+            if let Some(mut chunk) = ExperimentChunk::get(&data.db, &child)? {
+                if chunk.status == Status::Failed {
+                    chunk.set_status(&data.db, Status::Queued)?;
+                }
+            }
+        }
+
         data.reports_worker.wake();
 
         Message::new()

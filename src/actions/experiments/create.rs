@@ -1,7 +1,9 @@
 use crate::actions::{experiments::ExperimentError, Action, ActionsCtx};
 use crate::crates::Crate;
 use crate::db::QueryUtils;
-use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
+use crate::experiments::{
+    CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status, CHILDREN_NAME,
+};
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
 use chrono::Utc;
@@ -132,11 +134,7 @@ impl Action for CreateExperiment {
               })?;
 
         for i in 0..crates.len() / CHUNK_SIZE + 1 {
-            let name = i.to_string()
-                + "/"
-                + &(crates.len() / CHUNK_SIZE).to_string()
-                + "-chunk-"
-                + &self.name;
+            let name = i.to_string() + CHILDREN_NAME + &self.name;
             let crat = get_portion(&crates, i);
             self.create_children(ctx, name, crat)?;
         }

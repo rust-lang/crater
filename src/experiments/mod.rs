@@ -10,6 +10,8 @@ use serde_json;
 use std::fmt;
 use std::str::FromStr;
 
+pub static CHILDREN_NAME: &str = "-chunk-";
+
 string_enum!(pub enum Status {
     Queued => "queued",
     Running => "running",
@@ -255,6 +257,14 @@ impl Experiment {
             self.set_status(db, Status::NeedsReport)?;
         }
         Ok(())
+    }
+
+    pub fn get_children_names(&self) -> Vec<String> {
+        let mut children = Vec::new();
+        for i in 0..self.children {
+            children.push(i.to_string() + CHILDREN_NAME + &self.name);
+        }
+        children
     }
 
     pub fn set_assigned_to(

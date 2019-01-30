@@ -13,7 +13,7 @@ impl Action for DeleteExperiment {
             return Err(ExperimentError::NotFound(self.name).into());
         }
 
-        // This will also delete all the data related to this experiment, thanks to the foreign
+        // This will also delete all the data and experiment chunks related to this experiment, thanks to the foreign
         // keys in the SQLite database
         ctx.db
             .execute("DELETE FROM experiments WHERE name = ?1;", &[&self.name])?;

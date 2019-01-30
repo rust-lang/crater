@@ -44,6 +44,45 @@ fn get_portion<T: std::clone::Clone>(vec: &Vec<T>, i: usize) -> Vec<T> {
     }
 }
 
+impl CreateExperiment {
+    fn create_children(&self, ctx: &ActionsCtx, name: &str, crates: Vec<Crate>) -> Fallible<()> {
+        ctx.db.transaction(|transaction| {
+                transaction.execute(
+                    "INSERT INTO experiment_chunks \
+                    (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
+                    status, github_issue, github_issue_url, github_issue_number, ignore_blacklist, parent) \
+                    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
+                    &[
+                        name,
+                        &self.mode.to_str(),
+                        &self.cap_lints.to_str(),
+                        &self.toolchains[0].to_string(),
+                        &self.toolchains[1].to_string(),
+                        &self.priority,
+                        &Utc::now(),
+                        &Status::Queued.to_str(),
+                        &self.github_issue.as_ref().map(|i| i.api_url.as_str()),
+                        &self.github_issue.as_ref().map(|i| i.html_url.as_str()),
+                        &self.github_issue.as_ref().map(|i| i.number),
+                        &self.ignore_blacklist,
+                        &self.name,
+                    ],
+                )?;
+
+                for krate in &crates {
+                    let skipped = !self.ignore_blacklist && ctx.config.should_skip(krate);
+                    transaction.execute(
+                        "INSERT INTO experiment_chunk_crates (experiment_chunk, crate, skipped) VALUES (?1, ?2, ?3);",
+                        &[&name, &::serde_json::to_string(&krate)?, &skipped],
+                    )?;
+                }
+
+                Ok(())
+            })?;
+        Ok(())
+    }
+}
+
 impl Action for CreateExperiment {
     fn apply(self, ctx: &ActionsCtx) -> Fallible<()> {
         // Ensure no duplicate experiments are created
@@ -57,7 +96,6 @@ impl Action for CreateExperiment {
         }
 
         let crates = crate::crates::lists::get_crates(self.crates, &ctx.db, &ctx.config)?;
-        println!("{:?}", &crates);
         ctx.db.transaction(|transaction| {
                   transaction.execute(
                       "INSERT INTO experiments \
@@ -96,45 +134,10 @@ impl Action for CreateExperiment {
             let name = i.to_string()
                 + "/"
                 + &(crates.len() / CHUNK_SIZE).to_string()
-                + "-partial-"
+                + "-chunk-"
                 + &self.name;
             let crat = get_portion(&crates, i);
-            println!("round ---{:?}", &crat);
-            ctx.db.transaction(|transaction| {
-                transaction.execute(
-                    "INSERT INTO experiment_chunks \
-                    (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
-                    status, github_issue, github_issue_url, github_issue_number, ignore_blacklist, parent) \
-                    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
-                    &[
-                        &name,
-                        &self.mode.to_str(),
-                        &self.cap_lints.to_str(),
-                        &self.toolchains[0].to_string(),
-                        &self.toolchains[1].to_string(),
-                        &self.priority,
-                        &Utc::now(),
-                        &Status::Queued.to_str(),
-                        &self.github_issue.as_ref().map(|i| i.api_url.as_str()),
-                        &self.github_issue.as_ref().map(|i| i.html_url.as_str()),
-                        &self.github_issue.as_ref().map(|i| i.number),
-                        &self.ignore_blacklist,
-                        &self.name,
-                    ],
-                )?;
-
-                for krate in &crat {
-                    let skipped = !self.ignore_blacklist && ctx.config.should_skip(krate);
-                    transaction.execute(
-                        "INSERT INTO experiment_chunk_crates (experiment_chunk, crate, skipped) VALUES (?1, ?2, ?3);",
-                        &[&name, &::serde_json::to_string(&krate)?, &skipped],
-                    )?;
-                }
-
-                Ok(())
-            })?;
-
-            info!("experiment created");
+            self.create_children(ctx, name, crat);
         }
 
         Ok(())

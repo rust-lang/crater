@@ -47,6 +47,6 @@ pub(crate) fn crate_source_dir_chunk(
     EXPERIMENT_DIR
         .join(&ex.name)
         .join("sources")
-        .join(tc.to_string())
+        .join(tc.to_path_component())
         .join(krate.id())
 }

@@ -1,0 +1,34 @@
+{
+  "crates": [
+    {
+      "name": "build-pass (local)",
+      "res": "test-pass",
+      "runs": [
+        {
+          "log": "stable/local/build-pass",
+          "res": "test-pass"
+        },
+        {
+          "log": "stable%2Brustflags=-Dclippy::all/local/build-pass",
+          "res": "test-pass"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"
+    },
+    {
+      "name": "clippy-warn (local)",
+      "res": "regressed",
+      "runs": [
+        {
+          "log": "stable/local/clippy-warn",
+          "res": "test-pass"
+        },
+        {
+          "log": "stable%2Brustflags=-Dclippy::all/local/clippy-warn",
+          "res": "build-fail:unknown"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/clippy-warn"
+    }
+  ]
+}

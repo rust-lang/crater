@@ -152,6 +152,21 @@ pub(super) fn test_check_only<DB: WriteResults>(
     }
 }
 
+pub(super) fn test_clippy_only<DB: WriteResults>(
+    ctx: &TaskCtx<DB>,
+    source_path: &Path,
+) -> Fallible<TestResult> {
+    if let Err(err) = run_cargo(
+        ctx,
+        source_path,
+        &["clippy", "--frozen", "--all", "--all-targets"],
+    ) {
+        Ok(TestResult::BuildFail(failure_reason(&err)))
+    } else {
+        Ok(TestResult::TestPass)
+    }
+}
+
 pub(super) fn test_rustdoc<DB: WriteResults>(
     ctx: &TaskCtx<DB>,
     source_path: &Path,

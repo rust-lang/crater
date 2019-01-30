@@ -2,7 +2,15 @@ use crate::prelude::*;
 use crate::utils::try_hard_limit;
 use std::fs;
 use std::path::{Path, PathBuf};
+use url::percent_encoding::SIMPLE_ENCODE_SET;
 use walkdir::{DirEntry, WalkDir};
+
+url::define_encode_set! {
+    /// The set of characters which cannot be used in a [filename on Windows][windows].
+    ///
+    /// [windows]: https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file#naming-conventions
+    pub FILENAME_ENCODE_SET = [SIMPLE_ENCODE_SET] | { '<', '>', ':', '"', '/', '\\', '|', '?', '*' }
+}
 
 pub(crate) fn try_canonicalize<P: AsRef<Path>>(path: P) -> PathBuf {
     fs::canonicalize(&path).unwrap_or_else(|_| path.as_ref().to_path_buf())

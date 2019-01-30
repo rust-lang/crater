@@ -26,6 +26,21 @@ pub(super) struct MinicraterRun {
     pub(super) crate_select: &'static str,
     pub(super) multithread: bool,
     pub(super) ignore_blacklist: bool,
+    pub(super) mode: &'static str,
+    pub(super) toolchains: &'static [&'static str],
+}
+
+impl Default for MinicraterRun {
+    fn default() -> Self {
+        MinicraterRun {
+            ex: "default",
+            crate_select: "demo",
+            multithread: false,
+            ignore_blacklist: false,
+            mode: "build-and-test",
+            toolchains: &["stable", "beta"],
+        }
+    }
 }
 
 impl MinicraterRun {
@@ -54,8 +69,10 @@ impl MinicraterRun {
             .minicrater_exec();
 
         // Define the experiment
+        let mode = format!("--mode={}", self.mode);
         let crate_select = format!("--crate-select={}", self.crate_select);
-        let mut define_args = vec!["define-ex", &ex_arg, "stable", "beta", &crate_select];
+        let mut define_args = vec!["define-ex", &ex_arg, &crate_select, &mode];
+        define_args.extend(self.toolchains);
         if self.ignore_blacklist {
             define_args.push("--ignore-blacklist");
         }

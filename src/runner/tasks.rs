@@ -54,42 +54,30 @@ pub(super) enum TaskStep {
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
     CheckOnly { tc: Toolchain, quiet: bool },
+    Clippy { tc: Toolchain, quiet: bool },
     Rustdoc { tc: Toolchain, quiet: bool },
     UnstableFeatures { tc: Toolchain },
 }
 
 impl fmt::Debug for TaskStep {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TaskStep::Prepare => write!(f, "prepare")?,
-            TaskStep::Cleanup => write!(f, "cleanup")?,
-            TaskStep::BuildAndTest { ref tc, quiet } => {
-                write!(f, "build and test {}", tc.to_string())?;
-                if quiet {
-                    write!(f, " (quiet)")?;
-                }
-            }
-            TaskStep::BuildOnly { ref tc, quiet } => {
-                write!(f, "build {}", tc.to_string())?;
-                if quiet {
-                    write!(f, " (quiet)")?;
-                }
-            }
-            TaskStep::CheckOnly { ref tc, quiet } => {
-                write!(f, "check {}", tc.to_string())?;
-                if quiet {
-                    write!(f, " (quiet)")?;
-                }
-            }
-            TaskStep::Rustdoc { ref tc, quiet } => {
-                write!(f, "doc {}", tc.to_string())?;
-                if quiet {
-                    write!(f, " (quiet)")?;
-                }
-            }
-            TaskStep::UnstableFeatures { ref tc } => {
-                write!(f, "find unstable features on {}", tc.to_string())?;
-            }
+        let (name, quiet, tc) = match *self {
+            TaskStep::Prepare => ("prepare", false, None),
+            TaskStep::Cleanup => ("cleanup", false, None),
+            TaskStep::BuildAndTest { ref tc, quiet } => ("build and test", quiet, Some(tc)),
+            TaskStep::BuildOnly { ref tc, quiet } => ("build", quiet, Some(tc)),
+            TaskStep::CheckOnly { ref tc, quiet } => ("check", quiet, Some(tc)),
+            TaskStep::Clippy { ref tc, quiet } => ("clippy", quiet, Some(tc)),
+            TaskStep::Rustdoc { ref tc, quiet } => ("doc", quiet, Some(tc)),
+            TaskStep::UnstableFeatures { ref tc } => ("find unstable features on", false, Some(tc)),
+        };
+
+        write!(f, "{}", name)?;
+        if let Some(tc) = tc {
+            write!(f, " {}", tc.to_string())?;
+        }
+        if quiet {
+            write!(f, " (quiet)")?;
         }
         Ok(())
     }
@@ -120,6 +108,7 @@ impl Task {
             TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
+            | TaskStep::Clippy { ref tc, .. }
             | TaskStep::Rustdoc { ref tc, .. }
             | TaskStep::UnstableFeatures { ref tc } => db
                 .get_result_chunk(ex, tc, &self.krate)
@@ -142,6 +131,7 @@ impl Task {
             TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
+            | TaskStep::Clippy { ref tc, .. }
             | TaskStep::Rustdoc { ref tc, .. }
             | TaskStep::UnstableFeatures { ref tc } => {
                 let log_storage = state
@@ -203,6 +193,10 @@ impl Task {
             TaskStep::CheckOnly { ref tc, quiet } => {
                 let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
                 test::run_test("checking", &ctx, test::test_check_only)?;
+            }
+            TaskStep::Clippy { ref tc, quiet } => {
+                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
+                test::run_test("linting", &ctx, test::test_clippy_only)?;
             }
             TaskStep::Rustdoc { ref tc, quiet } => {
                 let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);

@@ -1,4 +1,5 @@
 use crate::actions::{experiments::ExperimentError, Action, ActionsCtx};
+use crate::crates::Crate;
 use crate::db::QueryUtils;
 use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
 use crate::prelude::*;
@@ -45,7 +46,7 @@ fn get_portion<T: std::clone::Clone>(vec: &Vec<T>, i: usize) -> Vec<T> {
 }
 
 impl CreateExperiment {
-    fn create_children(&self, ctx: &ActionsCtx, name: &str, crates: Vec<Crate>) -> Fallible<()> {
+    fn create_children(&self, ctx: &ActionsCtx, name: String, crates: Vec<Crate>) -> Fallible<()> {
         ctx.db.transaction(|transaction| {
                 transaction.execute(
                     "INSERT INTO experiment_chunks \
@@ -53,7 +54,7 @@ impl CreateExperiment {
                     status, github_issue, github_issue_url, github_issue_number, ignore_blacklist, parent) \
                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
                     &[
-                        name,
+                        &name,
                         &self.mode.to_str(),
                         &self.cap_lints.to_str(),
                         &self.toolchains[0].to_string(),
@@ -137,7 +138,7 @@ impl Action for CreateExperiment {
                 + "-chunk-"
                 + &self.name;
             let crat = get_portion(&crates, i);
-            self.create_children(ctx, name, crat);
+            self.create_children(ctx, name, crat)?;
         }
 
         Ok(())

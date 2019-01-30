@@ -109,6 +109,12 @@ fn endpoint_next_experiment_chunk(data: Arc<Data>, auth: AuthDetails) -> Fallibl
             }
         }
 
+        let mut parent = Experiment::get(&data.db, &ex.parent_name)?
+            .ok_or_else(|| err_msg("no experiment with this name"))?;
+
+        if parent.status != Status::Running && parent.status != Status::Failed {
+            parent.set_status(&data.db, Status::Running)?;
+        }
         ex.remove_completed_crates(&data.db)?;
         Some(ex)
     } else {
@@ -127,7 +133,7 @@ fn endpoint_complete_experiment_chunk(
     let mut ex = Experiment::get(&data.db, &chunk.parent_name)?
         .ok_or_else(|| err_msg("no experiment with this name"))?;
 
-    chunk.set_status(&data.db, Status::NeedsReport)?;
+    chunk.set_status(&data.db, Status::Completed)?;
     info!("experiment chunk {} completed", chunk.name);
     ex.complete_children(&data.db)?;
     if ex.children == 0 {

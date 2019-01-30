@@ -1,5 +1,5 @@
 use crate::crates::{Crate, GitHubRepo};
-use crate::experiments::Experiment;
+use crate::experiments::{Experiment, ExperimentChunk};
 use crate::prelude::*;
 use crate::results::{ReadResults, TestResult};
 use crate::toolchain::Toolchain;
@@ -19,6 +19,13 @@ pub struct DummyDB {
 
 impl DummyDB {
     fn get_data(&self, ex: &Experiment) -> Fallible<&DummyData> {
+        Ok(self
+            .experiments
+            .get(&ex.name)
+            .ok_or_else(|| err_msg(format!("missing experiment {}", ex.name)))?)
+    }
+
+    fn get_data_chunk(&self, ex: &ExperimentChunk) -> Fallible<&DummyData> {
         Ok(self
             .experiments
             .get(&ex.name)
@@ -82,6 +89,36 @@ impl ReadResults for DummyDB {
     ) -> Fallible<Option<TestResult>> {
         Ok(self
             .get_data(ex)?
+            .results
+            .get(&(krate.clone(), toolchain.clone()))
+            .cloned())
+    }
+
+    fn load_all_shas_chunk(&self, ex: &ExperimentChunk) -> Fallible<HashMap<GitHubRepo, String>> {
+        Ok(self.get_data_chunk(ex)?.shas.clone())
+    }
+
+    fn load_log_chunk(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<Option<Vec<u8>>> {
+        Ok(self
+            .get_data_chunk(ex)?
+            .logs
+            .get(&(krate.clone(), toolchain.clone()))
+            .cloned())
+    }
+
+    fn load_test_result_chunk(
+        &self,
+        ex: &ExperimentChunk,
+        toolchain: &Toolchain,
+        krate: &Crate,
+    ) -> Fallible<Option<TestResult>> {
+        Ok(self
+            .get_data_chunk(ex)?
             .results
             .get(&(krate.clone(), toolchain.clone()))
             .cloned())

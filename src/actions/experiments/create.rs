@@ -39,7 +39,7 @@ impl CreateExperiment {
     }
 }
 
-fn get_portion<T: std::clone::Clone>(vec: &Vec<T>, i: usize) -> Vec<T> {
+fn get_portion<T: std::clone::Clone>(vec: &[T], i: usize) -> Vec<T> {
     if i == vec.len() / CHUNK_SIZE {
         vec[i * CHUNK_SIZE..].to_vec()
     } else {
@@ -133,7 +133,7 @@ impl Action for CreateExperiment {
                   Ok(())
               })?;
 
-        for i in 0..crates.len() / CHUNK_SIZE + 1 {
+        for i in 0..=crates.len() / CHUNK_SIZE {
             let name = i.to_string() + CHILDREN_NAME + &self.name;
             let crat = get_portion(&crates, i);
             self.create_children(ctx, name, crat)?;

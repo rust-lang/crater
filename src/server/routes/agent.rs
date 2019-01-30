@@ -94,27 +94,23 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body
 fn endpoint_next_experiment_chunk(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
     let next = ExperimentChunk::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
 
-    let result = if let Some((new, mut ex)) = next {
-        if new {
-            if let Some(ref github_issue) = ex.github_issue {
-                Message::new()
-                    .line(
-                        "construction",
-                        format!(
-                            "Experiment **`{}`** is now **running** on agent `{}`.",
-                            ex.name, auth.name,
-                        ),
-                    )
-                    .send(&github_issue.api_url, &data)?;
-            }
-        }
-
+    let result = if let Some((_new, mut ex)) = next {
         let mut parent = Experiment::get(&data.db, &ex.parent_name)?
             .ok_or_else(|| err_msg("no experiment with this name"))?;
 
         if parent.status != Status::Running && parent.status != Status::Failed {
             parent.set_status(&data.db, Status::Running)?;
+
+            if let Some(ref github_issue) = parent.github_issue {
+                Message::new()
+                    .line(
+                        "construction",
+                        format!("Experiment **`{}`** is now **running**.", parent.name,),
+                    )
+                    .send(&github_issue.api_url, &data)?;
+            }
         }
+
         ex.remove_completed_crates(&data.db)?;
         Some(ex)
     } else {

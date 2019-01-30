@@ -204,7 +204,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                 github_issue TEXT,
                 github_issue_url TEXT,
                 github_issue_number INTEGER,
-                assigned_to TEXT,
+                assigned_to TEXT
             );
             INSERT INTO experiments_new (
                 name, mode, cap_lints, toolchain_start, toolchain_end, created_at, started_at,
@@ -283,7 +283,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                 FOREIGN KEY (experiment_chunk) REFERENCES experiment_chunks(name) ON DELETE CASCADE
             );
 
-            ALTER TABLE experiments add COLUMN children INTEGER NOT NULL;
+            ALTER TABLE experiments add COLUMN children INTEGER NOT NULL DEFAULT 0;
 
             ",
         ),

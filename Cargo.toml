@@ -63,6 +63,7 @@ winapi = "0.3"
 log = "0.4.6"
 env_logger = "0.6.0"
 openssl = "0.10.16"
+rust_team_data = { git = "https://github.com/rust-lang/team" }
 
 [dev-dependencies]
 assert_cmd = "0.10.1"

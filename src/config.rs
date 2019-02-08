@@ -42,8 +42,15 @@ fn default_false() -> bool {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ServerConfig {
-    pub bot_acl: Vec<String>,
+    pub bot_acl: BotACL,
     pub labels: ServerLabels,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct BotACL {
+    pub rust_teams: bool,
+    pub github: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -247,7 +254,10 @@ impl Default for Config {
                 build_log_max_lines: 1000,
             },
             server: ServerConfig {
-                bot_acl: Vec::new(),
+                bot_acl: BotACL {
+                    rust_teams: false,
+                    github: vec![],
+                },
                 labels: ServerLabels {
                     remove: Regex::new("^$").unwrap(),
                     experiment_queued: "".into(),
@@ -267,8 +277,9 @@ mod tests {
     fn test_config() {
         // A sample config file loaded from memory
         let config = concat!(
-            "[server]\n",
-            "bot-acl = []\n",
+            "[server.bot-acl]\n",
+            "rust-teams = false\n",
+            "github = []\n",
             "[server.labels]\n",
             "remove = \"\"\n",
             "experiment-queued = \"\"\n",

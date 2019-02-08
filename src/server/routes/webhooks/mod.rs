@@ -71,7 +71,7 @@ fn process_command(
             continue;
         }
 
-        if !data.acl.allowed(sender) {
+        if !data.acl.allowed(sender)? {
             Message::new()
                 .line(
                     "lock",

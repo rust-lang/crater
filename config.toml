@@ -1,13 +1,9 @@
-[server]
+[server.bot-acl]
+# Allow rust team members defined in https://github.com/rust-lang/team
+rust-teams = true
 # The list of GitHub users allowed to interact with the GitHub bot
 # You can mix usernames and teams
-bot-acl = [
-    "rust-lang/infra",
-    "rust-lang/release",
-    "rust-lang/compiler",
-    "rust-lang/libs",
-    "rust-lang/rustdoc",
-]
+github = []
 
 [server.labels]
 # Remove all labels matching this regex when applying new labels
@@ -4366,7 +4362,6 @@ sciter-serde = { skip-tests = true } #automatic
 scm = { skip = true } #automatic
 scmp = { skip = true } #automatic
 scoped_allocator = { skip = true } #automatic
-scoped_log = { skip = true } #automatic
 scopeguard = { skip-tests = true } #automatic
 score = { skip = true } #automatic
 scout = { skip-tests = true } #automatic

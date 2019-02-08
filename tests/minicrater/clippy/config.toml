@@ -1,7 +1,6 @@
-[server]
-bot-acl = [
-    "pietroalbini",
-]
+[server.bot-acl]
+rust-teams = true
+github = ["pietroalbini"]
 
 [server.labels]
 remove = "^S-"

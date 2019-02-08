@@ -4,6 +4,7 @@ use crate::server::github::GitHubApi;
 use crate::server::{Data, HttpError};
 use http::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
 use regex::Regex;
+use rust_team_data::v1 as team_data;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 use warp::{self, Filter, Rejection};
@@ -91,6 +92,7 @@ pub fn auth_filter(
 #[derive(Debug, Clone)]
 pub struct ACL {
     cached_usernames: Arc<RwLock<HashSet<String>>>,
+    rust_teams: bool,
     users: Vec<String>,
     teams: Vec<(String, String)>,
 }
@@ -100,7 +102,7 @@ impl ACL {
         let mut users = Vec::new();
         let mut teams = Vec::new();
 
-        for item in &config.server.bot_acl {
+        for item in &config.server.bot_acl.github {
             if let Some(middle) = item.find('/') {
                 let org = item[..middle].to_string();
                 let team = item[middle + 1..].to_string();
@@ -112,6 +114,7 @@ impl ACL {
 
         let acl = ACL {
             cached_usernames: Arc::new(RwLock::new(HashSet::new())),
+            rust_teams: config.server.bot_acl.rust_teams,
             users,
             teams,
         };
@@ -172,8 +175,15 @@ impl ACL {
         Ok(())
     }
 
-    pub fn allowed(&self, username: &str) -> bool {
-        self.cached_usernames.read().unwrap().contains(username)
+    pub fn allowed(&self, username: &str) -> Fallible<bool> {
+        if self.rust_teams {
+            let url = format!("{}/permissions/crater.json", team_data::BASE_URL);
+            let members: team_data::Permission = crate::utils::http::get_sync(&url)?.json()?;
+            if members.github_users.iter().any(|u| *u == username) {
+                return Ok(true);
+            }
+        }
+        Ok(self.cached_usernames.read().unwrap().contains(username))
     }
 }
 

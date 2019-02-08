@@ -208,9 +208,11 @@ pub(crate) struct SandboxedCommand<'a, 'pl> {
 
 impl<'a, 'pl> SandboxedCommand<'a, 'pl> {
     fn new(command: RunCommand<'pl>, docker_env: &'a DockerEnv) -> Self {
-        let container = ContainerBuilder::new(docker_env)
-            .env("USER_ID", native::current_user().to_string())
-            .enable_networking(false);
+        let mut container = ContainerBuilder::new(docker_env).enable_networking(false);
+
+        if let Some(user_id) = native::current_user() {
+            container = container.env("USER_ID", user_id.to_string());
+        }
 
         SandboxedCommand { command, container }
     }
@@ -258,9 +260,12 @@ impl<'a, 'pl> SandboxedCommand<'a, 'pl> {
             .container
             .mount(source_dir, "/opt/crater/workdir", MountPerms::ReadOnly)
             .env("SOURCE_DIR", "/opt/crater/workdir")
-            .env("MAP_USER_ID", native::current_user().to_string())
             .workdir("/opt/crater/workdir")
             .cmd(cmd);
+
+        if let Some(user_id) = native::current_user() {
+            self.container = self.container.env("MAP_USER_ID", user_id.to_string());
+        }
 
         for (key, value) in self.command.env {
             self.container = self.container.env(

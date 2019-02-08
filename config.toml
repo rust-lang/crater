@@ -4366,7 +4366,6 @@ sciter-serde = { skip-tests = true } #automatic
 scm = { skip = true } #automatic
 scmp = { skip = true } #automatic
 scoped_allocator = { skip = true } #automatic
-scoped_log = { skip = true } #automatic
 scopeguard = { skip-tests = true } #automatic
 score = { skip = true } #automatic
 scout = { skip-tests = true } #automatic

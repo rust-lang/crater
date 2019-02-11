@@ -81,6 +81,7 @@ pub(super) fn run_test<DB: WriteResults>(
             ctx.krate,
             log_storage,
             ctx.config,
+            EncodingType::Plain,
             || {
                 info!(
                     "{} {} against {} for {}",
@@ -91,7 +92,6 @@ pub(super) fn run_test<DB: WriteResults>(
                 );
                 test_fn(ctx, &source_path)
             },
-            EncodingType::Plain,
         )?;
     }
     Ok(())

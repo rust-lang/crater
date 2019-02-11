@@ -51,8 +51,8 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         krate: &Crate,
         existing_logs: Option<LogStorage>,
         config: &Config,
-        f: F,
         _: EncodingType,
+        f: F,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>,

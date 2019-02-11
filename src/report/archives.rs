@@ -138,11 +138,11 @@ mod tests {
                 &crate1,
                 None,
                 &config,
+                EncodingType::Gzip,
                 || {
                     info!("tc1 crate1");
                     Ok(TestResult::TestPass)
                 },
-                EncodingType::Gzip,
             )
             .unwrap();
         results
@@ -152,11 +152,11 @@ mod tests {
                 &crate1,
                 None,
                 &config,
+                EncodingType::Plain,
                 || {
                     info!("tc2 crate1");
                     Ok(TestResult::BuildFail(FailureReason::Unknown))
                 },
-                EncodingType::Plain,
             )
             .unwrap();
         results
@@ -166,11 +166,11 @@ mod tests {
                 &crate2,
                 None,
                 &config,
+                EncodingType::Gzip,
                 || {
                     info!("tc1 crate2");
                     Ok(TestResult::TestPass)
                 },
-                EncodingType::Gzip,
             )
             .unwrap();
         results
@@ -180,11 +180,11 @@ mod tests {
                 &crate2,
                 None,
                 &config,
+                EncodingType::Plain,
                 || {
                     info!("tc2 crate2");
                     Ok(TestResult::TestPass)
                 },
-                EncodingType::Plain,
             )
             .unwrap();
 

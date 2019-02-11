@@ -202,8 +202,8 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         krate: &Crate,
         existing_logs: Option<LogStorage>,
         config: &Config,
-        f: F,
         encoding_type: EncodingType,
+        f: F,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>,
@@ -347,11 +347,11 @@ mod tests {
                 &krate,
                 None,
                 &config,
+                EncodingType::Plain,
                 || {
                     info!("hello world");
                     Ok(TestResult::TestPass)
                 },
-                EncodingType::Plain,
             )
             .unwrap();
 
@@ -395,11 +395,11 @@ mod tests {
                 &krate,
                 None,
                 &config,
+                EncodingType::Plain,
                 || {
                     info!("Another log message!");
                     Ok(TestResult::TestFail(FailureReason::Unknown))
                 },
-                EncodingType::Plain,
             )
             .unwrap();
 

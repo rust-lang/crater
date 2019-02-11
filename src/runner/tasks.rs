@@ -154,12 +154,12 @@ impl Task {
                     &self.krate,
                     log_storage,
                     config,
+                    EncodingType::Plain,
                     || {
                         error!("this task or one of its parent failed!");
                         utils::report_failure(err);
                         Ok(result)
                     },
-                    EncodingType::Plain,
                 )?;
             }
         }

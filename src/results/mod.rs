@@ -47,8 +47,8 @@ pub trait WriteResults {
         krate: &Crate,
         existing_logs: Option<LogStorage>,
         config: &Config,
-        f: F,
         encoding_type: EncodingType,
+        f: F,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>;

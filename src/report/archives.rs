@@ -259,8 +259,8 @@ mod tests {
 
         // Check test-pass.tar.gz
         check_content!(test_pass: {
-              format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[0]) => "tc1 crate2",
-              format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[1]) => "tc2 crate2",
+            format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[0]) => "tc1 crate2",
+            format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[1]) => "tc2 crate2",
         });
     }
 }

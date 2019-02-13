@@ -53,7 +53,7 @@ impl DockerEnv {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub(crate) enum MountPerms {
     ReadWrite,
     ReadOnly,
@@ -66,7 +66,7 @@ struct MountConfig {
 }
 
 impl MountConfig {
-    fn to_arg(&self) -> String {
+    fn to_volume_arg(&self) -> String {
         let perm = match self.perm {
             MountPerms::ReadWrite => "rw",
             MountPerms::ReadOnly => "ro",
@@ -76,6 +76,21 @@ impl MountConfig {
             absolute(&self.host_path).to_string_lossy(),
             self.container_path.to_string_lossy(),
             perm
+        )
+    }
+
+    fn to_mount_arg(&self) -> String {
+        let mut opts_with_leading_comma = vec![];
+
+        if self.perm == MountPerms::ReadOnly {
+            opts_with_leading_comma.push(",readonly");
+        }
+
+        format!(
+            "type=bind,src={},dst={}{}",
+            absolute(&self.host_path).to_string_lossy(),
+            self.container_path.to_string_lossy(),
+            opts_with_leading_comma.join(""),
         )
     }
 }
@@ -147,8 +162,16 @@ impl<'a> ContainerBuilder<'a> {
 
         for mount in &self.mounts {
             fs::create_dir_all(&mount.host_path)?;
-            args.push("-v".into());
-            args.push(mount.to_arg())
+
+            // On Windows, we mount paths containing a colon which don't work with `-v`, but on
+            // Linux we need the Z flag, which doesn't work with `--mount`, for SELinux relabeling.
+            if cfg!(windows) {
+                args.push("--mount".into());
+                args.push(mount.to_mount_arg())
+            } else {
+                args.push("-v".into());
+                args.push(mount.to_volume_arg())
+            }
         }
 
         for &(ref var, ref value) in &self.env {

@@ -1,4 +1,4 @@
-use crate::dirs::{CARGO_HOME, RUSTUP_HOME};
+use crate::dirs::{self, CARGO_HOME, RUSTUP_HOME};
 use crate::docker::DockerEnv;
 use crate::docker::{ContainerBuilder, MountPerms};
 use crate::native;
@@ -238,9 +238,7 @@ impl<'a, 'pl> SandboxedCommand<'a, 'pl> {
         cmd.push(
             match self.command.binary {
                 Binary::Global(path) => path,
-                Binary::InstalledByCrater(path) => {
-                    PathBuf::from("/opt/crater/cargo-home/bin").join(path)
-                }
+                Binary::InstalledByCrater(path) => dirs::container::CARGO_BIN_DIR.join(path),
             }
             .to_string_lossy()
             .as_ref()
@@ -258,9 +256,13 @@ impl<'a, 'pl> SandboxedCommand<'a, 'pl> {
 
         self.container = self
             .container
-            .mount(source_dir, "/opt/crater/workdir", MountPerms::ReadOnly)
-            .env("SOURCE_DIR", "/opt/crater/workdir")
-            .workdir("/opt/crater/workdir")
+            .mount(
+                source_dir,
+                dirs::container::WORK_DIR.to_str().unwrap(),
+                MountPerms::ReadOnly,
+            )
+            .env("SOURCE_DIR", dirs::container::WORK_DIR.to_str().unwrap())
+            .workdir(dirs::container::WORK_DIR.to_str().unwrap())
             .cmd(cmd);
 
         if let Some(user_id) = native::current_user() {
@@ -277,14 +279,21 @@ impl<'a, 'pl> SandboxedCommand<'a, 'pl> {
         if self.command.local_rustup {
             self.container = self
                 .container
-                .mount(&*CARGO_HOME, "/opt/crater/cargo-home", MountPerms::ReadOnly)
                 .mount(
-                    &*RUSTUP_HOME,
-                    "/opt/crater/rustup-home",
+                    &*CARGO_HOME,
+                    dirs::container::CARGO_HOME.to_str().unwrap(),
                     MountPerms::ReadOnly,
                 )
-                .env("CARGO_HOME", "/opt/crater/cargo-home")
-                .env("RUSTUP_HOME", "/opt/crater/rustup-home");
+                .mount(
+                    &*RUSTUP_HOME,
+                    dirs::container::RUSTUP_HOME.to_str().unwrap(),
+                    MountPerms::ReadOnly,
+                )
+                .env("CARGO_HOME", dirs::container::CARGO_HOME.to_str().unwrap())
+                .env(
+                    "RUSTUP_HOME",
+                    dirs::container::RUSTUP_HOME.to_str().unwrap(),
+                );
         }
 
         self.container.run(self.command.quiet)

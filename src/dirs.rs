@@ -46,3 +46,27 @@ pub(crate) fn crate_source_dir(ex: &Experiment, tc: &Toolchain, krate: &Crate) -
         .join(tc.to_path_component())
         .join(krate.id())
 }
+
+pub mod container {
+    use std::path::{Path, PathBuf};
+
+    use lazy_static::lazy_static;
+
+    #[cfg(windows)]
+    lazy_static! {
+        pub static ref ROOT_DIR: PathBuf = Path::new(r"C:\crater").into();
+    }
+
+    #[cfg(not(windows))]
+    lazy_static! {
+        pub static ref ROOT_DIR: PathBuf = Path::new("/opt/crater").into();
+    }
+
+    lazy_static! {
+        pub static ref WORK_DIR: PathBuf = ROOT_DIR.join("workdir");
+        pub static ref TARGET_DIR: PathBuf = ROOT_DIR.join("target");
+        pub static ref CARGO_HOME: PathBuf = ROOT_DIR.join("cargo-home");
+        pub static ref RUSTUP_HOME: PathBuf = ROOT_DIR.join("rustup-home");
+        pub static ref CARGO_BIN_DIR: PathBuf = CARGO_HOME.join("bin");
+    }
+}

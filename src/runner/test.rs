@@ -1,3 +1,4 @@
+use crate::dirs;
 use crate::docker::{DockerError, MountPerms};
 use crate::prelude::*;
 use crate::results::{EncodingType, FailureReason, TestResult, WriteResults};
@@ -45,12 +46,19 @@ fn run_cargo<DB: WriteResults>(
         .args(args)
         .quiet(ctx.quiet)
         .cd(source_path)
-        .env("CARGO_TARGET_DIR", "/opt/crater/target")
+        .env(
+            "CARGO_TARGET_DIR",
+            dirs::container::TARGET_DIR.to_str().unwrap(),
+        )
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env(rustflags_env, rustflags)
         .sandboxed(&ctx.docker_env)
-        .mount(target_dir, "/opt/crater/target", MountPerms::ReadWrite)
+        .mount(
+            target_dir,
+            dirs::container::TARGET_DIR.to_str().unwrap(),
+            MountPerms::ReadWrite,
+        )
         .memory_limit(Some(ctx.config.sandbox.memory_limit))
         .run()?;
 

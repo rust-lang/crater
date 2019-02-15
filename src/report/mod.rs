@@ -145,7 +145,7 @@ pub fn generate_report<DB: ReadResults>(
                     log: crate_to_path_fragment(tc, &krate, true)
                         .to_str()
                         .unwrap()
-                        .to_string(),
+                        .replace(r"\", "/"),
                 })
             });
             // Convert errors to Nones

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::utils::try_hard_limit;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 use url::percent_encoding::SIMPLE_ENCODE_SET;
 use walkdir::{DirEntry, WalkDir};
 
@@ -12,8 +12,41 @@ url::define_encode_set! {
     pub FILENAME_ENCODE_SET = [SIMPLE_ENCODE_SET] | { '<', '>', ':', '"', '/', '\\', '|', '?', '*' }
 }
 
+/// If a prefix uses the extended-length syntax (`\\?\`), return the equivalent version without it.
+///
+/// Returns `None` if `prefix.kind().is_verbatim()` is `false`.
+fn strip_verbatim_from_prefix(prefix: &path::PrefixComponent<'_>) -> Option<PathBuf> {
+    let ret = match prefix.kind() {
+        path::Prefix::Verbatim(s) => Path::new(s).to_owned(),
+
+        path::Prefix::VerbatimDisk(drive) => [format!(r"{}:\", drive as char)].iter().collect(),
+
+        path::Prefix::VerbatimUNC(_, _) => unimplemented!(),
+
+        _ => return None,
+    };
+
+    Some(ret)
+}
+
 pub(crate) fn try_canonicalize<P: AsRef<Path>>(path: P) -> PathBuf {
-    fs::canonicalize(&path).unwrap_or_else(|_| path.as_ref().to_path_buf())
+    let p = fs::canonicalize(&path).unwrap_or_else(|_| path.as_ref().to_path_buf());
+
+    // `fs::canonicalize` returns an extended-length path on Windows. Such paths not supported by
+    // many programs, including rustup.
+    if cfg!(windows) {
+        let mut components = p.components();
+        let first_component = components.next().unwrap();
+
+        if let path::Component::Prefix(prefix) = first_component {
+            if let Some(mut modified_path) = strip_verbatim_from_prefix(&prefix) {
+                modified_path.push(components.as_path());
+                return modified_path;
+            }
+        }
+    }
+
+    p
 }
 
 pub(crate) fn remove_dir_all(dir: &Path) -> Fallible<()> {

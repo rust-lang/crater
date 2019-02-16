@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::{compare, ReportWriter};
-use crate::results::ReadResults;
+use crate::results::{EncodedLog, EncodingType, ReadResults};
 use flate2::{write::GzEncoder, Compression};
 use std::collections::HashMap;
 use tar::{Builder as TarBuilder, Header as TarHeader};
@@ -38,13 +38,16 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
                 .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
                 .with_context(|_| format!("failed to read log of {} on {}", krate, tc));
 
-            let log_bytes: &[u8] = match log {
-                Ok(ref l) => l,
+            let log_bytes: EncodedLog = match log {
+                Ok(l) => l,
                 Err(e) => {
                     crate::utils::report_failure(&e);
                     continue;
                 }
             };
+
+            let log_bytes = log_bytes.to_plain()?;
+            let log_bytes = log_bytes.as_slice();
 
             let path = format!("{}/{}/{}.txt", comparison, krate.id(), tc);
 
@@ -68,6 +71,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
         "logs-archives/all.tar.gz",
         data,
         &"application/gzip".parse().unwrap(),
+        EncodingType::Plain,
     )?;
 
     archives.push(Archive {
@@ -81,6 +85,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
             &format!("logs-archives/{}.tar.gz", comparison),
             data,
             &"application/gzip".parse().unwrap(),
+            EncodingType::Plain,
         )?;
 
         archives.push(Archive {
@@ -101,7 +106,7 @@ mod tests {
     use crate::experiments::Experiment;
     use crate::prelude::*;
     use crate::report::DummyWriter;
-    use crate::results::{DatabaseDB, FailureReason, TestResult, WriteResults};
+    use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
     use flate2::read::GzDecoder;
     use mime::Mime;
     use std::io::Read;
@@ -127,28 +132,60 @@ mod tests {
         // Fill some dummy results into the database
         let results = DatabaseDB::new(&db);
         results
-            .record_result(&ex, &ex.toolchains[0], &crate1, None, &config, || {
-                info!("tc1 crate1");
-                Ok(TestResult::TestPass)
-            })
+            .record_result(
+                &ex,
+                &ex.toolchains[0],
+                &crate1,
+                None,
+                &config,
+                EncodingType::Gzip,
+                || {
+                    info!("tc1 crate1");
+                    Ok(TestResult::TestPass)
+                },
+            )
             .unwrap();
         results
-            .record_result(&ex, &ex.toolchains[1], &crate1, None, &config, || {
-                info!("tc2 crate1");
-                Ok(TestResult::BuildFail(FailureReason::Unknown))
-            })
+            .record_result(
+                &ex,
+                &ex.toolchains[1],
+                &crate1,
+                None,
+                &config,
+                EncodingType::Plain,
+                || {
+                    info!("tc2 crate1");
+                    Ok(TestResult::BuildFail(FailureReason::Unknown))
+                },
+            )
             .unwrap();
         results
-            .record_result(&ex, &ex.toolchains[0], &crate2, None, &config, || {
-                info!("tc1 crate2");
-                Ok(TestResult::TestPass)
-            })
+            .record_result(
+                &ex,
+                &ex.toolchains[0],
+                &crate2,
+                None,
+                &config,
+                EncodingType::Gzip,
+                || {
+                    info!("tc1 crate2");
+                    Ok(TestResult::TestPass)
+                },
+            )
             .unwrap();
         results
-            .record_result(&ex, &ex.toolchains[1], &crate2, None, &config, || {
-                info!("tc2 crate2");
-                Ok(TestResult::TestPass)
-            })
+            .record_result(
+                &ex,
+                &ex.toolchains[1],
+                &crate2,
+                None,
+                &config,
+                EncodingType::Plain,
+                || {
+                    info!("tc2 crate2");
+                    Ok(TestResult::TestPass)
+                },
+            )
             .unwrap();
 
         // Generate all the archives

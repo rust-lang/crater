@@ -4,7 +4,7 @@ use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
 use crate::logs::{self, LogStorage};
 use crate::prelude::*;
-use crate::results::{TestResult, WriteResults};
+use crate::results::{EncodingType, TestResult, WriteResults};
 use crate::toolchain::Toolchain;
 use log::LevelFilter;
 use std::ops::DerefMut;
@@ -51,6 +51,7 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         krate: &Crate,
         existing_logs: Option<LogStorage>,
         config: &Config,
+        _: EncodingType,
         f: F,
     ) -> Fallible<TestResult>
     where

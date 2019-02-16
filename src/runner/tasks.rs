@@ -5,7 +5,7 @@ use crate::docker::DockerEnv;
 use crate::experiments::Experiment;
 use crate::logs::{self, LogStorage};
 use crate::prelude::*;
-use crate::results::{TestResult, WriteResults};
+use crate::results::{EncodingType, TestResult, WriteResults};
 use crate::runner::{prepare::PrepareCrate, test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
@@ -138,11 +138,19 @@ impl Task {
                     .prepare_logs
                     .get(&self.krate)
                     .map(|s| s.duplicate());
-                db.record_result(ex, tc, &self.krate, log_storage, config, || {
-                    error!("this task or one of its parent failed!");
-                    utils::report_failure(err);
-                    Ok(result)
-                })?;
+                db.record_result(
+                    ex,
+                    tc,
+                    &self.krate,
+                    log_storage,
+                    config,
+                    EncodingType::Plain,
+                    || {
+                        error!("this task or one of its parent failed!");
+                        utils::report_failure(err);
+                        Ok(result)
+                    },
+                )?;
             }
         }
 

@@ -1,6 +1,6 @@
 use crate::docker::{DockerError, MountPerms};
 use crate::prelude::*;
-use crate::results::{FailureReason, TestResult, WriteResults};
+use crate::results::{EncodingType, FailureReason, TestResult, WriteResults};
 use crate::run::{RunCommand, RunCommandError};
 use crate::runner::tasks::TaskCtx;
 use crate::tools::CARGO;
@@ -81,6 +81,7 @@ pub(super) fn run_test<DB: WriteResults>(
             ctx.krate,
             log_storage,
             ctx.config,
+            EncodingType::Plain,
             || {
                 info!(
                     "{} {} against {} for {}",

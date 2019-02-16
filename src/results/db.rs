@@ -4,7 +4,9 @@ use crate::db::{Database, QueryUtils};
 use crate::experiments::Experiment;
 use crate::logs::{self, LogStorage};
 use crate::prelude::*;
-use crate::results::{DeleteResults, ReadResults, TestResult, WriteResults};
+use crate::results::{
+    DeleteResults, EncodedLog, EncodingType, ReadResults, TestResult, WriteResults,
+};
 use crate::toolchain::Toolchain;
 use base64;
 use log::LevelFilter;
@@ -35,7 +37,12 @@ impl<'a> DatabaseDB<'a> {
         DatabaseDB { db }
     }
 
-    pub fn store(&self, ex: &Experiment, data: &ProgressData) -> Fallible<()> {
+    pub fn store(
+        &self,
+        ex: &Experiment,
+        data: &ProgressData,
+        encoding_type: EncodingType,
+    ) -> Fallible<()> {
         for result in &data.results {
             self.store_result(
                 ex,
@@ -43,6 +50,7 @@ impl<'a> DatabaseDB<'a> {
                 &result.toolchain,
                 result.result,
                 &base64::decode(&result.log).with_context(|_| "invalid base64 log provided")?,
+                encoding_type,
             )?;
         }
 
@@ -60,19 +68,33 @@ impl<'a> DatabaseDB<'a> {
         toolchain: &Toolchain,
         res: TestResult,
         log: &[u8],
+        desired_encoding_type: EncodingType,
     ) -> Fallible<()> {
+        let encoded_log = EncodedLog::from_plain_slice(log, desired_encoding_type)?;
+        self.insert_into_results(ex, krate, toolchain, res, encoded_log)?;
+        Ok(())
+    }
+
+    fn insert_into_results(
+        &self,
+        ex: &Experiment,
+        krate: &Crate,
+        toolchain: &Toolchain,
+        res: TestResult,
+        log: EncodedLog,
+    ) -> Fallible<usize> {
         self.db.execute(
-            "INSERT INTO results (experiment, crate, toolchain, result, log) \
-             VALUES (?1, ?2, ?3, ?4, ?5);",
+            "INSERT INTO results (experiment, crate, toolchain, result, log, encoding) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6);",
             &[
                 &ex.name,
                 &serde_json::to_string(krate)?,
                 &toolchain.to_string(),
                 &res.to_string(),
-                &log,
+                &log.as_slice(),
+                &log.get_encoding_type().to_str(),
             ],
-        )?;
-        Ok(())
+        )
     }
 }
 
@@ -102,9 +124,9 @@ impl<'a> ReadResults for DatabaseDB<'a> {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Fallible<Option<Vec<u8>>> {
-        Ok(self.db.get_row(
-            "SELECT log FROM results \
+    ) -> Fallible<Option<EncodedLog>> {
+        self.db.get_row(
+            "SELECT log, encoding FROM results \
              WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
              LIMIT 1;",
             &[
@@ -112,8 +134,17 @@ impl<'a> ReadResults for DatabaseDB<'a> {
                 &toolchain.to_string(),
                 &serde_json::to_string(krate)?,
             ],
-            |row| row.get("log"),
-        )?)
+            |row| {
+                let log: Vec<u8> = row.get("log");
+                let encoding: String = row.get("encoding");
+                let encoding = encoding.parse().unwrap();
+
+                match encoding {
+                    EncodingType::Plain => EncodedLog::Plain(log),
+                    EncodingType::Gzip => EncodedLog::Gzip(log),
+                }
+            },
+        )
     }
 
     fn load_test_result(
@@ -171,6 +202,7 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         krate: &Crate,
         existing_logs: Option<LogStorage>,
         config: &Config,
+        encoding_type: EncodingType,
         f: F,
     ) -> Fallible<TestResult>
     where
@@ -179,7 +211,14 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info, config));
         let result = logs::capture(&storage, f)?;
         let output = storage.to_string();
-        self.store_result(ex, krate, toolchain, result, output.as_bytes())?;
+        self.store_result(
+            ex,
+            krate,
+            toolchain,
+            result,
+            output.as_bytes(),
+            encoding_type,
+        )?;
         Ok(result)
     }
 }
@@ -213,7 +252,10 @@ mod tests {
     use crate::db::Database;
     use crate::experiments::Experiment;
     use crate::prelude::*;
-    use crate::results::{DeleteResults, FailureReason, ReadResults, TestResult, WriteResults};
+    use crate::results::{
+        DeleteResults, EncodedLog, EncodingType, FailureReason, ReadResults, TestResult,
+        WriteResults,
+    };
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
     use base64;
 
@@ -299,10 +341,18 @@ mod tests {
 
         // Record a result with a message in it
         results
-            .record_result(&ex, &MAIN_TOOLCHAIN, &krate, None, &config, || {
-                info!("hello world");
-                Ok(TestResult::TestPass)
-            })
+            .record_result(
+                &ex,
+                &MAIN_TOOLCHAIN,
+                &krate,
+                None,
+                &config,
+                EncodingType::Plain,
+                || {
+                    info!("hello world");
+                    Ok(TestResult::TestPass)
+                },
+            )
             .unwrap();
 
         // Ensure the data is recorded correctly
@@ -312,12 +362,15 @@ mod tests {
                 .unwrap(),
             Some(TestResult::TestPass)
         );
-        assert!(String::from_utf8_lossy(
-            &results
-                .load_log(&ex, &MAIN_TOOLCHAIN, &krate)
-                .unwrap()
-                .unwrap()
-        )
+
+        let result_var = results
+            .load_log(&ex, &MAIN_TOOLCHAIN, &krate)
+            .unwrap()
+            .unwrap();
+        assert!(String::from_utf8_lossy(match result_var {
+            EncodedLog::Plain(ref data) => data,
+            EncodedLog::Gzip(_) => panic!("The encoded log should not be Gzipped."),
+        })
         .contains("hello world"));
 
         // Ensure no data is returned for missing results
@@ -336,11 +389,20 @@ mod tests {
 
         // Add another result
         results
-            .record_result(&ex, &TEST_TOOLCHAIN, &krate, None, &config, || {
-                info!("Another log message!");
-                Ok(TestResult::TestFail(FailureReason::Unknown))
-            })
+            .record_result(
+                &ex,
+                &TEST_TOOLCHAIN,
+                &krate,
+                None,
+                &config,
+                EncodingType::Plain,
+                || {
+                    info!("Another log message!");
+                    Ok(TestResult::TestFail(FailureReason::Unknown))
+                },
+            )
             .unwrap();
+
         assert_eq!(
             results.get_result(&ex, &TEST_TOOLCHAIN, &krate).unwrap(),
             Some(TestResult::TestFail(FailureReason::Unknown))
@@ -411,12 +473,13 @@ mod tests {
                         ),
                     ],
                 },
+                EncodingType::Plain,
             )
             .unwrap();
 
         assert_eq!(
             results.load_log(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
-            Some("foo".as_bytes().to_vec())
+            Some(EncodedLog::Plain("foo".as_bytes().to_vec()))
         );
         assert_eq!(
             results

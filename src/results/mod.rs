@@ -1,7 +1,6 @@
 mod db;
 #[cfg(test)]
 mod dummy;
-
 use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
@@ -11,8 +10,11 @@ pub use crate::results::db::{DatabaseDB, ProgressData};
 #[cfg(test)]
 pub use crate::results::dummy::DummyDB;
 use crate::toolchain::Toolchain;
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use std::collections::HashMap;
-use std::{fmt, str::FromStr};
+use std::{fmt, io::Read, io::Write, str::FromStr};
 
 pub trait ReadResults {
     fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>>;
@@ -21,7 +23,7 @@ pub trait ReadResults {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-    ) -> Fallible<Option<Vec<u8>>>;
+    ) -> Fallible<Option<EncodedLog>>;
     fn load_test_result(
         &self,
         ex: &Experiment,
@@ -45,6 +47,7 @@ pub trait WriteResults {
         krate: &Crate,
         existing_logs: Option<LogStorage>,
         config: &Config,
+        encoding_type: EncodingType,
         f: F,
     ) -> Fallible<TestResult>
     where
@@ -54,6 +57,57 @@ pub trait WriteResults {
 pub trait DeleteResults {
     fn delete_all_results(&self, ex: &Experiment) -> Fallible<()>;
     fn delete_result(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> Fallible<()>;
+}
+
+string_enum!(pub enum EncodingType {
+    Plain => "plain",
+    Gzip => "gzip",
+});
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum EncodedLog {
+    Plain(Vec<u8>),
+    Gzip(Vec<u8>),
+}
+
+impl EncodedLog {
+    pub fn to_plain(&self) -> Fallible<Vec<u8>> {
+        match self {
+            EncodedLog::Plain(data) => Ok(data.to_vec()),
+            EncodedLog::Gzip(data) => {
+                let mut decoded_log = GzDecoder::new(data.as_slice());
+                let mut new_log = Vec::new();
+                decoded_log.read_to_end(&mut new_log)?;
+                Ok(new_log)
+            }
+        }
+    }
+
+    pub fn get_encoding_type(&self) -> EncodingType {
+        match self {
+            EncodedLog::Plain(_) => EncodingType::Plain,
+            EncodedLog::Gzip(_) => EncodingType::Gzip,
+        }
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        match self {
+            EncodedLog::Plain(data) => data,
+            EncodedLog::Gzip(data) => data,
+        }
+    }
+
+    pub fn from_plain_slice(data: &[u8], desired_encoding: EncodingType) -> Fallible<EncodedLog> {
+        match desired_encoding {
+            EncodingType::Gzip => {
+                let mut encoded_log = GzEncoder::new(Vec::new(), Compression::default());
+                encoded_log.write_all(data)?;
+                let encoded_log = encoded_log.finish()?;
+                Ok(EncodedLog::Gzip(encoded_log))
+            }
+            EncodingType::Plain => Ok(EncodedLog::Plain(data.to_vec())),
+        }
+    }
 }
 
 macro_rules! test_result_enum {

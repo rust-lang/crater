@@ -1,6 +1,6 @@
 use crate::experiments::{Assignee, Experiment, Status};
 use crate::prelude::*;
-use crate::results::{DatabaseDB, ProgressData};
+use crate::results::{DatabaseDB, EncodingType, ProgressData};
 use crate::server::api_types::{AgentConfig, ApiResponse};
 use crate::server::auth::{auth_filter, AuthDetails, TokenType};
 use crate::server::messages::Message;
@@ -143,7 +143,7 @@ fn endpoint_record_progress(
     );
 
     let db = DatabaseDB::new(&data.db);
-    db.store(&experiment, &result)?;
+    db.store(&experiment, &result, EncodingType::Gzip)?;
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }

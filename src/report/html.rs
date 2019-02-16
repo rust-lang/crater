@@ -2,7 +2,7 @@ use crate::assets;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::{archives::Archive, Comparison, CrateResult, ReportWriter, TestResults};
-use crate::results::{FailureReason, TestResult};
+use crate::results::{EncodingType, FailureReason, TestResult};
 use mime;
 use minifier;
 use std::collections::HashMap;
@@ -231,8 +231,18 @@ pub fn write_html_report<W: ReportWriter>(
     write_downloads(ex, available_archives, dest)?;
 
     info!("copying static assets");
-    dest.write_bytes("report.js", js_in.content()?.into_owned(), js_in.mime())?;
-    dest.write_bytes("report.css", css_in.content()?.into_owned(), css_in.mime())?;
+    dest.write_bytes(
+        "report.js",
+        js_in.content()?.into_owned(),
+        js_in.mime(),
+        EncodingType::Plain,
+    )?;
+    dest.write_bytes(
+        "report.css",
+        css_in.content()?.into_owned(),
+        css_in.mime(),
+        EncodingType::Plain,
+    )?;
 
     Ok(())
 }

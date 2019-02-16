@@ -253,6 +253,15 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "add_encoding_type",
+        MigrationKind::SQL(
+            "
+            ALTER TABLE results ADD COLUMN encoding TEXT NOT NULL DEFAULT 'plain'
+            ",
+        ),
+    ));
+
     migrations
 }
 

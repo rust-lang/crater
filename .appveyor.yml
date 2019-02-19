@@ -18,12 +18,14 @@ install:
   - rustc -V
   - cargo -V
 
-build: false
-
 branches:
   only:
     - auto
     - try
+    - master
+
+build_script:
+  - cargo build
 
 test_script:
-  - cargo build
+  - cargo test

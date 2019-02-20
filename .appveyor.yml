@@ -28,4 +28,5 @@ build_script:
   - cargo build
 
 test_script:
+  - cargo run -- create-lists
   - cargo test

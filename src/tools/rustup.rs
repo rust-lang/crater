@@ -59,6 +59,8 @@ impl InstallableTool for Rustup {
             native::make_executable(installer)?;
         }
 
+        // TODO(rustup.rs#998): Remove `.quiet(true)` once rust-docs is no longer a mandatory
+        // component.
         RunCommand::new(installer.to_string_lossy().as_ref())
             .args(&[
                 "-y",
@@ -66,6 +68,7 @@ impl InstallableTool for Rustup {
                 "--default-toolchain",
                 MAIN_TOOLCHAIN_NAME,
             ])
+            .quiet(true)
             .local_rustup(true)
             .run()
             .with_context(|_| "unable to install rustup")?;

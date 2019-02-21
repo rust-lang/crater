@@ -44,7 +44,7 @@ pub(crate) fn crate_source_dir(ex: &Experiment, tc: &Toolchain, krate: &Crate) -
         .join(&ex.name)
         .join("sources")
         .join(tc.to_path_component())
-        .join(krate.id())
+        .join(krate.to_path())
 }
 
 pub mod container {

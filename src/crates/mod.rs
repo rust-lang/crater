@@ -4,7 +4,7 @@ mod sources;
 use crate::dirs::LOCAL_CRATES_DIR;
 use crate::prelude::*;
 use std::fmt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 pub(crate) use crate::crates::sources::github::GitHubRepo;
@@ -24,6 +24,16 @@ impl Crate {
             Crate::GitHub(ref repo) => format!("gh/{}/{}", repo.org, repo.name),
             Crate::Local(ref name) => format!("local/{}", name),
         }
+    }
+
+    pub(crate) fn to_path(&self) -> PathBuf {
+        let components: Vec<&str> = match *self {
+            Crate::Registry(ref details) => vec!["reg", &details.name, &details.version],
+            Crate::GitHub(ref repo) => vec!["gh", &repo.org, &repo.name],
+            Crate::Local(ref name) => vec!["local", &name],
+        };
+
+        components.into_iter().collect()
     }
 
     pub(crate) fn fetch(&self) -> Fallible<()> {

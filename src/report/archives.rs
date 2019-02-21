@@ -51,7 +51,12 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
             let log_bytes = log_bytes.to_plain()?;
             let log_bytes = log_bytes.as_slice();
 
-            let path = format!("{}/{}/{}.txt", comparison, krate.id(), tc);
+            let path = format!(
+                "{}/{}/{}.txt",
+                comparison,
+                krate.id(),
+                tc.to_path_component(),
+            );
 
             let mut header = TarHeader::new_gnu();
             header.set_size(log_bytes.len() as u64);

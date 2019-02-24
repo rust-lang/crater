@@ -48,6 +48,7 @@ impl RunnerState {
 
 pub fn run_ex<DB: WriteResults + Sync>(
     ex: &Experiment,
+    crates: &[Crate],
     db: &DB,
     threads_count: usize,
     config: &Config,
@@ -57,7 +58,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
         return Err(err_msg("docker is not running"));
     }
 
-    let res = run_ex_inner(ex, db, threads_count, config, docker_env);
+    let res = run_ex_inner(ex, crates, db, threads_count, config, docker_env);
 
     // Remove all the target dirs even if the experiment failed
     let target_dir = &crate::toolchain::ex_target_dir(&ex.name);
@@ -70,6 +71,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
 fn run_ex_inner<DB: WriteResults + Sync>(
     ex: &Experiment,
+    crates: &[Crate],
     db: &DB,
     threads_count: usize,
     config: &Config,
@@ -82,7 +84,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     crate::tools::install()?;
 
     info!("computing the tasks graph...");
-    let graph = Mutex::new(build_graph(ex, config));
+    let graph = Mutex::new(build_graph(ex, crates, config));
 
     info!("preparing the execution...");
     for tc in &ex.toolchains {
@@ -193,9 +195,9 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     Ok(())
 }
 
-pub fn dump_dot(ex: &Experiment, config: &Config, dest: &Path) -> Fallible<()> {
+pub fn dump_dot(ex: &Experiment, crates: &[Crate], config: &Config, dest: &Path) -> Fallible<()> {
     info!("computing the tasks graph...");
-    let graph = build_graph(&ex, config);
+    let graph = build_graph(&ex, crates, config);
 
     info!("dumping the tasks graph...");
     ::std::fs::write(dest, format!("{:?}", graph.generate_dot()).as_bytes())?;

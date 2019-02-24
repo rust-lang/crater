@@ -17,6 +17,7 @@
 //                                   +---+ tc2 <---+
 
 use crate::config::Config;
+use crate::crates::Crate;
 use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
@@ -223,10 +224,10 @@ impl TasksGraph {
     }
 }
 
-pub(super) fn build_graph(ex: &Experiment, config: &Config) -> TasksGraph {
+pub(super) fn build_graph(ex: &Experiment, crates: &[Crate], config: &Config) -> TasksGraph {
     let mut graph = TasksGraph::new();
 
-    for krate in &ex.crates {
+    for krate in crates {
         if !ex.ignore_blacklist && config.should_skip(krate) {
             continue;
         }

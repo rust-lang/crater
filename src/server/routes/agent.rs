@@ -94,7 +94,7 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body
 fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
     let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
 
-    let result = if let Some((new, mut ex)) = next {
+    let result = if let Some((new, ex)) = next {
         if new {
             if let Some(ref github_issue) = ex.github_issue {
                 Message::new()
@@ -109,8 +109,7 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
             }
         }
 
-        ex.remove_completed_crates(&data.db)?;
-        Some(ex)
+        Some((ex.clone(), ex.get_crates(&data.db)?))
     } else {
         None
     };

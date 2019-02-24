@@ -101,17 +101,16 @@ impl FromStr for Assignee {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct GitHubIssue {
     pub api_url: String,
     pub html_url: String,
     pub number: i32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Experiment {
     pub name: String,
-    pub crates: Vec<Crate>,
     pub toolchains: [Toolchain; 2],
     pub mode: Mode,
     pub cap_lints: CapLints,
@@ -139,7 +138,7 @@ impl Experiment {
         )?;
         records
             .into_iter()
-            .map(|record| record.into_experiment(db))
+            .map(|record| record.into_experiment())
             .collect::<Fallible<_>>()
     }
 
@@ -152,7 +151,7 @@ impl Experiment {
         )?;
 
         if let Some(record) = record {
-            Ok(Some(record.into_experiment(db)?))
+            Ok(Some(record.into_experiment()?))
         } else {
             Ok(None)
         }
@@ -168,7 +167,7 @@ impl Experiment {
         )?;
 
         if let Some(record) = record {
-            Ok(Some(record.into_experiment(db)?))
+            Ok(Some(record.into_experiment()?))
         } else {
             Ok(None)
         }
@@ -189,7 +188,7 @@ impl Experiment {
         )?;
 
         if let Some(record) = record {
-            let mut experiment = record.into_experiment(db)?;
+            let mut experiment = record.into_experiment()?;
             experiment.set_status(&db, Status::Running)?;
             experiment.set_assigned_to(&db, Some(assignee))?;
             Ok(Some((true, experiment)))
@@ -206,7 +205,7 @@ impl Experiment {
         )?;
 
         if let Some(record) = record {
-            Ok(Some(record.into_experiment(db)?))
+            Ok(Some(record.into_experiment()?))
         } else {
             Ok(None)
         }
@@ -296,26 +295,17 @@ impl Experiment {
         }
     }
 
-    pub fn remove_completed_crates(&mut self, db: &Database) -> Fallible<()> {
-        // FIXME: optimize this
-        let mut new_crates = Vec::with_capacity(self.crates.len());
-        for krate in self.crates.drain(..) {
-            let results_len: u32 = db
-                .get_row(
-                    "SELECT COUNT(*) AS count FROM results \
-                     WHERE experiment = ?1 AND crate = ?2;",
-                    &[&self.name.as_str(), &serde_json::to_string(&krate)?],
-                    |r| r.get("count"),
-                )?
-                .unwrap();
-
-            if results_len < 2 {
-                new_crates.push(krate);
-            }
-        }
-
-        self.crates = new_crates;
-        Ok(())
+    pub fn get_crates(&self, db: &Database) -> Fallible<Vec<Crate>> {
+        db.query(
+            "SELECT crate FROM experiment_crates WHERE experiment = ?1",
+            &[&self.name],
+            |r| {
+                let value: String = r.get("crate");
+                Ok(serde_json::from_str(&value)?)
+            },
+        )?
+        .into_iter()
+        .collect::<Fallible<Vec<Crate>>>()
     }
 }
 
@@ -360,22 +350,9 @@ impl ExperimentDBRecord {
         }
     }
 
-    fn into_experiment(self, db: &Database) -> Fallible<Experiment> {
-        let crates = db
-            .query(
-                "SELECT crate FROM experiment_crates WHERE experiment = ?1",
-                &[&self.name],
-                |r| {
-                    let value: String = r.get("crate");
-                    Ok(serde_json::from_str(&value)?)
-                },
-            )?
-            .into_iter()
-            .collect::<Fallible<Vec<Crate>>>()?;
-
+    fn into_experiment(self) -> Fallible<Experiment> {
         Ok(Experiment {
             name: self.name,
-            crates,
             toolchains: [self.toolchain_start.parse()?, self.toolchain_end.parse()?],
             cap_lints: self.cap_lints.parse()?,
             mode: self.mode.parse()?,

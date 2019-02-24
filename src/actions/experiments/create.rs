@@ -131,7 +131,7 @@ mod tests {
         );
         assert_eq!(ex.mode, Mode::BuildAndTest);
         assert_eq!(
-            ex.crates,
+            ex.get_crates(&ctx.db).unwrap(),
             crate::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
         );
         assert_eq!(ex.cap_lints, CapLints::Forbid);

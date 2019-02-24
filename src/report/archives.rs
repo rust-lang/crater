@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::{compare, ReportWriter};
@@ -16,6 +17,7 @@ pub struct Archive {
 pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
     db: &DB,
     ex: &Experiment,
+    crates: &[Crate],
     dest: &W,
     config: &Config,
 ) -> Fallible<Vec<Archive>> {
@@ -23,7 +25,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
     let mut all = TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()));
     let mut by_comparison = HashMap::new();
 
-    for krate in &ex.crates {
+    for krate in crates {
         if config.should_skip(krate) {
             continue;
         }
@@ -126,8 +128,8 @@ mod tests {
         // Create a dummy experiment
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
-        let crate1 = ex.crates[0].clone();
-        let crate2 = ex.crates[1].clone();
+        let crate1 = &ex.get_crates(&db).unwrap()[0];
+        let crate2 = &ex.get_crates(&db).unwrap()[1];
 
         // Fill some dummy results into the database
         let results = DatabaseDB::new(&db);
@@ -189,7 +191,14 @@ mod tests {
             .unwrap();
 
         // Generate all the archives
-        let archives = write_logs_archives(&results, &ex, &writer, &config).unwrap();
+        let archives = write_logs_archives(
+            &results,
+            &ex,
+            &ex.get_crates(&db).unwrap(),
+            &writer,
+            &config,
+        )
+        .unwrap();
 
         // Ensure the correct list of archives is returned
         let mut archives_paths = archives.into_iter().map(|a| a.path).collect::<Vec<_>>();

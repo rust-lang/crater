@@ -23,7 +23,8 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
     let dest = format!("s3://{}/{}", data.tokens.reports_bucket.bucket, &ex.name);
     let writer = report::S3Writer::create(Box::new(client), dest.parse()?)?;
 
-    let res = report::gen(results, &ex, &writer, &data.config)?;
+    let crates = ex.get_crates(&data.db)?;
+    let res = report::gen(results, &ex, &crates, &writer, &data.config)?;
 
     Ok(res)
 }

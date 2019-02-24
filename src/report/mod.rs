@@ -130,7 +130,7 @@ pub fn generate_report<DB: ReadResults>(
 ) -> Fallible<TestResults> {
     let shas = db.load_all_shas(ex)?;
     let res = crates
-        .into_iter()
+        .iter()
         .map(|krate| {
             // Any errors here will turn into unknown results
             let crate_results = ex.toolchains.iter().map(|tc| -> Fallible<BuildTestResult> {

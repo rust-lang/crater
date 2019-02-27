@@ -297,7 +297,8 @@ impl Experiment {
 
     pub fn get_crates(&self, db: &Database) -> Fallible<Vec<Crate>> {
         db.query(
-            "SELECT crate FROM experiment_crates WHERE experiment = ?1",
+            "SELECT crate FROM experiment_crates WHERE experiment = ?1
+            AND (SELECT COUNT(*) AS count FROM results WHERE results.experiment = ?1 AND results.crate = experiment_crates.crate) >= 2",
             &[&self.name],
             |r| {
                 let value: String = r.get("crate");

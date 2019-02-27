@@ -695,7 +695,7 @@ mod tests {
         );
 
         let writer = DummyWriter::default();
-        gen(&db, &ex, &vec![gh], &writer, &config).unwrap();
+        gen(&db, &ex, &[gh], &writer, &config).unwrap();
 
         assert_eq!(
             writer.get("config.json", &mime::APPLICATION_JSON),

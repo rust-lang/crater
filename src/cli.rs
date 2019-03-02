@@ -426,7 +426,14 @@ impl Crater {
                     }
 
                     let result_db = DatabaseDB::new(&db);
-                    runner::run_ex(&experiment, &result_db, threads, &config, docker_env)?;
+                    runner::run_ex(
+                        &experiment,
+                        &experiment.get_uncompleted_crates(&db)?,
+                        &result_db,
+                        threads,
+                        &config,
+                        docker_env,
+                    )?;
                     experiment.set_status(&db, Status::NeedsReport)?;
                 } else {
                     bail!("missing experiment {}", ex.0);
@@ -457,6 +464,7 @@ impl Crater {
                     let res = report::gen(
                         &result_db,
                         &experiment,
+                        &experiment.get_crates(&db)?,
                         &report::FileWriter::create(dest.0.clone())?,
                         &config,
                     );
@@ -498,6 +506,7 @@ impl Crater {
                     let res = report::gen(
                         &result_db,
                         &experiment,
+                        &experiment.get_crates(&db)?,
                         &report::S3Writer::create(client, s3_prefix.clone())?,
                         &config,
                     );
@@ -533,7 +542,7 @@ impl Crater {
                 let db = Database::open()?;
 
                 if let Some(experiment) = Experiment::get(&db, &ex.0)? {
-                    runner::dump_dot(&experiment, &config, dest)?;
+                    runner::dump_dot(&experiment, &experiment.get_crates(&db)?, &config, dest)?;
                 } else {
                     bail!("missing experiment: {}", ex.0);
                 }

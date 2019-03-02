@@ -128,15 +128,15 @@ impl AgentApi {
         })
     }
 
-    pub fn next_experiment(&self) -> Fallible<Experiment> {
+    pub fn next_experiment(&self) -> Fallible<(Experiment, Vec<Crate>)> {
         self.retry(|this| loop {
             let resp: Option<_> = this
                 .build_request(Method::GET, "next-experiment")
                 .send()?
                 .to_api_response()?;
 
-            if let Some(experiment) = resp {
-                return Ok(experiment);
+            if let Some((experiment, crates)) = resp {
+                return Ok((experiment, crates));
             }
 
             ::std::thread::sleep(::std::time::Duration::from_secs(RETRY_AFTER));

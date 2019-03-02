@@ -101,17 +101,16 @@ impl FromStr for Assignee {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct GitHubIssue {
     pub api_url: String,
     pub html_url: String,
     pub number: i32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Experiment {
     pub name: String,
-    pub crates: Vec<Crate>,
     pub toolchains: [Toolchain; 2],
     pub mode: Mode,
     pub cap_lints: CapLints,
@@ -139,7 +138,7 @@ impl Experiment {
         )?;
         records
             .into_iter()
-            .map(|record| record.into_experiment(db))
+            .map(|record| record.into_experiment())
             .collect::<Fallible<_>>()
     }
 
@@ -152,7 +151,7 @@ impl Experiment {
         )?;
 
         if let Some(record) = record {
-            Ok(Some(record.into_experiment(db)?))
+            Ok(Some(record.into_experiment()?))
         } else {
             Ok(None)
         }
@@ -168,7 +167,7 @@ impl Experiment {
         )?;
 
         if let Some(record) = record {
-            Ok(Some(record.into_experiment(db)?))
+            Ok(Some(record.into_experiment()?))
         } else {
             Ok(None)
         }
@@ -189,7 +188,7 @@ impl Experiment {
         )?;
 
         if let Some(record) = record {
-            let mut experiment = record.into_experiment(db)?;
+            let mut experiment = record.into_experiment()?;
             experiment.set_status(&db, Status::Running)?;
             experiment.set_assigned_to(&db, Some(assignee))?;
             Ok(Some((true, experiment)))
@@ -206,7 +205,7 @@ impl Experiment {
         )?;
 
         if let Some(record) = record {
-            Ok(Some(record.into_experiment(db)?))
+            Ok(Some(record.into_experiment()?))
         } else {
             Ok(None)
         }
@@ -296,26 +295,31 @@ impl Experiment {
         }
     }
 
-    pub fn remove_completed_crates(&mut self, db: &Database) -> Fallible<()> {
-        // FIXME: optimize this
-        let mut new_crates = Vec::with_capacity(self.crates.len());
-        for krate in self.crates.drain(..) {
-            let results_len: u32 = db
-                .get_row(
-                    "SELECT COUNT(*) AS count FROM results \
-                     WHERE experiment = ?1 AND crate = ?2;",
-                    &[&self.name.as_str(), &serde_json::to_string(&krate)?],
-                    |r| r.get("count"),
-                )?
-                .unwrap();
+    pub fn get_crates(&self, db: &Database) -> Fallible<Vec<Crate>> {
+        db.query(
+            "SELECT crate FROM experiment_crates WHERE experiment = ?1;",
+            &[&self.name],
+            |r| {
+                let value: String = r.get("crate");
+                Ok(serde_json::from_str(&value)?)
+            },
+        )?
+        .into_iter()
+        .collect::<Fallible<Vec<Crate>>>()
+    }
 
-            if results_len < 2 {
-                new_crates.push(krate);
-            }
-        }
-
-        self.crates = new_crates;
-        Ok(())
+    pub fn get_uncompleted_crates(&self, db: &Database) -> Fallible<Vec<Crate>> {
+        db.query(
+            "SELECT crate FROM experiment_crates WHERE experiment = ?1
+            AND (SELECT COUNT(*) AS count FROM results WHERE results.experiment = ?1 AND results.crate = experiment_crates.crate) < 2;",
+            &[&self.name],
+            |r| {
+                let value: String = r.get("crate");
+                Ok(serde_json::from_str(&value)?)
+            },
+        )?
+        .into_iter()
+        .collect::<Fallible<Vec<Crate>>>()
     }
 }
 
@@ -360,22 +364,9 @@ impl ExperimentDBRecord {
         }
     }
 
-    fn into_experiment(self, db: &Database) -> Fallible<Experiment> {
-        let crates = db
-            .query(
-                "SELECT crate FROM experiment_crates WHERE experiment = ?1",
-                &[&self.name],
-                |r| {
-                    let value: String = r.get("crate");
-                    Ok(serde_json::from_str(&value)?)
-                },
-            )?
-            .into_iter()
-            .collect::<Fallible<Vec<Crate>>>()?;
-
+    fn into_experiment(self) -> Fallible<Experiment> {
         Ok(Experiment {
             name: self.name,
-            crates,
             toolchains: [self.toolchain_start.parse()?, self.toolchain_end.parse()?],
             cap_lints: self.cap_lints.parse()?,
             mode: self.mode.parse()?,
@@ -495,5 +486,73 @@ mod tests {
 
         // Test no other experiment is available for the other agents
         assert!(Experiment::next(&db, &agent3).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_completed_crates() {
+        use crate::prelude::*;
+        use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
+
+        let db = Database::temp().unwrap();
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        // Create a dummy experiment
+        CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
+        let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
+        let crates = ex.get_uncompleted_crates(&db).unwrap();
+        let crate1 = &crates[0];
+        let crate2 = &crates[1];
+
+        // Fill some dummy results into the database
+        let results = DatabaseDB::new(&db);
+        results
+            .record_result(
+                &ex,
+                &ex.toolchains[0],
+                &crate1,
+                None,
+                &config,
+                EncodingType::Gzip,
+                || {
+                    info!("tc1 crate1");
+                    Ok(TestResult::TestPass)
+                },
+            )
+            .unwrap();
+        results
+            .record_result(
+                &ex,
+                &ex.toolchains[1],
+                &crate1,
+                None,
+                &config,
+                EncodingType::Plain,
+                || {
+                    info!("tc2 crate1");
+                    Ok(TestResult::BuildFail(FailureReason::Unknown))
+                },
+            )
+            .unwrap();
+        results
+            .record_result(
+                &ex,
+                &ex.toolchains[1],
+                &crate2,
+                None,
+                &config,
+                EncodingType::Plain,
+                || {
+                    info!("tc1 crate2");
+                    Ok(TestResult::BuildFail(FailureReason::Unknown))
+                },
+            )
+            .unwrap();
+
+        // Test already completed crates does not show up again
+        let uncompleted_crates = ex.get_uncompleted_crates(&db).unwrap();
+        assert_eq!(uncompleted_crates.len(), crates.len() - 1);
     }
 }

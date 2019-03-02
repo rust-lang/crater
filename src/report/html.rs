@@ -133,6 +133,7 @@ struct DownloadsContext<'a> {
 
 fn write_report<W: ReportWriter>(
     ex: &Experiment,
+    crates_count: usize,
     res: &TestResults,
     full: bool,
     to: &str,
@@ -184,8 +185,7 @@ fn write_report<W: ReportWriter>(
         .navbar(),
         categories,
         full,
-        crates_count: ex.crates.len(),
-
+        crates_count,
         comparison_colors,
         result_colors,
         result_names,
@@ -200,14 +200,14 @@ fn write_report<W: ReportWriter>(
 
 fn write_downloads<W: ReportWriter>(
     ex: &Experiment,
+    crates_count: usize,
     available_archives: Vec<Archive>,
     dest: &W,
 ) -> Fallible<()> {
     let context = DownloadsContext {
         ex,
         nav: CurrentPage::Downloads.navbar(),
-        crates_count: ex.crates.len(),
-
+        crates_count,
         available_archives,
     };
 
@@ -220,15 +220,16 @@ fn write_downloads<W: ReportWriter>(
 
 pub fn write_html_report<W: ReportWriter>(
     ex: &Experiment,
+    crates_count: usize,
     res: &TestResults,
     available_archives: Vec<Archive>,
     dest: &W,
 ) -> Fallible<()> {
     let js_in = assets::load("report.js")?;
     let css_in = assets::load("report.css")?;
-    write_report(ex, res, false, "index.html", dest)?;
-    write_report(ex, res, true, "full.html", dest)?;
-    write_downloads(ex, available_archives, dest)?;
+    write_report(ex, crates_count, res, false, "index.html", dest)?;
+    write_report(ex, crates_count, res, true, "full.html", dest)?;
+    write_downloads(ex, crates_count, available_archives, dest)?;
 
     info!("copying static assets");
     dest.write_bytes(

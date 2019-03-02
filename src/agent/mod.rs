@@ -4,6 +4,7 @@ mod results;
 use crate::agent::api::AgentApi;
 use crate::agent::results::ResultsUploader;
 use crate::config::Config;
+use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::utils;
@@ -31,7 +32,7 @@ impl Agent {
         })
     }
 
-    fn experiment(&self) -> Fallible<Experiment> {
+    fn experiment(&self) -> Fallible<(Experiment, Vec<Crate>)> {
         info!("asking the server for a new experiment...");
         Ok(self.api.next_experiment()?)
     }
@@ -54,8 +55,8 @@ fn run_experiment(
     threads_count: usize,
     docker_env: &str,
 ) -> Fallible<()> {
-    let ex = agent.experiment()?;
-    crate::runner::run_ex(&ex, db, threads_count, &agent.config, docker_env)?;
+    let (ex, crates) = agent.experiment()?;
+    crate::runner::run_ex(&ex, &crates, db, threads_count, &agent.config, docker_env)?;
     agent.api.complete_experiment()?;
     Ok(())
 }

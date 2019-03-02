@@ -126,12 +126,11 @@ pub fn generate_report<DB: ReadResults>(
     db: &DB,
     config: &Config,
     ex: &Experiment,
+    crates: &[Crate],
 ) -> Fallible<TestResults> {
     let shas = db.load_all_shas(ex)?;
-    let res = ex
-        .crates
-        .clone()
-        .into_iter()
+    let res = crates
+        .iter()
         .map(|krate| {
             // Any errors here will turn into unknown results
             let crate_results = ex.toolchains.iter().map(|tc| -> Fallible<BuildTestResult> {
@@ -175,12 +174,13 @@ const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
 fn write_logs<DB: ReadResults, W: ReportWriter>(
     db: &DB,
     ex: &Experiment,
+    crates: &[Crate],
     dest: &W,
     config: &Config,
 ) -> Fallible<()> {
-    let num_crates = ex.crates.len();
+    let num_crates = crates.len();
     let progress_every = (num_crates / PROGRESS_FRACTION) + 1;
-    for (i, krate) in ex.crates.iter().enumerate() {
+    for (i, krate) in crates.iter().enumerate() {
         if i % progress_every == 0 {
             info!("wrote logs for {}/{} crates", i, num_crates)
         }
@@ -219,10 +219,11 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
 pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     db: &DB,
     ex: &Experiment,
+    crates: &[Crate],
     dest: &W,
     config: &Config,
 ) -> Fallible<TestResults> {
-    let res = generate_report(db, config, ex)?;
+    let res = generate_report(db, config, ex, crates)?;
 
     info!("writing results to {}", dest);
     info!("writing metadata");
@@ -238,11 +239,11 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     )?;
 
     info!("writing archives");
-    let available_archives = archives::write_logs_archives(db, ex, dest, config)?;
+    let available_archives = archives::write_logs_archives(db, ex, crates, dest, config)?;
     info!("writing html files");
-    html::write_html_report(ex, &res, available_archives, dest)?;
+    html::write_html_report(ex, crates.len(), &res, available_archives, dest)?;
     info!("writing logs");
-    write_logs(db, ex, dest, config)?;
+    write_logs(db, ex, crates, dest, config)?;
 
     Ok(res)
 }
@@ -652,7 +653,6 @@ mod tests {
 
         let ex = Experiment {
             name: "foo".to_string(),
-            crates: vec![gh.clone()],
             toolchains: [MAIN_TOOLCHAIN.clone(), TEST_TOOLCHAIN.clone()],
             mode: Mode::BuildAndTest,
             cap_lints: CapLints::Forbid,
@@ -695,7 +695,7 @@ mod tests {
         );
 
         let writer = DummyWriter::default();
-        gen(&db, &ex, &writer, &config).unwrap();
+        gen(&db, &ex, &[gh], &writer, &config).unwrap();
 
         assert_eq!(
             writer.get("config.json", &mime::APPLICATION_JSON),

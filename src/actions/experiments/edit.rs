@@ -80,7 +80,7 @@ impl Action for EditExperiment {
                     &ctx.config,
                 )?)
             } else if self.ignore_blacklist.is_some() {
-                Some(ex.crates.clone())
+                Some(ex.get_crates(&ctx.db)?)
             } else {
                 None
             };
@@ -102,7 +102,6 @@ impl Action for EditExperiment {
                         ],
                     )?;
                 }
-                ex.crates = crates_vec;
             }
 
             // Try to update the mode
@@ -212,7 +211,7 @@ mod tests {
         assert_eq!(ex.ignore_blacklist, true);
 
         assert_eq!(
-            ex.crates,
+            ex.get_crates(&ctx.db).unwrap(),
             crate::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
         );
     }

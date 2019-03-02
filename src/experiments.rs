@@ -297,8 +297,21 @@ impl Experiment {
 
     pub fn get_crates(&self, db: &Database) -> Fallible<Vec<Crate>> {
         db.query(
+            "SELECT crate FROM experiment_crates WHERE experiment = ?1;",
+            &[&self.name],
+            |r| {
+                let value: String = r.get("crate");
+                Ok(serde_json::from_str(&value)?)
+            },
+        )?
+        .into_iter()
+        .collect::<Fallible<Vec<Crate>>>()
+    }
+
+    pub fn get_uncompleted_crates(&self, db: &Database) -> Fallible<Vec<Crate>> {
+        db.query(
             "SELECT crate FROM experiment_crates WHERE experiment = ?1
-            AND (SELECT COUNT(*) AS count FROM results WHERE results.experiment = ?1 AND results.crate = experiment_crates.crate) >= 2",
+            AND (SELECT COUNT(*) AS count FROM results WHERE results.experiment = ?1 AND results.crate = experiment_crates.crate) < 2;",
             &[&self.name],
             |r| {
                 let value: String = r.get("crate");
@@ -473,5 +486,73 @@ mod tests {
 
         // Test no other experiment is available for the other agents
         assert!(Experiment::next(&db, &agent3).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_completed_crates() {
+        use crate::prelude::*;
+        use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
+
+        let db = Database::temp().unwrap();
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        // Create a dummy experiment
+        CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
+        let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
+        let crates = ex.get_uncompleted_crates(&db).unwrap();
+        let crate1 = &crates[0];
+        let crate2 = &crates[1];
+
+        // Fill some dummy results into the database
+        let results = DatabaseDB::new(&db);
+        results
+            .record_result(
+                &ex,
+                &ex.toolchains[0],
+                &crate1,
+                None,
+                &config,
+                EncodingType::Gzip,
+                || {
+                    info!("tc1 crate1");
+                    Ok(TestResult::TestPass)
+                },
+            )
+            .unwrap();
+        results
+            .record_result(
+                &ex,
+                &ex.toolchains[1],
+                &crate1,
+                None,
+                &config,
+                EncodingType::Plain,
+                || {
+                    info!("tc2 crate1");
+                    Ok(TestResult::BuildFail(FailureReason::Unknown))
+                },
+            )
+            .unwrap();
+        results
+            .record_result(
+                &ex,
+                &ex.toolchains[1],
+                &crate2,
+                None,
+                &config,
+                EncodingType::Plain,
+                || {
+                    info!("tc1 crate2");
+                    Ok(TestResult::BuildFail(FailureReason::Unknown))
+                },
+            )
+            .unwrap();
+
+        // Test already completed crates does not show up again
+        let uncompleted_crates = ex.get_uncompleted_crates(&db).unwrap();
+        assert_eq!(uncompleted_crates.len(), crates.len() - 1);
     }
 }

@@ -428,7 +428,7 @@ impl Crater {
                     let result_db = DatabaseDB::new(&db);
                     runner::run_ex(
                         &experiment,
-                        &experiment.get_crates(&db)?,
+                        &experiment.get_uncompleted_crates(&db)?,
                         &result_db,
                         threads,
                         &config,

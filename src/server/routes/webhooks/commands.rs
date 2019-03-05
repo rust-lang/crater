@@ -37,6 +37,7 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()
             number: issue.number,
         }),
         ignore_blacklist: args.ignore_blacklist.unwrap_or(false),
+        assign: args.assign,
     }
     .apply(&ActionsCtx::new(&data.db, &data.config))?;
 
@@ -69,6 +70,7 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
         cap_lints: args.cap_lints,
         priority: args.priority,
         ignore_blacklist: args.ignore_blacklist,
+        assign: args.assign,
     }
     .apply(&ActionsCtx::new(&data.db, &data.config))?;
 

@@ -123,6 +123,8 @@ pub enum Crater {
         priority: i32,
         #[structopt(name = "ignore-blacklist", long = "ignore-blacklist")]
         ignore_blacklist: bool,
+        #[structopt(name = "assign", long = "assign")]
+        assign: Option<Assignee>,
     },
 
     #[structopt(name = "edit", about = "edit an experiment configuration")]
@@ -165,6 +167,8 @@ pub enum Crater {
             conflicts_with = "ignore-blacklist"
         )]
         no_ignore_blacklist: bool,
+        #[structopt(name = "assign", long = "assign")]
+        assign: Option<Assignee>,
     },
 
     #[structopt(name = "delete-ex", about = "delete shared data for experiment")]
@@ -307,6 +311,7 @@ impl Crater {
                 ref cap_lints,
                 ref priority,
                 ref ignore_blacklist,
+                ref assign,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
@@ -321,6 +326,7 @@ impl Crater {
                     priority: *priority,
                     github_issue: None,
                     ignore_blacklist: *ignore_blacklist,
+                    assign: assign.clone(),
                 }
                 .apply(&ctx)?;
             }
@@ -334,6 +340,7 @@ impl Crater {
                 ref priority,
                 ref ignore_blacklist,
                 ref no_ignore_blacklist,
+                ref assign,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
@@ -355,6 +362,7 @@ impl Crater {
                     cap_lints: *cap_lints,
                     priority: *priority,
                     ignore_blacklist,
+                    assign: assign.clone(),
                 }
                 .apply(&ctx)?;
             }

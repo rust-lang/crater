@@ -117,6 +117,8 @@ beta run you can use:
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)
 * `ignore-blacklist`: whether the blacklist should be ignored (default: `false`)
+* `assign`: assign the experiment to a specific agent (use this only when you
+  know what you're doing)
 * `p`: the priority of the run (default: `0`)
 
 [Go back to the TOC][h-toc]
@@ -143,6 +145,8 @@ priority of the `foo` experiment you can use:
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)
 * `ignore-blacklist`: whether the blacklist should be ignored (default: `false`)
+* `assign`: assign the experiment to a specific agent (use this only when you
+  know what you're doing)
 * `p`: the priority of the run (default: `0`)
 
 [Go back to the TOC][h-toc]

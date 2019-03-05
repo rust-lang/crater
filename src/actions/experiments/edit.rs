@@ -1,6 +1,6 @@
 use crate::actions::{experiments::ExperimentError, Action, ActionsCtx};
 use crate::db::QueryUtils;
-use crate::experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
+use crate::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
 
@@ -12,6 +12,7 @@ pub struct EditExperiment {
     pub cap_lints: Option<CapLints>,
     pub priority: Option<i32>,
     pub ignore_blacklist: Option<bool>,
+    pub assign: Option<Assignee>,
 }
 
 impl EditExperiment {
@@ -25,6 +26,7 @@ impl EditExperiment {
             cap_lints: None,
             priority: None,
             ignore_blacklist: None,
+            assign: None,
         }
     }
 }
@@ -134,6 +136,16 @@ impl Action for EditExperiment {
                 ex.priority = priority;
             }
 
+            // Try to update the assignee
+            if let Some(assign) = self.assign {
+                let changes = t.execute(
+                    "UPDATE experiments SET assigned_to = ?1 WHERE name = ?2;",
+                    &[&assign.to_string(), &self.name],
+                )?;
+                assert_eq!(changes, 1);
+                ex.assigned_to = Some(assign);
+            }
+
             Ok(())
         })?;
         Ok(())
@@ -147,7 +159,7 @@ mod tests {
     use crate::config::{Config, CrateConfig};
     use crate::crates::Crate;
     use crate::db::{Database, QueryUtils};
-    use crate::experiments::{CapLints, CrateSelect, Experiment, Mode, Status};
+    use crate::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
@@ -180,6 +192,7 @@ mod tests {
             priority: 0,
             github_issue: None,
             ignore_blacklist: false,
+            assign: None,
         }
         .apply(&ctx)
         .unwrap();
@@ -196,6 +209,7 @@ mod tests {
             cap_lints: Some(CapLints::Warn),
             priority: Some(10),
             ignore_blacklist: Some(true),
+            assign: Some(Assignee::CLI),
         }
         .apply(&ctx)
         .unwrap();
@@ -209,6 +223,7 @@ mod tests {
         assert_eq!(ex.cap_lints, CapLints::Warn);
         assert_eq!(ex.priority, 10);
         assert_eq!(ex.ignore_blacklist, true);
+        assert_eq!(ex.assigned_to, Some(Assignee::CLI));
 
         assert_eq!(
             ex.get_crates(&ctx.db).unwrap(),

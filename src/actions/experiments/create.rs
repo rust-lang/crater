@@ -1,6 +1,6 @@
 use crate::actions::{experiments::ExperimentError, Action, ActionsCtx};
 use crate::db::QueryUtils;
-use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
+use crate::experiments::{Assignee, CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
 use chrono::Utc;
@@ -14,6 +14,7 @@ pub struct CreateExperiment {
     pub priority: i32,
     pub github_issue: Option<GitHubIssue>,
     pub ignore_blacklist: bool,
+    pub assign: Option<Assignee>,
 }
 
 impl CreateExperiment {
@@ -30,6 +31,7 @@ impl CreateExperiment {
             priority: 0,
             github_issue: None,
             ignore_blacklist: false,
+            assign: None,
         }
     }
 }
@@ -52,8 +54,9 @@ impl Action for CreateExperiment {
             transaction.execute(
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
-                 status, github_issue, github_issue_url, github_issue_number, ignore_blacklist) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);",
+                 status, github_issue, github_issue_url, github_issue_number, ignore_blacklist, \
+                 assigned_to) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
                 &[
                     &self.name,
                     &self.mode.to_str(),
@@ -67,6 +70,7 @@ impl Action for CreateExperiment {
                     &self.github_issue.as_ref().map(|i| i.html_url.as_str()),
                     &self.github_issue.as_ref().map(|i| i.number),
                     &self.ignore_blacklist,
+                    &self.assign.map(|a| a.to_string()),
                 ],
             )?;
 
@@ -92,7 +96,9 @@ mod tests {
     use crate::config::{Config, CrateConfig};
     use crate::crates::Crate;
     use crate::db::{Database, QueryUtils};
-    use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
+    use crate::experiments::{
+        Assignee, CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status,
+    };
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
 
     #[test]
@@ -119,6 +125,7 @@ mod tests {
                 number: 10,
             }),
             ignore_blacklist: true,
+            assign: None,
         }
         .apply(&ctx)
         .unwrap();
@@ -145,6 +152,26 @@ mod tests {
         assert_eq!(ex.status, Status::Queued);
         assert!(ex.assigned_to.is_none());
         assert!(ex.ignore_blacklist);
+    }
+
+    #[test]
+    fn test_creation_with_assign() {
+        let db = Database::temp().unwrap();
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        CreateExperiment {
+            assign: Some(Assignee::CLI),
+            ..CreateExperiment::dummy("foo")
+        }
+        .apply(&ctx)
+        .unwrap();
+
+        let ex = Experiment::get(&db, "foo").unwrap().unwrap();
+        assert_eq!(ex.status, Status::Queued);
+        assert_eq!(ex.assigned_to, Some(Assignee::CLI));
     }
 
     #[test]
@@ -223,6 +250,7 @@ mod tests {
             priority: 0,
             github_issue: None,
             ignore_blacklist: false,
+            assign: None,
         }
         .apply(&ctx)
         .unwrap_err();
@@ -251,6 +279,7 @@ mod tests {
             priority: 0,
             github_issue: None,
             ignore_blacklist: false,
+            assign: None,
         }
         .apply(&ctx)
         .unwrap();
@@ -265,6 +294,7 @@ mod tests {
             priority: 0,
             github_issue: None,
             ignore_blacklist: false,
+            assign: None,
         }
         .apply(&ctx)
         .unwrap_err();

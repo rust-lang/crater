@@ -2452,7 +2452,6 @@ ld = { skip = true } #automatic
 ld_preload = { skip-tests = true } #automatic
 ldscript-parser = { skip-tests = true } #automatic
 leaf = { skip = true } #automatic
-leafers = { skip = true } #automatic
 leanshot = { skip = true } #automatic
 ledcat = { skip = true } #automatic
 ledger = { skip-tests = true } #automatic

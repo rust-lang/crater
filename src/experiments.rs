@@ -179,22 +179,36 @@ impl Experiment {
             return Ok(Some((false, experiment)));
         }
 
-        let record = db.get_row(
-            "SELECT * FROM experiments \
-             WHERE status = \"queued\" \
-             ORDER BY priority DESC, created_at;",
-            &[],
-            |r| ExperimentDBRecord::from_row(r),
-        )?;
+        // First look at queued experiments explicitly assigned to this agent, and then queued
+        // experiments without an assigned agent.
+        for assigned_to in &[Some(assignee), None] {
+            let record = if let Some(assigned_to) = assigned_to {
+                db.get_row(
+                    "SELECT * FROM experiments \
+                     WHERE status = \"queued\" AND assigned_to = ?1 \
+                     ORDER BY priority DESC, created_at;",
+                    &[&assigned_to.to_string()],
+                    |r| ExperimentDBRecord::from_row(r),
+                )?
+            } else {
+                db.get_row(
+                    "SELECT * FROM experiments \
+                     WHERE status = \"queued\" AND assigned_to IS NULL \
+                     ORDER BY priority DESC, created_at;",
+                    &[],
+                    |r| ExperimentDBRecord::from_row(r),
+                )?
+            };
 
-        if let Some(record) = record {
-            let mut experiment = record.into_experiment()?;
-            experiment.set_status(&db, Status::Running)?;
-            experiment.set_assigned_to(&db, Some(assignee))?;
-            Ok(Some((true, experiment)))
-        } else {
-            Ok(None)
+            if let Some(record) = record {
+                let mut experiment = record.into_experiment()?;
+                experiment.set_status(&db, Status::Running)?;
+                experiment.set_assigned_to(&db, Some(assignee))?;
+                return Ok(Some((true, experiment)));
+            }
         }
+
+        Ok(None)
     }
 
     pub fn get(db: &Database, name: &str) -> Fallible<Option<Experiment>> {
@@ -486,6 +500,48 @@ mod tests {
 
         // Test no other experiment is available for the other agents
         assert!(Experiment::next(&db, &agent3).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_assigning_experiment_with_preassigned_agent() {
+        let db = Database::temp().unwrap();
+        let config = Config::load().unwrap();
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        let mut tokens = Tokens::default();
+        tokens.agents.insert("token1".into(), "agent-1".into());
+        tokens.agents.insert("token2".into(), "agent-2".into());
+
+        let agent1 = Assignee::Agent("agent-1".to_string());
+        let agent2 = Assignee::Agent("agent-2".to_string());
+
+        // Populate the `agents` table
+        let _ = Agents::new(db.clone(), &tokens).unwrap();
+
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+
+        let mut create_assigned = CreateExperiment::dummy("assigned");
+        create_assigned.assign = Some(agent1.clone());
+        create_assigned.apply(&ctx).unwrap();
+
+        let mut create_important = CreateExperiment::dummy("important");
+        create_important.priority = 10;
+        create_important.apply(&ctx).unwrap();
+
+        // Try to get an experiment for agent 1, it should pick 'assigned' even if 'important' has
+        // an higher priority.
+        let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
+        assert!(new);
+        assert_eq!(ex.assigned_to.unwrap(), agent1);
+        assert_eq!(ex.name.as_str(), "assigned");
+
+        // Then the 'important' experiment will be picked by agent 2
+        let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
+        assert!(new);
+        assert_eq!(ex.assigned_to.unwrap(), agent2);
+        assert_eq!(ex.name.as_str(), "important");
     }
 
     #[test]

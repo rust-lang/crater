@@ -1,4 +1,4 @@
-use crate::experiments::{CapLints, CrateSelect, Mode};
+use crate::experiments::{Assignee, CapLints, CrateSelect, Mode};
 use crate::toolchain::Toolchain;
 
 #[derive(Debug, Fail)]
@@ -110,6 +110,7 @@ generate_parser!(pub enum Command {
         cap_lints: Option<CapLints> = "cap-lints",
         priority: Option<i32> = "p",
         ignore_blacklist: Option<bool> = "ignore-blacklist",
+        assign: Option<Assignee> = "assign",
     })
 
     "abort" => Abort(AbortArgs {
@@ -137,6 +138,7 @@ generate_parser!(pub enum Command {
         cap_lints: Option<CapLints> = "cap-lints",
         priority: Option<i32> = "p",
         ignore_blacklist: Option<bool> = "ignore-blacklist",
+        assign: Option<Assignee> = "assign",
     })
 });
 

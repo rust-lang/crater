@@ -14,6 +14,16 @@ pub enum GitHubError {
     RequestFailed(StatusCode, String),
 }
 
+pub trait GitHub {
+    fn username(&self) -> Fallible<String>;
+    fn post_comment(&self, issue_url: &str, body: &str) -> Fallible<()>;
+    fn list_labels(&self, issue_url: &str) -> Fallible<Vec<Label>>;
+    fn add_label(&self, issue_url: &str, label: &str) -> Fallible<()>;
+    fn remove_label(&self, issue_url: &str, label: &str) -> Fallible<()>;
+    fn list_teams(&self, org: &str) -> Fallible<HashMap<String, usize>>;
+    fn team_members(&self, team: usize) -> Fallible<Vec<String>>;
+}
+
 #[derive(Clone)]
 pub struct GitHubApi {
     token: String,
@@ -36,13 +46,15 @@ impl GitHubApi {
         utils::http::prepare_sync(method, &url)
             .header(AUTHORIZATION, format!("token {}", self.token))
     }
+}
 
-    pub fn username(&self) -> Fallible<String> {
+impl GitHub for GitHubApi {
+    fn username(&self) -> Fallible<String> {
         let response: User = self.build_request(Method::GET, "user").send()?.json()?;
         Ok(response.login)
     }
 
-    pub fn post_comment(&self, issue_url: &str, body: &str) -> Fallible<()> {
+    fn post_comment(&self, issue_url: &str, body: &str) -> Fallible<()> {
         let mut response = self
             .build_request(Method::POST, &format!("{}/comments", issue_url))
             .json(&json!({
@@ -58,7 +70,7 @@ impl GitHubApi {
         }
     }
 
-    pub fn list_labels(&self, issue_url: &str) -> Fallible<Vec<Label>> {
+    fn list_labels(&self, issue_url: &str) -> Fallible<Vec<Label>> {
         let mut response = self
             .build_request(Method::GET, &format!("{}/labels", issue_url))
             .send()?;
@@ -71,7 +83,7 @@ impl GitHubApi {
         }
     }
 
-    pub fn add_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
+    fn add_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
         let mut response = self
             .build_request(Method::POST, &format!("{}/labels", issue_url))
             .json(&json!([label]))
@@ -85,7 +97,7 @@ impl GitHubApi {
         }
     }
 
-    pub fn remove_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
+    fn remove_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
         let mut response = self
             .build_request(Method::DELETE, &format!("{}/labels/{}", issue_url, label))
             .send()?;
@@ -98,7 +110,7 @@ impl GitHubApi {
         }
     }
 
-    pub fn list_teams(&self, org: &str) -> Fallible<HashMap<String, usize>> {
+    fn list_teams(&self, org: &str) -> Fallible<HashMap<String, usize>> {
         let mut response = self
             .build_request(Method::GET, &format!("orgs/{}/teams", org))
             .send()?;
@@ -112,7 +124,7 @@ impl GitHubApi {
         }
     }
 
-    pub fn team_members(&self, team: usize) -> Fallible<Vec<String>> {
+    fn team_members(&self, team: usize) -> Fallible<Vec<String>> {
         let mut response = self
             .build_request(Method::GET, &format!("teams/{}/members", team))
             .send()?;

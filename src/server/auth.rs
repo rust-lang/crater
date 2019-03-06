@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::prelude::*;
-use crate::server::github::GitHubApi;
+use crate::server::github::{GitHub, GitHubApi};
 use crate::server::{Data, HttpError};
 use http::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
 use regex::Regex;

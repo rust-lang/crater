@@ -36,8 +36,16 @@ When you want to create an experiment to check if a PR is breaking some
 third-party code, the first thing is to request a **try build** to get a valid
 toolchain. You can do that with the `@bors try` GitHub comment.
 
-Once the try build is done, you can get the SHA of the start and end commits.
-Bors should have posted a comment like this in the thread:
+**After** the try build is done you need to choose the [experiment mode you want to
+use][h-experiment-moes] and type up the command in your GitHub PR:
+
+```
+@craterbot run mode=YOUR-MODE
+```
+
+If you don't want to do a Crater run with the last try build but with an older
+one, you need to get the SHA of the start and end commits. Bors should have
+posted a comment like this in the thread:
 
 > ⌛ Trying commit XXXXXXX with merge YYYYYYY...
 
@@ -49,11 +57,11 @@ parents (both should be merge commits by bors):
 You must prefix the start commit with `master#`, and the end commit with
 `try#`, and both of them should be written with the full 40-chars hash.
 
-Then, you choose the [experiment mode you want to use][h-experiment-modes], and
-type up the command in your GitHub PR:
+Then you need to choose the [experiment mode you want to
+use][h-experiment-mode] and type up the command in your GitHub PR:
 
 ```
-@craterbot run start=master#fullhash end=try#fullhash mode=check-only
+@craterbot run start=master#fullhash end=try#fullhash mode=YOUR-MODE
 ```
 
 [Go back to the TOC][h-toc]
@@ -110,9 +118,9 @@ beta run you can use:
 * `name`: name of the experiment; required only if Crater [can't determine it
   automatically][h-experiment-names]
 * `start`: name of the first toolchain; can be either a rustup name or
-  `branch#sha` (required)
+  `branch#sha` (required if no try build is automatically detected)
 * `end`: name of the second toolchain; can be either a rustup name or
-  `branch#sha` (required)
+  `branch#sha` (required if no try build is automatically detected)
 * `mode`: the experiment mode (default: `build-and-test`)
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)

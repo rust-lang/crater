@@ -2,12 +2,13 @@ use crate::actions::{self, Action, ActionsCtx};
 use crate::db::{Database, QueryUtils};
 use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
 use crate::prelude::*;
-use crate::server::github::Issue;
+use crate::server::github::{Issue, Repository};
 use crate::server::messages::{Label, Message};
 use crate::server::routes::webhooks::args::{
     AbortArgs, EditArgs, RetryArgs, RetryReportArgs, RunArgs,
 };
 use crate::server::Data;
+use crate::toolchain::{Toolchain, ToolchainSource};
 
 pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
     Message::new()
@@ -17,15 +18,48 @@ pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
     Ok(())
 }
 
-pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()> {
+pub fn run(
+    host: &str,
+    data: &Data,
+    repo: &Repository,
+    issue: &Issue,
+    args: RunArgs,
+) -> Fallible<()> {
     let name = setup_run_name(&data.db, issue, args.name)?;
+
+    // Autodetect toolchains only if none of them was specified
+    let (mut detected_start, mut detected_end, mut try_build) = (None, None, None);
+    if args.start.is_none() && args.end.is_none() {
+        if let Some(build) =
+            crate::server::try_builds::get_sha(&data.db, &repo.full_name, issue.number)?
+        {
+            try_build = Some(build.merge_sha.clone());
+            detected_start = Some(Toolchain {
+                source: ToolchainSource::CI {
+                    sha: build.base_sha.into(),
+                    r#try: false,
+                },
+                rustflags: None,
+            });
+            detected_end = Some(Toolchain {
+                source: ToolchainSource::CI {
+                    sha: build.merge_sha.into(),
+                    r#try: true,
+                },
+                rustflags: None,
+            });
+        }
+    }
 
     actions::CreateExperiment {
         name: name.clone(),
         toolchains: [
             args.start
+                .or(detected_start)
                 .ok_or_else(|| err_msg("missing start toolchain"))?,
-            args.end.ok_or_else(|| err_msg("missing end toolchain"))?,
+            args.end
+                .or(detected_end)
+                .ok_or_else(|| err_msg("missing end toolchain"))?,
         ],
         mode: args.mode.unwrap_or(Mode::BuildAndTest),
         crates: args.crates.unwrap_or(CrateSelect::Full),
@@ -40,13 +74,14 @@ pub fn run(host: &str, data: &Data, issue: &Issue, args: RunArgs) -> Fallible<()
     }
     .apply(&ActionsCtx::new(&data.db, &data.config))?;
 
-    Message::new()
-        .line(
-            "ok_hand",
-            format!(
-                "Experiment **`{}`** created and queued.", name
-            ),
-        )
+    let mut message = Message::new().line(
+        "ok_hand",
+        format!("Experiment **`{}`** created and queued.", name),
+    );
+    if let Some(sha) = try_build {
+        message = message.line("robot", format!("Automatically detected try build {}", sha));
+    }
+    message
         .line(
             "mag",
             format!(

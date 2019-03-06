@@ -6,14 +6,15 @@ mod messages;
 mod reports;
 mod routes;
 pub mod tokens;
+mod try_builds;
 
 use crate::config::Config;
 use crate::db::Database;
 use crate::prelude::*;
 use crate::server::agents::Agents;
 use crate::server::auth::ACL;
-use crate::server::tokens::Tokens;
 use crate::server::github::{GitHub, GitHubApi};
+use crate::server::tokens::Tokens;
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
 use std::sync::Arc;

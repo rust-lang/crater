@@ -262,6 +262,22 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "add_try_builds_table",
+        MigrationKind::SQL(
+            "
+            CREATE TABLE try_builds (
+                pr INTEGER NOT NULL,
+                repo STRING NOT NULL,
+                merge_sha TEXT NOT NULL,
+                base_sha TEXT NOT NULL,
+
+                PRIMARY KEY (pr, repo)
+            );
+            ",
+        ),
+    ));
+
     migrations
 }
 

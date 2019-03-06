@@ -22,6 +22,7 @@ pub trait GitHub {
     fn remove_label(&self, issue_url: &str, label: &str) -> Fallible<()>;
     fn list_teams(&self, org: &str) -> Fallible<HashMap<String, usize>>;
     fn team_members(&self, team: usize) -> Fallible<Vec<String>>;
+    fn get_commit(&self, repo: &str, sha: &str) -> Fallible<Commit>;
 }
 
 #[derive(Clone)]
@@ -137,6 +138,15 @@ impl GitHub for GitHubApi {
             Err(GitHubError::RequestFailed(response.status(), error.message).into())
         }
     }
+
+    fn get_commit(&self, repo: &str, sha: &str) -> Fallible<Commit> {
+        let commit = self
+            .build_request(Method::GET, &format!("repos/{}/commits/{}", repo, sha))
+            .send()?
+            .error_for_status()?
+            .json()?;
+        Ok(commit)
+    }
 }
 
 #[derive(Deserialize)]
@@ -155,6 +165,7 @@ pub struct EventIssueComment {
     pub issue: Issue,
     pub comment: Comment,
     pub sender: User,
+    pub repository: Repository,
 }
 
 #[derive(Deserialize)]
@@ -172,6 +183,11 @@ pub struct PullRequest {
 }
 
 #[derive(Deserialize)]
+pub struct Repository {
+    pub full_name: String,
+}
+
+#[derive(Deserialize)]
 pub struct Label {
     pub name: String,
 }
@@ -185,4 +201,15 @@ pub struct Comment {
 pub struct Team {
     pub id: usize,
     pub slug: String,
+}
+
+#[derive(Deserialize)]
+pub struct Commit {
+    pub sha: String,
+    pub parents: Vec<CommitParent>,
+}
+
+#[derive(Deserialize)]
+pub struct CommitParent {
+    pub sha: String,
 }

@@ -2,7 +2,7 @@ mod args;
 mod commands;
 
 use crate::prelude::*;
-use crate::server::github::{EventIssueComment, Issue};
+use crate::server::github::{EventIssueComment, Issue, Repository};
 use crate::server::messages::Message;
 use crate::server::routes::webhooks::args::Command;
 use crate::server::Data;
@@ -36,8 +36,22 @@ fn process_webhook(
                 return Ok(());
             }
 
-            if let Err(e) = process_command(host, &p.sender.login, &p.comment.body, &p.issue, data)
-            {
+            crate::server::try_builds::detect(
+                &data.db,
+                &data.github,
+                &p.repository.full_name,
+                p.issue.number,
+                &p.comment.body,
+            )?;
+
+            if let Err(e) = process_command(
+                host,
+                &p.sender.login,
+                &p.comment.body,
+                &p.repository,
+                &p.issue,
+                data,
+            ) {
                 Message::new()
                     .line("rotating_light", format!("**Error:** {}", e))
                     .note(
@@ -57,6 +71,7 @@ fn process_command(
     host: &str,
     sender: &str,
     body: &str,
+    repo: &Repository,
     issue: &Issue,
     data: &Data,
 ) -> Fallible<()> {
@@ -100,7 +115,7 @@ fn process_command(
             }
 
             Command::Run(args) => {
-                commands::run(host, data, issue, args)?;
+                commands::run(host, data, repo, issue, args)?;
             }
 
             Command::Edit(args) => {

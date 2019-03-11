@@ -32,7 +32,7 @@ pub(crate) enum Binary {
 pub(crate) trait Runnable {
     fn binary(&self) -> Binary;
 
-    fn prepare_command(&self, cmd: RunCommand) -> RunCommand {
+    fn prepare_command<'pl>(&self, cmd: RunCommand<'pl>) -> RunCommand<'pl> {
         cmd
     }
 }
@@ -54,15 +54,16 @@ impl<'a, R: Runnable> Runnable for &'a R {
         Runnable::binary(*self)
     }
 
-    fn prepare_command(&self, cmd: RunCommand) -> RunCommand {
+    fn prepare_command<'pl>(&self, cmd: RunCommand<'pl>) -> RunCommand<'pl> {
         Runnable::prepare_command(*self, cmd)
     }
 }
 
-pub(crate) struct RunCommand {
+pub(crate) struct RunCommand<'pl> {
     binary: Binary,
     args: Vec<OsString>,
     env: Vec<(OsString, OsString)>,
+    process_lines: Option<&'pl mut dyn FnMut(&str)>,
     cd: Option<PathBuf>,
     quiet: bool,
     enable_timeout: bool,
@@ -70,12 +71,13 @@ pub(crate) struct RunCommand {
     hide_output: bool,
 }
 
-impl RunCommand {
+impl<'pl> RunCommand<'pl> {
     pub(crate) fn new<R: Runnable>(runnable: R) -> Self {
         runnable.prepare_command(RunCommand {
             binary: runnable.binary(),
             args: Vec::new(),
             env: Vec::new(),
+            process_lines: None,
             cd: None,
             quiet: false,
             enable_timeout: true,
@@ -95,6 +97,11 @@ impl RunCommand {
     pub(crate) fn env<S1: AsRef<OsStr>, S2: AsRef<OsStr>>(mut self, key: S1, value: S2) -> Self {
         self.env
             .push((key.as_ref().to_os_string(), value.as_ref().to_os_string()));
+        self
+    }
+
+    pub(crate) fn process_lines(mut self, f: &'pl mut dyn FnMut(&str)) -> Self {
+        self.process_lines = Some(f);
         self
     }
 
@@ -123,7 +130,7 @@ impl RunCommand {
         self
     }
 
-    pub(crate) fn sandboxed(self, docker_env: &DockerEnv) -> SandboxedCommand {
+    pub(crate) fn sandboxed<'a>(self, docker_env: &'a DockerEnv) -> SandboxedCommand<'a, 'pl> {
         SandboxedCommand::new(self, docker_env)
     }
 
@@ -175,6 +182,7 @@ impl RunCommand {
         info!("running `{}`", cmdstr);
         let out = log_command(
             cmd,
+            self.process_lines,
             capture,
             self.quiet,
             self.enable_timeout,
@@ -193,13 +201,13 @@ impl RunCommand {
     }
 }
 
-pub(crate) struct SandboxedCommand<'a> {
-    command: RunCommand,
+pub(crate) struct SandboxedCommand<'a, 'pl> {
+    command: RunCommand<'pl>,
     container: ContainerBuilder<'a>,
 }
 
-impl<'a> SandboxedCommand<'a> {
-    fn new(command: RunCommand, docker_env: &'a DockerEnv) -> Self {
+impl<'a, 'pl> SandboxedCommand<'a, 'pl> {
+    fn new(command: RunCommand<'pl>, docker_env: &'a DockerEnv) -> Self {
         let container = ContainerBuilder::new(docker_env)
             .env("USER_ID", native::current_user().to_string())
             .enable_networking(false);
@@ -303,6 +311,7 @@ const HEARTBEAT_TIMEOUT_SECS: u64 = 60 * 5;
 
 fn log_command(
     mut cmd: Command,
+    mut process_lines: Option<&mut dyn FnMut(&str)>,
     capture: bool,
     quiet: bool,
     enable_timeout: bool,
@@ -368,6 +377,9 @@ fn log_command(
         .fold(
             (Vec::new(), Vec::new()),
             move |mut res, (kind, line)| -> Fallible<_> {
+                if let Some(f) = &mut process_lines {
+                    f(&line);
+                }
                 if capture {
                     match kind {
                         OutputKind::Stdout => res.0.push(line),

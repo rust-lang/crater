@@ -18,14 +18,6 @@ pub enum Crate {
 }
 
 impl Crate {
-    pub(crate) fn is_repo(&self) -> bool {
-        match *self {
-            Crate::Registry(_) => false,
-            Crate::GitHub(_) => true,
-            Crate::Local(_) => false,
-        }
-    }
-
     pub(crate) fn id(&self) -> String {
         match *self {
             Crate::Registry(ref details) => format!("reg/{}/{}", details.name, details.version),

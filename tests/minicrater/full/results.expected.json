@@ -136,6 +136,21 @@
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/network-access"
     },
     {
+      "name": "outdated-lockfile (local)",
+      "res": "test-pass",
+      "runs": [
+        {
+          "log": "stable/local/outdated-lockfile",
+          "res": "test-pass"
+        },
+        {
+          "log": "beta/local/outdated-lockfile",
+          "res": "test-pass"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/outdated-lockfile"
+    },
+    {
       "name": "test-fail (local)",
       "res": "test-fail",
       "runs": [

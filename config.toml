@@ -36,7 +36,6 @@ build-log-max-lines = 10000
 #  - skip            (bool): ignore this crate/repo
 #  - skip-tests      (bool): don't run tests in this crate/repo
 #  - quiet           (bool): don't kill after two minutes without output
-#  - update-lockfile (bool): update the lockfile even if the crate has one
 #  - broken          (bool): treat a Crater error on this crate/repo as a build
 #                            failure (typically the crate is broken in an
 #                            unusual way and we want to indicate the failure
@@ -6504,7 +6503,6 @@ zyre-sys = { skip = true } #automatic
 "Kayren/wardice" = { skip-tests = true } #automatic
 "Kbrew/risp" = { skip = true } #automatic
 "Keats/kickstart" = { skip-tests = true } #automatic
-"KeenS/cargo-pack-docker" = { update-lockfile = true } # outdated lockfile
 "KeenS/rayon-playground" = { skip = true } #automatic
 "KeenS/rockscached" = { skip = true } #automatic
 "KeenS/webml" = { skip = true } #automatic
@@ -8235,7 +8233,6 @@ zyre-sys = { skip = true } #automatic
 "caolan/tamawiki" = { skip = true } #automatic
 "captainbland/exothermic" = { skip = true } #automatic
 "carbidegames/scheming-sun" = { skip = true } #automatic
-"cardoe/cargo-bitbake" = { update-lockfile = true } # outdated lockfile
 "carllerche/minidb" = { skip = true } #automatic
 "carllerche/tokio-examples" = { skip = true } #automatic
 "carlosgj94/VanitityAddresses" = { skip = true } #automatic
@@ -8496,7 +8493,6 @@ zyre-sys = { skip = true } #automatic
 "creativcoder/avro-sys" = { skip = true } #automatic
 "creativcoder/graphin" = { skip = true } #automatic
 "creativcoder/rust_calls_cpp" = { skip = true } #automatic
-"creators/cli.sudoku.rs" = { update-lockfile = true } # outdated lockfile
 "creekpld/hello-gtk" = { skip = true } #automatic
 "cretz/rust-qt_cef_poc" = { skip = true } #automatic
 "criloz/rust-pet" = { skip = true } #automatic
@@ -8777,7 +8773,6 @@ zyre-sys = { skip = true } #automatic
 "djallen89/beams" = { skip = true } #automatic
 "djcsdy/gfx-dx11-empty-vertex-buffer" = { skip = true } #automatic
 "djgood/rust_os" = { skip = true } #automatic
-"djmcgill/form" = { update-lockfile = true } # outdated lockfile
 "djtal/readrust-cli" = { skip = true } #automatic
 "djtorel/rl-tut-rust" = { skip = true } #automatic
 "djudd/human-name" = { skip = true } #automatic
@@ -9223,7 +9218,6 @@ zyre-sys = { skip = true } #automatic
 "freiguy1/prodev" = { skip = true } #automatic
 "freiguy1/rust-roller" = { skip = true } #automatic
 "freshtonic/selecta-rs" = { skip = true } #automatic
-"frewsxcv/alert-after" = { update-lockfile = true } # outdated lockfile
 "frewsxcv/rgis" = { skip = true } #automatic
 "frewsxcv/rust-crates-index-graph" = { skip = true } #automatic
 "frgomes/mkvm" = { skip = true } #automatic
@@ -11057,7 +11051,6 @@ zyre-sys = { skip = true } #automatic
 "mlsteele/bittles" = { skip = true } #automatic
 "mlsteele/gdaxstat" = { skip = true } #automatic
 "mlsteele/pastiche" = { skip = true } #automatic
-"mmacedoeu/csvtoredis.rs" = { update-lockfile = true } # outdated lockfile
 "mmacedoeu/swapi" = { skip = true } #automatic
 "mmacedoeu/toyrpc.rs" = { skip = true } #automatic
 "mmacedoeu/waldo-mmacedoeu" = { skip = true } #automatic
@@ -12230,7 +12223,6 @@ zyre-sys = { skip = true } #automatic
 "rustit-be/hue_persistence" = { skip = true } #automatic
 "rustit-be/madparts-rs" = { skip = true } #automatic
 "rustmx/workshop-rocket-meetup008" = { skip = true } #automatic
-"rustoscript/js.rs-parser" = { update-lockfile = true } # outdated lockfile
 "rustox/futures-example" = { skip = true } #automatic
 "rustox/grpc-calculator-example" = { skip = true } #automatic
 "rusts/team" = { skip = true } #automatic

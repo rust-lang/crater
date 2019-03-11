@@ -207,7 +207,6 @@ mod tests {
                 skip: true,
                 skip_tests: false,
                 quiet: false,
-                update_lockfile: false,
                 broken: false,
             },
         );

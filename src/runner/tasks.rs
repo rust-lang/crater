@@ -181,7 +181,7 @@ impl Task {
                     .prepare_logs
                     .insert(self.krate.clone(), storage.clone());
                 logs::capture(&storage, || {
-                    let prepare = PrepareCrate::new(ex, &self.krate, config, db);
+                    let mut prepare = PrepareCrate::new(ex, &self.krate, db);
                     prepare.prepare()
                 })?;
             }

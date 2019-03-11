@@ -1,4 +1,3 @@
-use crate::config::Config;
 use crate::crates::Crate;
 use crate::dirs::crate_source_dir;
 use crate::experiments::Experiment;
@@ -14,18 +13,13 @@ use std::path::PathBuf;
 pub(super) struct PrepareCrate<'a, DB: WriteResults + 'a> {
     experiment: &'a Experiment,
     krate: &'a Crate,
-    config: &'a Config,
     db: &'a DB,
     source_dirs: Vec<(&'a Toolchain, PathBuf)>,
+    lockfile_captured: bool,
 }
 
 impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
-    pub(super) fn new(
-        experiment: &'a Experiment,
-        krate: &'a Crate,
-        config: &'a Config,
-        db: &'a DB,
-    ) -> Self {
+    pub(super) fn new(experiment: &'a Experiment, krate: &'a Crate, db: &'a DB) -> Self {
         let source_dirs = experiment
             .toolchains
             .iter()
@@ -35,13 +29,13 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
         PrepareCrate {
             experiment,
             krate,
-            config,
             db,
             source_dirs,
+            lockfile_captured: false,
         }
     }
 
-    pub(super) fn prepare(&self) -> Fallible<()> {
+    pub(super) fn prepare(&mut self) -> Fallible<()> {
         self.krate.fetch()?;
         for (_, source_dir) in &self.source_dirs {
             self.krate.copy_to(source_dir)?;
@@ -49,7 +43,7 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
         self.capture_sha()?;
         self.validate_manifest()?;
         self.frob_toml()?;
-        self.capture_lockfile()?;
+        self.capture_lockfile(false)?;
         self.fetch_deps()?;
         Ok(())
     }
@@ -121,13 +115,13 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
         Ok(())
     }
 
-    fn capture_lockfile(&self) -> Fallible<()> {
+    fn capture_lockfile(&mut self, force: bool) -> Fallible<()> {
         for (toolchain, source_dir) in &self.source_dirs {
-            if !self.config.should_update_lockfile(&self.krate)
-                && self.krate.is_repo()
-                && source_dir.join("Cargo.lock").exists()
-            {
-                info!("crate {} has a lockfile. skipping", self.krate);
+            if !force && source_dir.join("Cargo.lock").exists() {
+                info!(
+                    "crate {} already has a lockfile, it will not be regenerated",
+                    self.krate
+                );
                 return Ok(());
             }
 
@@ -140,16 +134,36 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
                 ])
                 .cd(source_dir)
                 .run()?;
+            self.lockfile_captured = true;
         }
         Ok(())
     }
 
-    fn fetch_deps(&self) -> Fallible<()> {
+    fn fetch_deps(&mut self) -> Fallible<()> {
         for (toolchain, source_dir) in &self.source_dirs {
-            RunCommand::new(CARGO.toolchain(toolchain))
+            let mut outdated_lockfile = false;
+            let res = RunCommand::new(CARGO.toolchain(toolchain))
                 .args(&["fetch", "--locked", "--manifest-path", "Cargo.toml"])
                 .cd(source_dir)
-                .run()?;
+                .process_lines(&mut |line| {
+                    if line.ends_with(
+                        "Cargo.lock needs to be updated but --locked was passed to prevent this",
+                    ) {
+                        outdated_lockfile = true;
+                    }
+                })
+                .run();
+            match res {
+                Ok(_) => {}
+                Err(_) if outdated_lockfile && !self.lockfile_captured => {
+                    info!("the lockfile is outdated, regenerating it");
+                    // Force-update the lockfile and recursively call this function to fetch
+                    // dependencies again.
+                    self.capture_lockfile(true)?;
+                    return self.fetch_deps();
+                }
+                err => return err,
+            }
         }
         Ok(())
     }

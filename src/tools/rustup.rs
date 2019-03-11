@@ -19,7 +19,7 @@ impl Runnable for Rustup {
         Binary::InstalledByCrater("rustup".into())
     }
 
-    fn prepare_command(&self, cmd: RunCommand) -> RunCommand {
+    fn prepare_command<'pl>(&self, cmd: RunCommand<'pl>) -> RunCommand<'pl> {
         cmd.local_rustup(true)
     }
 }
@@ -112,7 +112,7 @@ impl<'a> Runnable for Cargo<'a> {
         Binary::InstalledByCrater("cargo".into())
     }
 
-    fn prepare_command(&self, mut cmd: RunCommand) -> RunCommand {
+    fn prepare_command<'pl>(&self, mut cmd: RunCommand<'pl>) -> RunCommand<'pl> {
         if self.unstable_features {
             cmd = cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
         }

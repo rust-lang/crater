@@ -67,6 +67,7 @@ impl ResultName for BrokenReason {
         match self {
             BrokenReason::Unknown => "broken crate".into(),
             BrokenReason::CargoToml => "broken Cargo.toml".into(),
+            BrokenReason::Yanked => "deps yanked".into(),
         }
     }
 }

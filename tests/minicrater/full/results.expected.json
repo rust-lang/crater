@@ -164,6 +164,21 @@
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/test-fail"
+    },
+    {
+      "name": "yanked-deps (local)",
+      "res": "broken",
+      "runs": [
+        {
+          "log": "stable/local/yanked-deps",
+          "res": "broken:yanked"
+        },
+        {
+          "log": "beta/local/yanked-deps",
+          "res": "broken:yanked"
+        }
+      ],
+      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/yanked-deps"
     }
   ]
 }

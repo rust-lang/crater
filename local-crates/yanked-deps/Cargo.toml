@@ -1,0 +1,8 @@
+[package]
+name = "yanked-deps"
+version = "0.1.0"
+authors = ["Pietro Albini <pietro@pietroalbini.org>"]
+edition = "2018"
+
+[dependencies]
+ring = "0.2"

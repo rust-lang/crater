@@ -127,7 +127,8 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
                 return Ok(());
             }
 
-            RunCommand::new(CARGO.toolchain(toolchain).unstable_features(true))
+            let mut yanked_deps = false;
+            let res = RunCommand::new(CARGO.toolchain(toolchain).unstable_features(true))
                 .args(&[
                     "generate-lockfile",
                     "--manifest-path",
@@ -135,7 +136,24 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
                     "-Zno-index-update",
                 ])
                 .cd(source_dir)
-                .run()?;
+                .process_lines(&mut |line| {
+                    if line.contains("failed to select a version for the requirement") {
+                        yanked_deps = true;
+                    }
+                })
+                .run();
+            match res {
+                Err(_) if yanked_deps => {
+                    return Err(
+                        err_msg(format!("crate {} depends on yanked crates", self.krate))
+                            .context(OverrideResult(TestResult::BrokenCrate(
+                                BrokenReason::Yanked,
+                            )))
+                            .into(),
+                    );
+                }
+                other => other?,
+            }
             self.lockfile_captured = true;
         }
         Ok(())

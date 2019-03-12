@@ -52,6 +52,7 @@ string_enum!(pub enum Comparison {
     Skipped => "skipped",
     Unknown => "unknown",
     Error => "error",
+    Broken => "broken",
     SameBuildFail => "build-fail",
     SameTestFail => "test-fail",
     SameTestSkipped => "test-skipped",
@@ -70,6 +71,7 @@ impl Comparison {
             | Comparison::SpuriousRegressed
             | Comparison::SpuriousFixed => true,
             Comparison::Skipped
+            | Comparison::Broken
             | Comparison::SameBuildFail
             | Comparison::SameTestFail
             | Comparison::SameTestSkipped
@@ -334,6 +336,7 @@ fn compare(
             | (TestFail(_), BuildFail(_)) => Comparison::Regressed,
 
             (Error, _) | (_, Error) => Comparison::Error,
+            (BrokenCrate(_), _) | (_, BrokenCrate(_)) => Comparison::Broken,
             (TestFail(_), TestSkipped)
             | (TestPass, TestSkipped)
             | (TestSkipped, TestFail(_))
@@ -469,7 +472,7 @@ mod tests {
     use crate::config::{Config, CrateConfig};
     use crate::crates::{Crate, GitHubRepo, RegistryCrate};
     use crate::experiments::{CapLints, Experiment, Mode, Status};
-    use crate::results::{DummyDB, FailureReason, TestResult};
+    use crate::results::{BrokenReason, DummyDB, FailureReason, TestResult};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
     use std::collections::HashMap;
 
@@ -623,6 +626,16 @@ mod tests {
                 TestSkipped, Error => Error;
                 TestFail(Unknown), Error => Error;
                 BuildFail(Unknown), Error => Error;
+
+                // Broken
+                BrokenCrate(BrokenReason::Unknown), TestPass => Broken;
+                BrokenCrate(BrokenReason::Unknown), TestSkipped => Broken;
+                BrokenCrate(BrokenReason::Unknown), TestFail(Unknown) => Broken;
+                BrokenCrate(BrokenReason::Unknown), BuildFail(Unknown) => Broken;
+                TestPass, BrokenCrate(BrokenReason::Unknown) => Broken;
+                TestSkipped, BrokenCrate(BrokenReason::Unknown) => Broken;
+                TestFail(Unknown), BrokenCrate(BrokenReason::Unknown) => Broken;
+                BuildFail(Unknown), BrokenCrate(BrokenReason::Unknown) => Broken;
             ]
         );
 

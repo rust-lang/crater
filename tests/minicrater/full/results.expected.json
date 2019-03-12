@@ -32,15 +32,15 @@
     },
     {
       "name": "broken-cargotoml (local)",
-      "res": "build-fail",
+      "res": "broken",
       "runs": [
         {
           "log": "stable/local/broken-cargotoml",
-          "res": "build-fail:broken"
+          "res": "broken:cargo-toml"
         },
         {
           "log": "beta/local/broken-cargotoml",
-          "res": "build-fail:broken"
+          "res": "broken:cargo-toml"
         }
       ],
       "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/broken-cargotoml"

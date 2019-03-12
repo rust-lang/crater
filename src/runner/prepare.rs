@@ -2,7 +2,7 @@ use crate::crates::Crate;
 use crate::dirs::crate_source_dir;
 use crate::experiments::Experiment;
 use crate::prelude::*;
-use crate::results::{FailureReason, TestResult, WriteResults};
+use crate::results::{BrokenReason, TestResult, WriteResults};
 use crate::run::RunCommand;
 use crate::runner::toml_frobber::TomlFrobber;
 use crate::runner::OverrideResult;
@@ -90,7 +90,7 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
             // Skip crates missing a Cargo.toml
             if !source_dir.join("Cargo.toml").is_file() {
                 Err(err_msg(format!("missing Cargo.toml for {}", self.krate))).with_context(
-                    |_| OverrideResult(TestResult::BuildFail(FailureReason::Broken)),
+                    |_| OverrideResult(TestResult::BrokenCrate(BrokenReason::CargoToml)),
                 )?;
             }
 
@@ -100,7 +100,9 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
                 .hide_output(true)
                 .run()
                 .with_context(|_| format!("invalid syntax in {}'s Cargo.toml", self.krate))
-                .with_context(|_| OverrideResult(TestResult::BuildFail(FailureReason::Broken)))?;
+                .with_context(|_| {
+                    OverrideResult(TestResult::BrokenCrate(BrokenReason::CargoToml))
+                })?;
         }
         Ok(())
     }

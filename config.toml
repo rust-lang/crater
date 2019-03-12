@@ -834,7 +834,6 @@ cpal = { skip = true } #automatic
 cplex-sys = { skip = true } #automatic
 cppStream = { skip = true } #automatic
 cpp_codegen = { skip = true } #automatic
-cpp_demangle = { broken = true } # dependency yanked
 cpp_to_rust = { skip = true } #automatic
 cpp_to_rust_generator = { skip = true } #automatic
 cpp_utils = { skip-tests = true } #automatic
@@ -3053,7 +3052,6 @@ multi-logger = { skip = true } #automatic
 multiaddr = { skip-tests = true } #automatic
 multiboot = { skip = true } #automatic
 multidim = { skip = true } #automatic
-multihash = { broken = true } # dependency yanked
 multiinput = { skip = true } #automatic
 multitooth = { skip = true } #automatic
 must = { skip-tests = true } #automatic
@@ -3463,7 +3461,6 @@ pamsm = { skip = true } #automatic
 pancurses = { skip = true } #automatic
 pandoc_types = { skip-tests = true } #automatic
 pango-sys = { skip-tests = true } #automatic
-pangocairo = { broken = true } # dependency yanked
 panic-abort = { skip = true } #automatic
 panic-halt = { skip = true } #automatic
 panic-itm = { skip = true } #automatic
@@ -3968,7 +3965,6 @@ reproto-manifest = { skip = true } #automatic
 reproto-parser = { skip = true } #automatic
 reproto-path-parser = { skip = true } #automatic
 reproto-trans = { skip = true } #automatic
-reql = { broken = true } # dependency yanked
 reql-derive = { skip = true } #automatic
 reql-io = { skip = true } #automatic
 reqwest = { skip = true } #automatic
@@ -4133,7 +4129,6 @@ rui = { skip = true } #automatic
 rules = { skip = true } #automatic
 rulinalg = { skip-tests = true } #automatic
 ruma-api = { skip = true } #automatic
-ruma-signatures = { broken = true } # dependency yanked
 rumo = { skip = true } #automatic
 rumqtt = { skip = true } #automatic
 run-or-raise = { skip = true } #automatic
@@ -4151,7 +4146,6 @@ runtime-loop = { skip-tests = true } #automatic
 runtime-macros = { skip = true } #automatic
 ruroonga = { skip = true } #automatic
 rurust = { skip = true } #automatic
-rusoto = { broken = true } # dependency yanked
 rusoto_mock = { skip = true } #automatic
 rusql = { skip = true } #automatic
 rusqlcipher = { skip = true } #automatic
@@ -4363,7 +4357,6 @@ scoped_allocator = { skip = true } #automatic
 scopeguard = { skip-tests = true } #automatic
 score = { skip = true } #automatic
 scout = { skip-tests = true } #automatic
-scram = { broken = true } # dependency yanked
 scram-tmp = { skip = true } #automatic
 scrap = { skip = true } #automatic
 scrapyard-core = { skip = true } #automatic
@@ -5559,7 +5552,6 @@ xmpp-rs = { skip = true } #automatic
 xolehlp-sys = { skip = true } #automatic
 xor-utils = { skip = true } #automatic
 xor_name = { skip = true } #automatic
-xoroshiro = { broken = true } # dependency yanked
 xplm = { skip = true } #automatic
 xpsprint-sys = { skip = true } #automatic
 xpsupport = { skip = true } #automatic

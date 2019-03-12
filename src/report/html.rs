@@ -2,7 +2,7 @@ use crate::assets;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::{archives::Archive, Comparison, CrateResult, ReportWriter, TestResults};
-use crate::results::{EncodingType, FailureReason, TestResult};
+use crate::results::{BrokenReason, EncodingType, FailureReason, TestResult};
 use mime;
 use minifier;
 use std::collections::HashMap;
@@ -29,6 +29,7 @@ impl ResultColor for Comparison {
             Comparison::SameTestSkipped => Color::Striped("#72a156", "#80b65f"),
             Comparison::SameTestPass => Color::Single("#72a156"),
             Comparison::Error => Color::Single("#d77026"),
+            Comparison::Broken => Color::Single("#44176e"),
             Comparison::SpuriousRegressed => Color::Striped("#db3026", "#d5433b"),
             Comparison::SpuriousFixed => Color::Striped("#5630db", "#5d3dcf"),
         }
@@ -38,6 +39,7 @@ impl ResultColor for Comparison {
 impl ResultColor for TestResult {
     fn color(&self) -> Color {
         match self {
+            TestResult::BrokenCrate(_) => Color::Single("#44176e"),
             TestResult::BuildFail(_) => Color::Single("#db3026"),
             TestResult::TestFail(_) => Color::Single("#65461e"),
             TestResult::TestSkipped | TestResult::TestPass => Color::Single("#62a156"),
@@ -54,9 +56,18 @@ impl ResultName for FailureReason {
     fn name(&self) -> String {
         match self {
             FailureReason::Unknown => "failed".into(),
-            FailureReason::Broken => "broken".into(),
             FailureReason::Timeout => "timed out".into(),
             FailureReason::OOM => "OOM".into(),
+        }
+    }
+}
+
+impl ResultName for BrokenReason {
+    fn name(&self) -> String {
+        match self {
+            BrokenReason::Unknown => "broken crate".into(),
+            BrokenReason::CargoToml => "broken Cargo.toml".into(),
+            BrokenReason::Yanked => "deps yanked".into(),
         }
     }
 }
@@ -64,6 +75,7 @@ impl ResultName for FailureReason {
 impl ResultName for TestResult {
     fn name(&self) -> String {
         match self {
+            TestResult::BrokenCrate(reason) => reason.name(),
             TestResult::BuildFail(reason) => format!("build {}", reason.name()),
             TestResult::TestFail(reason) => format!("test {}", reason.name()),
             TestResult::TestSkipped => "test skipped".into(),

@@ -112,12 +112,12 @@ impl EncodedLog {
 
 macro_rules! test_result_enum {
     (pub enum $name:ident {
-        with_reason { $($with_reason_name:ident(FailureReason) => $with_reason_repr:expr,)* }
+        with_reason { $($with_reason_name:ident($reason:ident) => $with_reason_repr:expr,)* }
         without_reason { $($reasonless_name:ident => $reasonless_repr:expr,)* }
     }) => {
         #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
         pub enum $name {
-            $($with_reason_name(FailureReason),)*
+            $($with_reason_name($reason),)*
             $($reasonless_name,)*
         }
 
@@ -129,7 +129,7 @@ macro_rules! test_result_enum {
 
                 if parts.len() == 1 {
                     match parts[0] {
-                        $($with_reason_repr => Ok($name::$with_reason_name(FailureReason::Unknown)),)*
+                        $($with_reason_repr => Ok($name::$with_reason_name($reason::Unknown)),)*
                         $($reasonless_repr => Ok($name::$reasonless_name),)*
                         other => Err(TestResultParseError::UnknownResult(other.into()).into()),
                     }
@@ -168,7 +168,6 @@ pub enum TestResultParseError {
 
 string_enum!(pub enum FailureReason {
     Unknown => "unknown",
-    Broken => "broken",
     OOM => "oom",
     Timeout => "timeout",
 });
@@ -176,14 +175,21 @@ string_enum!(pub enum FailureReason {
 impl FailureReason {
     pub(crate) fn is_spurious(self) -> bool {
         match self {
-            FailureReason::Unknown | FailureReason::Broken => false,
+            FailureReason::Unknown => false,
             FailureReason::OOM | FailureReason::Timeout => true,
         }
     }
 }
 
+string_enum!(pub enum BrokenReason {
+    Unknown => "unknown",
+    CargoToml => "cargo-toml",
+    Yanked => "yanked",
+});
+
 test_result_enum!(pub enum TestResult {
     with_reason {
+        BrokenCrate(BrokenReason) => "broken",
         BuildFail(FailureReason) => "build-fail",
         TestFail(FailureReason) => "test-fail",
     }

@@ -11,7 +11,7 @@ use crate::docker::DockerEnv;
 use crate::experiments::{Experiment, Mode};
 use crate::logs::LogStorage;
 use crate::prelude::*;
-use crate::results::{FailureReason, TestResult, WriteResults};
+use crate::results::{BrokenReason, TestResult, WriteResults};
 use crate::runner::graph::{build_graph, WalkResult};
 use crate::utils;
 use crossbeam_utils::thread::scope;
@@ -118,7 +118,7 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                                 utils::report_failure(&e);
 
                                 let mut result = if config.is_broken(&task.krate) {
-                                    TestResult::BuildFail(FailureReason::Broken)
+                                    TestResult::BrokenCrate(BrokenReason::Unknown)
                                 } else {
                                     TestResult::Error
                                 };

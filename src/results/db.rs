@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
 use crate::db::{Database, QueryUtils};
-use crate::experiments::Experiment;
+use crate::experiments::{Experiment, Status};
 use crate::logs::{self, LogStorage};
 use crate::prelude::*;
 use crate::results::{
@@ -52,6 +52,7 @@ impl<'a> DatabaseDB<'a> {
                 &base64::decode(&result.log).with_context(|_| "invalid base64 log provided")?,
                 encoding_type,
             )?;
+            self.mark_crate_as_completed(ex, &result.krate)?;
         }
 
         for &(ref repo, ref sha) in &data.shas {
@@ -59,6 +60,17 @@ impl<'a> DatabaseDB<'a> {
         }
 
         Ok(())
+    }
+
+    fn mark_crate_as_completed(&self, ex: &Experiment, krate: &Crate) -> Fallible<(usize)> {
+        self.db.execute(
+            "UPDATE experiment_crates SET status = ?1 WHERE experiment = ?2 AND crate = ?3",
+            &[
+                &Status::Completed.to_string(),
+                &ex.name,
+                &serde_json::to_string(krate)?,
+            ],
+        )
     }
 
     fn store_result(

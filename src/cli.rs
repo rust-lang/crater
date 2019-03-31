@@ -14,7 +14,9 @@ use crater::agent;
 use crater::config::Config;
 use crater::crates::Crate;
 use crater::db::Database;
-use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
+use crater::experiments::{
+    Assignee, CapLints, CrateListSize, CrateSelect, Experiment, Mode, Status,
+};
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
 use crater::runner;
@@ -436,7 +438,11 @@ impl Crater {
                     let result_db = DatabaseDB::new(&db);
                     runner::run_ex(
                         &experiment,
-                        &experiment.get_uncompleted_crates(&db)?,
+                        &experiment.get_uncompleted_crates(
+                            &db,
+                            CrateListSize::Full,
+                            &Assignee::CLI,
+                        )?,
                         &result_db,
                         threads,
                         &config,

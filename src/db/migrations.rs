@@ -184,7 +184,6 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
             Ok(())
         })),
     ));
-
     migrations.push((
         "migrate_agents_to_assignees_in_experiments",
         MigrationKind::SQL(
@@ -274,6 +273,32 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
 
                 PRIMARY KEY (pr, repo)
             );
+            ",
+        ),
+    ));
+
+    migrations.push((
+        "add_experiment_crates_field_assigned_to",
+        MigrationKind::SQL(
+            "
+            ALTER TABLE experiment_crates ADD COLUMN status TEXT NOT NULL DEFAULT 'queued';
+            ALTER TABLE experiment_crates ADD COLUMN assigned_to TEXT;
+
+
+            CREATE TABLE experiment_crates_new (
+                experiment TEXT NOT NULL,
+                crate TEXT NOT NULL,
+                skipped INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                assigned_to TEXT,
+
+                FOREIGN KEY (experiment) REFERENCES experiments(name) ON DELETE CASCADE
+            );
+
+            INSERT INTO experiment_crates_new  SELECT * FROM experiment_crates;
+
+            DROP TABLE experiment_crates;
+            ALTER TABLE experiment_crates_new RENAME TO experiment_crates;
             ",
         ),
     ));

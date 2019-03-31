@@ -1,4 +1,4 @@
-use crate::experiments::{Assignee, Experiment, Status};
+use crate::experiments::{Assignee, CrateListSize, Experiment, Status};
 use crate::prelude::*;
 use crate::results::{DatabaseDB, EncodingType, ProgressData};
 use crate::server::api_types::{AgentConfig, ApiResponse};
@@ -93,23 +93,26 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body
 
 fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
     let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
-
     let result = if let Some((new, ex)) = next {
         if new {
             if let Some(ref github_issue) = ex.github_issue {
                 Message::new()
                     .line(
                         "construction",
-                        format!(
-                            "Experiment **`{}`** is now **running** on agent `{}`.",
-                            ex.name, auth.name,
-                        ),
+                        format!("Experiment **`{}`** is now **running**", ex.name,),
                     )
                     .send(&github_issue.api_url, &data)?;
             }
         }
-
-        Some((ex.clone(), ex.get_uncompleted_crates(&data.db)?))
+        let crates = ex
+            .get_uncompleted_crates(
+                &data.db,
+                CrateListSize::Chunk,
+                &Assignee::Agent(auth.name.clone()),
+            )?
+            .clone();
+        println!("crates: {:?}", &crates);
+        Some((ex.clone(), crates))
     } else {
         None
     };
@@ -121,8 +124,14 @@ fn endpoint_complete_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<
     let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
-    ex.set_status(&data.db, Status::NeedsReport)?;
-    info!("experiment {} completed, marked as needs-report", ex.name);
+    let (completed, all) = ex.raw_progress(&data.db)?;
+    if completed == all {
+        ex.set_status(&data.db, Status::NeedsReport)?;
+        info!("experiment {} completed, marked as needs-report", ex.name);
+    } else {
+        info!("chunk from experiment {} completed", ex.name);
+    }
+
     data.reports_worker.wake(); // Ensure the reports worker is awake
 
     Ok(ApiResponse::Success { result: true }.into_response()?)

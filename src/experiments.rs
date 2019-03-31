@@ -8,6 +8,8 @@ use serde_json;
 use std::fmt;
 use std::str::FromStr;
 
+static CHUNK_SIZE: i32 = 2;
+
 string_enum!(pub enum Status {
     Queued => "queued",
     Running => "running",
@@ -35,12 +37,19 @@ string_enum!(pub enum CrateSelect {
     Local => "local",
 });
 
-string_enum!(pub enum CapLints {
+string_enum!( pub enum CapLints {
     Allow => "allow",
     Warn => "warn",
     Deny => "deny",
     Forbid => "forbid",
 });
+
+string_enum!(
+    pub enum CrateListSize {
+        Chunk => "chunk",
+        Full => "full",
+    }
+);
 
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[derive(Clone, Serialize, Deserialize)]
@@ -322,18 +331,44 @@ impl Experiment {
         .collect::<Fallible<Vec<Crate>>>()
     }
 
-    pub fn get_uncompleted_crates(&self, db: &Database) -> Fallible<Vec<Crate>> {
-        db.query(
-            "SELECT crate FROM experiment_crates WHERE experiment = ?1
-            AND (SELECT COUNT(*) AS count FROM results WHERE results.experiment = ?1 AND results.crate = experiment_crates.crate) < 2;",
-            &[&self.name],
-            |r| {
-                let value: String = r.get("crate");
-                Ok(serde_json::from_str(&value)?)
-            },
-        )?
-        .into_iter()
-        .collect::<Fallible<Vec<Crate>>>()
+    pub fn get_uncompleted_crates(
+        &self,
+        db: &Database,
+        list_size: CrateListSize,
+        assigned_to: &Assignee,
+    ) -> Fallible<Vec<Crate>> {
+        let limit = match list_size {
+            CrateListSize::Chunk => CHUNK_SIZE,
+            CrateListSize::Full => -1,
+        };
+
+        let crates = db
+            .query(
+                "SELECT crate FROM experiment_crates WHERE experiment = ?1
+                AND status = ?2 LIMIT ?3;",
+                &[&self.name, &Status::Queued.to_string(), &limit],
+                |r| {
+                    let value: String = r.get("crate");
+                    Ok(serde_json::from_str(&value)?)
+                },
+            )?
+            .into_iter()
+            .collect::<Fallible<Vec<Crate>>>();
+
+        db.execute(
+            "UPDATE experiment_crates SET assigned_to = ?1, status = ?2 \
+            WHERE crate IN (SELECT crate FROM experiment_crates WHERE experiment = ?3
+            AND status = ?4 LIMIT ?5) ",
+            &[
+                &assigned_to.to_string(),
+                &Status::Running.to_string(),
+                &self.name,
+                &Status::Queued.to_string(),
+                &limit,
+            ],
+        )?;
+
+        crates
     }
 }
 

@@ -77,8 +77,8 @@ impl Action for CreateExperiment {
             for krate in &crates {
                 let skipped = !self.ignore_blacklist && ctx.config.should_skip(krate);
                 transaction.execute(
-                    "INSERT INTO experiment_crates (experiment, crate, skipped) VALUES (?1, ?2, ?3);",
-                    &[&self.name, &::serde_json::to_string(&krate)?, &skipped],
+                    "INSERT INTO experiment_crates (experiment, crate, skipped, status) VALUES (?1, ?2, ?3, ?4);",
+                    &[&self.name, &::serde_json::to_string(&krate)?, &skipped, &Status::Queued.to_string()],
                 )?;
             }
 

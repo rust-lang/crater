@@ -303,6 +303,28 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "add_experiment_field_in_agent",
+        MigrationKind::SQL(
+            "
+            ALTER TABLE agents ADD COLUMN experiment TEXT;
+
+            CRATE TABLE agents_new (
+                name TEXT PRIMARY KEY,
+                last_heartbeat DATETIME,
+                experiment TEXT,
+
+                FOREIGN KEY (experiment) REFERENCES experiments(name) ON DELETE CASCADE
+            );
+
+            INSERT INTO agents_new  SELECT * FROM agents;
+
+            DROP TABLE agents;
+            ALTER TABLE agent_new RENAME TO agents;
+            ",
+        ),
+    ));
+
     migrations
 }
 

@@ -152,10 +152,16 @@ impl Experiment {
     }
 
     pub fn run_by(db: &Database, assignee: &Assignee) -> Fallible<Option<Experiment>> {
+        let name = match assigned_to {
+            Assignee::Agent(ref name) => name,
+            Assignee::CLI => "cli",
+        };
+
         let record = db.get_row(
-            "SELECT * FROM experiments \
-             WHERE status = ?1 AND assigned_to = ?2;",
-            &[&Status::Running.to_str(), &assignee.to_string()],
+            "SELECT * FROM agents \
+             INNER JOIN experiments ON agents.experiment \
+             = experiments.name WHERE agents.name = ?2",
+            &[&name],
             |r| ExperimentDBRecord::from_row(r),
         )?;
 
@@ -342,6 +348,15 @@ impl Experiment {
             CrateListSize::Full => -1,
         };
 
+        let name = match assigned_to {
+            Assignee::Agent(ref name) => name,
+            Assignee::CLI => "cli",
+        };
+
+        db.execute(
+            "UPDATE agents SET experiment = ?1 WHERE name = ?2",
+            &[&self.name, &name],
+        )?;
         let crates = db
             .query(
                 "SELECT crate FROM experiment_crates WHERE experiment = ?1

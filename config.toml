@@ -262,6 +262,7 @@ async-mesos = { skip-tests = true } #automatic
 async-ssh = { skip = true } #automatic
 atk-sys = { skip-tests = true } #automatic
 atlas = { skip = true } #automatic
+atlas-coverage-core = { skip-tests = true } # flaky tests
 atomic-stamped-ptr = { skip = true } #automatic
 atomic_cell = { skip = true } #automatic
 atomicwrites = { skip-tests = true } #automatic
@@ -640,6 +641,7 @@ chashmap = { skip-tests = true } #automatic
 chatbot = { skip = true } #automatic
 checked_cast = { skip-tests = true } #automatic
 checksum = { skip-tests = true } #automatic
+chef_api = { skip-tests = true } # flaky tests
 chemfiles = { skip = true } #automatic
 chemfiles-sys = { skip = true } #automatic
 chessground = { skip = true } #automatic
@@ -651,6 +653,7 @@ chipper = { skip = true } #automatic
 chiter = { skip-tests = true } #automatic
 chord3 = { skip = true } #automatic
 chromaprint = { skip = true } #automatic
+ci_info = { skip-tests = true } # flaky tests
 cicada = { skip-tests = true } #automatic
 cifar_10_loader = { skip-tests = true } #automatic
 citadel = { skip-tests = true } #automatic
@@ -9221,6 +9224,7 @@ zyre-sys = { skip = true } #automatic
 "frog-pond/data-server" = { skip = true } #automatic
 "frogshead/rust-bluepill" = { skip = true } #automatic
 "frogshead/rust-ruuvitag" = { skip = true } #automatic
+"fromheten/plato" = { skip-tests = true } # flaky tests
 "frondeus/RSA-Rust" = { skip = true } #automatic
 "frontsideair/mst" = { skip = true } #automatic
 "fsasm/rv1076" = { skip = true } #automatic

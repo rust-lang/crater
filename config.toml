@@ -866,7 +866,6 @@ cron-bugfix-version = { skip = true } #automatic
 cron_rs = { skip = true } #automatic
 cronparse = { skip-tests = true } #automatic
 crossterm = { skip-tests = true } #automatic
-crow_engine = { skip = true } #automatic
 crowbar = { skip = true } #automatic
 crowbook = { skip = true } #automatic
 crowbook-localize = { skip = true } #automatic
@@ -3199,7 +3198,6 @@ nix-test = { skip = true } #automatic
 nixterm = { skip-tests = true } #automatic
 nl-dump = { skip = true } #automatic
 nlopt = { skip = true } #automatic
-nlp-io = { skip = true } #automatic
 nmap-analyze = { skip = true } #automatic
 no-panic = { skip-tests = true } #automatic
 no_vec = { skip-tests = true } #automatic
@@ -4757,7 +4755,6 @@ stm32f407 = { skip = true } #automatic
 stm32f40x = { skip = true } #automatic
 stm32f41x = { skip = true } #automatic
 stm32f429 = { skip = true } #automatic
-stm32f429-hal = { skip = true } #automatic
 stm32f429x = { skip = true } #automatic
 stm32f439 = { skip = true } #automatic
 stm32f439-hal = { skip = true } #automatic

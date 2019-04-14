@@ -2,7 +2,8 @@
 #![allow(
     clippy::needless_pass_by_value,
     clippy::new_ret_no_self,
-    clippy::too_many_arguments
+    clippy::too_many_arguments,
+    clippy::redundant_closure
 )]
 
 #[cfg_attr(test, macro_use)]

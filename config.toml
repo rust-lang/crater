@@ -3725,6 +3725,7 @@ protobuf-json = { skip-tests = true } #automatic
 protoc = { skip-tests = true } #automatic
 protoc-grpcio = { skip-tests = true } #automatic
 protocol = { skip = true } #automatic
+proxy_config = { skip-tests = true } # flaky tests
 proxyconf = { skip = true } #automatic
 prusst = { skip-tests = true } #automatic
 pscontroller-rs = { skip = true } #automatic
@@ -4320,6 +4321,7 @@ sass-alt = { skip = true } #automatic
 sat = { skip-tests = true } #automatic
 saxx = { skip = true } #automatic
 sbr = { skip-tests = true } #automatic
+sbrsk = { skip-tests = true } # flaky tests
 sbtsv-sys = { skip = true } #automatic
 sbz-switch = { skip = true } #automatic
 sc2 = { skip = true } #automatic
@@ -9858,6 +9860,7 @@ zyre-sys = { skip = true } #automatic
 "jaemk/proxy" = { skip = true } #automatic
 "jaemk/upaste" = { skip = true } #automatic
 "jaemk/upaste-server" = { skip = true } #automatic
+"jafow/pals" = { skip-tests = true } # flaky tests
 "jagtalon/fe" = { skip = true } #automatic
 "jagu-sayan/docker-owl" = { skip = true } #automatic
 "jahfer/accountant" = { skip = true } #automatic
@@ -10064,6 +10067,7 @@ zyre-sys = { skip = true } #automatic
 "johcar/rust_os" = { skip = true } #automatic
 "johnathan79717/guessing_game" = { skip = true } #automatic
 "johncf/gtk-scribble-app" = { skip = true } #automatic
+"johnedmonds/chance" = { skip-tests = true } # flaky tests
 "johnfaucett/rs-libm" = { skip = true } #automatic
 "johnfoley3/readrust-cli" = { skip = true } #automatic
 "johnny88/blog_rocket_api" = { skip = true } #automatic
@@ -12536,6 +12540,7 @@ zyre-sys = { skip = true } #automatic
 "simonvandel/fcbf" = { skip = true } #automatic
 "simonvandel/spwn" = { skip = true } #automatic
 "simsor/sfn" = { skip = true } #automatic
+"simulacrumparty/casaubon" = { skip-tests = true } # flaky tests
 "sinesc/spacegame" = { skip = true } #automatic
 "singaraiona/k-rs" = { skip = true } #automatic
 "singhmarut/rust-concurrency" = { skip = true } #automatic

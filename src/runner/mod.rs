@@ -4,6 +4,7 @@ mod tasks;
 mod test;
 mod toml_frobber;
 mod unstable_features;
+mod worker;
 
 use crate::config::Config;
 use crate::crates::Crate;
@@ -11,8 +12,9 @@ use crate::docker::DockerEnv;
 use crate::experiments::{Experiment, Mode};
 use crate::logs::LogStorage;
 use crate::prelude::*;
-use crate::results::{BrokenReason, TestResult, WriteResults};
-use crate::runner::graph::{build_graph, WalkResult};
+use crate::results::{TestResult, WriteResults};
+use crate::runner::graph::build_graph;
+use crate::runner::worker::Worker;
 use crate::utils;
 use crossbeam_utils::thread::scope;
 use std::collections::HashMap;
@@ -101,67 +103,29 @@ fn run_ex_inner<DB: WriteResults + Sync>(
         Mutex::new(HashMap::new());
     let state = RunnerState::new();
 
+    let workers = (0..threads_count)
+        .map(|i| {
+            Worker::new(
+                format!("worker-{}", i),
+                ex,
+                config,
+                &graph,
+                &state,
+                db,
+                &docker_env,
+                &parked_threads,
+            )
+        })
+        .collect::<Vec<_>>();
+
     scope(|scope| -> Fallible<()> {
         let mut threads = Vec::new();
 
-        for i in 0..threads_count {
-            let name = format!("worker-{}", i);
-            let join = scope.builder().name(name).spawn(|| -> Fallible<()> {
-                // This uses a `loop` instead of a `while let` to avoid locking the graph too much
-                loop {
-                    let walk_result = graph.lock().unwrap().next_task(ex, db);
-                    match walk_result {
-                        WalkResult::Task(id, task) => {
-                            info!("running task: {:?}", task);
-                            if let Err(e) = task.run(config, ex, db, &docker_env, &state) {
-                                error!("task failed, marking childs as failed too: {:?}", task);
-                                utils::report_failure(&e);
-
-                                let mut result = if config.is_broken(&task.krate) {
-                                    TestResult::BrokenCrate(BrokenReason::Unknown)
-                                } else {
-                                    TestResult::Error
-                                };
-
-                                for err in e.iter_chain() {
-                                    if let Some(&OverrideResult(res)) = err.downcast_ctx() {
-                                        result = res;
-                                        break;
-                                    }
-                                }
-
-                                graph
-                                    .lock()
-                                    .unwrap()
-                                    .mark_as_failed(id, ex, db, &state, &config, &e, result)?;
-                            } else {
-                                graph.lock().unwrap().mark_as_completed(id);
-                            }
-
-                            // Unpark all the threads
-                            let mut parked = parked_threads.lock().unwrap();
-                            for (_id, thread) in parked.drain() {
-                                thread.unpark();
-                            }
-                        }
-                        WalkResult::Blocked => {
-                            // Wait until another thread finished before looking for tasks again
-                            // If the thread spuriously wake up (parking does not guarantee no
-                            // spurious wakeups) it's not a big deal, it will just get parked again
-                            {
-                                let mut parked_threads = parked_threads.lock().unwrap();
-                                let current = thread::current();
-                                parked_threads.insert(current.id(), current);
-                            }
-                            thread::park();
-                        }
-                        WalkResult::NotBlocked => unreachable!("NotBlocked leaked from the run"),
-                        WalkResult::Finished => break,
-                    }
-                }
-
-                Ok(())
-            })?;
+        for worker in &workers {
+            let join = scope
+                .builder()
+                .name(worker.name().into())
+                .spawn(move || worker.run())?;
             threads.push(join);
         }
 

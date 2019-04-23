@@ -14,13 +14,17 @@ use crate::logs::LogStorage;
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
 use crate::runner::graph::build_graph;
-use crate::runner::worker::Worker;
+use crate::runner::worker::{DiskSpaceWatcher, Worker};
 use crate::utils;
-use crossbeam_utils::thread::scope;
+use crossbeam_utils::thread::{scope, ScopedJoinHandle};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 use std::thread;
+use std::time::Duration;
+
+const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(1);
+const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.9;
 
 #[derive(Debug, Fail)]
 #[fail(display = "overridden task result to {}", _0)]
@@ -118,6 +122,12 @@ fn run_ex_inner<DB: WriteResults + Sync>(
         })
         .collect::<Vec<_>>();
 
+    let disk_watcher = DiskSpaceWatcher::new(
+        DISK_SPACE_WATCHER_INTERVAL,
+        DISK_SPACE_WATCHER_THRESHOLD,
+        &workers,
+    );
+
     scope(|scope| -> Fallible<()> {
         let mut threads = Vec::new();
 
@@ -128,23 +138,16 @@ fn run_ex_inner<DB: WriteResults + Sync>(
                 .spawn(move || worker.run())?;
             threads.push(join);
         }
+        let disk_watcher_thread = scope
+            .builder()
+            .name("disk-space-watcher".into())
+            .spawn(|| disk_watcher.run())?;
 
-        let mut clean_exit = true;
-        for thread in threads.drain(..) {
-            match thread.join() {
-                Ok(Ok(())) => {}
-                Ok(Err(err)) => {
-                    crate::utils::report_failure(&err);
-                    clean_exit = false;
-                }
-                Err(panic) => {
-                    crate::utils::report_panic(&panic);
-                    clean_exit = false;
-                }
-            }
-        }
+        let clean_exit = join_threads(threads.drain(..));
+        disk_watcher.stop();
+        let disk_watcher_clean_exit = join_threads(std::iter::once(disk_watcher_thread));
 
-        if clean_exit {
+        if clean_exit && disk_watcher_clean_exit {
             Ok(())
         } else {
             bail!("some threads returned an error");
@@ -157,6 +160,27 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     assert_eq!(g.pending_crates_count(), 0);
 
     Ok(())
+}
+
+fn join_threads<'a, I>(iter: I) -> bool
+where
+    I: Iterator<Item = ScopedJoinHandle<'a, Fallible<()>>>,
+{
+    let mut clean_exit = true;
+    for thread in iter {
+        match thread.join() {
+            Ok(Ok(())) => {}
+            Ok(Err(err)) => {
+                crate::utils::report_failure(&err);
+                clean_exit = false;
+            }
+            Err(panic) => {
+                crate::utils::report_panic(&panic);
+                clean_exit = false;
+            }
+        }
+    }
+    clean_exit
 }
 
 pub fn dump_dot(ex: &Experiment, crates: &[Crate], config: &Config, dest: &Path) -> Fallible<()> {

@@ -65,6 +65,7 @@ env_logger = "0.6.0"
 hmac = "0.7"
 sha-1 = "0.8"
 rust_team_data = { git = "https://github.com/rust-lang/team" }
+systemstat = "0.1.4"
 
 [dev-dependencies]
 assert_cmd = "0.10.1"

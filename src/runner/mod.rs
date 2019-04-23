@@ -23,7 +23,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(1);
+const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(600);
 const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.9;
 
 #[derive(Debug, Fail)]

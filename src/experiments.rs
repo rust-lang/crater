@@ -126,6 +126,15 @@ impl Assignee {
 
         Ok(())
     }
+
+    fn assign_experiment(&self, db: &Database, experiment: &str) -> Fallible<()> {
+        db.execute(
+            "UPDATE agents SET experiment = ?1 WHERE name = ?2",
+            &[&experiment, &self.get_name()],
+        )?;
+
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -203,9 +212,10 @@ impl Experiment {
 
     pub fn next(db: &Database, assignee: &Assignee) -> Fallible<Option<(bool, Experiment)>> {
         // Avoid assigning two experiments to the same agent
-        if let Some(experiment) = Experiment::run_by(db, assignee)? {
+        /*if let Some(experiment) = Experiment::run_by(db, assignee)? {
+            println!("old experiment");
             return Ok(Some((false, experiment)));
-        }
+        }*/
 
         // First look at queued experiments explicitly assigned to this agent, and then queued
         // experiments without an assigned agent.
@@ -229,7 +239,7 @@ impl Experiment {
                     "SELECT * FROM experiments WHERE (status = ?1 \
                      OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
                      WHERE experiment = experiments.name  AND status = ?1) > 0)) \
-                     AND assigned_to = NULL \
+                     AND assigned_to IS NULL \
                      ORDER BY priority DESC, created_at;",
                     &[&Status::Queued.to_string(), &Status::Running.to_string()],
                     |r| ExperimentDBRecord::from_row(r),
@@ -239,7 +249,9 @@ impl Experiment {
             if let Some(record) = record {
                 let mut experiment = record.into_experiment()?;
                 experiment.set_status(&db, Status::Running)?;
-                experiment.set_assigned_to(&db, Some(assignee))?;
+                assignee.assign_experiment(&db, &experiment.name)?;
+                //Not clear what to do in this case
+                //experiment.set_assigned_to(&db, Some(assignee))?;
                 return Ok(Some((true, experiment)));
             }
         }

@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_closure)]
+
 use log::info;
 mod cli;
 

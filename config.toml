@@ -262,6 +262,7 @@ async-mesos = { skip-tests = true } #automatic
 async-ssh = { skip = true } #automatic
 atk-sys = { skip-tests = true } #automatic
 atlas = { skip = true } #automatic
+atlas-coverage-core = { skip-tests = true } # flaky tests
 atomic-stamped-ptr = { skip = true } #automatic
 atomic_cell = { skip = true } #automatic
 atomicwrites = { skip-tests = true } #automatic
@@ -640,6 +641,7 @@ chashmap = { skip-tests = true } #automatic
 chatbot = { skip = true } #automatic
 checked_cast = { skip-tests = true } #automatic
 checksum = { skip-tests = true } #automatic
+chef_api = { skip-tests = true } # flaky tests
 chemfiles = { skip = true } #automatic
 chemfiles-sys = { skip = true } #automatic
 chessground = { skip = true } #automatic
@@ -651,6 +653,7 @@ chipper = { skip = true } #automatic
 chiter = { skip-tests = true } #automatic
 chord3 = { skip = true } #automatic
 chromaprint = { skip = true } #automatic
+ci_info = { skip-tests = true } # flaky tests
 cicada = { skip-tests = true } #automatic
 cifar_10_loader = { skip-tests = true } #automatic
 citadel = { skip-tests = true } #automatic
@@ -866,7 +869,6 @@ cron-bugfix-version = { skip = true } #automatic
 cron_rs = { skip = true } #automatic
 cronparse = { skip-tests = true } #automatic
 crossterm = { skip-tests = true } #automatic
-crow_engine = { skip = true } #automatic
 crowbar = { skip = true } #automatic
 crowbook = { skip = true } #automatic
 crowbook-localize = { skip = true } #automatic
@@ -3199,7 +3201,6 @@ nix-test = { skip = true } #automatic
 nixterm = { skip-tests = true } #automatic
 nl-dump = { skip = true } #automatic
 nlopt = { skip = true } #automatic
-nlp-io = { skip = true } #automatic
 nmap-analyze = { skip = true } #automatic
 no-panic = { skip-tests = true } #automatic
 no_vec = { skip-tests = true } #automatic
@@ -3724,6 +3725,7 @@ protobuf-json = { skip-tests = true } #automatic
 protoc = { skip-tests = true } #automatic
 protoc-grpcio = { skip-tests = true } #automatic
 protocol = { skip = true } #automatic
+proxy_config = { skip-tests = true } # flaky tests
 proxyconf = { skip = true } #automatic
 prusst = { skip-tests = true } #automatic
 pscontroller-rs = { skip = true } #automatic
@@ -4319,6 +4321,7 @@ sass-alt = { skip = true } #automatic
 sat = { skip-tests = true } #automatic
 saxx = { skip = true } #automatic
 sbr = { skip-tests = true } #automatic
+sbrsk = { skip-tests = true } # flaky tests
 sbtsv-sys = { skip = true } #automatic
 sbz-switch = { skip = true } #automatic
 sc2 = { skip = true } #automatic
@@ -4757,7 +4760,6 @@ stm32f407 = { skip = true } #automatic
 stm32f40x = { skip = true } #automatic
 stm32f41x = { skip = true } #automatic
 stm32f429 = { skip = true } #automatic
-stm32f429-hal = { skip = true } #automatic
 stm32f429x = { skip = true } #automatic
 stm32f439 = { skip = true } #automatic
 stm32f439-hal = { skip = true } #automatic
@@ -9221,6 +9223,7 @@ zyre-sys = { skip = true } #automatic
 "frog-pond/data-server" = { skip = true } #automatic
 "frogshead/rust-bluepill" = { skip = true } #automatic
 "frogshead/rust-ruuvitag" = { skip = true } #automatic
+"fromheten/plato" = { skip-tests = true } # flaky tests
 "frondeus/RSA-Rust" = { skip = true } #automatic
 "frontsideair/mst" = { skip = true } #automatic
 "fsasm/rv1076" = { skip = true } #automatic
@@ -9857,6 +9860,7 @@ zyre-sys = { skip = true } #automatic
 "jaemk/proxy" = { skip = true } #automatic
 "jaemk/upaste" = { skip = true } #automatic
 "jaemk/upaste-server" = { skip = true } #automatic
+"jafow/pals" = { skip-tests = true } # flaky tests
 "jagtalon/fe" = { skip = true } #automatic
 "jagu-sayan/docker-owl" = { skip = true } #automatic
 "jahfer/accountant" = { skip = true } #automatic
@@ -10063,6 +10067,7 @@ zyre-sys = { skip = true } #automatic
 "johcar/rust_os" = { skip = true } #automatic
 "johnathan79717/guessing_game" = { skip = true } #automatic
 "johncf/gtk-scribble-app" = { skip = true } #automatic
+"johnedmonds/chance" = { skip-tests = true } # flaky tests
 "johnfaucett/rs-libm" = { skip = true } #automatic
 "johnfoley3/readrust-cli" = { skip = true } #automatic
 "johnny88/blog_rocket_api" = { skip = true } #automatic
@@ -12535,6 +12540,7 @@ zyre-sys = { skip = true } #automatic
 "simonvandel/fcbf" = { skip = true } #automatic
 "simonvandel/spwn" = { skip = true } #automatic
 "simsor/sfn" = { skip = true } #automatic
+"simulacrumparty/casaubon" = { skip-tests = true } # flaky tests
 "sinesc/spacegame" = { skip = true } #automatic
 "singaraiona/k-rs" = { skip = true } #automatic
 "singhmarut/rust-concurrency" = { skip = true } #automatic

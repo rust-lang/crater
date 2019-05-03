@@ -124,6 +124,7 @@ fn endpoint_complete_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<
     let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
+    Assignee::complete_experiment(&data.db, &auth.name)?;
     let (completed, all) = ex.raw_progress(&data.db)?;
     if completed == all {
         ex.set_status(&data.db, Status::NeedsReport)?;

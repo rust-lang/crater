@@ -110,6 +110,24 @@ impl FromStr for Assignee {
     }
 }
 
+impl Assignee {
+    pub fn get_name(&self) -> &str {
+        match self {
+            Assignee::Agent(ref name) => name,
+            Assignee::CLI => "cli",
+        }
+    }
+
+    pub fn complete_experiment(db: &Database, assignee_name: &str) -> Fallible<()> {
+        db.execute(
+            "UPDATE agents SET experiment = NULL WHERE name = ?1",
+            &[&assignee_name],
+        )?;
+
+        Ok(())
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct GitHubIssue {
     pub api_url: String,
@@ -152,16 +170,11 @@ impl Experiment {
     }
 
     pub fn run_by(db: &Database, assignee: &Assignee) -> Fallible<Option<Experiment>> {
-        let name = match assigned_to {
-            Assignee::Agent(ref name) => name,
-            Assignee::CLI => "cli",
-        };
-
         let record = db.get_row(
-            "SELECT * FROM agents \
-             INNER JOIN experiments ON agents.experiment \
-             = experiments.name WHERE agents.name = ?2",
-            &[&name],
+            "SELECT * FROM experiments \
+             INNER JOIN agents ON agents.experiment \
+             = experiments.name WHERE agents.name = ?1",
+            &[&assignee.get_name()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
 
@@ -199,18 +212,25 @@ impl Experiment {
         for assigned_to in &[Some(assignee), None] {
             let record = if let Some(assigned_to) = assigned_to {
                 db.get_row(
-                    "SELECT * FROM experiments \
-                     WHERE status = \"queued\" AND assigned_to = ?1 \
+                    "SELECT * FROM experiments WHERE (status = ?1 \
+                     OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
+                     WHERE experiment = experiments.name  AND status = ?1) > 0)) \
+                     AND assigned_to = ?3
                      ORDER BY priority DESC, created_at;",
-                    &[&assigned_to.to_string()],
+                    &[
+                        &Status::Queued.to_string(),
+                        &Status::Running.to_string(),
+                        &assigned_to.to_string(),
+                    ],
                     |r| ExperimentDBRecord::from_row(r),
                 )?
             } else {
                 db.get_row(
-                    "SELECT * FROM experiments \
-                     WHERE status = \"queued\" AND assigned_to IS NULL \
+                    "SELECT * FROM experiments WHERE (status = ?1 \
+                     OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
+                     WHERE experiment = experiments.name  AND status = ?1) > 0)) \
                      ORDER BY priority DESC, created_at;",
-                    &[],
+                    &[&Status::Queued.to_string(), &Status::Running.to_string()],
                     |r| ExperimentDBRecord::from_row(r),
                 )?
             };
@@ -276,10 +296,16 @@ impl Experiment {
         db: &Database,
         assigned_to: Option<&Assignee>,
     ) -> Fallible<()> {
+        //old code - could be removed
         db.execute(
             "UPDATE experiments SET assigned_to = ?1 WHERE name = ?2;",
             &[&assigned_to.map(|a| a.to_string()), &self.name.as_str()],
         )?;
+        db.execute(
+            "UPDATE agents SET experiment = ?1 WHERE name = ?2;",
+            &[&self.name.as_str(), &assigned_to.map(|a| a.to_string())],
+        )?;
+
         self.assigned_to = assigned_to.cloned();
         Ok(())
     }
@@ -348,15 +374,11 @@ impl Experiment {
             CrateListSize::Full => -1,
         };
 
-        let name = match assigned_to {
-            Assignee::Agent(ref name) => name,
-            Assignee::CLI => "cli",
-        };
-
         db.execute(
             "UPDATE agents SET experiment = ?1 WHERE name = ?2",
-            &[&self.name, &name],
+            &[&self.name, &assigned_to.get_name()],
         )?;
+
         let crates = db
             .query(
                 "SELECT crate FROM experiment_crates WHERE experiment = ?1

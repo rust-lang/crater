@@ -215,7 +215,7 @@ impl Experiment {
                     "SELECT * FROM experiments WHERE (status = ?1 \
                      OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
                      WHERE experiment = experiments.name  AND status = ?1) > 0)) \
-                     AND assigned_to = ?3
+                     AND assigned_to = ?3 \
                      ORDER BY priority DESC, created_at;",
                     &[
                         &Status::Queued.to_string(),
@@ -229,6 +229,7 @@ impl Experiment {
                     "SELECT * FROM experiments WHERE (status = ?1 \
                      OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
                      WHERE experiment = experiments.name  AND status = ?1) > 0)) \
+                     AND assigned_to = NULL \
                      ORDER BY priority DESC, created_at;",
                     &[&Status::Queued.to_string(), &Status::Running.to_string()],
                     |r| ExperimentDBRecord::from_row(r),
@@ -296,15 +297,14 @@ impl Experiment {
         db: &Database,
         assigned_to: Option<&Assignee>,
     ) -> Fallible<()> {
-        //old code - could be removed
         db.execute(
             "UPDATE experiments SET assigned_to = ?1 WHERE name = ?2;",
             &[&assigned_to.map(|a| a.to_string()), &self.name.as_str()],
         )?;
-        db.execute(
+        /*db.execute(
             "UPDATE agents SET experiment = ?1 WHERE name = ?2;",
             &[&self.name.as_str(), &assigned_to.map(|a| a.to_string())],
-        )?;
+        )?;*/
 
         self.assigned_to = assigned_to.cloned();
         Ok(())
@@ -374,11 +374,13 @@ impl Experiment {
             CrateListSize::Full => -1,
         };
 
+        //update what assignee's working on
         db.execute(
             "UPDATE agents SET experiment = ?1 WHERE name = ?2",
             &[&self.name, &assigned_to.get_name()],
         )?;
 
+        //get the first 'limit' queued crates from the experiment crates list
         let crates = db
             .query(
                 "SELECT crate FROM experiment_crates WHERE experiment = ?1
@@ -392,6 +394,7 @@ impl Experiment {
             .into_iter()
             .collect::<Fallible<Vec<Crate>>>();
 
+        //update the status of the previously selected crates to 'Running'
         db.execute(
             "UPDATE experiment_crates SET assigned_to = ?1, status = ?2 \
             WHERE crate IN (SELECT crate FROM experiment_crates WHERE experiment = ?3

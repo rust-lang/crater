@@ -633,6 +633,7 @@ mod tests {
 
     #[test]
     fn test_completed_crates() {
+        use crate::experiments::CrateListSize;
         use crate::prelude::*;
         use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
 
@@ -645,7 +646,9 @@ mod tests {
         // Create a dummy experiment
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
-        let crates = ex.get_uncompleted_crates(&db).unwrap();
+        let crates = ex
+            .get_uncompleted_crates(&db, CrateListSize::Full, &Assignee::CLI)
+            .unwrap();
         let crate1 = &crates[0];
         let crate2 = &crates[1];
 
@@ -695,7 +698,9 @@ mod tests {
             .unwrap();
 
         // Test already completed crates does not show up again
-        let uncompleted_crates = ex.get_uncompleted_crates(&db).unwrap();
+        let uncompleted_crates = ex
+            .get_uncompleted_crates(&db, CrateListSize::Full, &Assignee::CLI)
+            .unwrap();
         assert_eq!(uncompleted_crates.len(), crates.len() - 1);
     }
 }

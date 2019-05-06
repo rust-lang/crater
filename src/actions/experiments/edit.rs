@@ -95,12 +95,13 @@ impl Action for EditExperiment {
                 )?;
                 for krate in &crates_vec {
                     t.execute(
-                        "INSERT INTO experiment_crates (experiment, crate, skipped) \
-                         VALUES (?1, ?2, ?3);",
+                        "INSERT INTO experiment_crates (experiment, crate, skipped, status) \
+                         VALUES (?1, ?2, ?3, ?4);",
                         &[
                             &self.name,
                             &::serde_json::to_string(&krate)?,
                             &(!ex.ignore_blacklist && ctx.config.should_skip(krate)),
+                            &Status::Queued.to_string(),
                         ],
                     )?;
                 }

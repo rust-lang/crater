@@ -636,8 +636,6 @@ mod tests {
     #[test]
     fn test_full_completed_crates() {
         use crate::experiments::CrateListSize;
-        use crate::prelude::*;
-        use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
 
         let db = Database::temp().unwrap();
         let config = Config::default();

@@ -634,7 +634,7 @@ mod tests {
     }
 
     #[test]
-    fn test_completed_crates() {
+    fn test_full_completed_crates() {
         use crate::experiments::CrateListSize;
         use crate::prelude::*;
         use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
@@ -651,58 +651,13 @@ mod tests {
         let crates = ex
             .get_uncompleted_crates(&db, CrateListSize::Full, &Assignee::CLI)
             .unwrap();
-        let crate1 = &crates[0];
-        let crate2 = &crates[1];
-
-        // Fill some dummy results into the database
-        let results = DatabaseDB::new(&db);
-        results
-            .record_result(
-                &ex,
-                &ex.toolchains[0],
-                &crate1,
-                None,
-                &config,
-                EncodingType::Gzip,
-                || {
-                    info!("tc1 crate1");
-                    Ok(TestResult::TestPass)
-                },
-            )
-            .unwrap();
-        results
-            .record_result(
-                &ex,
-                &ex.toolchains[1],
-                &crate1,
-                None,
-                &config,
-                EncodingType::Plain,
-                || {
-                    info!("tc2 crate1");
-                    Ok(TestResult::BuildFail(FailureReason::Unknown))
-                },
-            )
-            .unwrap();
-        results
-            .record_result(
-                &ex,
-                &ex.toolchains[1],
-                &crate2,
-                None,
-                &config,
-                EncodingType::Plain,
-                || {
-                    info!("tc1 crate2");
-                    Ok(TestResult::BuildFail(FailureReason::Unknown))
-                },
-            )
-            .unwrap();
+        // Assert the whole list is returned
+        assert_eq!(crates.len(), ex.get_crates(&db).unwrap().len());
 
         // Test already completed crates does not show up again
         let uncompleted_crates = ex
             .get_uncompleted_crates(&db, CrateListSize::Full, &Assignee::CLI)
             .unwrap();
-        assert_eq!(uncompleted_crates.len(), crates.len() - 1);
+        assert_eq!(uncompleted_crates.len(), 0);
     }
 }

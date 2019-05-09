@@ -57,9 +57,6 @@ behave this way:
   seconds
 * `POST /agent-api/record-progress` should be called as soon as a result is
   available
-* `POST /agent-api/complete-experiment` should be called as soon as the agent
-  has nothing left to do with the current experiment; after the method returns
-  `next-experiment` will return a new experiment
 * `POST /error` should be called only when the agent has encountered an error
 
 ## Available endpoints
@@ -189,21 +186,6 @@ For example, this is a valid request data:
     ]
 }
 ```
-
-The endpoint replies with `true`.
-
-```json
-{
-    "status": "success",
-    "result": true
-}
-```
-
-### `POST /complete-experiment`
-
-This endpoint marks the experiment currently being run by the authenticated
-agent as complete. The server will publish the report, notify the user and
-assign a new experiment to the agent.
 
 The endpoint replies with `true`.
 

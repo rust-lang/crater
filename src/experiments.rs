@@ -55,6 +55,7 @@ string_enum!(
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Assignee {
     Agent(String),
+    //Distributed
     CLI,
 }
 
@@ -211,7 +212,7 @@ impl Experiment {
     }
 
     pub fn next(db: &Database, assignee: &Assignee) -> Fallible<Option<(bool, Experiment)>> {
-        // Avoid assigning two experiments to the same agent
+        // Avoid assigning two experiments to the same agent // mantenere per crash
         /*if let Some(experiment) = Experiment::run_by(db, assignee)? {
             println!("old experiment");
             return Ok(Some((false, experiment)));
@@ -385,7 +386,7 @@ impl Experiment {
             CrateListSize::Chunk => CHUNK_SIZE,
             CrateListSize::Full => -1,
         };
-
+        //se è distributed prendi chunk altrimenti full
         //update what assignee's working on
         db.execute(
             "UPDATE agents SET experiment = ?1 WHERE name = ?2",

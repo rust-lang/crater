@@ -113,19 +113,19 @@ fn endpoint_record_progress(
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let experiment = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     info!(
         "received progress on experiment {} from agent {}",
-        experiment.name, auth.name,
+        ex.name, auth.name,
     );
 
     let db = DatabaseDB::new(&data.db);
-    db.store(&experiment, &result, EncodingType::Gzip)?;
+    db.store(&ex, &result, EncodingType::Gzip)?;
 
     let (completed, all) = ex.raw_progress(&data.db)?;
-    if (completed == all) {
+    if completed == all {
         ex.set_status(&data.db, Status::NeedsReport)?;
         info!("experiment {} completed, marked as needs-report", ex.name);
         data.reports_worker.wake(); // Ensure the reports worker is awake

@@ -57,7 +57,6 @@ fn run_experiment(
 ) -> Fallible<()> {
     let (ex, crates) = agent.experiment()?;
     crate::runner::run_ex(&ex, &crates, db, threads_count, &agent.config, docker_env)?;
-    agent.api.complete_experiment()?;
     Ok(())
 }
 

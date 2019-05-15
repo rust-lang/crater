@@ -1,4 +1,4 @@
-use crate::experiments::{Assignee, CrateListSize, Experiment, Status};
+use crate::experiments::{Assignee, Experiment, Status};
 use crate::prelude::*;
 use crate::results::{DatabaseDB, EncodingType, ProgressData};
 use crate::server::api_types::{AgentConfig, ApiResponse};
@@ -106,11 +106,7 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
             }
         }
         let crates = ex
-            .get_uncompleted_crates(
-                &data.db,
-                CrateListSize::Chunk,
-                &Assignee::Agent(auth.name.clone()),
-            )?
+            .get_uncompleted_crates(&data.db, &Assignee::Agent(auth.name.clone()))?
             .clone();
         println!("crates: {:?} to {}", &crates, auth.name.clone());
         Some((ex.clone(), crates))
@@ -125,7 +121,6 @@ fn endpoint_complete_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<
     let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
-    Assignee::complete_experiment(&data.db, &auth.name)?;
     let (completed, all) = ex.raw_progress(&data.db)?;
     if completed == all {
         ex.set_status(&data.db, Status::NeedsReport)?;

@@ -51,6 +51,15 @@ string_enum!(
     }
 );
 
+impl CrateListSize {
+    pub fn value(&self) -> i32 {
+        match self {
+            CrateListSize::Chunk => CHUNK_SIZE,
+            CrateListSize::Full => -1,
+        }
+    }
+}
+
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Assignee {
@@ -364,10 +373,10 @@ impl Experiment {
     fn crate_list_size(&self) -> i32 {
         match self.assigned_to {
             //if experiment is assigned to specific agent return all the crates
-            Some(Assignee::Agent(ref _name)) => -1,
+            Some(Assignee::Agent(ref _name)) => CrateListSize::Full.value(),
             //if experiment is distributed return chunk
-            Some(Assignee::Distributed) => CHUNK_SIZE,
-            _ => -1,
+            Some(Assignee::Distributed) => CrateListSize::Chunk.value(),
+            _ => CrateListSize::Full.value(),
         }
     }
 

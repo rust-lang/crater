@@ -55,7 +55,7 @@ string_enum!(
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Assignee {
     Agent(String),
-    //Distributed
+    Distributed,
     CLI,
 }
 
@@ -63,6 +63,7 @@ impl fmt::Display for Assignee {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Assignee::Agent(ref name) => write!(f, "agent:{}", name),
+            Assignee::Distributed => write!(f, "distributed"),
             Assignee::CLI => write!(f, "cli"),
         }
     }
@@ -115,26 +116,9 @@ impl Assignee {
     pub fn get_name(&self) -> &str {
         match self {
             Assignee::Agent(ref name) => name,
+            Assignee::Distributed => "distributed",
             Assignee::CLI => "cli",
         }
-    }
-
-    pub fn complete_experiment(db: &Database, assignee_name: &str) -> Fallible<()> {
-        db.execute(
-            "UPDATE agents SET experiment = NULL WHERE name = ?1",
-            &[&assignee_name],
-        )?;
-
-        Ok(())
-    }
-
-    fn assign_experiment(&self, db: &Database, experiment: &str) -> Fallible<()> {
-        db.execute(
-            "UPDATE agents SET experiment = ?1 WHERE name = ?2",
-            &[&experiment, &self.get_name()],
-        )?;
-
-        Ok(())
     }
 }
 
@@ -182,9 +166,10 @@ impl Experiment {
     pub fn run_by(db: &Database, assignee: &Assignee) -> Fallible<Option<Experiment>> {
         let record = db.get_row(
             "SELECT * FROM experiments \
-             INNER JOIN agents ON agents.experiment \
-             = experiments.name WHERE agents.name = ?1",
-            &[&assignee.get_name()],
+             INNER JOIN experiment_crates ON experiment_crates.experiment \
+             = experiments.name WHERE experiment_crates.assigned_to = ?1 \
+             AND experiment_crates.status = ?2 LIMIT 1",
+            &[&assignee.to_string(), &Status::Running.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
 
@@ -212,51 +197,55 @@ impl Experiment {
     }
 
     pub fn next(db: &Database, assignee: &Assignee) -> Fallible<Option<(bool, Experiment)>> {
-        // Avoid assigning two experiments to the same agent // mantenere per crash
-        /*if let Some(experiment) = Experiment::run_by(db, assignee)? {
-            println!("old experiment");
+        // Avoid assigning two experiments to the same agent
+        if let Some(experiment) = Experiment::run_by(db, assignee)? {
             return Ok(Some((false, experiment)));
-        }*/
-
-        // First look at queued experiments explicitly assigned to this agent, and then queued
-        // experiments without an assigned agent.
-        for assigned_to in &[Some(assignee), None] {
-            let record = if let Some(assigned_to) = assigned_to {
-                db.get_row(
-                    "SELECT * FROM experiments WHERE (status = ?1 \
-                     OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
-                     WHERE experiment = experiments.name  AND status = ?1) > 0)) \
-                     AND assigned_to = ?3 \
-                     ORDER BY priority DESC, created_at;",
-                    &[
-                        &Status::Queued.to_string(),
-                        &Status::Running.to_string(),
-                        &assigned_to.to_string(),
-                    ],
-                    |r| ExperimentDBRecord::from_row(r),
-                )?
-            } else {
-                db.get_row(
-                    "SELECT * FROM experiments WHERE (status = ?1 \
-                     OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
-                     WHERE experiment = experiments.name  AND status = ?1) > 0)) \
-                     AND assigned_to IS NULL \
-                     ORDER BY priority DESC, created_at;",
-                    &[&Status::Queued.to_string(), &Status::Running.to_string()],
-                    |r| ExperimentDBRecord::from_row(r),
-                )?
-            };
-
-            if let Some(record) = record {
-                let mut experiment = record.into_experiment()?;
-                experiment.set_status(&db, Status::Running)?;
-                assignee.assign_experiment(&db, &experiment.name)?;
-                //Not clear what to do in this case
-                //experiment.set_assigned_to(&db, Some(assignee))?;
-                return Ok(Some((true, experiment)));
-            }
         }
 
+        Experiment::next_inner(db, Some(assignee))
+            .and_then(|ex| {
+                ex.map_or_else(
+                    || Experiment::next_inner(db, Some(&Assignee::Distributed)),
+                    |exp| Ok(Some(exp)),
+                )
+            })
+            .and_then(|ex| ex.map_or_else(|| Experiment::next_inner(db, None), |exp| Ok(Some(exp))))
+            .map(|ex| ex.map_or_else(|| None, |exp| Some((true, exp))))
+    }
+
+    fn next_inner(db: &Database, assignee: Option<&Assignee>) -> Fallible<Option<Experiment>> {
+        let record = if let Some(assigned_to) = assignee {
+            db.get_row(
+                "SELECT * FROM experiments WHERE (status = ?1 \
+                 OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
+                 WHERE experiment = experiments.name  AND status = ?1) > 0)) \
+                 AND assigned_to = ?3 \
+                 ORDER BY priority DESC, created_at;",
+                &[
+                    &Status::Queued.to_string(),
+                    &Status::Running.to_string(),
+                    &assigned_to.to_string(),
+                ],
+                |r| ExperimentDBRecord::from_row(r),
+            )?
+        } else {
+            db.get_row(
+                "SELECT * FROM experiments WHERE (status = ?1 \
+                 OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
+                 WHERE experiment = experiments.name  AND status = ?1) > 0)) \
+                 AND assigned_to IS NULL \
+                 ORDER BY priority DESC, created_at;",
+                &[&Status::Queued.to_string(), &Status::Running.to_string()],
+                |r| ExperimentDBRecord::from_row(r),
+            )?
+        };
+
+        if let Some(record) = record {
+            let mut experiment = record.into_experiment()?;
+            experiment.set_status(&db, Status::Running)?;
+            experiment.set_assigned_to(&db, assignee)?;
+            return Ok(Some(experiment));
+        }
         Ok(None)
     }
 
@@ -314,10 +303,6 @@ impl Experiment {
             "UPDATE experiments SET assigned_to = ?1 WHERE name = ?2;",
             &[&assigned_to.map(|a| a.to_string()), &self.name.as_str()],
         )?;
-        /*db.execute(
-            "UPDATE agents SET experiment = ?1 WHERE name = ?2;",
-            &[&self.name.as_str(), &assigned_to.map(|a| a.to_string())],
-        )?;*/
 
         self.assigned_to = assigned_to.cloned();
         Ok(())
@@ -376,22 +361,22 @@ impl Experiment {
         .collect::<Fallible<Vec<Crate>>>()
     }
 
+    fn crate_list_size(&self) -> i32 {
+        match self.assigned_to {
+            //if experiment is assigned to specific agent return all the crates
+            Some(Assignee::Agent(ref _name)) => -1,
+            //if experiment is distributed return chunk
+            Some(Assignee::Distributed) => CHUNK_SIZE,
+            _ => -1,
+        }
+    }
+
     pub fn get_uncompleted_crates(
         &self,
         db: &Database,
-        list_size: CrateListSize,
         assigned_to: &Assignee,
     ) -> Fallible<Vec<Crate>> {
-        let limit = match list_size {
-            CrateListSize::Chunk => CHUNK_SIZE,
-            CrateListSize::Full => -1,
-        };
-        //se è distributed prendi chunk altrimenti full
-        //update what assignee's working on
-        db.execute(
-            "UPDATE agents SET experiment = ?1 WHERE name = ?2",
-            &[&self.name, &assigned_to.get_name()],
-        )?;
+        let limit = self.crate_list_size();
 
         //get the first 'limit' queued crates from the experiment crates list
         let crates = db

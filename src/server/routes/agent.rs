@@ -32,13 +32,6 @@ pub fn routes(
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_experiment);
 
-    let complete_experiment = warp::post2()
-        .and(warp::path("complete-experiment"))
-        .and(warp::path::end())
-        .and(data_filter.clone())
-        .and(auth_filter(data.clone(), TokenType::Agent))
-        .map(endpoint_complete_experiment);
-
     let record_progress = warp::post2()
         .and(warp::path("record-progress"))
         .and(warp::path::end())
@@ -66,8 +59,6 @@ pub fn routes(
         .and(
             config
                 .or(next_experiment)
-                .unify()
-                .or(complete_experiment)
                 .unify()
                 .or(record_progress)
                 .unify()
@@ -117,38 +108,28 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
     Ok(ApiResponse::Success { result }.into_response()?)
 }
 
-fn endpoint_complete_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
-    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
-        .ok_or_else(|| err_msg("no experiment run by this agent"))?;
-
-    let (completed, all) = ex.raw_progress(&data.db)?;
-    if completed == all {
-        ex.set_status(&data.db, Status::NeedsReport)?;
-        info!("experiment {} completed, marked as needs-report", ex.name);
-    } else {
-        info!("chunk from experiment {} completed", ex.name);
-    }
-
-    data.reports_worker.wake(); // Ensure the reports worker is awake
-
-    Ok(ApiResponse::Success { result: true }.into_response()?)
-}
-
 fn endpoint_record_progress(
     result: ProgressData,
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let experiment = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     info!(
         "received progress on experiment {} from agent {}",
-        experiment.name, auth.name,
+        ex.name, auth.name,
     );
 
     let db = DatabaseDB::new(&data.db);
-    db.store(&experiment, &result, EncodingType::Gzip)?;
+    db.store(&ex, &result, EncodingType::Gzip)?;
+
+    let (completed, all) = ex.raw_progress(&data.db)?;
+    if completed == all {
+        ex.set_status(&data.db, Status::NeedsReport)?;
+        info!("experiment {} completed, marked as needs-report", ex.name);
+        data.reports_worker.wake(); // Ensure the reports worker is awake
+    }
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }

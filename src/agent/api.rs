@@ -171,16 +171,6 @@ impl AgentApi {
         })
     }
 
-    pub fn complete_experiment(&self) -> Fallible<()> {
-        self.retry(|this| {
-            let _: bool = this
-                .build_request(Method::POST, "complete-experiment")
-                .send()?
-                .to_api_response()?;
-            Ok(())
-        })
-    }
-
     pub fn heartbeat(&self) -> Fallible<()> {
         self.retry(|this| {
             let _: bool = this

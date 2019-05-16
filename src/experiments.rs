@@ -116,6 +116,13 @@ impl FromStr for Assignee {
 
                 Ok(Assignee::CLI)
             }
+            "distributed" => {
+                if split.next().is_some() {
+                    return Err(AssigneeParseError::UnexpectedPayload);
+                }
+
+                Ok(Assignee::Distributed)
+            }
             invalid => Err(AssigneeParseError::InvalidKind(invalid.into())),
         }
     }

@@ -226,10 +226,12 @@ impl Experiment {
                 )
             })
             .and_then(|ex| ex.map_or_else(|| Experiment::next_inner(db, None), |exp| Ok(Some(exp))))
-            .map(|ex| ex.map_or_else(|| None, |exp| Some((true, exp))))
     }
 
-    fn next_inner(db: &Database, assignee: Option<&Assignee>) -> Fallible<Option<Experiment>> {
+    fn next_inner(
+        db: &Database,
+        assignee: Option<&Assignee>,
+    ) -> Fallible<Option<(bool, Experiment)>> {
         let record = if let Some(assigned_to) = assignee {
             db.get_row(
                 "SELECT * FROM experiments WHERE (status = ?1 \
@@ -258,9 +260,10 @@ impl Experiment {
 
         if let Some(record) = record {
             let mut experiment = record.into_experiment()?;
+            let new_ex = experiment.status != Status::Running;
             experiment.set_status(&db, Status::Running)?;
             experiment.set_assigned_to(&db, assignee.or(Some(&Assignee::Distributed)))?;
-            return Ok(Some(experiment));
+            return Ok(Some(new_ex, experiment));
         }
         Ok(None)
     }

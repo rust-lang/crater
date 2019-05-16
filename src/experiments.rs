@@ -252,7 +252,7 @@ impl Experiment {
         if let Some(record) = record {
             let mut experiment = record.into_experiment()?;
             experiment.set_status(&db, Status::Running)?;
-            experiment.set_assigned_to(&db, assignee)?;
+            experiment.set_assigned_to(&db, assignee.or(Some(&Assignee::Distributed)))?;
             return Ok(Some(experiment));
         }
         Ok(None)

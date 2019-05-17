@@ -46,7 +46,7 @@ impl<'a> WriteResults for ResultsUploader<'a> {
 
     fn record_result<F>(
         &self,
-        _ex: &Experiment,
+        ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
         existing_logs: Option<LogStorage>,
@@ -65,7 +65,7 @@ impl<'a> WriteResults for ResultsUploader<'a> {
 
         info!("sending results to the crater server...");
         self.api
-            .record_progress(krate, toolchain, output.as_bytes(), result, &shas)?;
+            .record_progress(ex, krate, toolchain, output.as_bytes(), result, &shas)?;
 
         Ok(result)
     }

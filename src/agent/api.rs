@@ -145,6 +145,7 @@ impl AgentApi {
 
     pub fn record_progress(
         &self,
+        ex: &Experiment,
         krate: &Crate,
         toolchain: &Toolchain,
         log: &[u8],
@@ -154,6 +155,7 @@ impl AgentApi {
         self.retry(|this| {
             let _: bool = this
                 .build_request(Method::POST, "record-progress")
+                .json(ex)
                 .json(&json!({
                     "results": [
                         {
@@ -181,10 +183,11 @@ impl AgentApi {
         })
     }
 
-    pub fn report_error(&self, error: String) -> Fallible<()> {
+    pub fn report_error(&self, ex: &Experiment, error: String) -> Fallible<()> {
         self.retry(|this| {
             let _: bool = this
                 .build_request(Method::POST, "error")
+                .json(ex)
                 .json(&json!({ "error": error }))
                 .send()?
                 .to_api_response()?;

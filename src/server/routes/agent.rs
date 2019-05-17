@@ -36,6 +36,7 @@ pub fn routes(
         .and(warp::path("record-progress"))
         .and(warp::path::end())
         .and(warp::body::json())
+        .and(warp::body::json())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_record_progress);
@@ -50,6 +51,7 @@ pub fn routes(
     let error = warp::post2()
         .and(warp::path("error"))
         .and(warp::path::end())
+        .and(warp::body::json())
         .and(warp::body::json())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
@@ -109,11 +111,12 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
 }
 
 fn endpoint_record_progress(
+    ex: Experiment,
     result: ProgressData,
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+    let mut ex = Experiment::get(&data.db, &ex.name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     info!(
@@ -144,11 +147,12 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<B
 }
 
 fn endpoint_error(
+    ex: Experiment,
     error: HashMap<String, String>,
     data: Arc<Data>,
-    auth: AuthDetails,
+    _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+    let mut ex = Experiment::get(&data.db, &ex.name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     ex.set_status(&data.db, Status::Failed)?;

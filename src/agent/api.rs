@@ -193,7 +193,9 @@ impl AgentApi {
                 .json(ex)
                 .json(&json!({
                     "name" : ex.name,
-                    "error": error
+                    "data" : {
+                        "error": error
+                    }
                 }))
                 .send()?
                 .to_api_response()?;

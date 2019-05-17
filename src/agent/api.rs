@@ -155,17 +155,20 @@ impl AgentApi {
         self.retry(|this| {
             let _: bool = this
                 .build_request(Method::POST, "record-progress")
-                .json(ex)
-                .json(&json!({
-                    "results": [
-                        {
-                            "crate": krate,
-                            "toolchain": toolchain,
-                            "result": result,
-                            "log": base64::encode(log),
-                        },
-                    ],
-                    "shas": shas,
+                .json(&json!(
+                    {
+                        "name": ex.name,
+                        "data" : {"results": [
+                            {
+                                "crate": krate,
+                                "toolchain": toolchain,
+                                "result": result,
+                                "log": base64::encode(log),
+                            },
+                        ],
+                        "shas": shas,
+                    }
+
                 }))
                 .send()?
                 .to_api_response()?;
@@ -188,7 +191,10 @@ impl AgentApi {
             let _: bool = this
                 .build_request(Method::POST, "error")
                 .json(ex)
-                .json(&json!({ "error": error }))
+                .json(&json!({
+                    "name" : ex.name,
+                    "error": error
+                }))
                 .send()?
                 .to_api_response()?;
             Ok(())

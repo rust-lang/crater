@@ -157,7 +157,7 @@ impl AgentApi {
                 .build_request(Method::POST, "record-progress")
                 .json(&json!(
                     {
-                        "name": ex.name,
+                        "experiment_name": ex.name,
                         "data" : {"results": [
                             {
                                 "crate": krate,
@@ -192,7 +192,7 @@ impl AgentApi {
                 .build_request(Method::POST, "error")
                 .json(ex)
                 .json(&json!({
-                    "name" : ex.name,
+                    "experiment_name" : ex.name,
                     "data" : {
                         "error": error
                     }

@@ -14,7 +14,7 @@ use warp::{self, Filter, Rejection};
 
 #[derive(Deserialize)]
 pub struct ExperimentData<T> {
-    name: String,
+    experiment_name: String,
     data: T,
 }
 

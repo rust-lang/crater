@@ -147,43 +147,48 @@ This endpoint uploads the result of a single job run by the agent to the Crater
 server. The endpoint expects the following data to be provided as the request
 body, encoded in JSON:
 
-* `results`: a list of job results that should be recorded:
+* `experiment_name`: the name of the experiment being run
+* `data`: the data from the job you want to upload:
+    * `results`: a list of job results that should be recorded:
 
-    * `crate`: the serialized crate name
-    * `toolchain`: the serialized toolchain name
-    * `result`: the result of the experiment (for example `TestPass`)
-    * `log`: the base64-encoded output of the job
+        * `crate`: the serialized crate name
+        * `toolchain`: the serialized toolchain name
+        * `result`: the result of the experiment (for example `TestPass`)
+        * `log`: the base64-encoded output of the job
 
-* `shas`: a list of GitHub repo shas captured during the job; can be empty
+    * `shas`: a list of GitHub repo shas captured during the job; can be empty
 
 For example, this is a valid request data:
 
 ```json
 {
-    "results": [
-        {
-            "crate": {
-                "GitHub": {
-                    "org": "brson",
-                    "repo": "hello-rs"
-                }
-            },
-            "toolchain": {
-                "Dist": "stable"
-            },
-            "result": "TestPass",
-            "log": "cGlhZGluYSByb21hZ25vbGE="
-        }
-    ],
-    "shas": [
-        [
+    "experiment_name": "pr-1",
+    "data": {
+        "results": [
             {
-                "org": "brson",
-                "name": "hello-rs"
-            },
-            "f45e5e3289dd46aaec8392134a12c019aca3d117"
+                "crate": {
+                    "GitHub": {
+                        "org": "brson",
+                        "repo": "hello-rs"
+                    }
+                },
+                "toolchain": {
+                    "Dist": "stable"
+                },
+                "result": "TestPass",
+                "log": "cGlhZGluYSByb21hZ25vbGE="
+            }
+        ],
+        "shas": [
+            [
+                {
+                    "org": "brson",
+                    "name": "hello-rs"
+                },
+                "f45e5e3289dd46aaec8392134a12c019aca3d117"
+            ]
         ]
-    ]
+    }
 }
 ```
 
@@ -217,13 +222,18 @@ This endpoint tells the Crater server the agent has encountered an error.
 The endpoint expects the error description to be provided as the request body,
 encoded in JSON:
 
-* `error`: a description of the error
+* `experiment_name`: the name of the experiment being run
+* `data`: the data you want to upload to the server:
+    * `error`: a description of the error
 
 For example, this is a valid request data:
 
 ```json
 {
-    "error": "pc is not powered on"
+    "experiment_name": "pr-1",
+    "data": {
+        "error": "pc is not powered on"
+    }
 }
 ```
 

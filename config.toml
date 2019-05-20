@@ -2386,7 +2386,6 @@ kiss3d = { skip = true } #automatic
 kissfft = { skip = true } #automatic
 kitchensink = { skip-tests = true } #automatic
 kite_rocksdb = { skip = true } #automatic
-kl-http = { skip-tests = true } #automatic
 klaus = { skip = true } #automatic
 klt-sys = { skip = true } #automatic
 kmod = { skip = true } #automatic
@@ -5370,7 +5369,6 @@ wdstptc-sys = { skip = true } #automatic
 weakjson = { skip = true } #automatic
 weather = { skip = true } #automatic
 web-view = { skip = true } #automatic
-web-view_suppress = { skip = true } #automatic
 web3 = { skip = true } #automatic
 webbing = { skip = true } #automatic
 webdriver_client = { skip-tests = true } #automatic
@@ -5393,7 +5391,6 @@ websocat = { skip-tests = true } #automatic
 websocket-sys = { skip = true } #automatic
 webview = { skip = true } #automatic
 webview-sys = { skip = true } #automatic
-webview-sys_suppress = { skip = true } #automatic
 wecapi-sys = { skip = true } #automatic
 wechat = { skip = true } #automatic
 wee-matrix = { skip = true } #automatic

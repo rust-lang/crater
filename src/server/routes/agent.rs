@@ -119,7 +119,7 @@ fn endpoint_record_progress(
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let mut ex = Experiment::get(&data.db, &result.name)?
+    let mut ex = Experiment::get(&data.db, &result.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     info!(
@@ -154,7 +154,7 @@ fn endpoint_error(
     data: Arc<Data>,
     _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let mut ex = Experiment::get(&data.db, &error.name)?
+    let mut ex = Experiment::get(&data.db, &error.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     ex.set_status(&data.db, Status::Failed)?;

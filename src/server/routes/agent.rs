@@ -13,8 +13,10 @@ use std::sync::Arc;
 use warp::{self, Filter, Rejection};
 
 #[derive(Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct ExperimentData<T> {
     experiment_name: String,
+    #[serde(flatten)]
     data: T,
 }
 

@@ -162,33 +162,31 @@ For example, this is a valid request data:
 
 ```json
 {
-    "experiment_name": "pr-1",
-    "data": {
-        "results": [
-            {
-                "crate": {
-                    "GitHub": {
-                        "org": "brson",
-                        "repo": "hello-rs"
-                    }
-                },
-                "toolchain": {
-                    "Dist": "stable"
-                },
-                "result": "TestPass",
-                "log": "cGlhZGluYSByb21hZ25vbGE="
-            }
-        ],
-        "shas": [
-            [
-                {
+    "experiment-name": "pr-1",
+    "results": [
+        {
+            "crate": {
+                "GitHub": {
                     "org": "brson",
-                    "name": "hello-rs"
-                },
-                "f45e5e3289dd46aaec8392134a12c019aca3d117"
-            ]
+                    "repo": "hello-rs"
+                }
+            },
+            "toolchain": {
+                "Dist": "stable"
+            },
+            "result": "TestPass",
+            "log": "cGlhZGluYSByb21hZ25vbGE="
+        }
+    ],
+    "shas": [
+        [
+            {
+                "org": "brson",
+                "name": "hello-rs"
+            },
+            "f45e5e3289dd46aaec8392134a12c019aca3d117"
         ]
-    }
+    ]
 }
 ```
 
@@ -230,10 +228,8 @@ For example, this is a valid request data:
 
 ```json
 {
-    "experiment_name": "pr-1",
-    "data": {
-        "error": "pc is not powered on"
-    }
+    "experiment-name": "pr-1",
+    "error": "pc is not powered on"
 }
 ```
 

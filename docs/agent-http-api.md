@@ -148,15 +148,14 @@ server. The endpoint expects the following data to be provided as the request
 body, encoded in JSON:
 
 * `experiment_name`: the name of the experiment being run
-* `data`: the data from the job you want to upload:
-    * `results`: a list of job results that should be recorded:
+* `results`: a list of job results that should be recorded:
 
-        * `crate`: the serialized crate name
-        * `toolchain`: the serialized toolchain name
-        * `result`: the result of the experiment (for example `TestPass`)
-        * `log`: the base64-encoded output of the job
+    * `crate`: the serialized crate name
+    * `toolchain`: the serialized toolchain name
+    * `result`: the result of the experiment (for example `TestPass`)
+    * `log`: the base64-encoded output of the job
 
-    * `shas`: a list of GitHub repo shas captured during the job; can be empty
+* `shas`: a list of GitHub repo shas captured during the job; can be empty
 
 For example, this is a valid request data:
 
@@ -221,8 +220,7 @@ The endpoint expects the error description to be provided as the request body,
 encoded in JSON:
 
 * `experiment_name`: the name of the experiment being run
-* `data`: the data you want to upload to the server:
-    * `error`: a description of the error
+* `error`: a description of the error
 
 For example, this is a valid request data:
 

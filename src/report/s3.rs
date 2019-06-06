@@ -60,10 +60,10 @@ impl FromStr for S3Prefix {
 
 pub struct S3Writer {
     prefix: S3Prefix,
-    client: Box<S3>,
+    client: Box<dyn S3>,
 }
 
-pub fn get_client_for_bucket(bucket: &str) -> Fallible<Box<S3>> {
+pub fn get_client_for_bucket(bucket: &str) -> Fallible<Box<dyn S3>> {
     let make_client = |region| -> Fallible<S3Client> {
         let credentials = DefaultCredentialsProvider::new().unwrap();
         Ok(S3Client::new_with(HttpClient::new()?, credentials, region))
@@ -87,7 +87,7 @@ pub fn get_client_for_bucket(bucket: &str) -> Fallible<Box<S3>> {
 const S3RETRIES: u64 = 4;
 
 impl S3Writer {
-    pub fn create(client: Box<S3>, prefix: S3Prefix) -> Fallible<S3Writer> {
+    pub fn create(client: Box<dyn S3>, prefix: S3Prefix) -> Fallible<S3Writer> {
         Ok(S3Writer { prefix, client })
     }
 }

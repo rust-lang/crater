@@ -10,7 +10,7 @@ fn no_args() -> impl Iterator<Item = &'static str> {
 
 enum MigrationKind {
     SQL(&'static str),
-    Code(Box<Fn(&Transaction) -> ::rusqlite::Result<()>>),
+    Code(Box<dyn Fn(&Transaction) -> ::rusqlite::Result<()>>),
 }
 
 fn migrations() -> Vec<(&'static str, MigrationKind)> {

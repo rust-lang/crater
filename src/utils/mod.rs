@@ -41,7 +41,7 @@ where
     f()
 }
 
-pub fn report_panic(e: &Any) {
+pub fn report_panic(e: &dyn Any) {
     if let Some(e) = e.downcast_ref::<String>() {
         error!("panicked: {}", e)
     } else if let Some(e) = e.downcast_ref::<&'static str>() {

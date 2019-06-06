@@ -19,9 +19,9 @@ pub(crate) fn from_hex(input: &str) -> Result<Vec<u8>, HexError> {
         pending += 1;
 
         current = match byte {
-            b'0'...b'9' => byte - b'0',
-            b'a'...b'f' => byte - b'a' + 10,
-            b'A'...b'F' => byte - b'A' + 10,
+            b'0'..=b'9' => byte - b'0',
+            b'a'..=b'f' => byte - b'a' + 10,
+            b'A'..=b'F' => byte - b'A' + 10,
             _ => {
                 return Err(HexError::InvalidChar(input[i..].chars().next().unwrap()));
             }

@@ -10,20 +10,23 @@ pub use self::storage::LogStorage;
 static INIT_LOGS: Once = Once::new();
 
 thread_local! {
-    static SCOPED: RefCell<Vec<Box<Log>>> = RefCell::new(Vec::new());
+    static SCOPED: RefCell<Vec<Box<dyn Log>>> = RefCell::new(Vec::new());
 }
 
 struct MultiLogger {
-    global: Vec<Box<Log>>,
-    scoped: &'static LocalKey<RefCell<Vec<Box<Log>>>>,
+    global: Vec<Box<dyn Log>>,
+    scoped: &'static LocalKey<RefCell<Vec<Box<dyn Log>>>>,
 }
 
 impl MultiLogger {
-    fn new(global: Vec<Box<Log>>, scoped: &'static LocalKey<RefCell<Vec<Box<Log>>>>) -> Self {
+    fn new(
+        global: Vec<Box<dyn Log>>,
+        scoped: &'static LocalKey<RefCell<Vec<Box<dyn Log>>>>,
+    ) -> Self {
         MultiLogger { global, scoped }
     }
 
-    fn each<F: FnMut(&Log)>(&self, mut f: F) {
+    fn each<F: FnMut(&dyn Log)>(&self, mut f: F) {
         for logger in &self.global {
             f(logger.as_ref());
         }

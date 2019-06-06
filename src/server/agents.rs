@@ -75,7 +75,7 @@ impl Agents {
     fn synchronize(&self, tokens: &Tokens) -> Fallible<()> {
         self.db.transaction(|trans| {
             let mut real = tokens.agents.values().collect::<HashSet<&String>>();
-            for agent in self.all()? {
+            for agent in &self.all()? {
                 if !real.remove(&agent.name) {
                     trans.execute("DELETE FROM agents WHERE name = ?1;", &[&agent.name])?;
                 }

@@ -158,13 +158,13 @@ impl AgentApi {
                 .json(&json!({
                     "experiment-name": ex.name,
                     "results": [
-                            {
-                                "crate": krate,
-                                "toolchain": toolchain,
-                                "result": result,
-                                "log": base64::encode(log),
-                            },
-                        ],
+                        {
+                            "crate": krate,
+                            "toolchain": toolchain,
+                            "result": result,
+                            "log": base64::encode(log),
+                        },
+                    ],
                     "shas": shas,
                 }))
                 .send()?
@@ -187,7 +187,6 @@ impl AgentApi {
         self.retry(|this| {
             let _: bool = this
                 .build_request(Method::POST, "error")
-                .json(ex)
                 .json(&json!({
                     "experiment-name": ex.name,
                     "error": error

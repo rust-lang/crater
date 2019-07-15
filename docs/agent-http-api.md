@@ -147,7 +147,7 @@ This endpoint uploads the result of a single job run by the agent to the Crater
 server. The endpoint expects the following data to be provided as the request
 body, encoded in JSON:
 
-* `experiment_name`: the name of the experiment being run
+* `experiment-name`: the name of the experiment being run
 * `results`: a list of job results that should be recorded:
 
     * `crate`: the serialized crate name
@@ -219,7 +219,7 @@ This endpoint tells the Crater server the agent has encountered an error.
 The endpoint expects the error description to be provided as the request body,
 encoded in JSON:
 
-* `experiment_name`: the name of the experiment being run
+* `experiment-name`: the name of the experiment being run
 * `error`: a description of the error
 
 For example, this is a valid request data:

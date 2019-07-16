@@ -41,4 +41,11 @@ minicrater! {
         toolchains: &["stable", "stable+rustflags=-Dclippy::all"],
         ..Default::default()
     },
+
+    #[cfg(not(windows))] // `State.OOMKilled` is not set on Windows
+    resource_exhaustion {
+        ex: "resource-exhaustion",
+        crate_select: "demo",
+        ..Default::default()
+    },
 }

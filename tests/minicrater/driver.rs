@@ -145,10 +145,11 @@ impl MinicraterRun {
 
 #[macro_export]
 macro_rules! minicrater {
-    ($($name:ident $opts:tt,)*) => {
+    ($( $(#[$cfg:meta])* $name:ident $opts:tt,)*) => {
         $(
             #[test]
             #[ignore]
+            $(#[$cfg])*
             fn $name() {
                 use $crate::minicrater::driver::MinicraterRun;
                 MinicraterRun $opts.execute();

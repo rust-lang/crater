@@ -102,3 +102,33 @@ pub(crate) fn copy_dir(src_dir: &Path, dest_dir: &Path) -> Fallible<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+#[cfg(windows)]
+mod tests {
+    use super::*;
+
+    use std::path::Path;
+
+    #[test]
+    fn strip_verbatim() {
+        let suite = vec![
+            (r"C:\Users\carl", None),
+            (r"\Users\carl", None),
+            (r"\\?\C:\Users\carl", Some(r"C:\")),
+            (r"\\?\Users\carl", Some(r"Users")),
+        ];
+
+        for (input, output) in suite {
+            let p = Path::new(input);
+            let first_component = p.components().next().unwrap();
+
+            if let path::Component::Prefix(prefix) = &first_component {
+                let stripped = strip_verbatim_from_prefix(&prefix);
+                assert_eq!(stripped.as_ref().map(|p| p.to_str().unwrap()), output);
+            } else {
+                assert!(output.is_none());
+            }
+        }
+    }
+}

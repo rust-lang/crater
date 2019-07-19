@@ -194,6 +194,10 @@ impl<'a> ContainerBuilder<'a> {
             args.push("none".into());
         }
 
+        if cfg!(windows) {
+            args.push("--isolation=process".into());
+        }
+
         args.push(self.image.image.clone());
 
         for arg in self.cmd {

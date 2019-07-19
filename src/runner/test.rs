@@ -56,7 +56,7 @@ fn run_cargo<DB: WriteResults>(
         .sandboxed(&ctx.docker_env)
         .mount(
             target_dir,
-            dirs::container::TARGET_DIR.to_str().unwrap(),
+            &*dirs::container::TARGET_DIR,
             MountPerms::ReadWrite,
         )
         .memory_limit(Some(ctx.config.sandbox.memory_limit))

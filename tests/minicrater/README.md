@@ -4,6 +4,10 @@ minicrater is the component of Crater's test suite that tests if the runs are
 actually executed and produce the correct result. It's inspired by rustc's
 compiletest.
 
+As the name implies minicrater is simply a "mini" version of crater, running 
+in a similar fashion as normal crater but on a much smaller scale to enable
+testing.
+
 ## Executing minicrater
 
 minicrater executions can take a few minutes to run, so it's ignored by default

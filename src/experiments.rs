@@ -236,7 +236,7 @@ impl Experiment {
             db.get_row(
                 "SELECT * FROM experiments WHERE (status = ?1 \
                  OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
-                 WHERE experiment = experiments.name  AND status = ?1) > 0)) \
+                 WHERE experiment = experiments.name  AND status = ?1 AND skipped = 0) > 0)) \
                  AND assigned_to = ?3 \
                  ORDER BY priority DESC, created_at;",
                 &[
@@ -250,7 +250,7 @@ impl Experiment {
             db.get_row(
                 "SELECT * FROM experiments WHERE (status = ?1 \
                  OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
-                 WHERE experiment = experiments.name  AND status = ?1) > 0)) \
+                 WHERE experiment = experiments.name  AND status = ?1 AND skipped = 0) > 0)) \
                  AND assigned_to IS NULL \
                  ORDER BY priority DESC, created_at;",
                 &[&Status::Queued.to_string(), &Status::Running.to_string()],
@@ -401,7 +401,7 @@ impl Experiment {
         let crates = db
             .query(
                 "SELECT crate FROM experiment_crates WHERE experiment = ?1
-                AND status = ?2 LIMIT ?3 AND skipped = 0;",
+                AND status = ?2 AND skipped = 0 LIMIT ?3;",
                 &[&self.name, &Status::Queued.to_string(), &limit],
                 |r| {
                     let value: String = r.get("crate");
@@ -415,7 +415,7 @@ impl Experiment {
         db.execute(
             "UPDATE experiment_crates SET assigned_to = ?1, status = ?2 \
             WHERE crate IN (SELECT crate FROM experiment_crates WHERE experiment = ?3
-            AND status = ?4 LIMIT ?5 AND skipped = 0) ",
+            AND status = ?4 AND skipped = 0 LIMIT ?5) ",
             &[
                 &assigned_to.to_string(),
                 &Status::Running.to_string(),

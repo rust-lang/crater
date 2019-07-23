@@ -28,7 +28,7 @@ pub(crate) static RUSTUP_TOOLCHAIN_INSTALL_MASTER: BinaryCrate = BinaryCrate {
     cargo_subcommand: None,
 };
 
-static INSTALLABLE_TOOLS: &[&InstallableTool] = &[
+static INSTALLABLE_TOOLS: &[&dyn InstallableTool] = &[
     &RUSTUP,
     &CARGO_INSTALL_UPDATE,
     &RUSTUP_TOOLCHAIN_INSTALL_MASTER,

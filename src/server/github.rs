@@ -156,6 +156,7 @@ pub struct Error {
 
 #[derive(Deserialize)]
 pub struct User {
+    pub id: usize,
     pub login: String,
 }
 

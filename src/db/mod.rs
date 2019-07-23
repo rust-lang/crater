@@ -18,7 +18,10 @@ struct ConnectionCustomizer;
 
 impl CustomizeConnection<Connection, ::rusqlite::Error> for ConnectionCustomizer {
     fn on_acquire(&self, conn: &mut Connection) -> Result<(), ::rusqlite::Error> {
-        conn.execute("PRAGMA foreign_keys = ON;", ::std::iter::empty::<&ToSql>())?;
+        conn.execute(
+            "PRAGMA foreign_keys = ON;",
+            ::std::iter::empty::<&dyn ToSql>(),
+        )?;
         Ok(())
     }
 }
@@ -118,7 +121,7 @@ impl<'a> TransactionHandle<'a> {
 pub trait QueryUtils {
     fn with_conn<T, F: FnOnce(&Connection) -> Fallible<T>>(&self, f: F) -> Fallible<T>;
 
-    fn exists(&self, sql: &str, params: &[&ToSql]) -> Fallible<bool> {
+    fn exists(&self, sql: &str, params: &[&dyn ToSql]) -> Fallible<bool> {
         self.with_conn(|conn| {
             self.trace(sql, || {
                 let mut prepared = conn.prepare(sql)?;
@@ -127,7 +130,7 @@ pub trait QueryUtils {
         })
     }
 
-    fn execute(&self, sql: &str, params: &[&ToSql]) -> Fallible<usize> {
+    fn execute(&self, sql: &str, params: &[&dyn ToSql]) -> Fallible<usize> {
         self.with_conn(|conn| {
             self.trace(sql, || {
                 let mut prepared = conn.prepare(sql)?;
@@ -140,7 +143,7 @@ pub trait QueryUtils {
     fn get_row<T, F: FnMut(&Row) -> T>(
         &self,
         sql: &str,
-        params: &[&ToSql],
+        params: &[&dyn ToSql],
         func: F,
     ) -> Fallible<Option<T>> {
         self.with_conn(|conn| {
@@ -160,7 +163,7 @@ pub trait QueryUtils {
     fn query<T, F: FnMut(&Row) -> T>(
         &self,
         sql: &str,
-        params: &[&ToSql],
+        params: &[&dyn ToSql],
         func: F,
     ) -> Fallible<Vec<T>> {
         self.with_conn(|conn| {

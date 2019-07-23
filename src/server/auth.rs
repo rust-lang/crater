@@ -175,11 +175,11 @@ impl ACL {
         Ok(())
     }
 
-    pub fn allowed(&self, username: &str) -> Fallible<bool> {
+    pub fn allowed(&self, username: &str, user_id: usize) -> Fallible<bool> {
         if self.rust_teams {
             let url = format!("{}/permissions/crater.json", team_data::BASE_URL);
             let members: team_data::Permission = crate::utils::http::get_sync(&url)?.json()?;
-            if members.github_users.iter().any(|u| *u == username) {
+            if members.github_ids.iter().any(|id| *id == user_id) {
                 return Ok(true);
             }
         }

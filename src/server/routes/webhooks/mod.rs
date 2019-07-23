@@ -47,6 +47,7 @@ fn process_webhook(
             if let Err(e) = process_command(
                 host,
                 &p.sender.login,
+                p.sender.id,
                 &p.comment.body,
                 &p.repository,
                 &p.issue,
@@ -70,6 +71,7 @@ fn process_webhook(
 fn process_command(
     host: &str,
     sender: &str,
+    sender_id: usize,
     body: &str,
     repo: &Repository,
     issue: &Issue,
@@ -86,7 +88,7 @@ fn process_command(
             continue;
         }
 
-        if !data.acl.allowed(sender)? {
+        if !data.acl.allowed(sender, sender_id)? {
             Message::new()
                 .line(
                     "lock",

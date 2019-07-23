@@ -184,7 +184,7 @@ impl Experiment {
             "SELECT * FROM experiments \
              INNER JOIN experiment_crates ON experiment_crates.experiment \
              = experiments.name WHERE experiment_crates.assigned_to = ?1 \
-             AND experiment_crates.status = ?2 LIMIT 1",
+             AND experiment_crates.status = ?2  AND experiment_crates.skipped = 0 LIMIT 1",
             &[&assignee.to_string(), &Status::Running.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
@@ -263,7 +263,7 @@ impl Experiment {
             let new_ex = experiment.status != Status::Running;
             experiment.set_status(&db, Status::Running)?;
             experiment.set_assigned_to(&db, assignee.or(Some(&Assignee::Distributed)))?;
-            return Ok(Some(new_ex, experiment));
+            return Ok(Some((new_ex, experiment)));
         }
         Ok(None)
     }
@@ -401,7 +401,7 @@ impl Experiment {
         let crates = db
             .query(
                 "SELECT crate FROM experiment_crates WHERE experiment = ?1
-                AND status = ?2 LIMIT ?3;",
+                AND status = ?2 LIMIT ?3 AND skipped = 0;",
                 &[&self.name, &Status::Queued.to_string(), &limit],
                 |r| {
                     let value: String = r.get("crate");
@@ -415,7 +415,7 @@ impl Experiment {
         db.execute(
             "UPDATE experiment_crates SET assigned_to = ?1, status = ?2 \
             WHERE crate IN (SELECT crate FROM experiment_crates WHERE experiment = ?3
-            AND status = ?4 LIMIT ?5) ",
+            AND status = ?4 LIMIT ?5 AND skipped = 0) ",
             &[
                 &assigned_to.to_string(),
                 &Status::Running.to_string(),

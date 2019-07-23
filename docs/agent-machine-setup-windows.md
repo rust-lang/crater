@@ -119,20 +119,4 @@ cargo build --release
 cargo run --release -- prepare-local
 ```
 
-Running `minicrater` tests require that the `*.expected.json` files match the
-output of crater exactly. However, when installed via `chocolately`, `git` has
-config `core.autocrlf` set to `true` by default. This will override the
-preferences in `crater`'s `.gitattributes` file and cause the JSON files to
-have the wrong line endings (CRLF). Make sure you set `core.autocrlf = false`
-before cloning the repo.
-
-If you've already cloned the repo, simply run the following from inside of it
-to replace the JSON files:
-
-```powershell
-git config core.autocrlf false
-rm -r tests/
-git checkout -- tests/
-```
-
 Remember to run `cargo run -- create-lists` before running the tests.

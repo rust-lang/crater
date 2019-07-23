@@ -8,6 +8,7 @@ use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::utils;
+use failure::Error;
 use std::thread;
 use std::time::Duration;
 
@@ -54,9 +55,10 @@ fn run_experiment(
     db: &ResultsUploader,
     threads_count: usize,
     docker_env: &str,
-) -> Fallible<()> {
-    let (ex, crates) = agent.experiment()?;
-    crate::runner::run_ex(&ex, &crates, db, threads_count, &agent.config, docker_env)?;
+) -> Result<(), (Option<Experiment>, Error)> {
+    let (ex, crates) = agent.experiment().map_err(|e| (None, e))?;
+    crate::runner::run_ex(&ex, &crates, db, threads_count, &agent.config, docker_env)
+        .map_err(|err| (Some(ex), err))?;
     Ok(())
 }
 
@@ -67,14 +69,16 @@ pub fn run(url: &str, token: &str, threads_count: usize, docker_env: &str) -> Fa
     run_heartbeat(url, token);
 
     loop {
-        if let Err(err) = run_experiment(&agent, &db, threads_count, docker_env) {
+        if let Err((ex, err)) = run_experiment(&agent, &db, threads_count, docker_env) {
             utils::report_failure(&err);
-            if let Err(e) = agent
-                .api
-                .report_error(format!("{}", err.find_root_cause()))
-                .with_context(|_| "error encountered")
-            {
-                utils::report_failure(&e);
+            if let Some(ex) = ex {
+                if let Err(e) = agent
+                    .api
+                    .report_error(&ex, format!("{}", err.find_root_cause()))
+                    .with_context(|_| "error encountered")
+                {
+                    utils::report_failure(&e);
+                }
             }
         }
     }

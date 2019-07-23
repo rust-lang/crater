@@ -12,6 +12,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use warp::{self, Filter, Rejection};
 
+#[derive(Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ExperimentData<T> {
+    experiment_name: String,
+    #[serde(flatten)]
+    data: T,
+}
+
 pub fn routes(
     data: Arc<Data>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
@@ -109,11 +117,11 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
 }
 
 fn endpoint_record_progress(
-    result: ProgressData,
+    result: ExperimentData<ProgressData>,
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+    let mut ex = Experiment::get(&data.db, &result.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     info!(
@@ -122,7 +130,7 @@ fn endpoint_record_progress(
     );
 
     let db = DatabaseDB::new(&data.db);
-    db.store(&ex, &result, EncodingType::Gzip)?;
+    db.store(&ex, &result.data, EncodingType::Gzip)?;
 
     let (completed, all) = ex.raw_progress(&data.db)?;
     if completed == all {
@@ -144,11 +152,11 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<B
 }
 
 fn endpoint_error(
-    error: HashMap<String, String>,
+    error: ExperimentData<HashMap<String, String>>,
     data: Arc<Data>,
-    auth: AuthDetails,
+    _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let mut ex = Experiment::run_by(&data.db, &Assignee::Agent(auth.name.clone()))?
+    let mut ex = Experiment::get(&data.db, &error.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     ex.set_status(&data.db, Status::Failed)?;
@@ -160,7 +168,7 @@ fn endpoint_error(
                 format!(
                     "Experiment **`{}`** has encountered an error: {}",
                     ex.name,
-                    error.get("error").unwrap_or(&String::from("no error")),
+                    error.data.get("error").unwrap_or(&String::from("no error")),
                 ),
             )
             .line(

@@ -30,19 +30,34 @@ fn strip_verbatim_from_prefix(prefix: &path::PrefixComponent<'_>) -> Option<Path
 }
 
 pub(crate) fn try_canonicalize<P: AsRef<Path>>(path: P) -> PathBuf {
-    let p = fs::canonicalize(&path).unwrap_or_else(|_| path.as_ref().to_path_buf());
+    let mut p = fs::canonicalize(&path).unwrap_or_else(|_| path.as_ref().to_path_buf());
 
     // `fs::canonicalize` returns an extended-length path on Windows. Such paths not supported by
-    // many programs, including rustup.
+    // many programs, including rustup. We strip the `\\?\` prefix of the canonicalized path, but
+    // this changes the meaning of some path components, and imposes a length of around 260
+    // characters.
     if cfg!(windows) {
+        // A conservative estimate for the maximum length of a path on Windows.
+        //
+        // The additional 12 byte restriction is applied when creating directories. It ensures that
+        // files can always be created inside that directory without exceeding the path limit.
+        const MAX_PATH_LEN: usize = 260 - 12;
+
         let mut components = p.components();
         let first_component = components.next().unwrap();
 
         if let path::Component::Prefix(prefix) = first_component {
             if let Some(mut modified_path) = strip_verbatim_from_prefix(&prefix) {
                 modified_path.push(components.as_path());
-                return modified_path;
+                p = modified_path;
             }
+        }
+
+        if p.as_os_str().len() >= MAX_PATH_LEN {
+            warn!(
+                "Canonicalized path is too long for Windows: {:?}",
+                p.as_os_str(),
+            );
         }
     }
 

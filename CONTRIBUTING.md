@@ -33,10 +33,10 @@ unassigned issues in there. There are some labels you can check:
 Please remember to comment on an issue when you start working on it, to avoid
 multiple people working on the same one!
 
-[issues]: https://github.com/rust-lang-nursery/crater/issues
-[issues-easy]: https://github.com/rust-lang-nursery/crater/labels/E-easy
-[issues-mentor]: https://github.com/rust-lang-nursery/crater/labels/E-mentor
-[issues-needs-help]: https://github.com/rust-lang-nursery/crater/labels/E-needs-help
+[issues]: https://github.com/rust-lang/crater/issues
+[issues-easy]: https://github.com/rust-lang/crater/labels/E-easy
+[issues-mentor]: https://github.com/rust-lang/crater/labels/E-mentor
+[issues-needs-help]: https://github.com/rust-lang/crater/labels/E-needs-help
 
 [Go back to the TOC][h-toc]
 
@@ -72,7 +72,7 @@ instance. The full image takes a long time to build (20+ minutes as of October
 You can check out the [CLI Usage][cli-usage] documentation to learn how to
 interact with the Crater CLI.
 
-[win]: https://github.com/rust-lang-nursery/crater/issues/149
+[win]: https://github.com/rust-lang/crater/issues/149
 [cli-usage]: docs/cli-usage.md
 
 [Go back to the TOC][h-toc]
@@ -138,12 +138,12 @@ cargo run -- agent http://127.0.0.1:8000 token
 
 Before submitting your pull request, you need to lint the code in the project, as otherwise the continuous integration builds will fail.
 
-This project makes use of [`rustfmt`](https://github.com/rust-lang-nursery/rustfmt) and [`clippy`](https://github.com/rust-lang-nursery/rust-clippy) to format the code, and catch common mistakes respectively.
+This project makes use of [`rustfmt`](https://github.com/rust-lang/rustfmt) and [`clippy`](https://github.com/rust-lang/rust-clippy) to format the code, and catch common mistakes respectively.
 
 ### Linting your code
-To install rustfmt, you should follow the [quick start instructions](https://github.com/rust-lang-nursery/rustfmt#quick-start) to install it using the [`rustup`](https://rustup.rs/) tool.
+To install rustfmt, you should follow the [quick start instructions](https://github.com/rust-lang/rustfmt#quick-start) to install it using the [`rustup`](https://rustup.rs/) tool.
 
-To install clippy, you should follow the [usage instruction](https://github.com/rust-lang-nursery/rust-clippy#usage) to install it using the [`rustup`](https://rustup.rs/) tool.
+To install clippy, you should follow the [usage instruction](https://github.com/rust-lang/rust-clippy#usage) to install it using the [`rustup`](https://rustup.rs/) tool.
 
 To lint the code, run `cargo fmt` to format your code and `cargo clippy` to catch common mistakes and improve your code.
 

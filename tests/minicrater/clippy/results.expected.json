@@ -13,7 +13,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
     },
     {
       "name": "clippy-warn (local)",
@@ -28,7 +28,7 @@
           "res": "build-fail:unknown"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/clippy-warn"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
     }
   ]
 }

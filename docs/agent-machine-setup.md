@@ -38,7 +38,7 @@ from an existing agent into the new one, and then log into it again and
 execute:
 
 ```
-git clone https://github.com/rust-lang-nursery/crater
+git clone https://github.com/rust-lang/crater
 cd crater
 cargo build --release
 

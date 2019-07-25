@@ -176,7 +176,15 @@ impl<'a, DB: WriteResults + Sync> DiskSpaceWatcher<'a, DB> {
     }
 
     fn check(&self) -> Fallible<()> {
-        let fs = self.current_mount()?;
+        let fs = match self.current_mount() {
+            Ok(fs) => fs,
+            Err(e) => {
+                // TODO: `current_mount` fails sometimes on Windows with ERROR_DEVICE_NOT_READY.
+                warn!("Failed to check space remaining: {}", e);
+                return Ok(());
+            }
+        };
+
         let usage = (fs.total.as_usize() - fs.free.as_usize()) as f32 / fs.total.as_usize() as f32;
         if usage < self.threshold {
             info!(

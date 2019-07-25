@@ -14,8 +14,8 @@ pub(crate) fn kill_process(id: u32) -> Fallible<()> {
     Ok(())
 }
 
-pub(crate) fn current_user() -> u32 {
-    Uid::effective().into()
+pub(crate) fn current_user() -> Option<u32> {
+    Some(Uid::effective().into())
 }
 
 fn current_group() -> u32 {
@@ -25,7 +25,7 @@ fn current_group() -> u32 {
 fn executable_mode_for(path: &Path) -> Fallible<u32> {
     let metadata = path.metadata()?;
 
-    if metadata.uid() == current_user() {
+    if metadata.uid() == current_user().unwrap() {
         Ok(EXECUTABLE_BITS << 6)
     } else if metadata.gid() == current_group() {
         Ok(EXECUTABLE_BITS << 3)
@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn test_current_user() {
-        assert_eq!(current_user(), u32::from(Uid::effective()));
+        assert_eq!(current_user(), Some(u32::from(Uid::effective())));
     }
 
     #[test]

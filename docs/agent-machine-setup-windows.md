@@ -111,7 +111,7 @@ The next step is to download and build `crater` just like on a [Linux
 agent](./agent-machine-setup.md):
 
 ```powershell
-git clone https://github.com/rust-lang-nursery/crater
+git clone https://github.com/rust-lang/crater
 cd crater
 cargo build --release
 

@@ -577,20 +577,26 @@ mod tests {
         assert_eq!(ex.name.as_str(), "important");
         assert_eq!(ex.status, Status::Running);
         //TODO experiment is not assigned to agent after Experiment::next (as previously done)
-        assert_eq!(ex.assigned_to.unwrap(), agent1);
+        assert_eq!(ex.assigned_to.unwrap(), Assignee::Distributed);
 
         // Test the same experiment is returned to the agent
         //TODO experiment does not check for previously assigned experiments (as previously done)
-        let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
+        let (new, mut ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
         assert!(!new);
         assert_eq!(ex.name.as_str(), "important");
 
+        //Mark the experiment as completed, otherwise agent2 will still pick it as has uncompleted crates
+        ex.set_status(&db, Status::Completed).unwrap();
+
         // Test the less important experiment is assigned to the next agent
-        let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
+        let (new, mut ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.name.as_str(), "test");
         assert_eq!(ex.status, Status::Running);
-        assert_eq!(ex.assigned_to.unwrap(), agent2);
+        assert_eq!(ex.assigned_to.clone().unwrap(), Assignee::Distributed);
+
+        //Mark the experiment as completed, otherwise agent3 will still pick it as has uncompleted crates
+        ex.set_status(&db, Status::Completed).unwrap();
 
         // Test no other experiment is available for the other agents
         assert!(Experiment::next(&db, &agent3).unwrap().is_none());
@@ -634,14 +640,12 @@ mod tests {
         // Then the 'important' experiment will be picked by agent 2
         let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
         assert!(new);
-        assert_eq!(ex.assigned_to.unwrap(), agent2);
+        assert_eq!(ex.assigned_to.unwrap(), Assignee::Distributed);
         assert_eq!(ex.name.as_str(), "important");
     }
 
     #[test]
     fn test_full_completed_crates() {
-        use crate::experiments::CrateListSize;
-
         let db = Database::temp().unwrap();
         let config = Config::default();
         let ctx = ActionsCtx::new(&db, &config);
@@ -651,16 +655,12 @@ mod tests {
         // Create a dummy experiment
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
-        let crates = ex
-            .get_uncompleted_crates(&db, CrateListSize::Full, &Assignee::CLI)
-            .unwrap();
+        let crates = ex.get_uncompleted_crates(&db, &Assignee::CLI).unwrap();
         // Assert the whole list is returned
         assert_eq!(crates.len(), ex.get_crates(&db).unwrap().len());
 
         // Test already completed crates does not show up again
-        let uncompleted_crates = ex
-            .get_uncompleted_crates(&db, CrateListSize::Full, &Assignee::CLI)
-            .unwrap();
+        let uncompleted_crates = ex.get_uncompleted_crates(&db, &Assignee::CLI).unwrap();
         assert_eq!(uncompleted_crates.len(), 0);
     }
 }

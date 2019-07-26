@@ -137,6 +137,9 @@ pub fn generate_report<DB: ReadResults>(
     crates: &[Crate],
 ) -> Fallible<TestResults> {
     let shas = db.load_all_shas(ex)?;
+    let mut crates = crates.to_vec();
+    //crate ids are unique so unstable sort is equivalent to stable sort but is generally faster
+    crates.sort_unstable_by(|a, b| a.id().cmp(&b.id()));
     let res = crates
         .iter()
         .map(|krate| {

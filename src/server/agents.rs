@@ -236,7 +236,7 @@ mod tests {
 
         // Create a new experiment and assign it to the agent
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
-        let (new, ex) = Experiment::next(&db, &Assignee::Agent("agent".to_string()))
+        let (_new, ex) = Experiment::next(&db, &Assignee::Agent("agent".to_string()))
             .unwrap()
             .unwrap();
         ex.get_uncompleted_crates(&db, &Assignee::Agent("agent".to_string()))

@@ -93,7 +93,6 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body
 fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
     let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
     let result = if let Some((new, ex)) = next {
-        //TODO should be called only when status change from queued to running
         if new {
             if let Some(ref github_issue) = ex.github_issue {
                 Message::new()
@@ -104,11 +103,11 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
                     .send(&github_issue.api_url, &data)?;
             }
         }
-        let crates = ex
-            .get_uncompleted_crates(&data.db, &Assignee::Agent(auth.name.clone()))?
-            .clone();
-        println!("crates: {:?} to {}", &crates, auth.name.clone());
-        Some((ex.clone(), crates))
+
+        Some((
+            ex.clone(),
+            ex.get_uncompleted_crates(&data.db, &Assignee::Agent(auth.name.clone()))?,
+        ))
     } else {
         None
     };

@@ -284,7 +284,6 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
             ALTER TABLE experiment_crates ADD COLUMN status TEXT NOT NULL DEFAULT 'queued';
             ALTER TABLE experiment_crates ADD COLUMN assigned_to TEXT;
 
-
             CREATE TABLE experiment_crates_new (
                 experiment TEXT NOT NULL,
                 crate TEXT NOT NULL,

@@ -37,7 +37,7 @@ string_enum!(pub enum CrateSelect {
     Local => "local",
 });
 
-string_enum!( pub enum CapLints {
+string_enum!(pub enum CapLints {
     Allow => "allow",
     Warn => "warn",
     Deny => "deny",
@@ -576,11 +576,9 @@ mod tests {
         assert!(new);
         assert_eq!(ex.name.as_str(), "important");
         assert_eq!(ex.status, Status::Running);
-        //TODO experiment is not assigned to agent after Experiment::next (as previously done)
         assert_eq!(ex.assigned_to.unwrap(), Assignee::Distributed);
 
         // Test the same experiment is returned to the agent
-        //TODO experiment does not check for previously assigned experiments (as previously done)
         let (new, mut ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
         assert!(!new);
         assert_eq!(ex.name.as_str(), "important");

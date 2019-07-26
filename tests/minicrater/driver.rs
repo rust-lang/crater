@@ -123,8 +123,10 @@ impl MinicraterRun {
             .expect("failed to write copy of the json report");
 
         let changeset = Changeset::new(
-            &String::from_utf8(expected_report).expect("invalid utf-8 in the expected report"),
-            &String::from_utf8(actual_report.clone()).expect("invalid utf-8 in the actual report"),
+            &String::from_utf8(expected_report)
+                .expect("invalid utf-8 in the expected report")
+                .replace("\r\n", "\n"),
+            &String::from_utf8(actual_report).expect("invalid utf-8 in the actual report"),
             "\n",
         );
         if changeset.distance != 0 {
@@ -145,10 +147,11 @@ impl MinicraterRun {
 
 #[macro_export]
 macro_rules! minicrater {
-    ($($name:ident $opts:tt,)*) => {
+    ($( $(#[$cfg:meta])* $name:ident $opts:tt,)*) => {
         $(
             #[test]
             #[ignore]
+            $(#[$cfg])*
             fn $name() {
                 use $crate::minicrater::driver::MinicraterRun;
                 MinicraterRun $opts.execute();

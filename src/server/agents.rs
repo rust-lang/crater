@@ -210,7 +210,7 @@ mod tests {
         agents.record_heartbeat("agent").unwrap();
 
         let agent = agents.get("agent").unwrap().unwrap();
-        assert!(first_heartbeat < agent.last_heartbeat.unwrap());
+        assert!(first_heartbeat <= agent.last_heartbeat.unwrap());
     }
 
     #[test]

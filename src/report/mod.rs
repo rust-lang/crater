@@ -28,11 +28,6 @@ url::define_encode_set! {
     pub REPORT_ENCODE_SET = [DEFAULT_ENCODE_SET] | { '+' }
 }
 
-#[inline]
-fn url_encode(input: &str) -> String {
-    utf8_percent_encode(input, REPORT_ENCODE_SET).to_string()
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
     pub crates: Vec<CrateResult>,
@@ -86,34 +81,45 @@ struct BuildTestResult {
     log: String,
 }
 
-fn crate_to_path_fragment(toolchain: &Toolchain, krate: &Crate, encode: bool) -> PathBuf {
-    let mut path = PathBuf::new();
-    if encode {
-        path.push(url_encode(&toolchain.to_string()));
-    } else {
-        path.push(toolchain.to_string());
+/// The type of sanitization required for a string.
+#[derive(Debug, Clone, Copy)]
+enum SanitizationContext {
+    Url,
+    Path,
+}
+
+impl SanitizationContext {
+    fn sanitize(self, input: &str) -> Cow<str> {
+        match self {
+            SanitizationContext::Url => utf8_percent_encode(input, REPORT_ENCODE_SET).into(),
+
+            SanitizationContext::Path => {
+                utf8_percent_encode(input, utils::fs::FILENAME_ENCODE_SET).into()
+            }
+        }
     }
+}
+
+fn crate_to_path_fragment(
+    toolchain: &Toolchain,
+    krate: &Crate,
+    dest: SanitizationContext,
+) -> PathBuf {
+    let mut path = PathBuf::new();
+    path.push(dest.sanitize(&toolchain.to_string()).into_owned());
 
     match *krate {
         Crate::Registry(ref details) => {
             path.push("reg");
 
             let name = format!("{}-{}", details.name, details.version);
-            if encode {
-                path.push(url_encode(&name));
-            } else {
-                path.push(name);
-            }
+            path.push(dest.sanitize(&name).into_owned());
         }
         Crate::GitHub(ref repo) => {
             path.push("gh");
 
             let name = format!("{}.{}", repo.org, repo.name);
-            if encode {
-                path.push(url_encode(&name));
-            } else {
-                path.push(name);
-            }
+            path.push(dest.sanitize(&name).into_owned());
         }
         Crate::Local(ref name) => {
             path.push("local");
@@ -142,10 +148,10 @@ pub fn generate_report<DB: ReadResults>(
 
                 Ok(BuildTestResult {
                     res,
-                    log: crate_to_path_fragment(tc, &krate, true)
+                    log: crate_to_path_fragment(tc, &krate, SanitizationContext::Url)
                         .to_str()
                         .unwrap()
-                        .to_string(),
+                        .replace(r"\", "/"), // Normalize paths in reports generated on Windows
                 })
             });
             // Convert errors to Nones
@@ -192,7 +198,8 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
         }
 
         for tc in &ex.toolchains {
-            let log_path = crate_to_path_fragment(tc, krate, false).join("log.txt");
+            let log_path =
+                crate_to_path_fragment(tc, krate, SanitizationContext::Path).join("log.txt");
             let content = db
                 .load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
@@ -486,26 +493,26 @@ mod tests {
             org: "brson".into(),
             name: "hello-rs".into(),
         });
-        let plus = Crate::Registry(RegistryCrate {
+        let gt_plus = Crate::Registry(RegistryCrate {
             name: "foo".into(),
-            version: "1.0+bar".into(),
+            version: ">1.0+bar".into(),
         });
 
         assert_eq!(
-            crate_to_path_fragment(&MAIN_TOOLCHAIN, &reg, false),
+            crate_to_path_fragment(&MAIN_TOOLCHAIN, &reg, SanitizationContext::Path),
             PathBuf::from("stable/reg/lazy_static-1.0")
         );
         assert_eq!(
-            crate_to_path_fragment(&MAIN_TOOLCHAIN, &gh, false),
+            crate_to_path_fragment(&MAIN_TOOLCHAIN, &gh, SanitizationContext::Path),
             PathBuf::from("stable/gh/brson.hello-rs")
         );
         assert_eq!(
-            crate_to_path_fragment(&MAIN_TOOLCHAIN, &plus, false),
-            PathBuf::from("stable/reg/foo-1.0+bar")
+            crate_to_path_fragment(&MAIN_TOOLCHAIN, &gt_plus, SanitizationContext::Path),
+            PathBuf::from("stable/reg/foo-%3E1.0+bar")
         );
         assert_eq!(
-            crate_to_path_fragment(&MAIN_TOOLCHAIN, &plus, true),
-            PathBuf::from("stable/reg/foo-1.0%2Bbar")
+            crate_to_path_fragment(&MAIN_TOOLCHAIN, &gt_plus, SanitizationContext::Url),
+            PathBuf::from("stable/reg/foo-%3E1.0%2Bbar")
         );
     }
 

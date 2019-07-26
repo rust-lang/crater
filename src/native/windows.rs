@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::fs::File;
 use std::path::Path;
 use winapi::um::handleapi::CloseHandle;
 use winapi::um::processthreadsapi::{OpenProcess, TerminateProcess};
@@ -7,6 +8,9 @@ use winapi::um::winnt::PROCESS_TERMINATE;
 pub(crate) fn kill_process(id: u32) -> Fallible<()> {
     unsafe {
         let handle = OpenProcess(PROCESS_TERMINATE, 0, id);
+        if handle.is_null() {
+            bail!("OpenProcess for process {} failed", id);
+        }
         if TerminateProcess(handle, 101) == 0 {
             bail!("TerminateProcess for process {} failed", id);
         }
@@ -18,14 +22,45 @@ pub(crate) fn kill_process(id: u32) -> Fallible<()> {
     Ok(())
 }
 
-pub(crate) fn current_user() -> u32 {
-    unimplemented!();
+pub(crate) fn current_user() -> Option<u32> {
+    None
 }
 
-pub(crate) fn is_executable<P: AsRef<Path>>(_path: P) -> Fallible<bool> {
-    unimplemented!();
+fn path_ends_in_exe<P: AsRef<Path>>(path: P) -> Fallible<bool> {
+    path.as_ref()
+        .extension()
+        .ok_or_else(|| failure::format_err!("Unable to get `Path` extension"))
+        .map(|ext| ext == "exe")
 }
 
-pub(crate) fn make_executable<P: AsRef<Path>>(_path: P) -> Fallible<()> {
-    unimplemented!();
+/// Check that the file exists and has `.exe` as its extension.
+pub(crate) fn is_executable<P: AsRef<Path>>(path: P) -> Fallible<bool> {
+    let path = path.as_ref();
+    File::open(path)
+        .map_err(Into::into)
+        .and_then(|_| path_ends_in_exe(path))
+}
+
+pub(crate) fn make_executable<P: AsRef<Path>>(path: P) -> Fallible<()> {
+    if is_executable(path)? {
+        Ok(())
+    } else {
+        failure::bail!("Downloaded binaries should be executable by default");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    #[test]
+    fn test_kill_process() {
+        // Try to kill a sleep command
+        let mut cmd = Command::new("timeout").args(&["2"]).spawn().unwrap();
+        kill_process(cmd.id()).unwrap();
+
+        // Ensure it returns the code passed to `TerminateProcess`
+        assert_eq!(cmd.wait().unwrap().code(), Some(101));
+    }
 }

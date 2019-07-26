@@ -26,6 +26,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::clap::AppSettings;
 
+#[cfg(windows)]
+static DEFAULT_DOCKER_ENV: &str = "rustops/crates-build-env-windows";
+
+#[cfg(not(windows))]
 static DEFAULT_DOCKER_ENV: &str = "rustops/crates-build-env";
 
 // An experiment name

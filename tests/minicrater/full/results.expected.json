@@ -13,7 +13,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/beta-fixed"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-fixed"
     },
     {
       "name": "beta-regression (local)",
@@ -28,7 +28,7 @@
           "res": "build-fail:unknown"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/beta-regression"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
     },
     {
       "name": "broken-cargotoml (local)",
@@ -43,7 +43,7 @@
           "res": "broken:cargo-toml"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/broken-cargotoml"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/broken-cargotoml"
     },
     {
       "name": "build-fail (local)",
@@ -58,7 +58,7 @@
           "res": "build-fail:unknown"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-fail"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
     },
     {
       "name": "build-pass (local)",
@@ -73,7 +73,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/build-pass"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
     },
     {
       "name": "clippy-warn (local)",
@@ -88,22 +88,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/clippy-warn"
-    },
-    {
-      "name": "memory-hungry (local)",
-      "res": "spurious-fixed",
-      "runs": [
-        {
-          "log": "stable/local/memory-hungry",
-          "res": "build-fail:oom"
-        },
-        {
-          "log": "beta/local/memory-hungry",
-          "res": "test-fail:oom"
-        }
-      ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/memory-hungry"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
     },
     {
       "name": "missing-examples (local)",
@@ -118,7 +103,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/missing-examples"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/missing-examples"
     },
     {
       "name": "network-access (local)",
@@ -133,7 +118,7 @@
           "res": "test-fail:unknown"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/network-access"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
     },
     {
       "name": "outdated-lockfile (local)",
@@ -148,7 +133,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/outdated-lockfile"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/outdated-lockfile"
     },
     {
       "name": "test-fail (local)",
@@ -163,7 +148,7 @@
           "res": "test-fail:unknown"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/test-fail"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
     },
     {
       "name": "yanked-deps (local)",
@@ -178,7 +163,16 @@
           "res": "broken:yanked"
         }
       ],
-      "url": "https://github.com/rust-lang-nursery/crater/tree/master/local-crates/yanked-deps"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/yanked-deps"
+    },
+    {
+      "name": "memory-hungry (local)",
+      "res": "skipped",
+      "runs": [
+        null,
+        null
+      ],
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
     }
   ]
 }

@@ -9,26 +9,26 @@
           "res": "test-pass"
         },
         {
-          "log": "stable%2Brustflags=-Dclippy::all/local/build-pass",
+          "log": "beta/local/build-pass",
           "res": "test-pass"
         }
       ],
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
     },
     {
-      "name": "clippy-warn (local)",
-      "res": "regressed",
+      "name": "memory-hungry (local)",
+      "res": "spurious-fixed",
       "runs": [
         {
-          "log": "stable/local/clippy-warn",
-          "res": "test-pass"
+          "log": "stable/local/memory-hungry",
+          "res": "build-fail:oom"
         },
         {
-          "log": "stable%2Brustflags=-Dclippy::all/local/clippy-warn",
-          "res": "build-fail:unknown"
+          "log": "beta/local/memory-hungry",
+          "res": "test-fail:oom"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
     }
   ]
 }

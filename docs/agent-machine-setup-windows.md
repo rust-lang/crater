@@ -111,7 +111,7 @@ The next step is to download and build `crater` just like on a [Linux
 agent](./agent-machine-setup.md):
 
 ```powershell
-git clone https://github.com/rust-lang-nursery/crater
+git clone https://github.com/rust-lang/crater
 cd crater
 cargo build --release
 
@@ -119,20 +119,15 @@ cargo build --release
 cargo run --release -- prepare-local
 ```
 
-Running `minicrater` tests require that the `*.expected.json` files match the
-output of crater exactly. However, when installed via `chocolately`, `git` has
-config `core.autocrlf` set to `true` by default. This will override the
-preferences in `crater`'s `.gitattributes` file and cause the JSON files to
-have the wrong line endings (CRLF). Make sure you set `core.autocrlf = false`
-before cloning the repo.
-
-If you've already cloned the repo, simply run the following from inside of it
-to replace the JSON files:
-
-```powershell
-git config core.autocrlf false
-rm -r tests/
-git checkout -- tests/
-```
-
 Remember to run `cargo run -- create-lists` before running the tests.
+
+# Troubleshooting
+
+## Overlong paths
+
+If you encounter warnings about paths being too long, you should disable the
+260 character limit. This option is called "Enable Win32 long paths" in the
+policy editor. See this [Stack Overflow question][so-long-path] for more
+details.
+
+[so-long-path]: https://superuser.com/questions/1119883/windows-10-enable-ntfs-long-paths-policy-option-missing

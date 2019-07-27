@@ -1,6 +1,15 @@
 {
   "crates": [
     {
+      "name": "build-fail (local)",
+      "res": "skipped",
+      "runs": [
+        null,
+        null
+      ],
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
+    },
+    {
       "name": "build-pass (local)",
       "res": "test-pass",
       "runs": [
@@ -29,15 +38,6 @@
         }
       ],
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
-    },
-    {
-      "name": "build-fail (local)",
-      "res": "skipped",
-      "runs": [
-        null,
-        null
-      ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
     }
   ]
 }

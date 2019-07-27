@@ -91,6 +91,15 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
     },
     {
+      "name": "memory-hungry (local)",
+      "res": "skipped",
+      "runs": [
+        null,
+        null
+      ],
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
+    },
+    {
       "name": "missing-examples (local)",
       "res": "test-pass",
       "runs": [
@@ -164,15 +173,6 @@
         }
       ],
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/yanked-deps"
-    },
-    {
-      "name": "memory-hungry (local)",
-      "res": "skipped",
-      "runs": [
-        null,
-        null
-      ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
     }
   ]
 }

@@ -17,6 +17,9 @@ memory-limit = "1536M"
 build-log-max-size = "2M"
 build-log-max-lines = 1000
 
+[chunk]
+chunk-size = 32
+
 [crates]
 lazy_static = { skip = true }
 lazy_static = { skip = true }

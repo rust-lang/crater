@@ -78,6 +78,12 @@ pub struct SandboxConfig {
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub struct ChunkConfig {
+    pub chunk_size: i32,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Config {
     pub demo_crates: DemoCrates,
     pub crates: HashMap<String, CrateConfig>,
@@ -85,6 +91,7 @@ pub struct Config {
     pub local_crates: HashMap<String, CrateConfig>,
     pub server: ServerConfig,
     pub sandbox: SandboxConfig,
+    pub chunk: ChunkConfig,
 }
 
 impl Config {
@@ -127,6 +134,10 @@ impl Config {
 
     pub fn demo_crates(&self) -> &DemoCrates {
         &self.demo_crates
+    }
+
+    pub fn chunk_size(&self) -> i32 {
+        self.chunk.chunk_size
     }
 
     pub fn check(file: &Option<String>) -> Fallible<()> {
@@ -256,6 +267,7 @@ impl Default for Config {
                     experiment_completed: "".into(),
                 },
             },
+            chunk: ChunkConfig { chunk_size: 32 },
         }
     }
 }
@@ -284,6 +296,8 @@ mod tests {
             "memory-limit = \"2G\"\n",
             "build-log-max-size = \"2M\"\n",
             "build-log-max-lines = 1000\n",
+            "[chunk]\n",
+            "chunk-size = 32\n",
             "[crates]\n",
             "lazy_static = { skip = true }\n",
             "[github-repos]\n",
@@ -310,5 +324,7 @@ mod tests {
             org: "rust-lang".into(),
             name: "cargo".into(),
         })));
+
+        assert_eq!(list.chunk_size(), 32);
     }
 }

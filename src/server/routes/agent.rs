@@ -106,7 +106,7 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
 
         Some((
             ex.clone(),
-            ex.get_uncompleted_crates(&data.db, &Assignee::Agent(auth.name.clone()))?,
+            ex.get_uncompleted_crates(&data.db, &data.config, &Assignee::Agent(auth.name.clone()))?,
         ))
     } else {
         None

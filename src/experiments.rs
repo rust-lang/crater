@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::prelude::*;
@@ -8,7 +9,8 @@ use serde_json;
 use std::fmt;
 use std::str::FromStr;
 
-static CHUNK_SIZE: i32 = 2;
+//sqlite limit is ignored if the expression evaluates to a negative value
+static FULL_LIST: i32 = -1;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -43,22 +45,6 @@ string_enum!(pub enum CapLints {
     Deny => "deny",
     Forbid => "forbid",
 });
-
-string_enum!(
-    pub enum CrateListSize {
-        Chunk => "chunk",
-        Full => "full",
-    }
-);
-
-impl CrateListSize {
-    pub fn value(&self) -> i32 {
-        match self {
-            CrateListSize::Chunk => CHUNK_SIZE,
-            CrateListSize::Full => -1,
-        }
-    }
-}
 
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[derive(Clone, Serialize, Deserialize)]
@@ -380,22 +366,22 @@ impl Experiment {
         .collect::<Fallible<Vec<Crate>>>()
     }
 
-    fn crate_list_size(&self) -> i32 {
+    fn crate_list_size(&self, config: &Config) -> i32 {
         match self.assigned_to {
-            //if experiment is assigned to specific agent return all the crates
-            Some(Assignee::Agent(ref _name)) => CrateListSize::Full.value(),
             //if experiment is distributed return chunk
-            Some(Assignee::Distributed) => CrateListSize::Chunk.value(),
-            _ => CrateListSize::Full.value(),
+            Some(Assignee::Distributed) => config.chunk_size(),
+            //if experiment is assigned to specific agent return all the crates
+            _ => FULL_LIST,
         }
     }
 
     pub fn get_uncompleted_crates(
         &self,
         db: &Database,
+        config: &Config,
         assigned_to: &Assignee,
     ) -> Fallible<Vec<Crate>> {
-        let limit = self.crate_list_size();
+        let limit = self.crate_list_size(config);
 
         //get the first 'limit' queued crates from the experiment crates list
         let crates = db
@@ -653,12 +639,16 @@ mod tests {
         // Create a dummy experiment
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
-        let crates = ex.get_uncompleted_crates(&db, &Assignee::CLI).unwrap();
+        let crates = ex
+            .get_uncompleted_crates(&db, &config, &Assignee::CLI)
+            .unwrap();
         // Assert the whole list is returned
         assert_eq!(crates.len(), ex.get_crates(&db).unwrap().len());
 
         // Test already completed crates does not show up again
-        let uncompleted_crates = ex.get_uncompleted_crates(&db, &Assignee::CLI).unwrap();
+        let uncompleted_crates = ex
+            .get_uncompleted_crates(&db, &config, &Assignee::CLI)
+            .unwrap();
         assert_eq!(uncompleted_crates.len(), 0);
     }
 }

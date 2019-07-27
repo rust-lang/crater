@@ -29,6 +29,11 @@ memory-limit = "1536M"  # 1.5G
 build-log-max-size = "5M"
 build-log-max-lines = 10000
 
+[chunk]
+# Number of crates in each chunk when running distributed experiments
+# A negative value selects all the available crates
+chunk-size = 32
+
 
 # These sections allows to customize how crater treats specific crates/repos
 #

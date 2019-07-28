@@ -384,8 +384,8 @@ impl Experiment {
         let limit = self.crate_list_size(config);
 
         //get the first 'limit' queued crates from the experiment crates list
-        let crates = db
-            .query(
+        db.transaction(|transaction| {
+            let crates = transaction.query(
                 "SELECT crate FROM experiment_crates WHERE experiment = ?1
                 AND status = ?2 AND skipped = 0 LIMIT ?3;",
                 &[&self.name, &Status::Queued.to_string(), &limit],
@@ -397,21 +397,22 @@ impl Experiment {
             .into_iter()
             .collect::<Fallible<Vec<Crate>>>();
 
-        //update the status of the previously selected crates to 'Running'
-        db.execute(
-            "UPDATE experiment_crates SET assigned_to = ?1, status = ?2 \
-            WHERE experiment = ?3 AND crate IN (SELECT crate FROM experiment_crates WHERE experiment = ?3
-            AND status = ?4 AND skipped = 0 LIMIT ?5) ",
-            &[
-                &assigned_to.to_string(),
-                &Status::Running.to_string(),
-                &self.name,
-                &Status::Queued.to_string(),
-                &limit,
-            ],
-        )?;
+            //update the status of the previously selected crates to 'Running'
+            transaction.execute(
+                "UPDATE experiment_crates SET assigned_to = ?1, status = ?2 \
+                WHERE experiment = ?3 AND crate IN (SELECT crate FROM experiment_crates WHERE experiment = ?3
+                AND status = ?4 AND skipped = 0 LIMIT ?5) ",
+                &[
+                    &assigned_to.to_string(),
+                    &Status::Running.to_string(),
+                    &self.name,
+                    &Status::Queued.to_string(),
+                    &limit,
+                ],
+            )?;
 
-        crates
+            crates
+        })
     }
 }
 

@@ -400,7 +400,7 @@ impl Experiment {
         //update the status of the previously selected crates to 'Running'
         db.execute(
             "UPDATE experiment_crates SET assigned_to = ?1, status = ?2 \
-            WHERE crate IN (SELECT crate FROM experiment_crates WHERE experiment = ?3
+            WHERE experiment = ?3 AND crate IN (SELECT crate FROM experiment_crates WHERE experiment = ?3
             AND status = ?4 AND skipped = 0 LIMIT ?5) ",
             &[
                 &assigned_to.to_string(),

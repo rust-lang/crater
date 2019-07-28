@@ -17,7 +17,7 @@ use crate::server::github::{GitHub, GitHubApi};
 use crate::server::tokens::Tokens;
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use warp::{self, Filter};
 
 lazy_static! {
@@ -45,6 +45,10 @@ pub struct Data {
     pub acl: ACL,
 }
 
+pub struct DistributedData {
+    pub data: Mutex<Data>,
+}
+
 pub fn run(config: Config) -> Fallible<()> {
     let db = Database::open()?;
     let tokens = tokens::Tokens::load()?;
@@ -66,6 +70,10 @@ pub fn run(config: Config) -> Fallible<()> {
         acl,
     };
 
+    let mutex = Arc::new(DistributedData {
+        data: Mutex::new(data.clone()),
+    });
+
     data.reports_worker.spawn(data.clone());
 
     info!("running server...");
@@ -76,7 +84,7 @@ pub fn run(config: Config) -> Fallible<()> {
         .and(
             warp::any()
                 .and(warp::path("webhooks").and(routes::webhooks::routes(data.clone())))
-                .or(warp::path("agent-api").and(routes::agent::routes(data.clone())))
+                .or(warp::path("agent-api").and(routes::agent::routes(data.clone(), mutex.clone())))
                 .unify()
                 .or(routes::ui::routes(data.clone()))
                 .unify(),

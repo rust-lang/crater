@@ -4,7 +4,7 @@ use crate::results::{DatabaseDB, EncodingType, ProgressData};
 use crate::server::api_types::{AgentConfig, ApiResponse};
 use crate::server::auth::{auth_filter, AuthDetails, TokenType};
 use crate::server::messages::Message;
-use crate::server::{Data, HttpError};
+use crate::server::{Data, DistributedData, HttpError};
 use failure::Compat;
 use http::{Response, StatusCode};
 use hyper::Body;
@@ -22,9 +22,11 @@ pub struct ExperimentData<T> {
 
 pub fn routes(
     data: Arc<Data>,
+    mutex: Arc<DistributedData>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
     let data_cloned = data.clone();
     let data_filter = warp::any().map(move || data_cloned.clone());
+    let mutex_filter = warp::any().map(move || mutex.clone());
 
     let config = warp::get2()
         .and(warp::path("config"))
@@ -36,7 +38,7 @@ pub fn routes(
     let next_experiment = warp::get2()
         .and(warp::path("next-experiment"))
         .and(warp::path::end())
-        .and(data_filter.clone())
+        .and(mutex_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_experiment);
 
@@ -44,7 +46,7 @@ pub fn routes(
         .and(warp::path("record-progress"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(data_filter.clone())
+        .and(mutex_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_record_progress);
 
@@ -59,7 +61,7 @@ pub fn routes(
         .and(warp::path("error"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(data_filter.clone())
+        .and(mutex_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_error);
 
@@ -90,7 +92,13 @@ fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body
     .into_response()?)
 }
 
-fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
+fn endpoint_next_experiment(
+    mutex: Arc<DistributedData>,
+    auth: AuthDetails,
+) -> Fallible<Response<Body>> {
+    //we need to make sure that Experiment::next and ex.get_uncompleted_crates
+    //are executed one after the other
+    let data = mutex.data.lock().unwrap();
     let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
     let result = if let Some((new, ex)) = next {
         if new {
@@ -117,9 +125,10 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
 
 fn endpoint_record_progress(
     result: ExperimentData<ProgressData>,
-    data: Arc<Data>,
+    mutex: Arc<DistributedData>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
+    let data = mutex.data.lock().unwrap();
     let mut ex = Experiment::get(&data.db, &result.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
@@ -152,9 +161,10 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<B
 
 fn endpoint_error(
     error: ExperimentData<HashMap<String, String>>,
-    data: Arc<Data>,
+    mutex: Arc<DistributedData>,
     _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
+    let data = mutex.data.lock().unwrap();
     let mut ex = Experiment::get(&data.db, &error.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 

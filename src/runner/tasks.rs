@@ -3,7 +3,6 @@ use crate::crates::Crate;
 use crate::dirs;
 use crate::docker::DockerEnv;
 use crate::experiments::Experiment;
-use crate::logs::{self, LogStorage};
 use crate::prelude::*;
 use crate::results::{EncodingType, TestResult, WriteResults};
 use crate::runner::{prepare::PrepareCrate, test, RunnerState};
@@ -11,6 +10,7 @@ use crate::toolchain::Toolchain;
 use crate::utils;
 use failure::AsFail;
 use log::LevelFilter;
+use rustwide::logging::{self, LogStorage};
 use std::fmt;
 
 pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
@@ -175,12 +175,16 @@ impl Task {
                 state.lock().prepare_logs.remove(&self.krate);
             }
             TaskStep::Prepare => {
-                let storage = LogStorage::new(LevelFilter::Info, config);
+                let storage = LogStorage::new(
+                    LevelFilter::Info,
+                    config.sandbox.build_log_max_size.to_bytes(),
+                    config.sandbox.build_log_max_lines,
+                );
                 state
                     .lock()
                     .prepare_logs
                     .insert(self.krate.clone(), storage.clone());
-                logs::capture(&storage, || {
+                logging::capture(&storage, || {
                     let mut prepare = PrepareCrate::new(ex, &self.krate, db);
                     prepare.prepare()
                 })?;

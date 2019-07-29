@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn test_logs_archives_generation() {
-        crate::logs::init_test();
+        rustwide::logging::init();
 
         let config = Config::default();
         let db = Database::temp().unwrap();

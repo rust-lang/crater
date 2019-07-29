@@ -2,11 +2,11 @@ use crate::agent::api::AgentApi;
 use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
-use crate::logs::{self, LogStorage};
 use crate::prelude::*;
 use crate::results::{EncodingType, TestResult, WriteResults};
 use crate::toolchain::Toolchain;
 use log::LevelFilter;
+use rustwide::logging::{self, LogStorage};
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
@@ -57,8 +57,14 @@ impl<'a> WriteResults for ResultsUploader<'a> {
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info, config));
-        let result = logs::capture(&storage, f)?;
+        let storage = existing_logs.unwrap_or_else(|| {
+            LogStorage::new(
+                LevelFilter::Info,
+                config.sandbox.build_log_max_size.to_bytes(),
+                config.sandbox.build_log_max_lines,
+            )
+        });
+        let result = logging::capture(&storage, f)?;
         let output = storage.to_string();
 
         let shas = ::std::mem::replace(self.shas.lock().unwrap().deref_mut(), Vec::new());

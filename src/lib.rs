@@ -12,7 +12,6 @@ extern crate toml;
 pub mod actions;
 pub mod agent;
 mod assets;
-pub mod logs;
 #[macro_use]
 pub mod utils;
 pub mod config;

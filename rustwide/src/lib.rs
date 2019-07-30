@@ -6,3 +6,6 @@
 //! [crater]: https://github.com/rust-lang/crater
 
 pub mod logging;
+mod workspace;
+
+pub use crate::workspace::Workspace;

@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 log = "0.4.6"
+failure = "0.1.3"

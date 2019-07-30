@@ -13,25 +13,45 @@ static INIT_LOGS: Once = Once::new();
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 thread_local! {
-    static SCOPED: RefCell<Vec<Box<dyn Log>>> = RefCell::new(Vec::new());
+    static SCOPED: RefCell<Vec<Box<dyn SealedLog>>> = RefCell::new(Vec::new());
+}
+
+trait SealedLog {
+    fn enabled(&self, metadata: &Metadata) -> bool;
+    fn log(&self, record: &Record);
+    fn flush(&self);
+}
+
+impl SealedLog for Box<dyn Log> {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        (self.as_ref() as &dyn Log).enabled(metadata)
+    }
+
+    fn log(&self, record: &Record) {
+        (self.as_ref() as &dyn Log).log(record);
+    }
+
+    fn flush(&self) {
+        (self.as_ref() as &dyn Log).flush();
+    }
 }
 
 struct ScopedLogger {
     global: Option<Box<dyn Log>>,
-    scoped: &'static LocalKey<RefCell<Vec<Box<dyn Log>>>>,
+    scoped: &'static LocalKey<RefCell<Vec<Box<dyn SealedLog>>>>,
 }
 
 impl ScopedLogger {
     fn new(
         global: Option<Box<dyn Log>>,
-        scoped: &'static LocalKey<RefCell<Vec<Box<dyn Log>>>>,
+        scoped: &'static LocalKey<RefCell<Vec<Box<dyn SealedLog>>>>,
     ) -> Self {
         ScopedLogger { global, scoped }
     }
 
-    fn each<F: FnMut(&dyn Log)>(&self, mut f: F) {
+    fn each<F: FnMut(&dyn SealedLog)>(&self, mut f: F) {
         if let Some(global) = &self.global {
-            f(global.as_ref());
+            f(global);
         }
         self.scoped.with(|scoped| {
             for logger in &*scoped.borrow() {
@@ -133,7 +153,7 @@ impl LogStorage {
     }
 }
 
-impl Log for LogStorage {
+impl SealedLog for LogStorage {
     fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() > self.min_level
     }

@@ -8,7 +8,6 @@ use crate::results::{
 };
 use crate::toolchain::Toolchain;
 use base64;
-use log::LevelFilter;
 use rustwide::logging::{self, LogStorage};
 use serde_json;
 use std::collections::HashMap;
@@ -208,13 +207,7 @@ impl<'a> WriteResults for DatabaseDB<'a> {
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let storage = existing_logs.unwrap_or_else(|| {
-            LogStorage::new(
-                LevelFilter::Info,
-                config.sandbox.build_log_max_size.to_bytes(),
-                config.sandbox.build_log_max_lines,
-            )
-        });
+        let storage = existing_logs.unwrap_or_else(|| LogStorage::from(config));
         let result = logging::capture(&storage, f)?;
         let output = storage.to_string();
         self.store_result(

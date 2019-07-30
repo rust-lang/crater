@@ -35,7 +35,7 @@ fn test_init_with() {
     let logger = DummyLogger::new();
     logging::init_with(logger.clone());
 
-    let storage = LogStorage::new(LevelFilter::Info, 1024, 10);
+    let storage = LogStorage::new(LevelFilter::Info);
     logging::capture(&storage, || {
         info!("Hello world!");
     });

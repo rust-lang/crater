@@ -9,7 +9,7 @@ use crate::runner::{prepare::PrepareCrate, test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use failure::AsFail;
-use log::LevelFilter;
+
 use rustwide::logging::{self, LogStorage};
 use std::fmt;
 
@@ -175,11 +175,7 @@ impl Task {
                 state.lock().prepare_logs.remove(&self.krate);
             }
             TaskStep::Prepare => {
-                let storage = LogStorage::new(
-                    LevelFilter::Info,
-                    config.sandbox.build_log_max_size.to_bytes(),
-                    config.sandbox.build_log_max_lines,
-                );
+                let storage = LogStorage::from(config);
                 state
                     .lock()
                     .prepare_logs

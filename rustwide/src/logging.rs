@@ -72,6 +72,7 @@ struct StoredRecord {
     message: String,
 }
 
+#[derive(Clone)]
 struct InnerStorage {
     records: Vec<StoredRecord>,
     size: usize,
@@ -80,7 +81,7 @@ struct InnerStorage {
 
 /// Store logs captured by [`capture`] and retrieve them later.
 ///
-/// The storage has a maximum size and line limit, to prevent unbounded logging from exausting
+/// The storage can have a maximum size and line limit, to prevent unbounded logging from exausting
 /// system memory. It can be used from multiple threads at the same time. To output the stored log
 /// entries you can call the `to_string()` method, which will return a string representation of
 /// them.
@@ -90,16 +91,13 @@ struct InnerStorage {
 pub struct LogStorage {
     inner: Arc<Mutex<InnerStorage>>,
     min_level: LevelFilter,
-    max_size: usize,
-    max_lines: usize,
+    max_size: Option<usize>,
+    max_lines: Option<usize>,
 }
 
 impl LogStorage {
     /// Create a new log storage.
-    ///
-    /// The `max_size` and `max_lines` arguments defines how many bytes and lines the struct will
-    /// store before skipping new entries.
-    pub fn new(min_level: LevelFilter, max_size: usize, max_lines: usize) -> Self {
+    pub fn new(min_level: LevelFilter) -> Self {
         LogStorage {
             inner: Arc::new(Mutex::new(InnerStorage {
                 records: Vec::new(),
@@ -107,9 +105,19 @@ impl LogStorage {
                 size: 0,
             })),
             min_level,
-            max_size,
-            max_lines,
+            max_size: None,
+            max_lines: None,
         }
+    }
+
+    /// Set the maximum amount of bytes stored in this struct before truncating the output.
+    pub fn set_max_size(&mut self, size: usize) {
+        self.max_size = Some(size);
+    }
+
+    /// Set the maximum amount of lines stored in this struct before truncating the output.
+    pub fn set_max_lines(&mut self, lines: usize) {
+        self.max_lines = Some(lines);
     }
 
     /// Duplicate the log storage, returning a new, unrelated storage with the same content and
@@ -117,11 +125,7 @@ impl LogStorage {
     pub fn duplicate(&self) -> LogStorage {
         let inner = self.inner.lock().unwrap();
         LogStorage {
-            inner: Arc::new(Mutex::new(InnerStorage {
-                records: inner.records.clone(),
-                truncated: inner.truncated,
-                size: inner.size,
-            })),
+            inner: Arc::new(Mutex::new(inner.clone())),
             min_level: self.min_level,
             max_size: self.max_size,
             max_lines: self.max_lines,
@@ -142,22 +146,26 @@ impl Log for LogStorage {
         if inner.truncated {
             return;
         }
-        if inner.records.len() >= self.max_lines {
-            inner.records.push(StoredRecord {
-                level: Level::Warn,
-                message: "too many lines in the log, truncating it".into(),
-            });
-            inner.truncated = true;
-            return;
+        if let Some(max_lines) = self.max_lines {
+            if inner.records.len() >= max_lines {
+                inner.records.push(StoredRecord {
+                    level: Level::Warn,
+                    message: "too many lines in the log, truncating it".into(),
+                });
+                inner.truncated = true;
+                return;
+            }
         }
         let message = record.args().to_string();
-        if inner.size + message.len() >= self.max_size {
-            inner.records.push(StoredRecord {
-                level: Level::Warn,
-                message: "too much data in the log, truncating it".into(),
-            });
-            inner.truncated = true;
-            return;
+        if let Some(max_size) = self.max_size {
+            if inner.size + message.len() >= max_size {
+                inner.records.push(StoredRecord {
+                    level: Level::Warn,
+                    message: "too much data in the log, truncating it".into(),
+                });
+                inner.truncated = true;
+                return;
+            }
         }
         inner.size += message.len();
         inner.records.push(StoredRecord {
@@ -192,7 +200,7 @@ impl fmt::Display for LogStorage {
 /// use log::{info, debug, LevelFilter};
 /// use rustwide::logging::{self, LogStorage};
 ///
-/// let storage = LogStorage::new(LevelFilter::Info, 1024, 20);
+/// let storage = LogStorage::new(LevelFilter::Info);
 /// logging::capture(&storage, || {
 ///     info!("foo");
 ///     debug!("bar");
@@ -260,7 +268,7 @@ mod tests {
     fn test_log_storage() {
         logging::init();
 
-        let storage = LogStorage::new(LevelFilter::Info, 1024, 1024);
+        let storage = LogStorage::new(LevelFilter::Info);
         logging::capture(&storage, || {
             info!("an info record");
             warn!("a warn record");
@@ -286,7 +294,8 @@ mod tests {
     fn test_too_much_content() {
         logging::init();
 
-        let storage = LogStorage::new(LevelFilter::Info, 1024, 1024);
+        let mut storage = LogStorage::new(LevelFilter::Info);
+        storage.set_max_size(1024);
         logging::capture(&storage, || {
             let content = (0..2048).map(|_| '.').collect::<String>();
             info!("{}", content);
@@ -306,15 +315,16 @@ mod tests {
     fn test_too_many_lines() {
         logging::init();
 
-        let storage = LogStorage::new(LevelFilter::Info, 1024, 10);
+        let mut storage = LogStorage::new(LevelFilter::Info);
+        storage.set_max_lines(100);
         logging::capture(&storage, || {
-            for _ in 0..20 {
+            for _ in 0..200 {
                 info!("a line");
             }
         });
 
         let inner = storage.inner.lock().unwrap();
-        assert_eq!(inner.records.len(), 11);
+        assert_eq!(inner.records.len(), 101);
         assert!(inner
             .records
             .last()

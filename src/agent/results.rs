@@ -5,7 +5,6 @@ use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{EncodingType, TestResult, WriteResults};
 use crate::toolchain::Toolchain;
-use log::LevelFilter;
 use rustwide::logging::{self, LogStorage};
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
@@ -57,13 +56,7 @@ impl<'a> WriteResults for ResultsUploader<'a> {
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let storage = existing_logs.unwrap_or_else(|| {
-            LogStorage::new(
-                LevelFilter::Info,
-                config.sandbox.build_log_max_size.to_bytes(),
-                config.sandbox.build_log_max_lines,
-            )
-        });
+        let storage = existing_logs.unwrap_or_else(|| LogStorage::from(config));
         let result = logging::capture(&storage, f)?;
         let output = storage.to_string();
 

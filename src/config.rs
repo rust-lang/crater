@@ -267,7 +267,7 @@ impl Default for Config {
                     experiment_completed: "".into(),
                 },
             },
-            chunk: ChunkConfig { chunk_size: 32 },
+            chunk: ChunkConfig { chunk_size: 1 },
         }
     }
 }

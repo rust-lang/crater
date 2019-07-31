@@ -96,8 +96,7 @@ fn endpoint_next_experiment(
     mutex: Arc<DistributedData>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    //we need to make sure that Experiment::next and ex.get_uncompleted_crates
-    //are executed one after the other
+    //we need to make sure that Experiment::next executes uninterrupted
     let data = mutex.data.lock().unwrap();
     let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
     let result = if let Some((new, ex)) = next {
@@ -112,10 +111,20 @@ fn endpoint_next_experiment(
             }
         }
 
-        Some((
-            ex.clone(),
-            ex.get_uncompleted_crates(&data.db, &data.config, &Assignee::Agent(auth.name.clone()))?,
-        ))
+        let running_crates =
+            ex.get_running_crates(&data.db, &Assignee::Agent(auth.name.clone()))?;
+        if !running_crates.is_empty() {
+            Some((ex, running_crates))
+        } else {
+            Some((
+                ex.clone(),
+                ex.get_uncompleted_crates(
+                    &data.db,
+                    &data.config,
+                    &Assignee::Agent(auth.name.clone()),
+                )?,
+            ))
+        }
     } else {
         None
     };

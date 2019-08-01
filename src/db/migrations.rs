@@ -184,6 +184,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
             Ok(())
         })),
     ));
+
     migrations.push((
         "migrate_agents_to_assignees_in_experiments",
         MigrationKind::SQL(

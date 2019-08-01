@@ -114,16 +114,6 @@ impl FromStr for Assignee {
     }
 }
 
-impl Assignee {
-    pub fn get_name(&self) -> &str {
-        match self {
-            Assignee::Agent(ref name) => name,
-            Assignee::Distributed => "distributed",
-            Assignee::CLI => "cli",
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct GitHubIssue {
     pub api_url: String,
@@ -204,6 +194,8 @@ impl Experiment {
             return Ok(Some((false, experiment)));
         }
 
+        // First look at experiments explicitly assigned to this agent, and then
+        // distributed experiments and experiments without an assigned agent.
         Experiment::next_inner(db, Some(assignee))
             .and_then(|ex| {
                 ex.map_or_else(
@@ -247,8 +239,11 @@ impl Experiment {
         if let Some(record) = record {
             let mut experiment = record.into_experiment()?;
             let new_ex = experiment.status != Status::Running;
-            experiment.set_status(&db, Status::Running)?;
-            experiment.set_assigned_to(&db, assignee.or(Some(&Assignee::Distributed)))?;
+            if new_ex {
+                experiment.set_status(&db, Status::Running)?;
+                // If this experiment was not assigned to a specific agent make it distributed
+                experiment.set_assigned_to(&db, assignee.or(Some(&Assignee::Distributed)))?;
+            }
             return Ok(Some((new_ex, experiment)));
         }
         Ok(None)
@@ -308,7 +303,6 @@ impl Experiment {
             "UPDATE experiments SET assigned_to = ?1 WHERE name = ?2;",
             &[&assigned_to.map(|a| a.to_string()), &self.name.as_str()],
         )?;
-
         self.assigned_to = assigned_to.cloned();
         Ok(())
     }
@@ -383,12 +377,12 @@ impl Experiment {
     ) -> Fallible<Vec<Crate>> {
         let limit = self.crate_list_size(config);
 
-        //get the first 'limit' queued crates from the experiment crates list
         db.transaction(|transaction| {
+            //get the first 'limit' queued crates from the experiment crates list
             let crates = transaction
                 .query(
                     "SELECT crate FROM experiment_crates WHERE experiment = ?1
-                AND status = ?2 AND skipped = 0 LIMIT ?3;",
+                     AND status = ?2 AND skipped = 0 LIMIT ?3;",
                     &[&self.name, &Status::Queued.to_string(), &limit],
                     |r| {
                         let value: String = r.get("crate");
@@ -401,9 +395,9 @@ impl Experiment {
             //update the status of the previously selected crates to 'Running'
             transaction.execute(
                 "UPDATE experiment_crates SET assigned_to = ?1, status = ?2 \
-                WHERE experiment = ?3 AND crate IN (SELECT crate FROM \
-                experiment_crates WHERE experiment = ?3
-                AND status = ?4 AND skipped = 0 LIMIT ?5) ",
+                 WHERE experiment = ?3 AND crate IN (SELECT crate FROM \
+                 experiment_crates WHERE experiment = ?3
+                 AND status = ?4 AND skipped = 0 LIMIT ?5) ",
                 &[
                     &assigned_to.to_string(),
                     &Status::Running.to_string(),

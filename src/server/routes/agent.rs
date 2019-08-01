@@ -113,6 +113,8 @@ fn endpoint_next_experiment(
 
         let running_crates =
             ex.get_running_crates(&data.db, &Assignee::Agent(auth.name.clone()))?;
+
+        //if the agent crashed (i.e. there are already running crates) return those crates
         if !running_crates.is_empty() {
             Some((ex, running_crates))
         } else {

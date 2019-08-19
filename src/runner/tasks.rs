@@ -1,7 +1,6 @@
 use crate::config::Config;
 use crate::crates::Crate;
 use crate::dirs;
-use crate::docker::DockerEnv;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{EncodingType, TestResult, WriteResults};
@@ -9,39 +8,40 @@ use crate::runner::{prepare::PrepareCrate, test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use failure::AsFail;
+use rustwide::Workspace;
 
 use rustwide::logging::{self, LogStorage};
 use std::fmt;
 
 pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
+    pub(super) workspace: &'ctx Workspace,
     pub(super) config: &'ctx Config,
     pub(super) db: &'ctx DB,
     pub(super) experiment: &'ctx Experiment,
     pub(super) toolchain: &'ctx Toolchain,
     pub(super) krate: &'ctx Crate,
-    pub(super) docker_env: &'ctx DockerEnv,
     pub(super) state: &'ctx RunnerState,
     pub(super) quiet: bool,
 }
 
 impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
     fn new(
+        workspace: &'ctx Workspace,
         config: &'ctx Config,
         db: &'ctx DB,
         experiment: &'ctx Experiment,
         toolchain: &'ctx Toolchain,
         krate: &'ctx Crate,
-        docker_env: &'ctx DockerEnv,
         state: &'ctx RunnerState,
         quiet: bool,
     ) -> Self {
         TaskCtx {
+            workspace,
             config,
             db,
             experiment,
             toolchain,
             krate,
-            docker_env,
             state,
             quiet,
         }
@@ -160,9 +160,9 @@ impl Task {
     pub(super) fn run<DB: WriteResults>(
         &self,
         config: &Config,
+        workspace: &Workspace,
         ex: &Experiment,
         db: &DB,
-        docker_env: &DockerEnv,
         state: &RunnerState,
     ) -> Fallible<()> {
         match self.step {
@@ -181,32 +181,32 @@ impl Task {
                     .prepare_logs
                     .insert(self.krate.clone(), storage.clone());
                 logging::capture(&storage, || {
-                    let mut prepare = PrepareCrate::new(ex, &self.krate, db);
+                    let mut prepare = PrepareCrate::new(workspace, ex, &self.krate, db);
                     prepare.prepare()
                 })?;
             }
             TaskStep::BuildAndTest { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
+                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("testing", &ctx, test::test_build_and_test)?;
             }
             TaskStep::BuildOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
+                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("building", &ctx, test::test_build_only)?;
             }
             TaskStep::CheckOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
+                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("checking", &ctx, test::test_check_only)?;
             }
             TaskStep::Clippy { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
+                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("linting", &ctx, test::test_clippy_only)?;
             }
             TaskStep::Rustdoc { ref tc, quiet } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, quiet);
+                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("documenting", &ctx, test::test_rustdoc)?;
             }
             TaskStep::UnstableFeatures { ref tc } => {
-                let ctx = TaskCtx::new(config, db, ex, tc, &self.krate, docker_env, state, false);
+                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, false);
                 test::run_test(
                     "checking unstable",
                     &ctx,

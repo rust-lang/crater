@@ -9,6 +9,7 @@ use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::utils;
 use failure::Error;
+use rustwide::Workspace;
 use std::thread;
 use std::time::Duration;
 
@@ -52,24 +53,24 @@ fn run_heartbeat(url: &str, token: &str) {
 
 fn run_experiment(
     agent: &Agent,
+    workspace: &Workspace,
     db: &ResultsUploader,
     threads_count: usize,
-    docker_env: &str,
 ) -> Result<(), (Option<Experiment>, Error)> {
     let (ex, crates) = agent.experiment().map_err(|e| (None, e))?;
-    crate::runner::run_ex(&ex, &crates, db, threads_count, &agent.config, docker_env)
+    crate::runner::run_ex(&ex, workspace, &crates, db, threads_count, &agent.config)
         .map_err(|err| (Some(ex), err))?;
     Ok(())
 }
 
-pub fn run(url: &str, token: &str, threads_count: usize, docker_env: &str) -> Fallible<()> {
+pub fn run(url: &str, token: &str, threads_count: usize, workspace: &Workspace) -> Fallible<()> {
     let agent = Agent::new(url, token)?;
     let db = results::ResultsUploader::new(&agent.api);
 
     run_heartbeat(url, token);
 
     loop {
-        if let Err((ex, err)) = run_experiment(&agent, &db, threads_count, docker_env) {
+        if let Err((ex, err)) = run_experiment(&agent, workspace, &db, threads_count) {
             utils::report_failure(&err);
             if let Some(ex) = ex {
                 if let Err(e) = agent

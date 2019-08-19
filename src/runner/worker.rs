@@ -1,11 +1,11 @@
 use crate::config::Config;
-use crate::docker::DockerEnv;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{BrokenReason, TestResult, WriteResults};
 use crate::runner::graph::{TasksGraph, WalkResult};
 use crate::runner::{OverrideResult, RunnerState};
 use crate::utils;
+use rustwide::Workspace;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{
@@ -19,12 +19,12 @@ use systemstat::{Filesystem, Platform, System};
 
 pub(super) struct Worker<'a, DB: WriteResults + Sync> {
     name: String,
+    workspace: &'a Workspace,
     ex: &'a Experiment,
     config: &'a Config,
     graph: &'a Mutex<TasksGraph>,
     state: &'a RunnerState,
     db: &'a DB,
-    docker_env: &'a DockerEnv,
     parked_threads: &'a Mutex<HashMap<thread::ThreadId, thread::Thread>>,
     target_dir_cleanup: AtomicBool,
 }
@@ -32,22 +32,22 @@ pub(super) struct Worker<'a, DB: WriteResults + Sync> {
 impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
     pub(super) fn new(
         name: String,
+        workspace: &'a Workspace,
         ex: &'a Experiment,
         config: &'a Config,
         graph: &'a Mutex<TasksGraph>,
         state: &'a RunnerState,
         db: &'a DB,
-        docker_env: &'a DockerEnv,
         parked_threads: &'a Mutex<HashMap<thread::ThreadId, thread::Thread>>,
     ) -> Self {
         Worker {
             name,
+            workspace,
             ex,
             config,
             graph,
             state,
             db,
-            docker_env,
             parked_threads,
             target_dir_cleanup: AtomicBool::new(false),
         }
@@ -66,7 +66,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                 WalkResult::Task(id, task) => {
                     info!("running task: {:?}", task);
                     if let Err(e) =
-                        task.run(self.config, self.ex, self.db, self.docker_env, self.state)
+                        task.run(self.config, self.workspace, self.ex, self.db, self.state)
                     {
                         error!("task failed, marking childs as failed too: {:?}", task);
                         utils::report_failure(&e);

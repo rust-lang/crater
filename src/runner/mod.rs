@@ -8,15 +8,15 @@ mod worker;
 
 use crate::config::Config;
 use crate::crates::Crate;
-use crate::docker::DockerEnv;
 use crate::experiments::{Experiment, Mode};
-use crate::logs::LogStorage;
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
 use crate::runner::graph::build_graph;
 use crate::runner::worker::{DiskSpaceWatcher, Worker};
 use crate::utils;
 use crossbeam_utils::thread::{scope, ScopedJoinHandle};
+use rustwide::logging::LogStorage;
+use rustwide::Workspace;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
@@ -54,17 +54,17 @@ impl RunnerState {
 
 pub fn run_ex<DB: WriteResults + Sync>(
     ex: &Experiment,
+    workspace: &Workspace,
     crates: &[Crate],
     db: &DB,
     threads_count: usize,
     config: &Config,
-    docker_env: &str,
 ) -> Fallible<()> {
-    if !crate::docker::is_running() {
+    if !rustwide::cmd::docker_running(workspace) {
         return Err(err_msg("docker is not running"));
     }
 
-    let res = run_ex_inner(ex, crates, db, threads_count, config, docker_env);
+    let res = run_ex_inner(ex, workspace, crates, db, threads_count, config);
 
     // Remove all the target dirs even if the experiment failed
     let target_dir = &crate::toolchain::ex_target_dir(&ex.name);
@@ -77,26 +77,23 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
 fn run_ex_inner<DB: WriteResults + Sync>(
     ex: &Experiment,
+    workspace: &Workspace,
     crates: &[Crate],
     db: &DB,
     threads_count: usize,
     config: &Config,
-    docker_env: &str,
 ) -> Fallible<()> {
-    let docker_env = DockerEnv::new(docker_env);
-    docker_env.ensure_exists_locally()?;
-
     info!("ensuring all the tools are installed");
-    crate::tools::install()?;
+    crate::tools::install(workspace)?;
 
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(ex, crates, config));
 
     info!("preparing the execution...");
     for tc in &ex.toolchains {
-        tc.prepare()?;
+        tc.prepare(workspace)?;
         if ex.mode == Mode::Clippy {
-            tc.install_rustup_component("clippy")?;
+            tc.install_rustup_component(workspace, "clippy")?;
         }
     }
 
@@ -111,12 +108,12 @@ fn run_ex_inner<DB: WriteResults + Sync>(
         .map(|i| {
             Worker::new(
                 format!("worker-{}", i),
+                workspace,
                 ex,
                 config,
                 &graph,
                 &state,
                 db,
-                &docker_env,
                 &parked_threads,
             )
         })

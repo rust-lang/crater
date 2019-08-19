@@ -4,7 +4,6 @@ mod dummy;
 use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
-use crate::logs::LogStorage;
 use crate::prelude::*;
 pub use crate::results::db::{DatabaseDB, ProgressData};
 #[cfg(test)]
@@ -13,6 +12,7 @@ use crate::toolchain::Toolchain;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use rustwide::logging::LogStorage;
 use std::collections::HashMap;
 use std::{fmt, io::Read, io::Write, str::FromStr};
 

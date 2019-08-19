@@ -2,14 +2,13 @@ use crate::config::Config;
 use crate::crates::{Crate, GitHubRepo};
 use crate::db::{Database, QueryUtils};
 use crate::experiments::{Experiment, Status};
-use crate::logs::{self, LogStorage};
 use crate::prelude::*;
 use crate::results::{
     DeleteResults, EncodedLog, EncodingType, ReadResults, TestResult, WriteResults,
 };
 use crate::toolchain::Toolchain;
 use base64;
-use log::LevelFilter;
+use rustwide::logging::{self, LogStorage};
 use serde_json;
 use std::collections::HashMap;
 
@@ -220,8 +219,8 @@ impl<'a> WriteResults for DatabaseDB<'a> {
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let storage = existing_logs.unwrap_or_else(|| LogStorage::new(LevelFilter::Info, config));
-        let result = logs::capture(&storage, f)?;
+        let storage = existing_logs.unwrap_or_else(|| LogStorage::from(config));
+        let result = logging::capture(&storage, f)?;
         let output = storage.to_string();
         self.store_result(
             ex,
@@ -333,7 +332,7 @@ mod tests {
 
     #[test]
     fn test_results() {
-        crate::logs::init_test();
+        rustwide::logging::init();
 
         let db = Database::temp().unwrap();
         let results = DatabaseDB::new(&db);

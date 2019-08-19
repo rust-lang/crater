@@ -1,9 +1,9 @@
 use crate::dirs::TARGET_DIR;
 use crate::prelude::*;
-use crate::run::RunCommand;
 use crate::tools::CARGO;
 use crate::tools::{RUSTUP, RUSTUP_TOOLCHAIN_INSTALL_MASTER};
 use crate::utils;
+use rustwide::{cmd::Command, Workspace};
 use std::borrow::Cow;
 use std::fmt;
 use std::path::PathBuf;
@@ -53,13 +53,13 @@ pub struct Toolchain {
 }
 
 impl Toolchain {
-    pub fn prepare(&self) -> Fallible<()> {
+    pub fn prepare(&self, workspace: &Workspace) -> Fallible<()> {
         match self.source {
-            ToolchainSource::Dist { ref name } => init_toolchain_from_dist(name)?,
-            ToolchainSource::CI { ref sha, .. } => init_toolchain_from_ci(true, sha)?,
+            ToolchainSource::Dist { ref name } => init_toolchain_from_dist(workspace, name)?,
+            ToolchainSource::CI { ref sha, .. } => init_toolchain_from_ci(workspace, true, sha)?,
         }
 
-        self.prep_offline_registry()?;
+        self.prep_offline_registry(workspace)?;
 
         Ok(())
     }
@@ -71,7 +71,7 @@ impl Toolchain {
         }
     }
 
-    pub fn install_rustup_component(&self, component: &str) -> Fallible<()> {
+    pub fn install_rustup_component(&self, workspace: &Workspace, component: &str) -> Fallible<()> {
         let toolchain_name = &self.rustup_name();
         info!(
             "installing component {} for toolchain {}",
@@ -79,7 +79,7 @@ impl Toolchain {
         );
 
         utils::try_hard(|| {
-            RunCommand::new(&RUSTUP)
+            Command::new(workspace, &RUSTUP)
                 .args(&["component", "add", "--toolchain", toolchain_name, component])
                 .run()
                 .with_context(|_| {
@@ -104,16 +104,16 @@ impl Toolchain {
         dir.join(self.to_path_component())
     }
 
-    pub fn prep_offline_registry(&self) -> Fallible<()> {
+    pub fn prep_offline_registry(&self, workspace: &Workspace) -> Fallible<()> {
         // This nop cargo command is to update the registry
         // so we don't have to do it for each crate.
         // using `install` is a temporary solution until
         // https://github.com/rust-lang/cargo/pull/5961
         // is ready
 
-        let _ = RunCommand::new(CARGO.toolchain(self))
+        let _ = Command::new(workspace, CARGO.toolchain(self))
             .args(&["install", "lazy_static"])
-            .quiet(true)
+            .no_output_timeout(None)
             .run();
 
         // ignore the error untill
@@ -217,10 +217,10 @@ impl FromStr for Toolchain {
     }
 }
 
-fn init_toolchain_from_dist(toolchain: &str) -> Fallible<()> {
+fn init_toolchain_from_dist(workspace: &Workspace, toolchain: &str) -> Fallible<()> {
     info!("installing toolchain {}", toolchain);
     utils::try_hard(|| {
-        RunCommand::new(&RUSTUP)
+        Command::new(workspace, &RUSTUP)
             .args(&["toolchain", "install", toolchain])
             .run()
             .with_context(|_| format!("unable to install toolchain {} via rustup", toolchain))
@@ -229,7 +229,7 @@ fn init_toolchain_from_dist(toolchain: &str) -> Fallible<()> {
     Ok(())
 }
 
-fn init_toolchain_from_ci(alt: bool, sha: &str) -> Fallible<()> {
+fn init_toolchain_from_ci(workspace: &Workspace, alt: bool, sha: &str) -> Fallible<()> {
     if alt {
         info!("installing toolchain {}-alt", sha);
     } else {
@@ -242,7 +242,7 @@ fn init_toolchain_from_ci(alt: bool, sha: &str) -> Fallible<()> {
     }
 
     utils::try_hard(|| {
-        RunCommand::new(&RUSTUP_TOOLCHAIN_INSTALL_MASTER)
+        Command::new(workspace, &RUSTUP_TOOLCHAIN_INSTALL_MASTER)
             .args(&args)
             .run()
             .with_context(|_| {

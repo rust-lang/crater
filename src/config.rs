@@ -1,7 +1,9 @@
 use crate::crates::Crate;
 use crate::prelude::*;
 use crate::utils::size::Size;
+use log::LevelFilter;
 use regex::Regex;
+use rustwide::logging::LogStorage;
 use serde_regex;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -269,6 +271,15 @@ impl Default for Config {
             },
             chunk: ChunkConfig { chunk_size: 1 },
         }
+    }
+}
+
+impl From<&'_ Config> for LogStorage {
+    fn from(config: &Config) -> LogStorage {
+        let mut storage = LogStorage::new(LevelFilter::Info);
+        storage.set_max_size(config.sandbox.build_log_max_size.to_bytes());
+        storage.set_max_lines(config.sandbox.build_log_max_lines);
+        storage
     }
 }
 

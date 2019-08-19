@@ -5,7 +5,7 @@ use serde_derive::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 
-static TOKENS_PATH: &'static str = "tokens.toml";
+static TOKENS_PATH: &str = "tokens.toml";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]

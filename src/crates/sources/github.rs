@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-static CACHED_LIST: &'static str =
+static CACHED_LIST: &str =
     "https://raw.githubusercontent.com/rust-ops/rust-repos/master/data/github.csv";
 
 #[derive(Deserialize)]

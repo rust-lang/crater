@@ -38,6 +38,7 @@ macro_rules! generate_parser {
         }
 
         #[cfg_attr(test, derive(Debug, PartialEq))]
+        #[allow(clippy::large_enum_variant)]
         pub enum $enum {
             $d_variant($d_var_struct),
             $($variant($var_struct),)*

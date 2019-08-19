@@ -9,7 +9,12 @@
 pub mod cmd;
 pub mod logging;
 mod native;
+mod toolchain;
+mod tools;
 mod utils;
 mod workspace;
 
+pub use crate::toolchain::Toolchain;
 pub use crate::workspace::{Workspace, WorkspaceBuilder};
+
+pub(crate) static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));

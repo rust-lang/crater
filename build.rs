@@ -29,9 +29,7 @@ fn get_git_sha() -> Option<String> {
 
 fn main() {
     let sha = format!("{:?}", get_git_sha());
-    let target = std::env::var("TARGET").unwrap();
 
     let output = std::env::var("OUT_DIR").unwrap();
     ::std::fs::write(format!("{}/sha", output), sha.as_bytes()).unwrap();
-    ::std::fs::write(format!("{}/target", output), target.as_bytes()).unwrap();
 }

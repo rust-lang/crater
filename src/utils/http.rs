@@ -13,11 +13,6 @@ pub struct InvalidStatusCode {
 
 lazy_static! {
     static ref HTTP_SYNC_CLIENT: Client = setup_sync_client();
-    static ref USER_AGENT_CONTENT: String = format!(
-        "crater/{} ({})",
-        crate::GIT_REVISION.unwrap_or("unknown"),
-        crate::CRATER_REPO_URL
-    );
 }
 
 fn setup_sync_client() -> Client {
@@ -30,7 +25,7 @@ fn setup_sync_client() -> Client {
 pub(crate) fn prepare_sync(method: Method, url: &str) -> RequestBuilder {
     HTTP_SYNC_CLIENT
         .request(method, url)
-        .header(USER_AGENT, USER_AGENT_CONTENT.clone())
+        .header(USER_AGENT, crate::USER_AGENT.clone())
 }
 
 pub(crate) fn get_sync(url: &str) -> Fallible<Response> {

@@ -2,7 +2,6 @@ use crate::dirs;
 use crate::prelude::*;
 use crate::results::{EncodingType, FailureReason, TestResult, WriteResults};
 use crate::runner::tasks::TaskCtx;
-use crate::tools::CARGO;
 use failure::Error;
 use rustwide::cmd::{Command, CommandError, MountKind, SandboxBuilder};
 use std::path::Path;
@@ -50,17 +49,16 @@ fn run_cargo<DB: WriteResults>(
             MountKind::ReadWrite,
         );
 
-    let mut command =
-        Command::new_sandboxed(ctx.workspace, sandbox, CARGO.toolchain(ctx.toolchain))
-            .args(args)
-            .cd(source_path)
-            .env(
-                "CARGO_TARGET_DIR",
-                dirs::container::TARGET_DIR.to_str().unwrap(),
-            )
-            .env("CARGO_INCREMENTAL", "0")
-            .env("RUST_BACKTRACE", "full")
-            .env(rustflags_env, rustflags);
+    let mut command = Command::new_sandboxed(ctx.workspace, sandbox, ctx.toolchain.cargo())
+        .args(args)
+        .cd(source_path)
+        .env(
+            "CARGO_TARGET_DIR",
+            dirs::container::TARGET_DIR.to_str().unwrap(),
+        )
+        .env("CARGO_INCREMENTAL", "0")
+        .env("RUST_BACKTRACE", "full")
+        .env(rustflags_env, rustflags);
     if ctx.quiet {
         command = command.no_output_timeout(None);
     }

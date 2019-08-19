@@ -1,97 +1,44 @@
 use crate::dirs::TARGET_DIR;
 use crate::prelude::*;
-use crate::tools::CARGO;
-use crate::tools::{RUSTUP, RUSTUP_TOOLCHAIN_INSTALL_MASTER};
 use crate::utils;
-use rustwide::{cmd::Command, Workspace};
+use rustwide::Toolchain as RustwideToolchain;
 use std::borrow::Cow;
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub(crate) static MAIN_TOOLCHAIN_NAME: &str = "stable";
-
 pub fn ex_target_dir(ex_name: &str) -> PathBuf {
     TARGET_DIR.join(ex_name)
 }
 
-/// This is the main toolchain used by Crater for everything not experiment-specific, such as
-/// generating lockfiles or fetching dependencies.
+/// This toolchain is used during internal tests, and must be different than TEST_TOOLCHAIN
+#[cfg(test)]
 pub(crate) static MAIN_TOOLCHAIN: Toolchain = Toolchain {
-    source: ToolchainSource::Dist {
-        name: Cow::Borrowed(MAIN_TOOLCHAIN_NAME),
+    source: RustwideToolchain::Dist {
+        name: Cow::Borrowed("stable"),
     },
     rustflags: None,
+    ci_try: false,
 };
 
 /// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
 #[cfg(test)]
 pub(crate) static TEST_TOOLCHAIN: Toolchain = Toolchain {
-    source: ToolchainSource::Dist {
+    source: RustwideToolchain::Dist {
         name: Cow::Borrowed("beta"),
     },
     rustflags: None,
+    ci_try: false,
 };
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "kebab-case", tag = "type")]
-pub enum ToolchainSource {
-    Dist {
-        name: Cow<'static, str>,
-    },
-    #[serde(rename = "ci")]
-    CI {
-        sha: Cow<'static, str>,
-        r#try: bool,
-    },
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Toolchain {
-    pub source: ToolchainSource,
+    pub source: RustwideToolchain,
     pub rustflags: Option<String>,
+    pub ci_try: bool,
 }
 
 impl Toolchain {
-    pub fn prepare(&self, workspace: &Workspace) -> Fallible<()> {
-        match self.source {
-            ToolchainSource::Dist { ref name } => init_toolchain_from_dist(workspace, name)?,
-            ToolchainSource::CI { ref sha, .. } => init_toolchain_from_ci(workspace, true, sha)?,
-        }
-
-        self.prep_offline_registry(workspace)?;
-
-        Ok(())
-    }
-
-    pub fn rustup_name(&self) -> String {
-        match self.source {
-            ToolchainSource::Dist { ref name } => name.to_string(),
-            ToolchainSource::CI { ref sha, .. } => format!("{}-alt", sha),
-        }
-    }
-
-    pub fn install_rustup_component(&self, workspace: &Workspace, component: &str) -> Fallible<()> {
-        let toolchain_name = &self.rustup_name();
-        info!(
-            "installing component {} for toolchain {}",
-            component, toolchain_name
-        );
-
-        utils::try_hard(|| {
-            Command::new(workspace, &RUSTUP)
-                .args(&["component", "add", "--toolchain", toolchain_name, component])
-                .run()
-                .with_context(|_| {
-                    format!(
-                        "unable to install component {} for toolchain {} via rustup",
-                        component, toolchain_name,
-                    )
-                })
-        })?;
-        Ok(())
-    }
-
     pub fn target_dir(&self, ex_name: &str) -> PathBuf {
         let mut dir = ex_target_dir(ex_name);
 
@@ -104,24 +51,6 @@ impl Toolchain {
         dir.join(self.to_path_component())
     }
 
-    pub fn prep_offline_registry(&self, workspace: &Workspace) -> Fallible<()> {
-        // This nop cargo command is to update the registry
-        // so we don't have to do it for each crate.
-        // using `install` is a temporary solution until
-        // https://github.com/rust-lang/cargo/pull/5961
-        // is ready
-
-        let _ = Command::new(workspace, CARGO.toolchain(self))
-            .args(&["install", "lazy_static"])
-            .no_output_timeout(None)
-            .run();
-
-        // ignore the error untill
-        // https://github.com/rust-lang/cargo/pull/5961
-        // is ready
-        Ok(())
-    }
-
     pub fn to_path_component(&self) -> String {
         use url::percent_encoding::utf8_percent_encode as encode;
 
@@ -129,12 +58,20 @@ impl Toolchain {
     }
 }
 
+impl std::ops::Deref for Toolchain {
+    type Target = RustwideToolchain;
+
+    fn deref(&self) -> &Self::Target {
+        &self.source
+    }
+}
+
 impl fmt::Display for Toolchain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.source {
-            ToolchainSource::Dist { ref name } => write!(f, "{}", name)?,
-            ToolchainSource::CI { ref sha, r#try } => {
-                if r#try {
+        match &self.source {
+            RustwideToolchain::Dist { name } => write!(f, "{}", name)?,
+            RustwideToolchain::CI { sha, .. } => {
+                if self.ci_try {
                     write!(f, "try#{}", sha)?;
                 } else {
                     write!(f, "master#{}", sha)?;
@@ -167,6 +104,7 @@ impl FromStr for Toolchain {
         let mut parts = input.split('+');
 
         let raw_source = parts.next().ok_or(ToolchainParseError::EmptyName)?;
+        let mut ci_try = false;
         let source = if let Some(hash_idx) = raw_source.find('#') {
             let (source_name, sha_with_hash) = raw_source.split_at(hash_idx);
 
@@ -176,20 +114,23 @@ impl FromStr for Toolchain {
             }
 
             match source_name {
-                "try" => ToolchainSource::CI {
+                "try" => {
+                    ci_try = true;
+                    RustwideToolchain::CI {
+                        sha: Cow::Owned(sha),
+                        alt: true,
+                    }
+                }
+                "master" => RustwideToolchain::CI {
                     sha: Cow::Owned(sha),
-                    r#try: true,
-                },
-                "master" => ToolchainSource::CI {
-                    sha: Cow::Owned(sha),
-                    r#try: false,
+                    alt: true,
                 },
                 name => return Err(ToolchainParseError::InvalidSourceName(name.to_string())),
             }
         } else if raw_source.is_empty() {
             return Err(ToolchainParseError::EmptyName);
         } else {
-            ToolchainSource::Dist {
+            RustwideToolchain::Dist {
                 name: Cow::Owned(raw_source.to_string()),
             }
         };
@@ -213,69 +154,37 @@ impl FromStr for Toolchain {
             }
         }
 
-        Ok(Toolchain { source, rustflags })
+        Ok(Toolchain {
+            source,
+            rustflags,
+            ci_try,
+        })
     }
-}
-
-fn init_toolchain_from_dist(workspace: &Workspace, toolchain: &str) -> Fallible<()> {
-    info!("installing toolchain {}", toolchain);
-    utils::try_hard(|| {
-        Command::new(workspace, &RUSTUP)
-            .args(&["toolchain", "install", toolchain])
-            .run()
-            .with_context(|_| format!("unable to install toolchain {} via rustup", toolchain))
-    })?;
-
-    Ok(())
-}
-
-fn init_toolchain_from_ci(workspace: &Workspace, alt: bool, sha: &str) -> Fallible<()> {
-    if alt {
-        info!("installing toolchain {}-alt", sha);
-    } else {
-        info!("installing toolchain {}", sha);
-    }
-
-    let mut args = vec![sha, "-c", "cargo"];
-    if alt {
-        args.push("--alt");
-    }
-
-    utils::try_hard(|| {
-        Command::new(workspace, &RUSTUP_TOOLCHAIN_INSTALL_MASTER)
-            .args(&args)
-            .run()
-            .with_context(|_| {
-                format!(
-                    "unable to install toolchain {} via rustup-toolchain-install-master",
-                    sha
-                )
-            })
-    })?;
-
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Toolchain, ToolchainSource};
+    use super::Toolchain;
+    use rustwide::Toolchain as RustwideToolchain;
     use std::str::FromStr;
 
     #[test]
     fn test_string_repr() {
         macro_rules! test_from_str {
-            ($($str:expr => $source:expr,)*) => {
+            ($($str:expr => { source: $source:expr, ci_try: $ci_try:expr, },)*) => {
                 $(
                     // Test parsing without flags
                     test_from_str!($str => Toolchain {
                         source: $source,
                         rustflags: None,
+                        ci_try: $ci_try,
                     });
 
                     // Test parsing with flags
                     test_from_str!(concat!($str, "+rustflags=foo bar") => Toolchain {
                         source: $source,
                         rustflags: Some("foo bar".to_string()),
+                        ci_try: $ci_try,
                     });
                 )*
             };
@@ -293,22 +202,37 @@ mod tests {
 
         // Test valid reprs
         test_from_str! {
-            "stable" => ToolchainSource::Dist {
-                name: "stable".into(),
+            "stable" => {
+                source:RustwideToolchain::Dist {
+                    name: "stable".into(),
+                },
+                ci_try: false,
             },
-            "beta-1970-01-01" => ToolchainSource::Dist {
-                name: "beta-1970-01-01".into(),
+            "beta-1970-01-01" => {
+                source: RustwideToolchain::Dist {
+                    name: "beta-1970-01-01".into(),
+                },
+                ci_try: false,
             },
-            "nightly-1970-01-01" => ToolchainSource::Dist {
-                name: "nightly-1970-01-01".into(),
+            "nightly-1970-01-01" => {
+                source: RustwideToolchain::Dist {
+                    name: "nightly-1970-01-01".into(),
+                },
+                ci_try: false,
             },
-            "master#0000000000000000000000000000000000000000" => ToolchainSource::CI {
-                sha: "0000000000000000000000000000000000000000".into(),
-                r#try: false,
+            "master#0000000000000000000000000000000000000000" => {
+                source: RustwideToolchain::CI {
+                    sha: "0000000000000000000000000000000000000000".into(),
+                    alt: true,
+                },
+                ci_try: false,
             },
-            "try#0000000000000000000000000000000000000000" => ToolchainSource::CI {
-                sha: "0000000000000000000000000000000000000000".into(),
-                r#try: true,
+            "try#0000000000000000000000000000000000000000" => {
+                source: RustwideToolchain::CI {
+                    sha: "0000000000000000000000000000000000000000".into(),
+                    alt: true,
+                },
+                ci_try: true,
             },
         };
 

@@ -6,6 +6,7 @@ use crate::prelude::*;
 use crate::toolchain::MAIN_TOOLCHAIN;
 use crate::tools::binary_crates::BinaryCrate;
 use crate::tools::rustup::{Cargo, Rustup};
+use rustwide::Workspace;
 use std::env::consts::EXE_SUFFIX;
 use std::path::PathBuf;
 
@@ -43,18 +44,18 @@ fn binary_path(name: &str) -> PathBuf {
 trait InstallableTool: Send + Sync {
     fn name(&self) -> &'static str;
     fn is_installed(&self) -> Fallible<bool>;
-    fn install(&self) -> Fallible<()>;
-    fn update(&self) -> Fallible<()>;
+    fn install(&self, workspace: &Workspace) -> Fallible<()>;
+    fn update(&self, workspace: &Workspace) -> Fallible<()>;
 }
 
-pub(crate) fn install() -> Fallible<()> {
+pub(crate) fn install(workspace: &Workspace) -> Fallible<()> {
     for tool in INSTALLABLE_TOOLS {
         if tool.is_installed()? {
             info!("tool {} is installed, trying to update it", tool.name());
-            tool.update()?;
+            tool.update(workspace)?;
         } else {
             info!("tool {} is missing, installing it", tool.name());
-            tool.install()?;
+            tool.install(workspace)?;
 
             if !tool.is_installed()? {
                 bail!("tool {} is still missing after install", tool.name());

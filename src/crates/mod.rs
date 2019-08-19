@@ -3,6 +3,7 @@ mod sources;
 
 use crate::dirs::LOCAL_CRATES_DIR;
 use crate::prelude::*;
+use rustwide::Workspace;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -36,15 +37,15 @@ impl Crate {
         components.into_iter().collect()
     }
 
-    pub(crate) fn fetch(&self) -> Fallible<()> {
+    pub(crate) fn fetch(&self, workspace: &Workspace) -> Fallible<()> {
         match *self {
             Crate::Registry(ref krate) => krate.fetch(),
-            Crate::GitHub(ref repo) => repo.fetch(),
+            Crate::GitHub(ref repo) => repo.fetch(workspace),
             Crate::Local(_) => Ok(()),
         }
     }
 
-    pub(crate) fn copy_to(&self, dest: &Path) -> Fallible<()> {
+    pub(crate) fn copy_to(&self, dest: &Path, workspace: &Workspace) -> Fallible<()> {
         if dest.exists() {
             info!(
                 "crate source directory {} already exists, cleaning it up",
@@ -54,7 +55,7 @@ impl Crate {
         }
         match *self {
             Crate::Registry(ref details) => details.copy_to(&dest)?,
-            Crate::GitHub(ref repo) => repo.copy_to(&dest)?,
+            Crate::GitHub(ref repo) => repo.copy_to(&dest, workspace)?,
             Crate::Local(ref name) => {
                 info!("copying local crate {} to {}", name, dest.display());
                 crate::utils::fs::copy_dir(&LOCAL_CRATES_DIR.join(name), &dest)?;

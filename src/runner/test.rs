@@ -1,20 +1,19 @@
 use crate::dirs;
-use crate::docker::{DockerError, MountPerms};
 use crate::prelude::*;
 use crate::results::{EncodingType, FailureReason, TestResult, WriteResults};
-use crate::run::{RunCommand, RunCommandError};
 use crate::runner::tasks::TaskCtx;
 use crate::tools::CARGO;
 use failure::Error;
+use rustwide::cmd::{Command, CommandError, MountKind, SandboxBuilder};
 use std::path::Path;
 
 fn failure_reason(err: &Error) -> FailureReason {
     for cause in err.iter_chain() {
-        if let Some(&DockerError::ContainerOOM) = cause.downcast_ctx() {
+        if let Some(&CommandError::SandboxOOM) = cause.downcast_ctx() {
             return FailureReason::OOM;
-        } else if let Some(&RunCommandError::NoOutputFor(_)) = cause.downcast_ctx() {
+        } else if let Some(&CommandError::NoOutputFor(_)) = cause.downcast_ctx() {
             return FailureReason::Timeout;
-        } else if let Some(&RunCommandError::Timeout(_)) = cause.downcast_ctx() {
+        } else if let Some(&CommandError::Timeout(_)) = cause.downcast_ctx() {
             return FailureReason::Timeout;
         }
     }
@@ -42,25 +41,30 @@ fn run_cargo<DB: WriteResults>(
         "RUSTFLAGS"
     };
 
-    RunCommand::new(CARGO.toolchain(ctx.toolchain))
-        .args(args)
-        .quiet(ctx.quiet)
-        .cd(source_path)
-        .env(
-            "CARGO_TARGET_DIR",
-            dirs::container::TARGET_DIR.to_str().unwrap(),
-        )
-        .env("CARGO_INCREMENTAL", "0")
-        .env("RUST_BACKTRACE", "full")
-        .env(rustflags_env, rustflags)
-        .sandboxed(&ctx.docker_env)
+    let sandbox = SandboxBuilder::new()
+        .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
+        .enable_networking(false)
         .mount(
-            target_dir,
-            &*dirs::container::TARGET_DIR,
-            MountPerms::ReadWrite,
-        )
-        .memory_limit(Some(ctx.config.sandbox.memory_limit))
-        .run()?;
+            &target_dir,
+            &dirs::container::TARGET_DIR,
+            MountKind::ReadWrite,
+        );
+
+    let mut command =
+        Command::new_sandboxed(ctx.workspace, sandbox, CARGO.toolchain(ctx.toolchain))
+            .args(args)
+            .cd(source_path)
+            .env(
+                "CARGO_TARGET_DIR",
+                dirs::container::TARGET_DIR.to_str().unwrap(),
+            )
+            .env("CARGO_INCREMENTAL", "0")
+            .env("RUST_BACKTRACE", "full")
+            .env(rustflags_env, rustflags);
+    if ctx.quiet {
+        command = command.no_output_timeout(None);
+    }
+    command.run()?;
 
     Ok(())
 }

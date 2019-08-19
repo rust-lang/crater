@@ -3,14 +3,16 @@ use crate::dirs::crate_source_dir;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{BrokenReason, TestResult, WriteResults};
-use crate::run::RunCommand;
+
 use crate::runner::toml_frobber::TomlFrobber;
 use crate::runner::OverrideResult;
 use crate::toolchain::Toolchain;
 use crate::tools::CARGO;
+use rustwide::{cmd::Command, Workspace};
 use std::path::PathBuf;
 
 pub(super) struct PrepareCrate<'a, DB: WriteResults + 'a> {
+    workspace: &'a Workspace,
     experiment: &'a Experiment,
     krate: &'a Crate,
     db: &'a DB,
@@ -19,7 +21,12 @@ pub(super) struct PrepareCrate<'a, DB: WriteResults + 'a> {
 }
 
 impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
-    pub(super) fn new(experiment: &'a Experiment, krate: &'a Crate, db: &'a DB) -> Self {
+    pub(super) fn new(
+        workspace: &'a Workspace,
+        experiment: &'a Experiment,
+        krate: &'a Crate,
+        db: &'a DB,
+    ) -> Self {
         let source_dirs = experiment
             .toolchains
             .iter()
@@ -27,6 +34,7 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
             .collect();
 
         PrepareCrate {
+            workspace,
             experiment,
             krate,
             db,
@@ -36,9 +44,9 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
     }
 
     pub(super) fn prepare(&mut self) -> Fallible<()> {
-        self.krate.fetch()?;
+        self.krate.fetch(self.workspace)?;
         for (_, source_dir) in &self.source_dirs {
-            self.krate.copy_to(source_dir)?;
+            self.krate.copy_to(source_dir, self.workspace)?;
         }
         self.capture_sha()?;
         self.validate_manifest()?;
@@ -51,14 +59,14 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
     fn capture_sha(&self) -> Fallible<()> {
         if let Crate::GitHub(ref repo) = self.krate {
             let dir = repo.cached_path();
-            let r = RunCommand::new("git")
+            let r = Command::new(self.workspace, "git")
                 .args(&["rev-parse", "HEAD"])
                 .cd(&dir)
                 .run_capture();
 
             let sha = match r {
-                Ok((stdout, _)) => {
-                    if let Some(shaline) = stdout.get(0) {
+                Ok(out) => {
+                    if let Some(shaline) = out.stdout_lines().get(0) {
                         if !shaline.is_empty() {
                             info!("sha for GitHub repo {}: {}", repo.slug(), shaline);
                             shaline.to_string()
@@ -94,10 +102,10 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
                 )?;
             }
 
-            RunCommand::new(CARGO.toolchain(tc))
+            Command::new(self.workspace, CARGO.toolchain(tc))
                 .args(&["read-manifest", "--manifest-path", "Cargo.toml"])
                 .cd(source_dir)
-                .hide_output(true)
+                .log_output(false)
                 .run()
                 .with_context(|_| format!("invalid syntax in {}'s Cargo.toml", self.krate))
                 .with_context(|_| {
@@ -128,20 +136,23 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
             }
 
             let mut yanked_deps = false;
-            let res = RunCommand::new(CARGO.toolchain(toolchain).unstable_features(true))
-                .args(&[
-                    "generate-lockfile",
-                    "--manifest-path",
-                    "Cargo.toml",
-                    "-Zno-index-update",
-                ])
-                .cd(source_dir)
-                .process_lines(&mut |line| {
-                    if line.contains("failed to select a version for the requirement") {
-                        yanked_deps = true;
-                    }
-                })
-                .run();
+            let res = Command::new(
+                self.workspace,
+                CARGO.toolchain(toolchain).unstable_features(true),
+            )
+            .args(&[
+                "generate-lockfile",
+                "--manifest-path",
+                "Cargo.toml",
+                "-Zno-index-update",
+            ])
+            .cd(source_dir)
+            .process_lines(&mut |line| {
+                if line.contains("failed to select a version for the requirement") {
+                    yanked_deps = true;
+                }
+            })
+            .run();
             match res {
                 Err(_) if yanked_deps => {
                     return Err(
@@ -162,7 +173,7 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
     fn fetch_deps(&mut self) -> Fallible<()> {
         for (toolchain, source_dir) in &self.source_dirs {
             let mut outdated_lockfile = false;
-            let res = RunCommand::new(CARGO.toolchain(toolchain))
+            let res = Command::new(self.workspace, CARGO.toolchain(toolchain))
                 .args(&["fetch", "--locked", "--manifest-path", "Cargo.toml"])
                 .cd(source_dir)
                 .process_lines(&mut |line| {

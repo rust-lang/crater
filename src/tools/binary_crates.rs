@@ -1,7 +1,8 @@
 use crate::native;
 use crate::prelude::*;
-use crate::run::{Binary, RunCommand, Runnable};
 use crate::tools::{binary_path, InstallableTool, CARGO, CARGO_INSTALL_UPDATE};
+use rustwide::cmd::{Binary, Command, Runnable};
+use rustwide::Workspace;
 
 pub(crate) struct BinaryCrate {
     pub(in crate::tools) crate_name: &'static str,
@@ -10,20 +11,19 @@ pub(crate) struct BinaryCrate {
 }
 
 impl Runnable for BinaryCrate {
-    fn binary(&self) -> Binary {
-        if self.cargo_subcommand.is_some() {
-            Binary::InstalledByCrater("cargo".into())
+    fn name(&self) -> Binary {
+        Binary::ManagedByRustwide(if self.cargo_subcommand.is_some() {
+            "cargo".into()
         } else {
-            Binary::InstalledByCrater(self.binary.into())
-        }
+            self.binary.into()
+        })
     }
 
-    fn prepare_command<'pl>(&self, mut cmd: RunCommand<'pl>) -> RunCommand<'pl> {
+    fn prepare_command<'w, 'pl>(&self, mut cmd: Command<'w, 'pl>) -> Command<'w, 'pl> {
         if let Some(subcommand) = self.cargo_subcommand {
             cmd = cmd.args(&[subcommand]);
         }
-
-        cmd.local_rustup(true)
+        cmd
     }
 }
 
@@ -41,18 +41,18 @@ impl InstallableTool for BinaryCrate {
         Ok(native::is_executable(path)?)
     }
 
-    fn install(&self) -> Fallible<()> {
-        RunCommand::new(&CARGO)
+    fn install(&self, workspace: &Workspace) -> Fallible<()> {
+        Command::new(workspace, &CARGO)
             .args(&["install", self.crate_name])
-            .enable_timeout(false)
+            .timeout(None)
             .run()?;
         Ok(())
     }
 
-    fn update(&self) -> Fallible<()> {
-        RunCommand::new(&CARGO_INSTALL_UPDATE)
+    fn update(&self, workspace: &Workspace) -> Fallible<()> {
+        Command::new(workspace, &CARGO_INSTALL_UPDATE)
             .args(&[self.crate_name])
-            .enable_timeout(false)
+            .timeout(None)
             .run()?;
         Ok(())
     }

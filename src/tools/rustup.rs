@@ -1,13 +1,17 @@
 use crate::dirs::{CARGO_HOME, RUSTUP_HOME};
 use crate::native;
 use crate::prelude::*;
-use crate::run::{Binary, RunCommand, Runnable};
 use crate::toolchain::Toolchain;
 use crate::toolchain::MAIN_TOOLCHAIN_NAME;
 use crate::tools::{binary_path, InstallableTool, RUSTUP};
+use rustwide::{
+    cmd::{Binary, Command, Runnable},
+    Workspace,
+};
 use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
 use std::io;
+
 use tempfile::tempdir;
 
 static RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
@@ -15,12 +19,8 @@ static RUSTUP_BASE_URL: &str = "https://static.rust-lang.org/rustup/dist";
 pub(crate) struct Rustup;
 
 impl Runnable for Rustup {
-    fn binary(&self) -> Binary {
-        Binary::InstalledByCrater("rustup".into())
-    }
-
-    fn prepare_command<'pl>(&self, cmd: RunCommand<'pl>) -> RunCommand<'pl> {
-        cmd.local_rustup(true)
+    fn name(&self) -> Binary {
+        Binary::ManagedByRustwide("rustup".into())
     }
 }
 
@@ -38,7 +38,7 @@ impl InstallableTool for Rustup {
         Ok(native::is_executable(path)?)
     }
 
-    fn install(&self) -> Fallible<()> {
+    fn install(&self, workspace: &Workspace) -> Fallible<()> {
         fs::create_dir_all(&*CARGO_HOME)?;
         fs::create_dir_all(&*RUSTUP_HOME)?;
 
@@ -59,29 +59,30 @@ impl InstallableTool for Rustup {
             native::make_executable(installer)?;
         }
 
-        // TODO(rustup.rs#998): Remove `.quiet(true)` once rust-docs is no longer a mandatory
-        // component.
-        RunCommand::new(installer.to_string_lossy().as_ref())
+        // TODO(rustup.rs#998): Remove `.no_output_timeout(true)` once rust-docs is no longer a
+        // mandatory component.
+        Command::new(workspace, installer.to_string_lossy().as_ref())
             .args(&[
                 "-y",
                 "--no-modify-path",
                 "--default-toolchain",
                 MAIN_TOOLCHAIN_NAME,
             ])
-            .quiet(true)
-            .local_rustup(true)
+            .no_output_timeout(None)
+            .env("RUSTUP_HOME", &*RUSTUP_HOME)
+            .env("CARGO_HOME", &*CARGO_HOME)
             .run()
             .with_context(|_| "unable to install rustup")?;
 
         Ok(())
     }
 
-    fn update(&self) -> Fallible<()> {
-        RunCommand::new(&RUSTUP)
+    fn update(&self, workspace: &Workspace) -> Fallible<()> {
+        Command::new(workspace, &RUSTUP)
             .args(&["self", "update"])
             .run()
             .with_context(|_| "failed to update rustup")?;
-        RunCommand::new(&RUSTUP)
+        Command::new(workspace, &RUSTUP)
             .args(&["update", MAIN_TOOLCHAIN_NAME])
             .run()
             .with_context(|_| format!("failed to update main toolchain {}", MAIN_TOOLCHAIN_NAME))?;
@@ -110,17 +111,16 @@ impl<'a> Cargo<'a> {
     }
 }
 
-impl<'a> Runnable for Cargo<'a> {
-    fn binary(&self) -> Binary {
-        Binary::InstalledByCrater("cargo".into())
+impl<'a> Runnable for Cargo<'_> {
+    fn name(&self) -> Binary {
+        Binary::ManagedByRustwide("cargo".into())
     }
 
-    fn prepare_command<'pl>(&self, mut cmd: RunCommand<'pl>) -> RunCommand<'pl> {
+    fn prepare_command<'w, 'pl>(&self, mut cmd: Command<'w, 'pl>) -> Command<'w, 'pl> {
         if self.unstable_features {
             cmd = cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
         }
 
         cmd.args(&[format!("+{}", self.toolchain.rustup_name())])
-            .local_rustup(true)
     }
 }

@@ -21,16 +21,12 @@ use crater::runner;
 use crater::server;
 use crater::toolchain::Toolchain;
 use failure::{bail, Error, Fallible};
+use rustwide::{cmd::SandboxImage, Workspace, WorkspaceBuilder};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::time::Duration;
 use structopt::clap::AppSettings;
-
-#[cfg(windows)]
-static DEFAULT_DOCKER_ENV: &str = "rustops/crates-build-env-windows";
-
-#[cfg(not(windows))]
-static DEFAULT_DOCKER_ENV: &str = "rustops/crates-build-env";
 
 // An experiment name
 #[derive(Debug, Clone)]
@@ -415,10 +411,6 @@ impl Crater {
                 threads,
                 ref docker_env,
             } => {
-                let docker_env = docker_env
-                    .as_ref()
-                    .map(|e| e.as_str())
-                    .unwrap_or(DEFAULT_DOCKER_ENV);
                 let config = Config::load()?;
                 let db = Database::open()?;
 
@@ -440,11 +432,11 @@ impl Crater {
                     let result_db = DatabaseDB::new(&db);
                     runner::run_ex(
                         &experiment,
+                        &self.workspace(docker_env.as_ref().map(|s| s.as_str()))?,
                         &experiment.get_uncompleted_crates(&db)?,
                         &result_db,
                         threads,
                         &config,
-                        docker_env,
                     )?;
                     experiment.set_status(&db, Status::NeedsReport)?;
                 } else {
@@ -543,11 +535,12 @@ impl Crater {
                 threads,
                 ref docker_env,
             } => {
-                let docker_env = docker_env
-                    .as_ref()
-                    .map(|e| e.as_str())
-                    .unwrap_or(DEFAULT_DOCKER_ENV);
-                agent::run(url, token, threads, docker_env)?;
+                agent::run(
+                    url,
+                    token,
+                    threads,
+                    &self.workspace(docker_env.as_ref().map(|s| s.as_str()))?,
+                )?;
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
                 let config = Config::load()?;
@@ -567,5 +560,19 @@ impl Crater {
         }
 
         Ok(())
+    }
+
+    fn workspace(&self, docker_env: Option<&str>) -> Result<Workspace, Error> {
+        let mut builder = WorkspaceBuilder::new(&crater::dirs::WORK_DIR)
+            .command_timeout(Some(Duration::from_secs(15 * 60)))
+            .command_no_output_timeout(Some(Duration::from_secs(5 * 60)));
+        if let Some(env) = docker_env {
+            builder = builder.sandbox_image(if env.contains('/') {
+                SandboxImage::remote(env)?
+            } else {
+                SandboxImage::local(env)?
+            });
+        }
+        Ok(builder.init()?)
     }
 }

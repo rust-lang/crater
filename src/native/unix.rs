@@ -1,18 +1,10 @@
 use crate::prelude::*;
-use nix::{
-    sys::signal::{kill, Signal},
-    unistd::{Gid, Pid, Uid},
-};
+use nix::unistd::{Gid, Uid};
 use std::convert::AsRef;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::Path;
 
 const EXECUTABLE_BITS: u32 = 0o5;
-
-pub(crate) fn kill_process(id: u32) -> Fallible<()> {
-    kill(Pid::from_raw(id as i32), Signal::SIGKILL)?;
-    Ok(())
-}
 
 pub(crate) fn current_user() -> Option<u32> {
     Some(Uid::effective().into())
@@ -55,22 +47,10 @@ pub(crate) fn make_executable<P: AsRef<Path>>(path: P) -> Fallible<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{current_group, current_user, is_executable, kill_process, make_executable};
+    use super::{current_group, current_user, is_executable, make_executable};
     use nix::unistd::{Gid, Uid};
     use std::fs::File;
-    use std::os::unix::process::ExitStatusExt;
-    use std::process::Command;
     use tempfile::tempdir;
-
-    #[test]
-    fn test_kill_process() {
-        // Try to kill a sleep command
-        let mut cmd = Command::new("sleep").args(&["2"]).spawn().unwrap();
-        kill_process(cmd.id()).unwrap();
-
-        // Ensure it was killed with SIGKILL
-        assert_eq!(cmd.wait().unwrap().signal(), Some(9));
-    }
 
     #[test]
     fn test_current_user() {

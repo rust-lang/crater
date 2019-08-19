@@ -76,3 +76,5 @@ predicates = "1.0.0"
 
 [workspace]
 members = ["rustwide"]
+# Prevent Crater from breaking when it tries to run experiments.
+exclude = ["work"]

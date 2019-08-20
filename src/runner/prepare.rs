@@ -7,8 +7,8 @@ use crate::results::{BrokenReason, TestResult, WriteResults};
 use crate::runner::toml_frobber::TomlFrobber;
 use crate::runner::OverrideResult;
 use crate::toolchain::Toolchain;
-use crate::tools::CARGO;
-use rustwide::{cmd::Command, Workspace};
+use rustwide::cmd::Command;
+use rustwide::Workspace;
 use std::path::PathBuf;
 
 pub(super) struct PrepareCrate<'a, DB: WriteResults + 'a> {
@@ -102,7 +102,7 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
                 )?;
             }
 
-            Command::new(self.workspace, CARGO.toolchain(tc))
+            Command::new(self.workspace, tc.cargo())
                 .args(&["read-manifest", "--manifest-path", "Cargo.toml"])
                 .cd(source_dir)
                 .log_output(false)
@@ -136,23 +136,21 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
             }
 
             let mut yanked_deps = false;
-            let res = Command::new(
-                self.workspace,
-                CARGO.toolchain(toolchain).unstable_features(true),
-            )
-            .args(&[
-                "generate-lockfile",
-                "--manifest-path",
-                "Cargo.toml",
-                "-Zno-index-update",
-            ])
-            .cd(source_dir)
-            .process_lines(&mut |line| {
-                if line.contains("failed to select a version for the requirement") {
-                    yanked_deps = true;
-                }
-            })
-            .run();
+            let res = Command::new(self.workspace, toolchain.cargo())
+                .args(&[
+                    "generate-lockfile",
+                    "--manifest-path",
+                    "Cargo.toml",
+                    "-Zno-index-update",
+                ])
+                .env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly")
+                .cd(source_dir)
+                .process_lines(&mut |line| {
+                    if line.contains("failed to select a version for the requirement") {
+                        yanked_deps = true;
+                    }
+                })
+                .run();
             match res {
                 Err(_) if yanked_deps => {
                     return Err(
@@ -173,7 +171,7 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
     fn fetch_deps(&mut self) -> Fallible<()> {
         for (toolchain, source_dir) in &self.source_dirs {
             let mut outdated_lockfile = false;
-            let res = Command::new(self.workspace, CARGO.toolchain(toolchain))
+            let res = Command::new(self.workspace, toolchain.cargo())
                 .args(&["fetch", "--locked", "--manifest-path", "Cargo.toml"])
                 .cd(source_dir)
                 .process_lines(&mut |line| {

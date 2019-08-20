@@ -83,17 +83,14 @@ fn run_ex_inner<DB: WriteResults + Sync>(
     threads_count: usize,
     config: &Config,
 ) -> Fallible<()> {
-    info!("ensuring all the tools are installed");
-    crate::tools::install(workspace)?;
-
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(ex, crates, config));
 
     info!("preparing the execution...");
     for tc in &ex.toolchains {
-        tc.prepare(workspace)?;
+        tc.install(workspace)?;
         if ex.mode == Mode::Clippy {
-            tc.install_rustup_component(workspace, "clippy")?;
+            tc.add_component(workspace, "clippy")?;
         }
     }
 

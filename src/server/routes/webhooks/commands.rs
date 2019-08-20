@@ -8,7 +8,8 @@ use crate::server::routes::webhooks::args::{
     AbortArgs, EditArgs, RetryArgs, RetryReportArgs, RunArgs,
 };
 use crate::server::Data;
-use crate::toolchain::{Toolchain, ToolchainSource};
+use crate::toolchain::Toolchain;
+use rustwide::Toolchain as RustwideToolchain;
 
 pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
     Message::new()
@@ -35,18 +36,20 @@ pub fn run(
         {
             try_build = Some(build.merge_sha.clone());
             detected_start = Some(Toolchain {
-                source: ToolchainSource::CI {
+                source: RustwideToolchain::CI {
                     sha: build.base_sha.into(),
-                    r#try: false,
+                    alt: true,
                 },
                 rustflags: None,
+                ci_try: false,
             });
             detected_end = Some(Toolchain {
-                source: ToolchainSource::CI {
+                source: RustwideToolchain::CI {
                     sha: build.merge_sha.into(),
-                    r#try: true,
+                    alt: true,
                 },
                 rustflags: None,
+                ci_try: true,
             });
         }
     }

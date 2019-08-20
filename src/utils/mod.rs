@@ -13,14 +13,6 @@ mod macros;
 pub mod size;
 pub(crate) mod string;
 
-pub(crate) fn try_hard<F, R, E>(f: F) -> Result<R, E>
-where
-    F: Fn() -> Result<R, E>,
-    E: Display,
-{
-    try_hard_limit(1000, f)
-}
-
 pub(crate) fn try_hard_limit<F, R, E>(ms: usize, f: F) -> Result<R, E>
 where
     F: Fn() -> Result<R, E>,

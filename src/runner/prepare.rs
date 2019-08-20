@@ -44,9 +44,10 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
     }
 
     pub(super) fn prepare(&mut self) -> Fallible<()> {
-        self.krate.fetch(self.workspace)?;
+        let krate = self.krate.to_rustwide();
+        krate.fetch(self.workspace)?;
         for (_, source_dir) in &self.source_dirs {
-            self.krate.copy_to(source_dir, self.workspace)?;
+            krate.copy_source_to(self.workspace, source_dir)?;
         }
         self.capture_sha()?;
         self.validate_manifest()?;
@@ -58,7 +59,7 @@ impl<'a, DB: WriteResults + 'a> PrepareCrate<'a, DB> {
 
     fn capture_sha(&self) -> Fallible<()> {
         if let Crate::GitHub(ref repo) = self.krate {
-            let dir = repo.cached_path();
+            let dir = &self.source_dirs[0].1;
             let r = Command::new(self.workspace, "git")
                 .args(&["rev-parse", "HEAD"])
                 .cd(&dir)

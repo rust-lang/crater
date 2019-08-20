@@ -7,6 +7,7 @@
 //! [crater]: https://github.com/rust-lang/crater
 
 pub mod cmd;
+mod crates;
 pub mod logging;
 mod native;
 mod toolchain;
@@ -14,6 +15,7 @@ mod tools;
 mod utils;
 mod workspace;
 
+pub use crate::crates::Crate;
 pub use crate::toolchain::Toolchain;
 pub use crate::workspace::{Workspace, WorkspaceBuilder};
 

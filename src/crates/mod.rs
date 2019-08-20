@@ -3,9 +3,9 @@ mod sources;
 
 use crate::dirs::LOCAL_CRATES_DIR;
 use crate::prelude::*;
-use rustwide::Workspace;
+use rustwide::Crate as RustwideCrate;
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 pub(crate) use crate::crates::sources::github::GitHubRepo;
@@ -37,32 +37,14 @@ impl Crate {
         components.into_iter().collect()
     }
 
-    pub(crate) fn fetch(&self, workspace: &Workspace) -> Fallible<()> {
-        match *self {
-            Crate::Registry(ref krate) => krate.fetch(),
-            Crate::GitHub(ref repo) => repo.fetch(workspace),
-            Crate::Local(_) => Ok(()),
-        }
-    }
-
-    pub(crate) fn copy_to(&self, dest: &Path, workspace: &Workspace) -> Fallible<()> {
-        if dest.exists() {
-            info!(
-                "crate source directory {} already exists, cleaning it up",
-                dest.display()
-            );
-            crate::utils::fs::remove_dir_all(dest)?;
-        }
-        match *self {
-            Crate::Registry(ref details) => details.copy_to(&dest)?,
-            Crate::GitHub(ref repo) => repo.copy_to(&dest, workspace)?,
-            Crate::Local(ref name) => {
-                info!("copying local crate {} to {}", name, dest.display());
-                crate::utils::fs::copy_dir(&LOCAL_CRATES_DIR.join(name), &dest)?;
+    pub(crate) fn to_rustwide(&self) -> RustwideCrate {
+        match self {
+            Self::Registry(krate) => RustwideCrate::crates_io(&krate.name, &krate.version),
+            Self::GitHub(repo) => {
+                RustwideCrate::git(&format!("https://github.com/{}/{}", repo.org, repo.name))
             }
+            Self::Local(name) => RustwideCrate::local(&LOCAL_CRATES_DIR.join(name)),
         }
-
-        Ok(())
     }
 }
 

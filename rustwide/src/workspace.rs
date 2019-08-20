@@ -126,6 +126,10 @@ impl Workspace {
         self.path.join("local").join("rustup-home")
     }
 
+    pub(crate) fn cache_dir(&self) -> PathBuf {
+        self.path.join("cache")
+    }
+
     pub(crate) fn sandbox_image(&self) -> &SandboxImage {
         &self.sandbox_image
     }

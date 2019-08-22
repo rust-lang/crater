@@ -1,8 +1,10 @@
+use crate::build::BuildDirectory;
 use crate::cmd::{Command, SandboxImage};
 use crate::Toolchain;
 use failure::{Error, ResultExt};
 use log::info;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 #[cfg(windows)]
@@ -91,21 +93,20 @@ impl WorkspaceBuilder {
             .build()?;
 
         let ws = Workspace {
-            http,
-            path: self.path,
-            sandbox_image,
-            command_timeout: self.command_timeout,
-            command_no_output_timeout: self.command_no_output_timeout,
+            inner: Arc::new(WorkspaceInner {
+                http,
+                path: self.path,
+                sandbox_image,
+                command_timeout: self.command_timeout,
+                command_no_output_timeout: self.command_no_output_timeout,
+            }),
         };
         ws.init()?;
         Ok(ws)
     }
 }
 
-/// Directory on the filesystem containing rustwide's state and caches.
-///
-/// Use [`WorkspaceBuilder`](struct.WorkspaceBuilder.html) to create a new instance of it.
-pub struct Workspace {
+struct WorkspaceInner {
     http: reqwest::Client,
     path: PathBuf,
     sandbox_image: SandboxImage,
@@ -113,33 +114,60 @@ pub struct Workspace {
     command_no_output_timeout: Option<Duration>,
 }
 
+/// Directory on the filesystem containing rustwide's state and caches.
+///
+/// Use [`WorkspaceBuilder`](struct.WorkspaceBuilder.html) to create a new instance of it.
+pub struct Workspace {
+    inner: Arc<WorkspaceInner>,
+}
+
 impl Workspace {
+    /// Open a named build directory inside the workspace.
+    pub fn build_dir(&self, name: &str) -> BuildDirectory {
+        BuildDirectory::new(
+            Workspace {
+                inner: self.inner.clone(),
+            },
+            name,
+        )
+    }
+
+    /// Remove all the contents of all the build directories, freeing disk space.
+    pub fn purge_all_build_dirs(&self) -> Result<(), Error> {
+        std::fs::remove_dir_all(self.builds_dir())?;
+        Ok(())
+    }
+
     pub(crate) fn http_client(&self) -> &reqwest::Client {
-        &self.http
+        &self.inner.http
     }
 
     pub(crate) fn cargo_home(&self) -> PathBuf {
-        self.path.join("local").join("cargo-home")
+        self.inner.path.join("local").join("cargo-home")
     }
 
     pub(crate) fn rustup_home(&self) -> PathBuf {
-        self.path.join("local").join("rustup-home")
+        self.inner.path.join("local").join("rustup-home")
     }
 
     pub(crate) fn cache_dir(&self) -> PathBuf {
-        self.path.join("cache")
+        self.inner.path.join("cache")
+    }
+
+    pub(crate) fn builds_dir(&self) -> PathBuf {
+        self.inner.path.join("builds")
     }
 
     pub(crate) fn sandbox_image(&self) -> &SandboxImage {
-        &self.sandbox_image
+        &self.inner.sandbox_image
     }
 
     pub(crate) fn default_command_timeout(&self) -> Option<Duration> {
-        self.command_timeout
+        self.inner.command_timeout
     }
 
     pub(crate) fn default_command_no_output_timeout(&self) -> Option<Duration> {
-        self.command_no_output_timeout
+        self.inner.command_no_output_timeout
     }
 
     fn init(&self) -> Result<(), Error> {

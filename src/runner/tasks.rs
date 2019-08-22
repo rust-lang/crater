@@ -1,20 +1,20 @@
 use crate::config::Config;
 use crate::crates::Crate;
-use crate::dirs;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{EncodingType, TestResult, WriteResults};
-use crate::runner::{prepare::PrepareCrate, test, RunnerState};
+use crate::runner::{test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use failure::AsFail;
-use rustwide::Workspace;
+use rustwide::{BuildDirectory, Workspace};
+use std::sync::Mutex;
 
 use rustwide::logging::{self, LogStorage};
 use std::fmt;
 
 pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
-    pub(super) workspace: &'ctx Workspace,
+    pub(super) build_dir: &'ctx Mutex<BuildDirectory>,
     pub(super) config: &'ctx Config,
     pub(super) db: &'ctx DB,
     pub(super) experiment: &'ctx Experiment,
@@ -26,7 +26,7 @@ pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
 
 impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
     fn new(
-        workspace: &'ctx Workspace,
+        build_dir: &'ctx Mutex<BuildDirectory>,
         config: &'ctx Config,
         db: &'ctx DB,
         experiment: &'ctx Experiment,
@@ -36,7 +36,7 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
         quiet: bool,
     ) -> Self {
         TaskCtx {
-            workspace,
+            build_dir,
             config,
             db,
             experiment,
@@ -157,20 +157,17 @@ impl Task {
         Ok(())
     }
 
-    pub(super) fn run<DB: WriteResults>(
-        &self,
-        config: &Config,
+    pub(super) fn run<'ctx, 's: 'ctx, DB: WriteResults>(
+        &'s self,
+        config: &'ctx Config,
         workspace: &Workspace,
-        ex: &Experiment,
-        db: &DB,
-        state: &RunnerState,
+        build_dir: &'ctx Mutex<BuildDirectory>,
+        ex: &'ctx Experiment,
+        db: &'ctx DB,
+        state: &'ctx RunnerState,
     ) -> Fallible<()> {
         match self.step {
             TaskStep::Cleanup => {
-                // Ensure source directories are cleaned up
-                for tc in &ex.toolchains {
-                    let _ = utils::fs::remove_dir_all(&dirs::crate_source_dir(ex, tc, &self.krate));
-                }
                 // Remove stored logs
                 state.lock().prepare_logs.remove(&self.krate);
             }
@@ -181,32 +178,43 @@ impl Task {
                     .prepare_logs
                     .insert(self.krate.clone(), storage.clone());
                 logging::capture(&storage, || {
-                    let mut prepare = PrepareCrate::new(workspace, ex, &self.krate, db);
-                    prepare.prepare()
+                    let rustwide_crate = self.krate.to_rustwide();
+                    rustwide_crate.fetch(workspace)?;
+
+                    if let Crate::GitHub(repo) = &self.krate {
+                        if let Some(sha) = rustwide_crate.git_commit(workspace) {
+                            db.record_sha(ex, repo, &sha).with_context(|_| {
+                                format!("failed to record the sha of GitHub repo {}", repo.slug())
+                            })?;
+                        } else {
+                            bail!("unable to capture sha for {}", repo.slug());
+                        }
+                    }
+                    Ok(())
                 })?;
             }
             TaskStep::BuildAndTest { ref tc, quiet } => {
-                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
+                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("testing", &ctx, test::test_build_and_test)?;
             }
             TaskStep::BuildOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
+                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("building", &ctx, test::test_build_only)?;
             }
             TaskStep::CheckOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
+                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("checking", &ctx, test::test_check_only)?;
             }
             TaskStep::Clippy { ref tc, quiet } => {
-                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
+                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("linting", &ctx, test::test_clippy_only)?;
             }
             TaskStep::Rustdoc { ref tc, quiet } => {
-                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, quiet);
+                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
                 test::run_test("documenting", &ctx, test::test_rustdoc)?;
             }
             TaskStep::UnstableFeatures { ref tc } => {
-                let ctx = TaskCtx::new(workspace, config, db, ex, tc, &self.krate, state, false);
+                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, false);
                 test::run_test(
                     "checking unstable",
                     &ctx,

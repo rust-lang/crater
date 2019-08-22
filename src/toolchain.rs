@@ -1,15 +1,9 @@
-use crate::dirs::TARGET_DIR;
 use crate::prelude::*;
 use crate::utils;
 use rustwide::Toolchain as RustwideToolchain;
 use std::borrow::Cow;
 use std::fmt;
-use std::path::PathBuf;
 use std::str::FromStr;
-
-pub fn ex_target_dir(ex_name: &str) -> PathBuf {
-    TARGET_DIR.join(ex_name)
-}
 
 /// This toolchain is used during internal tests, and must be different than TEST_TOOLCHAIN
 #[cfg(test)]
@@ -39,22 +33,10 @@ pub struct Toolchain {
 }
 
 impl Toolchain {
-    pub fn target_dir(&self, ex_name: &str) -> PathBuf {
-        let mut dir = ex_target_dir(ex_name);
-
-        if let Some(thread) = ::std::thread::current().name() {
-            dir = dir.join(thread);
-        } else {
-            dir = dir.join("shared");
-        }
-
-        dir.join(self.to_path_component())
-    }
-
     pub fn to_path_component(&self) -> String {
-        use url::percent_encoding::utf8_percent_encode as encode;
+        use percent_encoding::utf8_percent_encode as encode;
 
-        encode(&self.to_string(), utils::fs::FILENAME_ENCODE_SET).to_string()
+        encode(&self.to_string(), &utils::FILENAME_ENCODE_SET).to_string()
     }
 }
 

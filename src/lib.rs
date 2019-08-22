@@ -6,9 +6,6 @@
     clippy::redundant_closure
 )]
 
-#[cfg_attr(test, macro_use)]
-extern crate toml;
-
 pub mod actions;
 pub mod agent;
 mod assets;

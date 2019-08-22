@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 use tokio::{io::lines, runtime::current_thread::block_on_all, util::*};
 use tokio_process::CommandExt;
 
-mod container_dirs {
+pub(crate) mod container_dirs {
     use std::path::{Path, PathBuf};
 
     use lazy_static::lazy_static;
@@ -35,8 +35,8 @@ mod container_dirs {
     }
 
     lazy_static! {
-        pub(super) static ref WORK_DIR: PathBuf = ROOT_DIR.join("workdir");
-        pub(super) static ref TARGET_DIR: PathBuf = ROOT_DIR.join("target");
+        pub(crate) static ref WORK_DIR: PathBuf = ROOT_DIR.join("workdir");
+        pub(crate) static ref TARGET_DIR: PathBuf = ROOT_DIR.join("target");
         pub(super) static ref CARGO_HOME: PathBuf = ROOT_DIR.join("cargo-home");
         pub(super) static ref RUSTUP_HOME: PathBuf = ROOT_DIR.join("rustup-home");
         pub(super) static ref CARGO_BIN_DIR: PathBuf = CARGO_HOME.join("bin");
@@ -57,6 +57,9 @@ pub enum CommandError {
     /// The sandbox ran out of memory and was killed.
     #[fail(display = "container ran out of memory")]
     SandboxOOM,
+    #[doc(hidden)]
+    #[fail(display = "this error shouldn't have happened")]
+    __NonExaustive,
 }
 
 /// Name and kind of a binary executed by [`Command`](struct.Command.html).

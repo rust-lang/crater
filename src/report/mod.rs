@@ -6,6 +6,7 @@ use crate::results::{EncodedLog, EncodingType, ReadResults, TestResult};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use mime::{self, Mime};
+use percent_encoding::{utf8_percent_encode, AsciiSet};
 use serde_json;
 use std::borrow::Cow;
 #[cfg(test)]
@@ -16,7 +17,6 @@ use std::fmt::{self, Display};
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
 
 mod archives;
 mod html;
@@ -24,9 +24,17 @@ mod s3;
 
 pub use self::s3::{get_client_for_bucket, S3Prefix, S3Writer};
 
-url::define_encode_set! {
-    pub REPORT_ENCODE_SET = [DEFAULT_ENCODE_SET] | { '+' }
-}
+pub(crate) const REPORT_ENCODE_SET: AsciiSet = percent_encoding::CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'#')
+    .add(b'<')
+    .add(b'>')
+    .add(b'`')
+    .add(b'?')
+    .add(b'{')
+    .add(b'}')
+    .add(b'+');
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResults {
@@ -91,10 +99,10 @@ enum SanitizationContext {
 impl SanitizationContext {
     fn sanitize(self, input: &str) -> Cow<str> {
         match self {
-            SanitizationContext::Url => utf8_percent_encode(input, REPORT_ENCODE_SET).into(),
+            SanitizationContext::Url => utf8_percent_encode(input, &REPORT_ENCODE_SET).into(),
 
             SanitizationContext::Path => {
-                utf8_percent_encode(input, utils::fs::FILENAME_ENCODE_SET).into()
+                utf8_percent_encode(input, &utils::FILENAME_ENCODE_SET).into()
             }
         }
     }

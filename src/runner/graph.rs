@@ -122,6 +122,7 @@ impl TasksGraph {
         ex: &Experiment,
         db: &DB,
     ) -> WalkResult {
+        log::trace!("{:?}: walked to node {:?}", node, self.graph[node]);
         // Ensure tasks are only executed if needed
         let mut already_executed = false;
         if let Node::Task {
@@ -141,6 +142,7 @@ impl TasksGraph {
         // Try to check for the dependencies of this node
         // The list is collected to make the borrowchecker happy
         let mut neighbors = self.graph.neighbors(node).collect::<Vec<_>>();
+        log::trace!("{:?}: neighbors: {:?}", node, neighbors);
         let mut blocked = false;
         for neighbor in neighbors.drain(..) {
             match self.walk_graph(neighbor, ex, db) {
@@ -153,6 +155,7 @@ impl TasksGraph {
         // The early return for Blocked is done outside of the loop, allowing other dependent tasks
         // to be checked first: if they contain a non-blocked task that is returned instead
         if blocked {
+            log::trace!("{:?}: this is blocked", node);
             return WalkResult::Blocked;
         }
 
@@ -176,6 +179,7 @@ impl TasksGraph {
 
         // This is done after the match to avoid borrowck issues
         if delete {
+            log::trace!("{:?}: marked as complete", node);
             self.mark_as_completed(node);
         }
 
@@ -183,6 +187,7 @@ impl TasksGraph {
     }
 
     pub(super) fn mark_as_completed(&mut self, node: NodeIndex) {
+        log::debug!("marking node {:?} as complete", self.graph[node]);
         self.graph.remove_node(node);
     }
 
@@ -201,11 +206,24 @@ impl TasksGraph {
             .neighbors_directed(node, Direction::Incoming)
             .collect::<Vec<_>>();
         for child in children.drain(..) {
+            // Don't recursively mark a child as failed if this is not the only parent of the child
+            let parents = self
+                .graph
+                .neighbors_directed(child, Direction::Outgoing)
+                .count();
+            if parents > 1 {
+                log::trace!(
+                    "{:?}: prevented recursive mark_as_failed as it has other parents",
+                    child
+                );
+                continue;
+            }
             self.mark_as_failed(child, ex, db, state, config, error, result)?;
         }
 
         match self.graph[node] {
             Node::Task { ref task, .. } => {
+                log::debug!("marking task {:?} as failed", task);
                 task.mark_as_failed(ex, db, state, config, error, result)?
             }
             Node::CrateCompleted | Node::Root => return Ok(()),

@@ -60,6 +60,7 @@ pub enum MountKind {
     ReadOnly,
 }
 
+#[derive(Clone)]
 struct MountConfig {
     host_path: PathBuf,
     sandbox_path: PathBuf,
@@ -98,6 +99,7 @@ impl MountConfig {
 
 /// The sandbox builder allows to configure a sandbox, used later in a
 /// [`Command`](struct.Command.html).
+#[derive(Clone)]
 pub struct SandboxBuilder {
     mounts: Vec<MountConfig>,
     env: Vec<(String, String)>,

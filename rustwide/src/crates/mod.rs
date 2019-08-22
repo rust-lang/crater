@@ -7,7 +7,7 @@ use failure::Error;
 use log::info;
 use std::path::Path;
 
-trait CrateTrait {
+trait CrateTrait: std::fmt::Display {
     fn fetch(&self, workspace: &Workspace) -> Result<(), Error>;
     fn copy_source_to(&self, workspace: &Workspace, dest: &Path) -> Result<(), Error>;
 }
@@ -46,10 +46,17 @@ impl Crate {
         self.as_trait().fetch(workspace)
     }
 
-    /// Copy the source code from the workspace cache to the provided directory.
-    ///
-    /// **The `fetch` method needs to be called first.**
-    pub fn copy_source_to(&self, workspace: &Workspace, dest: &Path) -> Result<(), Error> {
+    /// Get this crate's git commit. This method is best-effort, and currently works just for git
+    /// crates. If the commit can't be retrieved `None` will be returned.
+    pub fn git_commit(&self, workspace: &Workspace) -> Option<String> {
+        if let CrateType::Git(repo) = &self.0 {
+            repo.git_commit(workspace)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn copy_source_to(&self, workspace: &Workspace, dest: &Path) -> Result<(), Error> {
         if dest.exists() {
             info!(
                 "crate source directory {} already exists, cleaning it up",
@@ -66,5 +73,11 @@ impl Crate {
             CrateType::Git(repo) => repo,
             CrateType::Local(local) => local,
         }
+    }
+}
+
+impl std::fmt::Display for Crate {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.as_trait())
     }
 }

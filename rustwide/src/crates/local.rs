@@ -32,6 +32,12 @@ impl CrateTrait for Local {
     }
 }
 
+impl std::fmt::Display for Local {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "local crate {}", self.path.display())
+    }
+}
+
 fn copy_dir(src: &Path, dest: &Path) -> Result<(), Error> {
     let src = crate::utils::normalize_path(src);
     let dest = crate::utils::normalize_path(dest);

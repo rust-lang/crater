@@ -83,6 +83,12 @@ impl CrateTrait for CratesIOCrate {
     }
 }
 
+impl std::fmt::Display for CratesIOCrate {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "crates.io crate {} {}", self.name, self.version)
+    }
+}
+
 fn unpack_without_first_dir<R: Read>(archive: &mut Archive<R>, path: &Path) -> Result<(), Error> {
     let entries = archive.entries()?;
     for entry in entries {

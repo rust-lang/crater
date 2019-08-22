@@ -2,7 +2,7 @@ use super::CrateTrait;
 use crate::cmd::Command;
 use crate::Workspace;
 use failure::{Error, ResultExt};
-use log::info;
+use log::{info, warn};
 use percent_encoding::{percent_encode, AsciiSet, CONTROLS};
 use std::path::{Path, PathBuf};
 
@@ -25,6 +25,28 @@ pub(super) struct GitRepo {
 impl GitRepo {
     pub(super) fn new(url: &str) -> Self {
         Self { url: url.into() }
+    }
+
+    pub(super) fn git_commit(&self, workspace: &Workspace) -> Option<String> {
+        let res = Command::new(workspace, "git")
+            .args(&["rev-parse", "HEAD"])
+            .cd(&self.cached_path(workspace))
+            .run_capture();
+
+        match res {
+            Ok(out) => {
+                if let Some(shaline) = out.stdout_lines().get(0) {
+                    if !shaline.is_empty() {
+                        return Some(shaline.to_string());
+                    }
+                }
+                warn!("bad output from `git rev-parse HEAD`");
+            }
+            Err(e) => {
+                warn!("unable to capture sha for {}: {}", self.url, e);
+            }
+        }
+        None
     }
 
     fn cached_path(&self, workspace: &Workspace) -> PathBuf {
@@ -63,5 +85,11 @@ impl CrateTrait for GitRepo {
             .run()
             .with_context(|_| format!("failed to checkout {}", self.url))?;
         Ok(())
+    }
+}
+
+impl std::fmt::Display for GitRepo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "git repo {}", self.url)
     }
 }

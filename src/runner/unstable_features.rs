@@ -2,17 +2,18 @@ use crate::prelude::*;
 use crate::results::TestResult;
 use crate::results::WriteResults;
 use crate::runner::tasks::TaskCtx;
+use rustwide::Build;
 use std::collections::HashSet;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
 pub(super) fn find_unstable_features<DB: WriteResults>(
     _ctx: &TaskCtx<DB>,
-    source_path: &Path,
+    build: &Build,
 ) -> Fallible<TestResult> {
     let mut features = HashSet::new();
 
-    for entry in WalkDir::new(source_path)
+    for entry in WalkDir::new(build.host_source_dir())
         .into_iter()
         .filter_entry(|e| !is_hidden(e))
     {

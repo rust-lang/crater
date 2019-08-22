@@ -1,5 +1,5 @@
 use crate::crates::{lists::List, Crate};
-use crate::dirs::LOCAL_DIR;
+use crate::dirs::WORK_DIR;
 use crate::prelude::*;
 use crates_index::Index;
 use std::collections::HashMap;
@@ -14,8 +14,8 @@ impl List for RegistryList {
         let mut list = Vec::new();
         let mut counts = HashMap::new();
 
-        fs::create_dir_all(&*LOCAL_DIR)?;
-        let index = Index::new(LOCAL_DIR.join("crates.io-index"));
+        fs::create_dir_all(&*WORK_DIR)?;
+        let index = Index::new(WORK_DIR.join("crates.io-index"));
         index.retrieve_or_update().to_failure()?;
 
         for krate in index.crates() {

@@ -5,7 +5,7 @@ use crate::results::{BrokenReason, TestResult, WriteResults};
 use crate::runner::graph::{TasksGraph, WalkResult};
 use crate::runner::{OverrideResult, RunnerState};
 use crate::utils;
-use rustwide::Workspace;
+use rustwide::{BuildDirectory, Workspace};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{
@@ -20,6 +20,7 @@ use systemstat::{Filesystem, Platform, System};
 pub(super) struct Worker<'a, DB: WriteResults + Sync> {
     name: String,
     workspace: &'a Workspace,
+    build_dir: Mutex<BuildDirectory>,
     ex: &'a Experiment,
     config: &'a Config,
     graph: &'a Mutex<TasksGraph>,
@@ -41,6 +42,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         parked_threads: &'a Mutex<HashMap<thread::ThreadId, thread::Thread>>,
     ) -> Self {
         Worker {
+            build_dir: Mutex::new(workspace.build_dir(&name)),
             name,
             workspace,
             ex,
@@ -65,9 +67,15 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             match walk_result {
                 WalkResult::Task(id, task) => {
                     info!("running task: {:?}", task);
-                    if let Err(e) =
-                        task.run(self.config, self.workspace, self.ex, self.db, self.state)
-                    {
+                    let res = task.run(
+                        self.config,
+                        self.workspace,
+                        &self.build_dir,
+                        self.ex,
+                        self.db,
+                        self.state,
+                    );
+                    if let Err(e) = res {
                         error!("task failed, marking childs as failed too: {:?}", task);
                         utils::report_failure(&e);
 
@@ -126,12 +134,8 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         if !self.target_dir_cleanup.swap(false, Ordering::SeqCst) {
             return Ok(());
         }
-        let target_dir = crate::dirs::TARGET_DIR.join(&self.ex.name).join(&self.name);
-        if target_dir.is_dir() {
-            info!("removing target dir {}", target_dir.display());
-            crate::utils::fs::remove_dir_all(&target_dir)?;
-            info!("removed target dir {}", target_dir.display());
-        }
+        info!("purging target dir for {}", self.name);
+        self.build_dir.lock().unwrap().purge()?;
         Ok(())
     }
 

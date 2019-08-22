@@ -1,9 +1,6 @@
 use crate::crates::{lists::List, Crate};
-use crate::dirs::SOURCE_CACHE_DIR;
 use crate::prelude::*;
-use rustwide::{cmd::Command, Workspace};
 use std::borrow::Cow;
-use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 static CACHED_LIST: &str =
@@ -73,48 +70,8 @@ pub struct GitHubRepo {
 }
 
 impl GitHubRepo {
-    pub(crate) fn cached_path(&self) -> PathBuf {
-        SOURCE_CACHE_DIR.join("gh").join(&self.org).join(&self.name)
-    }
-
     pub(crate) fn slug(&self) -> String {
         format!("{}/{}", self.org, self.name)
-    }
-
-    pub(in crate::crates) fn fetch(&self, workspace: &Workspace) -> Fallible<()> {
-        let path = self.cached_path();
-        if path.join("HEAD").is_file() {
-            info!("updating cached repository {}", self.slug());
-            Command::new(workspace, "git")
-                .args(&["fetch", "--all"])
-                .cd(&path)
-                .run()
-                .with_context(|_| format!("failed to update {}", self.slug()))?;
-        } else {
-            info!("cloning repository {}", self.slug());
-            Command::new(workspace, "git")
-                .args(&[
-                    "clone",
-                    "--bare",
-                    &format!("git://github.com/{}/{}.git", self.org, self.name),
-                ])
-                .args(&[&path])
-                .run()
-                .with_context(|_| format!("failed to clone {}", self.slug()))?;
-        }
-        Ok(())
-    }
-
-    pub(in crate::crates) fn copy_to(&self, dest: &Path, workspace: &Workspace) -> Fallible<()> {
-        if dest.exists() {
-            crate::utils::fs::remove_dir_all(dest)?;
-        }
-        Command::new(workspace, "git")
-            .args(&["clone"])
-            .args(&[self.cached_path().as_path(), dest])
-            .run()
-            .with_context(|_| format!("failed to checkout {}", self.slug()))?;
-        Ok(())
     }
 }
 

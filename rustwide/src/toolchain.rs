@@ -109,6 +109,12 @@ impl Toolchain {
     }
 }
 
+impl std::fmt::Display for Toolchain {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.rustup_name())
+    }
+}
+
 fn init_toolchain_from_dist(workspace: &Workspace, toolchain: &str) -> Result<(), Error> {
     info!("installing toolchain {}", toolchain);
     Command::new(workspace, &RUSTUP)

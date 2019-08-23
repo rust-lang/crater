@@ -89,6 +89,11 @@ impl MinicraterRun {
                 "--threads",
                 &threads_count.to_string(),
             ])
+            .args(if env::var_os("MINICRATER_FAST_WORKSPACE_INIT").is_some() {
+                &["--fast-workspace-init"]
+            } else {
+                &[] as &[&str]
+            })
             .env("CRATER_CONFIG", &config_file)
             .minicrater_exec();
 

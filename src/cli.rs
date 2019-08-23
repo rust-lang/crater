@@ -62,6 +62,7 @@ impl FromStr for Dest {
 }
 
 #[derive(structopt_derive::StructOpt)]
+#[allow(clippy::large_enum_variant)]
 #[structopt(
     name = "crater",
     about = "Kaboom!",
@@ -207,6 +208,8 @@ pub enum Crater {
         threads: usize,
         #[structopt(name = "docker-env", long = "docker-env")]
         docker_env: Option<String>,
+        #[structopt(name = "fast-workspace-init", long = "fast-workspace-init")]
+        fast_workspace_init: bool,
     },
 
     #[structopt(name = "gen-report", about = "generate the experiment report")]
@@ -247,6 +250,8 @@ pub enum Crater {
         threads: usize,
         #[structopt(name = "docker-env", long = "docker-env")]
         docker_env: Option<String>,
+        #[structopt(name = "fast-workspace-init", long = "fast-workspace-init")]
+        fast_workspace_init: bool,
     },
 
     #[structopt(
@@ -410,6 +415,7 @@ impl Crater {
                 ref ex,
                 threads,
                 ref docker_env,
+                fast_workspace_init,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
@@ -432,7 +438,10 @@ impl Crater {
                     let result_db = DatabaseDB::new(&db);
                     runner::run_ex(
                         &experiment,
-                        &self.workspace(docker_env.as_ref().map(|s| s.as_str()))?,
+                        &self.workspace(
+                            docker_env.as_ref().map(|s| s.as_str()),
+                            fast_workspace_init,
+                        )?,
                         &experiment.get_uncompleted_crates(&db, &config, &Assignee::CLI)?,
                         &result_db,
                         threads,
@@ -534,12 +543,14 @@ impl Crater {
                 ref token,
                 threads,
                 ref docker_env,
+                fast_workspace_init,
             } => {
                 agent::run(
                     url,
                     token,
                     threads,
-                    &self.workspace(docker_env.as_ref().map(|s| s.as_str()))?,
+                    &self
+                        .workspace(docker_env.as_ref().map(|s| s.as_str()), fast_workspace_init)?,
                 )?;
             }
             Crater::DumpTasksGraph { ref dest, ref ex } => {
@@ -562,8 +573,9 @@ impl Crater {
         Ok(())
     }
 
-    fn workspace(&self, docker_env: Option<&str>) -> Result<Workspace, Error> {
-        let mut builder = WorkspaceBuilder::new(&crater::dirs::WORK_DIR)
+    fn workspace(&self, docker_env: Option<&str>, fast_init: bool) -> Result<Workspace, Error> {
+        let mut builder = WorkspaceBuilder::new(&crater::dirs::WORK_DIR, &crater::USER_AGENT)
+            .fast_init(fast_init)
             .command_timeout(Some(Duration::from_secs(15 * 60)))
             .command_no_output_timeout(Some(Duration::from_secs(5 * 60)));
         if let Some(env) = docker_env {

@@ -6,9 +6,6 @@
     clippy::redundant_closure
 )]
 
-#[cfg_attr(test, macro_use)]
-extern crate toml;
-
 pub mod actions;
 pub mod agent;
 mod assets;
@@ -19,15 +16,20 @@ pub mod crates;
 pub mod db;
 pub mod dirs;
 pub mod experiments;
-mod native;
 mod prelude;
 pub mod report;
 pub mod results;
 pub mod runner;
 pub mod server;
 pub mod toolchain;
-mod tools;
 
 pub(crate) static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));
-pub(crate) static HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/target"));
 pub(crate) static CRATER_REPO_URL: &str = "https://github.com/rust-lang/crater";
+
+lazy_static::lazy_static! {
+    pub static ref USER_AGENT: String = format!(
+        "crater/{} ({})",
+        crate::GIT_REVISION.unwrap_or("unknown"),
+        crate::CRATER_REPO_URL
+    );
+}

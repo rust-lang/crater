@@ -213,7 +213,7 @@ impl<'a, DB: WriteResults + Sync> DiskSpaceWatcher<'a, DB> {
     }
 
     fn current_mount(&self) -> Fallible<Filesystem> {
-        let current_dir = crate::dirs::WORK_DIR.canonicalize()?;
+        let current_dir = crate::utils::path::normalize_path(&crate::dirs::WORK_DIR);
         let system = System::new();
 
         let mut found = None;

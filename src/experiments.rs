@@ -549,6 +549,8 @@ mod tests {
         use crate::prelude::*;
         use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
 
+        rustwide::logging::init();
+
         let db = Database::temp().unwrap();
         let config = Config::default();
         let ctx = ActionsCtx::new(&db, &config);

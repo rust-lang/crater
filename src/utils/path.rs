@@ -61,7 +61,6 @@ mod windows_tests {
 
     #[test]
     fn strip_verbatim() {
-        rustwide::logging::init();
         let suite = vec![
             (r"C:\Users\carl", None),
             (r"\Users\carl", None),

@@ -649,6 +649,8 @@ mod tests {
 
     #[test]
     fn test_full_completed_crates() {
+        rustwide::logging::init();
+
         let db = Database::temp().unwrap();
         let config = Config::default();
         let ctx = ActionsCtx::new(&db, &config);

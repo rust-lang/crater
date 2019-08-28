@@ -7,6 +7,7 @@ pub(crate) mod hex;
 pub(crate) mod http;
 #[macro_use]
 mod macros;
+pub(crate) mod path;
 pub mod size;
 pub(crate) mod string;
 

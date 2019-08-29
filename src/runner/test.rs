@@ -3,6 +3,7 @@ use crate::results::{BrokenReason, EncodingType, FailureReason, TestResult, Writ
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
 use failure::Error;
+use remove_dir_all::remove_dir_all;
 use rustwide::cmd::{CommandError, SandboxBuilder};
 use rustwide::{Build, PrepareError};
 
@@ -208,7 +209,7 @@ pub(super) fn test_rustdoc<DB: WriteResults>(
 
     // Make sure to remove the built documentation
     // There is no point in storing it after the build is done
-    std::fs::remove_dir_all(&build_env.host_target_dir().join("doc"))?;
+    remove_dir_all(&build_env.host_target_dir().join("doc"))?;
 
     if let Err(err) = res {
         Ok(TestResult::BuildFail(failure_reason(&err)))

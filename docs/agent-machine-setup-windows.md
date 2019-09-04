@@ -121,6 +121,16 @@ cargo run --release -- prepare-local
 
 Remember to run `cargo run -- create-lists` before running the tests.
 
+## Exempt Output Directory from Windows Defender's Real-time Protection
+
+`crater` is write heavy, and it will cause windows Defender to eat up precious
+CPU cycles if "Real-time Protection" is enabled. You can add an exclusion for 
+crater's `WORK_DIR` by running the following command as Adminstrator:
+
+```powershell
+Add-MpPreference -ExclusionPath $WORK_DIR
+```
+
 # Troubleshooting
 
 ## Overlong paths
@@ -131,3 +141,5 @@ policy editor. See this [Stack Overflow question][so-long-path] for more
 details.
 
 [so-long-path]: https://superuser.com/questions/1119883/windows-10-enable-ntfs-long-paths-policy-option-missing
+
+

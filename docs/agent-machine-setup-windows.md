@@ -76,6 +76,17 @@ Then we can install `git`:
 choco install git
 ```
 
+Some packages may modify the inital value of environment variables such as
+`PATH` as part of their installation, but their values will remain the same in
+the current terminal session. Restarting your shell is one way to pick up these
+changes, but you can also use the `refreshenv` helper distributed with
+`chocolatey` (the default `refreshenv` only works with `cmd`):
+
+```powershell
+Import-Module C:\ProgramData\chocolatey\helpers\chocolateyProfile.psm1
+refreshenv
+```
+
 ## Install the Visual Studio VC++ tools
 
 We could use the commands from the Dockerfile, but since we already installed `chocolatey`:

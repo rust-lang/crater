@@ -271,14 +271,17 @@ pub enum Crater {
         fast_workspace_init: bool,
         #[structopt(
             name = "capabilities",
-            help = "Registers additional capabilities for this agent. \
-                    These will be appended to the defaults for this platform, unless they have \
-                    been disabled via `--no-default-capabilities`",
+            help = "Registers additional capabilities for this agent.",
+            long_help = "Registers additional capabilities for this agent.\n\n \
+                         These will be appended to the defaults for this platform, unless those \
+                         have been disabled via `--no-default-capabilities`.",
+            long,
             raw(use_delimiter = "true")
         )]
         capabilities: Vec<String>,
         #[structopt(
             name = "no-default-capabilities",
+            long,
             help = "Disables the default capabilities for this platform."
         )]
         no_default_capabilities: bool,

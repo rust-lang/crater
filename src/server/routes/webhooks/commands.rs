@@ -113,6 +113,7 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
         priority: args.priority,
         ignore_blacklist: args.ignore_blacklist,
         assign: args.assign,
+        requirement: args.requirement,
     }
     .apply(&ActionsCtx::new(&data.db, &data.config))?;
 

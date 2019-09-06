@@ -141,6 +141,7 @@ generate_parser!(pub enum Command {
         priority: Option<i32> = "p",
         ignore_blacklist: Option<bool> = "ignore-blacklist",
         assign: Option<Assignee> = "assign",
+        requirement: Option<String> = "requirement",
     })
 });
 

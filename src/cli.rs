@@ -172,6 +172,8 @@ pub enum Crater {
         no_ignore_blacklist: bool,
         #[structopt(name = "assign", long = "assign")]
         assign: Option<Assignee>,
+        #[structopt(name = "requirement", long = "requirement")]
+        requirement: Option<String>,
     },
 
     #[structopt(name = "delete-ex", about = "delete shared data for experiment")]
@@ -350,6 +352,7 @@ impl Crater {
                 ref ignore_blacklist,
                 ref no_ignore_blacklist,
                 ref assign,
+                ref requirement,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
@@ -372,6 +375,7 @@ impl Crater {
                     priority: *priority,
                     ignore_blacklist,
                     assign: assign.clone(),
+                    requirement: requirement.clone(),
                 }
                 .apply(&ctx)?;
             }

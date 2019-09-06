@@ -1,3 +1,4 @@
+use crate::agent::Capabilities;
 use crate::experiments::{Assignee, Experiment, Status};
 use crate::prelude::*;
 use crate::results::{DatabaseDB, EncodingType, ProgressData};
@@ -26,12 +27,21 @@ pub fn routes(
     let data_cloned = data.clone();
     let data_filter = warp::any().map(move || data_cloned.clone());
 
-    let config = warp::get2()
+    let config = warp::post2()
+        .and(warp::path("config"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(data_filter.clone())
+        .and(auth_filter(data.clone(), TokenType::Agent))
+        .map(endpoint_config);
+
+    // Assume agents that do not POST their capabilities to `/config` are Linux agents.
+    let config_old = warp::get2()
         .and(warp::path("config"))
         .and(warp::path::end())
         .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
-        .map(endpoint_config);
+        .map(|data, auth| endpoint_config(Capabilities::new(&["linux"]), data, auth));
 
     let next_experiment = warp::get2()
         .and(warp::path("next-experiment"))
@@ -66,6 +76,8 @@ pub fn routes(
     warp::any()
         .and(
             config
+                .or(config_old)
+                .unify()
                 .or(next_experiment)
                 .unify()
                 .or(record_progress)
@@ -80,7 +92,13 @@ pub fn routes(
         .unify()
 }
 
-fn endpoint_config(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
+fn endpoint_config(
+    caps: Capabilities,
+    data: Arc<Data>,
+    auth: AuthDetails,
+) -> Fallible<Response<Body>> {
+    data.agents.add_capabilities(&auth.name, &caps)?;
+
     Ok(ApiResponse::Success {
         result: AgentConfig {
             agent_name: auth.name,

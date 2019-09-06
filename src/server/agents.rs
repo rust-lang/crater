@@ -1,3 +1,4 @@
+use crate::agent::Capabilities;
 use crate::db::{Database, QueryUtils};
 use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
@@ -145,6 +146,18 @@ impl Agents {
         assert_eq!(changes, 1);
 
         Ok(())
+    }
+
+    pub fn add_capabilities(&self, agent: &str, caps: &Capabilities) -> Fallible<()> {
+        const SQL: &str = "INSERT INTO agent_capabilities (agent_name, capability) VALUES (?, ?)";
+
+        self.db.transaction(|t| {
+            for cap in caps.iter() {
+                t.execute_cached(SQL, &[&agent, &cap])?;
+            }
+
+            Ok(())
+        })
     }
 }
 

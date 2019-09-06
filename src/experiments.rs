@@ -180,33 +180,59 @@ impl Experiment {
             return Ok(Some((false, experiment)));
         }
 
-        // First look at queued experiments explicitly assigned to this agent, and then queued
-        // experiments without an assigned agent.
-        for assigned_to in &[Some(assignee), None] {
-            let record = if let Some(assigned_to) = assigned_to {
-                db.get_row(
-                    "SELECT * FROM experiments \
-                     WHERE status = \"queued\" AND assigned_to = ?1 \
-                     ORDER BY priority DESC, created_at;",
-                    &[&assigned_to.to_string()],
-                    |r| ExperimentDBRecord::from_row(r),
-                )?
-            } else {
-                db.get_row(
-                    "SELECT * FROM experiments \
-                     WHERE status = \"queued\" AND assigned_to IS NULL \
-                     ORDER BY priority DESC, created_at;",
-                    &[],
-                    |r| ExperimentDBRecord::from_row(r),
-                )?
-            };
+        let assigned_to = assignee.to_string();
 
-            if let Some(record) = record {
-                let mut experiment = record.into_experiment()?;
-                experiment.set_status(&db, Status::Running)?;
-                experiment.set_assigned_to(&db, Some(assignee))?;
-                return Ok(Some((true, experiment)));
+        // Get an experiment whose requirements are met by this agent, preferring (in order of
+        // importance):
+        //    - experiments that were explicitly assigned to us.
+        //    - experiments with a higher priority.
+        //    - older experiments.
+        let (query, params) = match assignee {
+            Assignee::Agent(agent_name) => {
+                const AGENT_QUERY: &str = r#"
+                    SELECT *
+                    FROM   experiments ex
+                    WHERE  ex.status = "queued"
+                           AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?2 )
+                           AND ( ex.requirement IS NULL
+                                  OR ex.requirement IN (SELECT capability
+                                                        FROM   agent_capabilities
+                                                        WHERE  agent_name = ?1) )
+                    ORDER  BY ex.assigned_to IS NULL,
+                              ex.priority DESC,
+                              ex.created_at
+                    LIMIT  1;
+                "#;
+
+                (AGENT_QUERY, vec![agent_name, &assigned_to])
             }
+
+            // FIXME: We don't respect experiment requirements when assigning experiments to the
+            // CLI. We need to decide what capabilities the CLI should have first.
+            Assignee::CLI => {
+                const CLI_QUERY: &str = r#"
+                    SELECT     *
+                    FROM       experiments ex
+                    WHERE      ex.status = "queued"
+                               AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?2 )
+                    ORDER BY   ex.assigned_to IS NULL,
+                               ex.priority DESC,
+                               ex.created_at
+                    LIMIT 1;
+                "#;
+
+                (CLI_QUERY, vec![&assigned_to])
+            }
+        };
+
+        let next = db.get_row(query, params.as_slice(), |r| {
+            ExperimentDBRecord::from_row(r)
+        })?;
+        if let Some(record) = next {
+            let mut experiment = record.into_experiment()?;
+            experiment.set_status(&db, Status::Running)?;
+            experiment.set_assigned_to(&db, Some(assignee))?;
+            return Ok(Some((true, experiment)));
         }
 
         Ok(None)
@@ -421,6 +447,7 @@ impl ExperimentDBRecord {
 mod tests {
     use super::{Assignee, AssigneeParseError, Experiment, Status};
     use crate::actions::{Action, ActionsCtx, CreateExperiment};
+    use crate::agent::Capabilities;
     use crate::config::Config;
     use crate::db::Database;
     use crate::server::agents::Agents;
@@ -504,6 +531,62 @@ mod tests {
 
         // Test no other experiment is available for the other agents
         assert!(Experiment::next(&db, &agent3).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_assigning_experiment_with_requirements() {
+        let db = Database::temp().unwrap();
+        let config = Config::load().unwrap();
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        let mut tokens = Tokens::default();
+        tokens.agents.insert("token1".into(), "agent-1".into());
+        tokens.agents.insert("token2".into(), "agent-2".into());
+
+        let agent1 = Assignee::Agent("agent-1".to_string());
+        let agent2 = Assignee::Agent("agent-2".to_string());
+
+        // Populate the `agents` table
+        let agents = Agents::new(db.clone(), &tokens).unwrap();
+        agents
+            .add_capabilities("agent-1", &Capabilities::new(&["linux"]))
+            .unwrap();
+        agents
+            .add_capabilities(
+                "agent-2",
+                &Capabilities::new(&["windows", "big-hard-drive"]),
+            )
+            .unwrap();
+
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+
+        let mut windows = CreateExperiment::dummy("windows");
+        windows.requirement = Some("windows".to_string());
+        windows.apply(&ctx).unwrap();
+
+        // Test that an experiment will not be assigned to an agent without the required
+        // capabilities.
+        assert!(Experiment::next(&db, &agent1).unwrap().is_none());
+
+        // Test that an experiment with no capabilities can be assigned to any agent.
+        CreateExperiment::dummy("no-requirements")
+            .apply(&ctx)
+            .unwrap();
+
+        let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
+        assert!(new);
+        assert_eq!(ex.name.as_str(), "no-requirements");
+        assert_eq!(ex.status, Status::Running);
+        assert_eq!(ex.assigned_to.unwrap(), agent1);
+
+        // Test that an experiment will be assigned to an agent with the required capabilities.
+        let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
+        assert!(new);
+        assert_eq!(ex.name.as_str(), "windows");
+        assert_eq!(ex.status, Status::Running);
+        assert_eq!(ex.assigned_to.unwrap(), agent2);
     }
 
     #[test]

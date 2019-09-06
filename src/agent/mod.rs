@@ -10,8 +10,42 @@ use crate::prelude::*;
 use crate::utils;
 use failure::Error;
 use rustwide::Workspace;
+use std::ops;
 use std::thread;
 use std::time::Duration;
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct Capabilities {
+    #[serde(default)]
+    capabilities: Vec<String>,
+}
+
+impl ops::Deref for Capabilities {
+    type Target = Vec<String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.capabilities
+    }
+}
+
+impl ops::DerefMut for Capabilities {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.capabilities
+    }
+}
+
+impl Capabilities {
+    pub fn new(caps: &[&str]) -> Self {
+        let capabilities = caps.iter().map(|s| s.to_string()).collect();
+        Capabilities { capabilities }
+    }
+}
+
+impl From<Vec<String>> for Capabilities {
+    fn from(capabilities: Vec<String>) -> Self {
+        Capabilities { capabilities }
+    }
+}
 
 struct Agent {
     api: AgentApi,
@@ -19,11 +53,11 @@ struct Agent {
 }
 
 impl Agent {
-    fn new(url: &str, token: &str) -> Fallible<Self> {
+    fn new(url: &str, token: &str, caps: &Capabilities) -> Fallible<Self> {
         info!("connecting to crater server {}...", url);
 
         let api = AgentApi::new(url, token);
-        let config = api.config()?;
+        let config = api.config(caps)?;
 
         info!("connected to the crater server!");
         info!("assigned agent name: {}", config.agent_name);
@@ -63,8 +97,14 @@ fn run_experiment(
     Ok(())
 }
 
-pub fn run(url: &str, token: &str, threads_count: usize, workspace: &Workspace) -> Fallible<()> {
-    let agent = Agent::new(url, token)?;
+pub fn run(
+    url: &str,
+    token: &str,
+    threads_count: usize,
+    caps: &Capabilities,
+    workspace: &Workspace,
+) -> Fallible<()> {
+    let agent = Agent::new(url, token, caps)?;
     let db = results::ResultsUploader::new(&agent.api);
 
     run_heartbeat(url, token);

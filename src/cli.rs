@@ -10,7 +10,7 @@
 //! parallel access is consistent and race-free.
 
 use crater::actions::{self, Action, ActionsCtx};
-use crater::agent;
+use crater::agent::{self, Capabilities};
 use crater::config::Config;
 use crater::crates::Crate;
 use crater::db::Database;
@@ -59,6 +59,19 @@ impl FromStr for Dest {
     fn from_str(env: &str) -> Fallible<Dest> {
         Ok(Dest(env.into()))
     }
+}
+
+/// The default capabilities for the machine that `crater` has been compiled on.
+fn default_capabilities_for_target() -> Capabilities {
+    let caps: &[_] = if cfg!(target_os = "windows") {
+        &["windows"]
+    } else if cfg!(target_os = "linux") {
+        &["linux"]
+    } else {
+        &[]
+    };
+
+    Capabilities::new(caps)
 }
 
 #[derive(structopt_derive::StructOpt)]
@@ -256,6 +269,19 @@ pub enum Crater {
         docker_env: Option<String>,
         #[structopt(name = "fast-workspace-init", long = "fast-workspace-init")]
         fast_workspace_init: bool,
+        #[structopt(
+            name = "capabilities",
+            help = "Registers additional capabilities for this agent. \
+                    These will be appended to the defaults for this platform, unless they have \
+                    been disabled via `--no-default-capabilities`",
+            raw(use_delimiter = "true")
+        )]
+        capabilities: Vec<String>,
+        #[structopt(
+            name = "no-default-capabilities",
+            help = "Disables the default capabilities for this platform."
+        )]
+        no_default_capabilities: bool,
     },
 
     #[structopt(
@@ -552,11 +578,20 @@ impl Crater {
                 threads,
                 ref docker_env,
                 fast_workspace_init,
+                ref capabilities,
+                no_default_capabilities,
             } => {
+                let mut caps = Capabilities::default();
+                if !no_default_capabilities {
+                    caps.extend(default_capabilities_for_target().drain(..));
+                }
+                caps.extend(capabilities.clone().into_iter());
+
                 agent::run(
                     url,
                     token,
                     threads,
+                    &caps,
                     &self
                         .workspace(docker_env.as_ref().map(|s| s.as_str()), fast_workspace_init)?,
                 )?;

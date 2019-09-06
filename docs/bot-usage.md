@@ -102,6 +102,15 @@ commands. At the moment, the name is predicted in these cases:
 
 [Go back to the TOC][h-toc]
 
+## Experiment requirements
+
+Crater uses a system of requirements and capabilities to control which class of
+agent can run which experiments. For now, there are two classes of agents:
+Linux agents have the capability `linux`, and Windows agents have the
+capability `windows`. You must specify a requirement for your experiment
+(either `linux` or `windows`), and your experiment will only run on agents with
+that capability.
+
 ## Commands reference
 
 ### Creating experiments
@@ -125,6 +134,7 @@ beta run you can use:
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)
 * `ignore-blacklist`: whether the blacklist should be ignored (default: `false`)
+* `requirement`: any requirement of the agent running the experiment (default: `linux`)
 * `assign`: assign the experiment to a specific agent (use this only when you
   know what you're doing)
 * `p`: the priority of the run (default: `0`)
@@ -153,6 +163,7 @@ priority of the `foo` experiment you can use:
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)
 * `ignore-blacklist`: whether the blacklist should be ignored (default: `false`)
+* `requirement`: any requirement of the agent running the experiment (default: `linux`)
 * `assign`: assign the experiment to a specific agent (use this only when you
   know what you're doing)
 * `p`: the priority of the run (default: `0`)

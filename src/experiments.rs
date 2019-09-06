@@ -146,7 +146,7 @@ impl Experiment {
         let record = db.get_row(
             "SELECT * FROM experiments \
              WHERE status = ?1 AND assigned_to = ?2;",
-            &[&Status::Running.to_str(), &assignee.to_string()],
+            &[Status::Running.to_str(), &assignee.to_string()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
 

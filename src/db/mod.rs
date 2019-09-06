@@ -140,12 +140,16 @@ pub trait QueryUtils {
         })
     }
 
-    fn get_row<T, F: FnMut(&Row) -> T>(
+    fn get_row<T, P>(
         &self,
         sql: &str,
-        params: &[&dyn ToSql],
-        func: F,
-    ) -> Fallible<Option<T>> {
+        params: P,
+        func: impl FnMut(&Row) -> T,
+    ) -> Fallible<Option<T>>
+    where
+        P: IntoIterator,
+        P::Item: ToSql,
+    {
         self.with_conn(|conn| {
             self.trace(sql, || {
                 let mut prepared = conn.prepare(sql)?;

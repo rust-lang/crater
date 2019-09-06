@@ -278,6 +278,15 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "add_experiment_field_requirement",
+        MigrationKind::SQL(
+            "
+            ALTER TABLE experiments ADD COLUMN requirement TEXT DEFAULT 'linux';
+            ",
+        ),
+    ));
+
     migrations
 }
 

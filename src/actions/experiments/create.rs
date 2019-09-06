@@ -15,6 +15,7 @@ pub struct CreateExperiment {
     pub github_issue: Option<GitHubIssue>,
     pub ignore_blacklist: bool,
     pub assign: Option<Assignee>,
+    pub requirement: Option<String>,
 }
 
 impl CreateExperiment {
@@ -32,6 +33,7 @@ impl CreateExperiment {
             github_issue: None,
             ignore_blacklist: false,
             assign: None,
+            requirement: None,
         }
     }
 }
@@ -55,8 +57,8 @@ impl Action for CreateExperiment {
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
                  status, github_issue, github_issue_url, github_issue_number, ignore_blacklist, \
-                 assigned_to) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
+                 assigned_to, requirement) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);",
                 &[
                     &self.name,
                     &self.mode.to_str(),
@@ -71,6 +73,7 @@ impl Action for CreateExperiment {
                     &self.github_issue.as_ref().map(|i| i.number),
                     &self.ignore_blacklist,
                     &self.assign.map(|a| a.to_string()),
+                    &self.requirement,
                 ],
             )?;
 
@@ -126,6 +129,7 @@ mod tests {
             }),
             ignore_blacklist: true,
             assign: None,
+            requirement: Some("linux".to_string()),
         }
         .apply(&ctx)
         .unwrap();
@@ -152,6 +156,7 @@ mod tests {
         assert_eq!(ex.status, Status::Queued);
         assert!(ex.assigned_to.is_none());
         assert!(ex.ignore_blacklist);
+        assert_eq!(ex.requirement, Some("linux".to_string()));
     }
 
     #[test]
@@ -250,6 +255,7 @@ mod tests {
             github_issue: None,
             ignore_blacklist: false,
             assign: None,
+            requirement: None,
         }
         .apply(&ctx)
         .unwrap_err();
@@ -279,6 +285,7 @@ mod tests {
             github_issue: None,
             ignore_blacklist: false,
             assign: None,
+            requirement: None,
         }
         .apply(&ctx)
         .unwrap();
@@ -294,6 +301,7 @@ mod tests {
             github_issue: None,
             ignore_blacklist: false,
             assign: None,
+            requirement: None,
         }
         .apply(&ctx)
         .unwrap_err();

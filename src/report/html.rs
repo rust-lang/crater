@@ -68,6 +68,7 @@ impl ResultName for BrokenReason {
             BrokenReason::Unknown => "broken crate".into(),
             BrokenReason::CargoToml => "broken Cargo.toml".into(),
             BrokenReason::Yanked => "deps yanked".into(),
+            BrokenReason::PrivateGitRepository => "private repo".into(),
         }
     }
 }

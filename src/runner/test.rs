@@ -27,16 +27,20 @@ fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
         Err(err) => {
             let mut reason = None;
             for cause in err.iter_chain() {
-                if let Some(&PrepareError::MissingCargoToml) = cause.downcast_ctx() {
-                    reason = Some(BrokenReason::CargoToml);
-                } else if let Some(&PrepareError::InvalidCargoTomlSyntax) = cause.downcast_ctx() {
-                    reason = Some(BrokenReason::CargoToml);
-                } else if let Some(&PrepareError::YankedDependencies) = cause.downcast_ctx() {
-                    reason = Some(BrokenReason::Yanked);
-                } else {
-                    continue;
+                if let Some(error) = cause.downcast_ctx() {
+                    reason = match *error {
+                        PrepareError::MissingCargoToml => Some(BrokenReason::CargoToml),
+                        PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
+                        PrepareError::YankedDependencies => Some(BrokenReason::Yanked),
+                        PrepareError::PrivateGitRepository => {
+                            Some(BrokenReason::PrivateGitRepository)
+                        }
+                        _ => None,
+                    }
                 }
-                break;
+                if reason.is_some() {
+                    break;
+                }
             }
             if let Some(reason) = reason {
                 Err(err

@@ -65,6 +65,10 @@ impl Agent {
 
         AgentStatus::Unreachable
     }
+
+    pub fn capabilities(&self) -> Option<&Capabilities> {
+        self.capabilities.as_ref()
+    }
 }
 
 #[derive(Clone)]
@@ -113,8 +117,11 @@ impl Agents {
                 }
             })?
             .into_iter()
-            .map(|agent| agent.with_experiment(&self.db)
-                .and_then(|agent| agent.with_capabilities(&self.db)))
+            .map(|agent| {
+                agent
+                    .with_experiment(&self.db)
+                    .and_then(|agent| agent.with_capabilities(&self.db))
+            })
             .collect()
     }
 

@@ -10,6 +10,7 @@
                 <table class="list">
                     <tr>
                         <th>Name</th>
+                        <th>Capabilities</th>
                         <th>Status</th>
                         <th>Last heartbeat</th>
                         <th>Assigned experiment</th>
@@ -18,6 +19,7 @@
                     {% for agent in agents %}
                         <tr>
                             <td>{{ agent.name }}</td>
+                            <td>{{ agent.capabilities | join(sep=", ") }}</td>
                             <td class="{{ agent.status_class }}">{{ agent.status_pretty }}</td>
                             <td>
                                 {% if agent.last_heartbeat %}

@@ -22,11 +22,17 @@ pub struct Agent {
     experiment: Option<Experiment>,
     last_heartbeat: Option<DateTime<Utc>>,
     git_revision: Option<String>,
+    capabilities: Option<Capabilities>,
 }
 
 impl Agent {
     fn with_experiment(mut self, db: &Database) -> Fallible<Self> {
         self.experiment = Experiment::run_by(db, &Assignee::Agent(self.name.clone()))?;
+        Ok(self)
+    }
+
+    fn with_capabilities(mut self, db: &Database) -> Fallible<Self> {
+        self.capabilities = Some(Capabilities::for_agent(db, &self.name)?);
         Ok(self)
     }
 
@@ -100,32 +106,37 @@ impl Agents {
                     name: row.get("name"),
                     last_heartbeat: row.get("last_heartbeat"),
                     git_revision: row.get("git_revision"),
-                    experiment: None, // Lazy loaded after this
+
+                    // Lazy loaded after this
+                    experiment: None,
+                    capabilities: None,
                 }
             })?
             .into_iter()
-            .map(|agent| agent.with_experiment(&self.db))
+            .map(|agent| agent.with_experiment(&self.db)
+                .and_then(|agent| agent.with_capabilities(&self.db)))
             .collect()
     }
 
     #[cfg(test)]
     fn get(&self, name: &str) -> Fallible<Option<Agent>> {
-        let row = self
-            .db
+        self.db
             .get_row("SELECT * FROM agents WHERE name = ?1;", &[&name], |row| {
                 Agent {
                     name: row.get("name"),
                     last_heartbeat: row.get("last_heartbeat"),
                     git_revision: row.get("git_revision"),
-                    experiment: None, // Lazy loaded after this
-                }
-            })?;
 
-        Ok(if let Some(agent) = row {
-            Some(agent.with_experiment(&self.db)?)
-        } else {
-            None
-        })
+                    // Lazy loaded after this
+                    experiment: None,
+                    capabilities: None,
+                }
+            })?
+            .map(|agent| agent.with_experiment(&self.db))
+            .transpose()?
+            .map(|agent| agent.with_capabilities(&self.db))
+            .transpose()
+            .map_err(Into::into)
     }
 
     pub fn record_heartbeat(&self, agent: &str) -> Fallible<()> {
@@ -165,6 +176,7 @@ impl Agents {
 mod tests {
     use super::{AgentStatus, Agents};
     use crate::actions::{Action, ActionsCtx, CreateExperiment};
+    use crate::agent::Capabilities;
     use crate::config::Config;
     use crate::db::Database;
     use crate::experiments::{Assignee, Experiment};
@@ -254,5 +266,22 @@ mod tests {
         // After an experiment is assigned to the agent, the agent is working
         let agent = agents.get("agent").unwrap().unwrap();
         assert_eq!(agent.status(), AgentStatus::Working);
+    }
+
+    #[test]
+    fn test_agent_capabilities() {
+        let db = Database::temp().unwrap();
+
+        let mut tokens = Tokens::default();
+        tokens.agents.insert("token".into(), "agent".into());
+        let agents = Agents::new(db.clone(), &tokens).unwrap();
+
+        // Insert capabilities into database
+        let caps = Capabilities::new(&["linux", "big-hard-drive"]);
+        agents.add_capabilities("agent", &caps).unwrap();
+
+        // Ensure that capabilities are preserved across a round trip to the database.
+        let caps_from_db = Capabilities::for_agent(&db, "agent").unwrap();
+        assert!(caps.iter().eq(caps_from_db.iter()));
     }
 }

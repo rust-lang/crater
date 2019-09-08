@@ -5,11 +5,14 @@ use crate::agent::api::AgentApi;
 use crate::agent::results::ResultsUploader;
 use crate::config::Config;
 use crate::crates::Crate;
+use crate::db::{Database, QueryUtils};
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::utils;
 use failure::Error;
 use rustwide::Workspace;
+use std::collections::BTreeSet;
+use std::iter::FromIterator;
 use std::ops;
 use std::thread;
 use std::time::Duration;
@@ -17,11 +20,11 @@ use std::time::Duration;
 #[derive(Default, Serialize, Deserialize)]
 pub struct Capabilities {
     #[serde(default)]
-    capabilities: Vec<String>,
+    capabilities: BTreeSet<String>,
 }
 
 impl ops::Deref for Capabilities {
-    type Target = Vec<String>;
+    type Target = BTreeSet<String>;
 
     fn deref(&self) -> &Self::Target {
         &self.capabilities
@@ -39,10 +42,24 @@ impl Capabilities {
         let capabilities = caps.iter().map(|s| s.to_string()).collect();
         Capabilities { capabilities }
     }
+
+    pub fn for_agent(db: &Database, agent: &str) -> Fallible<Self> {
+        let caps = db.query(
+            "SELECT capability FROM agent_capabilities WHERE agent_name = ?1",
+            &[&agent],
+            |r| r.get("capability"),
+        )?;
+
+        Ok(caps.into_iter().collect())
+    }
 }
 
-impl From<Vec<String>> for Capabilities {
-    fn from(capabilities: Vec<String>) -> Self {
+impl FromIterator<String> for Capabilities {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = String>,
+    {
+        let capabilities = iter.into_iter().collect();
         Capabilities { capabilities }
     }
 }

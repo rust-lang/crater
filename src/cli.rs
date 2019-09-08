@@ -584,10 +584,11 @@ impl Crater {
                 ref capabilities,
                 no_default_capabilities,
             } => {
-                let mut caps = Capabilities::default();
-                if !no_default_capabilities {
-                    caps.extend(default_capabilities_for_target().drain(..));
-                }
+                let mut caps = if no_default_capabilities {
+                    Capabilities::default()
+                } else {
+                    default_capabilities_for_target()
+                };
                 caps.extend(capabilities.clone().into_iter());
 
                 agent::run(

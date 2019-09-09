@@ -19,7 +19,13 @@
                     {% for agent in agents %}
                         <tr>
                             <td>{{ agent.name }}</td>
-                            <td>{{ agent.capabilities | join(sep=", ") }}</td>
+                            <td>
+                                {% if agent.capabilities %}
+                                    {{ agent.capabilities | join(sep=", ") }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
                             <td class="{{ agent.status_class }}">{{ agent.status_pretty }}</td>
                             <td>
                                 {% if agent.last_heartbeat %}

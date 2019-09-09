@@ -64,11 +64,28 @@ behave this way:
 All the endpoints return a JSON response with a 200 status code if the request
 succeded.
 
-### `GET /config`
+### `POST /config`
 
-This endpoint returns the generic configuration of this agent, assigned by the
-crater server. This method should be called at least at the start of the agent,
-and the response is tied to the API token.
+This endpoint registers the capabilities of this agent, and returns the generic
+configuration of this agent, assigned by the crater server. This method should
+be called at least at the start of the agent, and the response is tied to the
+API token.
+
+The agent's capabilities must be specified as JSON in the request body. Prior
+to the introduction of capabilities, this endpoint was accessed via a `GET`
+instead of a `POST`. A `GET` to this endpoint will still register an agent, but
+the request body will be ignored and a default set of capabilities used instead
+(currently `["linux"]`).
+
+Request fields:
+
+* `capabilities`: an array containing the capabilities possessed by this agent.
+
+```json
+{
+    "capabilities": ["windows", "hard-drive-bigger-than-1TB"]
+}
+```
 
 Response fields:
 
@@ -88,10 +105,10 @@ Response fields:
 ### `GET /next-experiment`
 
 This endpoint returns the next experiment this agent should run. The first time
-this method is called the first queued experiment is assigned to the agent, and
-its configuration is returned. The same configuration is returned for all the
-following calls, until the agent sends the full experiment result to the crater
-server.
+this method is called the first queued experiment with compatible requirements
+is assigned to the agent, and its configuration is returned. The same
+configuration is returned for all the following calls, until the agent sends
+the full experiment result to the crater server.
 
 Response fields:
 

@@ -278,6 +278,32 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "add_experiment_field_requirement",
+        MigrationKind::SQL(
+            "
+            ALTER TABLE experiments ADD COLUMN requirement TEXT DEFAULT 'linux';
+            ",
+        ),
+    ));
+
+    migrations.push((
+        "add_agent_capabilities",
+        MigrationKind::SQL(
+            "
+            CREATE TABLE agent_capabilities (
+                agent_name TEXT NOT NULL,
+                capability TEXT NOT NULL,
+
+                PRIMARY KEY (agent_name, capability) ON CONFLICT REPLACE,
+                FOREIGN KEY (agent_name) REFERENCES agents(name) ON DELETE CASCADE
+            );
+
+            CREATE INDEX agent__name ON agent_capabilities(agent_name);
+            ",
+        ),
+    ));
+
     migrations
 }
 

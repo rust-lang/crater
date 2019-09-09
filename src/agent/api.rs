@@ -1,3 +1,4 @@
+use crate::agent::Capabilities;
 use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
 use crate::prelude::*;
@@ -120,9 +121,10 @@ impl AgentApi {
         }
     }
 
-    pub fn config(&self) -> Fallible<AgentConfig> {
+    pub fn config(&self, caps: &Capabilities) -> Fallible<AgentConfig> {
         self.retry(|this| {
-            this.build_request(Method::GET, "config")
+            this.build_request(Method::POST, "config")
+                .json(&json!(caps))
                 .send()?
                 .to_api_response()
         })

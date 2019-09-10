@@ -25,7 +25,6 @@ use crate::runner::{
     tasks::{Task, TaskStep},
     RunnerState,
 };
-use failure::AsFail;
 use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
 use std::fmt::{self, Debug};
 use std::sync::Arc;
@@ -191,14 +190,14 @@ impl TasksGraph {
         self.graph.remove_node(node);
     }
 
-    pub(super) fn mark_as_failed<DB: WriteResults, F: AsFail>(
+    pub(super) fn mark_as_failed<DB: WriteResults>(
         &mut self,
         node: NodeIndex,
         ex: &Experiment,
         db: &DB,
         state: &RunnerState,
         config: &Config,
-        error: &F,
+        error: &failure::Error,
         result: TestResult,
     ) -> Fallible<()> {
         let mut children = self

@@ -6,7 +6,6 @@ use crate::results::{EncodingType, TestResult, WriteResults};
 use crate::runner::{test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
-use failure::AsFail;
 use rustwide::{BuildDirectory, Workspace};
 use std::sync::Mutex;
 
@@ -116,13 +115,13 @@ impl Task {
         }
     }
 
-    pub(super) fn mark_as_failed<DB: WriteResults, F: AsFail>(
+    pub(super) fn mark_as_failed<DB: WriteResults>(
         &self,
         ex: &Experiment,
         db: &DB,
         state: &RunnerState,
         config: &Config,
-        err: &F,
+        err: &failure::Error,
         result: TestResult,
     ) -> Fallible<()> {
         match self.step {

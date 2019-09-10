@@ -1,7 +1,9 @@
 use crate::prelude::*;
-use failure::AsFail;
+use failure::{AsFail, Backtrace, Fail};
 use percent_encoding::{AsciiSet, CONTROLS};
 use std::any::Any;
+use std::fmt;
+use std::str::FromStr;
 
 pub(crate) mod hex;
 pub(crate) mod http;
@@ -35,7 +37,8 @@ pub fn report_panic(e: &dyn Any) {
     }
 }
 
-pub fn report_failure<F: AsFail>(err: &F) {
+pub fn report_failure(err: &(impl HasBacktrace + AsFail)) {
+    let backtrace = err.backtrace();
     let err = err.as_fail();
     error!("{}", err);
 
@@ -43,7 +46,52 @@ pub fn report_failure<F: AsFail>(err: &F) {
         error!("caused by: {}", cause);
     }
 
-    if let Some(backtrace) = err.backtrace() {
+    let backtrace = match backtrace {
+        Some(bt) => bt,
+        None => {
+            error!("no backtrace");
+            return;
+        }
+    };
+
+    // Avoid printing a blank line if the backtrace exists but is empty.
+    //
+    // This can occur if backtraces are not enabled on this platform or if the requisite
+    // environment variables are not set.
+    let backtrace = backtrace.to_string();
+    if !backtrace.is_empty() {
         error!("{}", backtrace);
+        return;
     }
+
+    // If the the environment variable is not set, mention it to the user.
+    if !is_backtrace_runtime_enabled() {
+        error!("note: run with `RUST_BACKTRACE=1` to display a backtrace.");
+    }
+}
+
+pub trait HasBacktrace {
+    fn backtrace(&self) -> Option<&Backtrace>;
+}
+
+impl HasBacktrace for failure::Error {
+    fn backtrace(&self) -> Option<&Backtrace> {
+        Some(Self::backtrace(self))
+    }
+}
+
+impl<T> HasBacktrace for failure::Context<T>
+where
+    T: fmt::Display + Send + Sync + 'static,
+{
+    fn backtrace(&self) -> Option<&Backtrace> {
+        Fail::backtrace(self)
+    }
+}
+
+fn is_backtrace_runtime_enabled() -> bool {
+    std::env::var("RUST_BACKTRACE")
+        .ok()
+        .and_then(|s| i32::from_str(&s).ok())
+        .map_or(false, |val| val != 0)
 }

@@ -43,6 +43,12 @@
                             <td>{{ experiment.assigned_to }}</td>
                         </tr>
                         {% endif %}
+                        {% if experiment.requirement %}
+                        <tr>
+                            <th>Requirements:</th>
+                            <td>{{ experiment.requirement }}</td>
+                        </tr>
+                        {% endif %}
                         <tr>
                             <th>Priority:</th>
                             <td>{{ experiment.priority }}</td>

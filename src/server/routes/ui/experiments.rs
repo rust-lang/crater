@@ -15,6 +15,7 @@ struct ExperimentData {
     status_pretty: &'static str,
     mode: &'static str,
     assigned_to: Option<String>,
+    requirement: Option<String>,
     progress: u8,
     priority: i32,
 }
@@ -45,6 +46,7 @@ impl ExperimentData {
             },
             assigned_to: experiment.assigned_to.as_ref().map(|a| a.to_string()),
             priority: experiment.priority,
+            requirement: experiment.requirement.clone(),
             progress: if show_progress {
                 experiment.progress(&data.db)?
             } else {

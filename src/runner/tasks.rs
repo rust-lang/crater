@@ -3,6 +3,7 @@ use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{EncodingType, TestResult, WriteResults};
+use crate::runner::test::detect_broken;
 use crate::runner::{test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
@@ -178,7 +179,7 @@ impl Task {
                     .insert(self.krate.clone(), storage.clone());
                 logging::capture(&storage, || {
                     let rustwide_crate = self.krate.to_rustwide();
-                    rustwide_crate.fetch(workspace)?;
+                    detect_broken(rustwide_crate.fetch(workspace))?;
 
                     if let Crate::GitHub(repo) = &self.krate {
                         if let Some(sha) = rustwide_crate.git_commit(workspace) {

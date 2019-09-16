@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::crates::sources::github::GitHubRepo;
 use crate::crates::{Crate, RegistryCrate};
 use crate::db::{Database, QueryUtils};
 use crate::experiments::CrateSelect;
@@ -129,6 +130,7 @@ pub(crate) fn get_crates(
         CrateSelect::Local => {
             crates.append(&mut LocalList::get(db)?);
         }
+        CrateSelect::Dummy => crates.push(Crate::GitHub(GitHubRepo::dummy())),
     }
 
     crates.sort();

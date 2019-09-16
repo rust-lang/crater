@@ -33,6 +33,7 @@ string_enum!(pub enum CrateSelect {
     SmallRandom => "small-random",
     Top100 => "top-100",
     Local => "local",
+    Dummy => "dummy",
 });
 
 string_enum!(pub enum CapLints {

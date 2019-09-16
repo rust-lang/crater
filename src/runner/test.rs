@@ -21,7 +21,7 @@ fn failure_reason(err: &Error) -> FailureReason {
     FailureReason::Unknown
 }
 
-fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
+pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
     match res {
         Ok(ok) => Ok(ok),
         Err(err) => {
@@ -33,7 +33,7 @@ fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
                         PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
                         PrepareError::YankedDependencies => Some(BrokenReason::Yanked),
                         PrepareError::PrivateGitRepository => {
-                            Some(BrokenReason::PrivateGitRepository)
+                            Some(BrokenReason::MissingGitRepository)
                         }
                         _ => None,
                     }

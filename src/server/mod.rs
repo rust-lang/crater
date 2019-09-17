@@ -45,10 +45,6 @@ pub struct Data {
     pub acl: ACL,
 }
 
-pub struct DistributedData {
-    pub data: Mutex<Data>,
-}
-
 pub fn run(config: Config) -> Fallible<()> {
     let db = Database::open()?;
     let tokens = tokens::Tokens::load()?;
@@ -70,9 +66,7 @@ pub fn run(config: Config) -> Fallible<()> {
         acl,
     };
 
-    let mutex = Arc::new(DistributedData {
-        data: Mutex::new(data.clone()),
-    });
+    let mutex = Arc::new(Mutex::new(data.clone()));
 
     data.reports_worker.spawn(data.clone());
 

@@ -695,6 +695,7 @@ mod tests {
             assigned_to: None,
             report_url: None,
             ignore_blacklist: false,
+            requirement: None,
         };
 
         let mut db = DummyDB::default();

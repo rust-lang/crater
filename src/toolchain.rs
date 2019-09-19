@@ -59,6 +59,7 @@ impl fmt::Display for Toolchain {
                     write!(f, "master#{}", sha)?;
                 }
             }
+            _ => panic!("unsupported rustwide toolchain"),
         };
 
         if let Some(ref flag) = self.rustflags {

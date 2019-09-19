@@ -10,6 +10,7 @@
                     <tr>
                         <th>Name</th>
                         <th width="20%">Assigned to</th>
+                        <th width="10%">Reqs</th>
                         <th width="15%"class="text-center">Mode</th>
                         <th width="1%" class="text-center">Priority</th>
                         <th width="20%" class="text-center">Status</th>
@@ -17,6 +18,13 @@
                     {% for experiment in experiments %}
                         <tr>
                             <td><a href="/ex/{{ experiment.name }}">{{ experiment.name }}</a></td>
+                            <td>
+                                {% if experiment.requirement %}
+                                    {{ experiment.requirement }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if experiment.assigned_to %}
                                     {{ experiment.assigned_to }}

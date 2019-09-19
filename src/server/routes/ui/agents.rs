@@ -15,6 +15,7 @@ struct AgentData {
     last_heartbeat: Option<String>,
     assigned_experiment: Option<String>,
     git_revision: Option<String>,
+    capabilities: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -32,6 +33,13 @@ pub fn endpoint_list(data: Arc<Data>) -> Fallible<Response<Body>> {
             AgentStatus::Unreachable => ("red", "Unreachable", false),
         };
 
+        let capabilities = agent
+            .capabilities()
+            .expect("Capabilities were loaded from the db")
+            .iter()
+            .cloned()
+            .collect();
+
         agents.push(AgentData {
             name: agent.name().to_string(),
             status_class,
@@ -45,6 +53,7 @@ pub fn endpoint_list(data: Arc<Data>) -> Fallible<Response<Body>> {
                 None
             },
             git_revision: agent.git_revision().cloned(),
+            capabilities,
         });
     }
 

@@ -54,6 +54,9 @@ pub fn run(
         }
     }
 
+    // Make crater runs created via webhook require linux by default.
+    let requirement = args.requirement.unwrap_or_else(|| "linux".to_string());
+
     actions::CreateExperiment {
         name: name.clone(),
         toolchains: [
@@ -75,6 +78,7 @@ pub fn run(
         }),
         ignore_blacklist: args.ignore_blacklist.unwrap_or(false),
         assign: args.assign,
+        requirement: Some(requirement),
     }
     .apply(&ActionsCtx::new(&data.db, &data.config))?;
 
@@ -109,6 +113,7 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
         priority: args.priority,
         ignore_blacklist: args.ignore_blacklist,
         assign: args.assign,
+        requirement: args.requirement,
     }
     .apply(&ActionsCtx::new(&data.db, &data.config))?;
 

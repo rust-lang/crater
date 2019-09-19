@@ -136,6 +136,7 @@ pub struct Experiment {
     pub assigned_to: Option<Assignee>,
     pub report_url: Option<String>,
     pub ignore_blacklist: bool,
+    pub requirement: Option<String>,
 }
 
 impl Experiment {
@@ -161,7 +162,7 @@ impl Experiment {
              INNER JOIN experiment_crates ON experiment_crates.experiment \
              = experiments.name WHERE experiment_crates.assigned_to = ?1 \
              AND experiment_crates.status = ?2  AND experiment_crates.skipped = 0 LIMIT 1",
-            &[&assignee.to_string(), &Status::Running.to_str()],
+            &[&assignee.to_string(), Status::Running.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
 
@@ -194,49 +195,122 @@ impl Experiment {
             return Ok(Some((false, experiment)));
         }
 
-        // First look at experiments explicitly assigned to this agent, and then
-        // distributed experiments and experiments without an assigned agent.
-        Experiment::next_inner(db, Some(assignee))
+        // Get an experiment whose requirements are met by this agent, preferring (in order of
+        // importance):
+        //    - experiments that were explicitly assigned to us.
+        //    - distributed experiments.
+        //    - experiments with a higher priority.
+        //    - older experiments.
+        Experiment::next_inner(db, Some(assignee), assignee)
             .and_then(|ex| {
                 ex.map_or_else(
-                    || Experiment::next_inner(db, Some(&Assignee::Distributed)),
+                    || Experiment::next_inner(db, Some(&Assignee::Distributed), assignee),
                     |exp| Ok(Some(exp)),
                 )
             })
-            .and_then(|ex| ex.map_or_else(|| Experiment::next_inner(db, None), |exp| Ok(Some(exp))))
+            .and_then(|ex| {
+                ex.map_or_else(
+                    || Experiment::next_inner(db, None, assignee),
+                    |exp| Ok(Some(exp)),
+                )
+            })
     }
 
+    #[allow(unreachable_code)]
     fn next_inner(
         db: &Database,
         assignee: Option<&Assignee>,
+        agent: &Assignee,
     ) -> Fallible<Option<(bool, Experiment)>> {
-        let record = if let Some(assigned_to) = assignee {
-            db.get_row(
-                "SELECT * FROM experiments WHERE (status = ?1 \
-                 OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
-                 WHERE experiment = experiments.name  AND status = ?1 AND skipped = 0) > 0)) \
-                 AND assigned_to = ?3 \
-                 ORDER BY priority DESC, created_at;",
-                &[
-                    &Status::Queued.to_string(),
-                    &Status::Running.to_string(),
-                    &assigned_to.to_string(),
-                ],
-                |r| ExperimentDBRecord::from_row(r),
-            )?
+        let agent_name = if let Assignee::Agent(agent_name) = agent {
+            agent_name.to_string()
         } else {
-            db.get_row(
-                "SELECT * FROM experiments WHERE (status = ?1 \
-                 OR (status = ?2   AND (SELECT COUNT(*) FROM experiment_crates \
-                 WHERE experiment = experiments.name  AND status = ?1 AND skipped = 0) > 0)) \
-                 AND assigned_to IS NULL \
-                 ORDER BY priority DESC, created_at;",
-                &[&Status::Queued.to_string(), &Status::Running.to_string()],
-                |r| ExperimentDBRecord::from_row(r),
-            )?
+            unimplemented!("msg");
         };
 
-        if let Some(record) = record {
+        let (query, params) = if let Some(assignee) = assignee {
+            match assignee {
+                Assignee::Distributed | Assignee::Agent(_) => {
+                    const AGENT_QUERY: &str = r#"
+                        SELECT *
+                        FROM   experiments ex
+                        WHERE  ( ex.status = "queued"
+                                    OR ( status = "running"
+                                        AND ( SELECT COUNT (*)
+                                              FROM  experiment_crates ex_crates
+                                              WHERE ex_crates.experiment = ex.name
+                                                      AND ( status = "queued") 
+                                                      AND ( skipped = 0) 
+                                            > 0 ) )
+                                AND ( ex.assigned_to = ?2 )
+                                AND ( ex.requirement IS NULL
+                                    OR ex.requirement IN (  SELECT capability
+                                                            FROM   agent_capabilities
+                                                            WHERE  agent_name = ?1) )
+                        ORDER  BY ex.priority DESC,
+                                  ex.created_at
+                        LIMIT  1;
+                    "#;
+
+                    (AGENT_QUERY, vec![assignee.to_string(), agent_name])
+                }
+                // FIXME: We don't respect experiment requirements when assigning experiments to the
+                // CLI. We need to decide what capabilities the CLI should have first.
+                _ => {
+                    unimplemented!(
+                        "experiment requirements are not respected when assigning to CLI"
+                    );
+                    const CLI_QUERY: &str = r#"
+                        SELECT     *
+                        FROM       experiments ex
+                        WHERE      ( ex.status = "queued"
+                                        OR ( status = "running"
+                                            AND ( SELECT COUNT (*)
+                                                  FROM  experiment_crates ex_crates
+                                                  WHERE ex_crates.experiment = ex.name
+                                                          AND ( status = "queued") 
+                                                          AND ( skipped = 0) 
+                                                  > 0 ) )
+                                   AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?2 )
+                        ORDER BY   ex.assigned_to IS NULL,
+                                   ex.priority DESC,
+                                   ex.created_at
+                        LIMIT 1;
+                    "#;
+
+                    (CLI_QUERY, vec![assignee.to_string(), agent_name])
+                }
+            }
+        } else {
+            const AGENT_UNASSIGNED_QUERY: &str = r#"
+                SELECT *
+                FROM   experiments ex
+                WHERE  ( ex.status = "queued"
+                            OR ( status = "running"
+                                AND ( SELECT COUNT (*)
+                                      FROM  experiment_crates ex_crates
+                                      WHERE ex_crates.experiment = ex.name
+                                              AND ( status = "queued") 
+                                              AND ( skipped = 0) 
+                                    > 0 ) )
+                        AND ( ex.assigned_to IS NULL )
+                        AND ( ex.requirement IS NULL
+                            OR ex.requirement IN (  SELECT capability
+                                                    FROM   agent_capabilities
+                                                    WHERE  agent_name = ?1) )
+                ORDER  BY ex.priority DESC,
+                          ex.created_at
+                LIMIT  1;
+            "#;
+
+            (AGENT_UNASSIGNED_QUERY, vec![agent_name])
+        };
+
+        let next = db.get_row(query, params.as_slice(), |r| {
+            ExperimentDBRecord::from_row(r)
+        })?;
+
+        if let Some(record) = next {
             let mut experiment = record.into_experiment()?;
             let new_ex = experiment.status != Status::Running;
             if new_ex {
@@ -451,6 +525,7 @@ struct ExperimentDBRecord {
     assigned_to: Option<String>,
     report_url: Option<String>,
     ignore_blacklist: bool,
+    requirement: Option<String>,
 }
 
 impl ExperimentDBRecord {
@@ -472,6 +547,7 @@ impl ExperimentDBRecord {
             assigned_to: row.get("assigned_to"),
             report_url: row.get("report_url"),
             ignore_blacklist: row.get("ignore_blacklist"),
+            requirement: row.get("requirement"),
         }
     }
 
@@ -506,6 +582,7 @@ impl ExperimentDBRecord {
             status: self.status.parse()?,
             report_url: self.report_url,
             ignore_blacklist: self.ignore_blacklist,
+            requirement: self.requirement,
         })
     }
 }
@@ -514,6 +591,7 @@ impl ExperimentDBRecord {
 mod tests {
     use super::{Assignee, AssigneeParseError, Experiment, Status};
     use crate::actions::{Action, ActionsCtx, CreateExperiment};
+    use crate::agent::Capabilities;
     use crate::config::Config;
     use crate::db::Database;
     use crate::server::agents::Agents;
@@ -603,6 +681,62 @@ mod tests {
 
         // Test no other experiment is available for the other agents
         assert!(Experiment::next(&db, &agent3).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_assigning_experiment_with_requirements() {
+        let db = Database::temp().unwrap();
+        let config = Config::load().unwrap();
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        let mut tokens = Tokens::default();
+        tokens.agents.insert("token1".into(), "agent-1".into());
+        tokens.agents.insert("token2".into(), "agent-2".into());
+
+        let agent1 = Assignee::Agent("agent-1".to_string());
+        let agent2 = Assignee::Agent("agent-2".to_string());
+
+        // Populate the `agents` table
+        let agents = Agents::new(db.clone(), &tokens).unwrap();
+        agents
+            .add_capabilities("agent-1", &Capabilities::new(&["linux"]))
+            .unwrap();
+        agents
+            .add_capabilities(
+                "agent-2",
+                &Capabilities::new(&["windows", "big-hard-drive"]),
+            )
+            .unwrap();
+
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+
+        let mut windows = CreateExperiment::dummy("windows");
+        windows.requirement = Some("windows".to_string());
+        windows.apply(&ctx).unwrap();
+
+        // Test that an experiment will not be assigned to an agent without the required
+        // capabilities.
+        assert!(Experiment::next(&db, &agent1).unwrap().is_none());
+
+        // Test that an experiment with no capabilities can be assigned to any agent.
+        CreateExperiment::dummy("no-requirements")
+            .apply(&ctx)
+            .unwrap();
+
+        let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
+        assert!(new);
+        assert_eq!(ex.name.as_str(), "no-requirements");
+        assert_eq!(ex.status, Status::Running);
+        assert_eq!(ex.assigned_to.unwrap(), agent1);
+
+        // Test that an experiment will be assigned to an agent with the required capabilities.
+        let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
+        assert!(new);
+        assert_eq!(ex.name.as_str(), "windows");
+        assert_eq!(ex.status, Status::Running);
+        assert_eq!(ex.assigned_to.unwrap(), agent2);
     }
 
     #[test]

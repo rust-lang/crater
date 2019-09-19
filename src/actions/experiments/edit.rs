@@ -13,6 +13,7 @@ pub struct EditExperiment {
     pub priority: Option<i32>,
     pub ignore_blacklist: Option<bool>,
     pub assign: Option<Assignee>,
+    pub requirement: Option<String>,
 }
 
 impl EditExperiment {
@@ -27,6 +28,7 @@ impl EditExperiment {
             priority: None,
             ignore_blacklist: None,
             assign: None,
+            requirement: None,
         }
     }
 }
@@ -147,6 +149,16 @@ impl Action for EditExperiment {
                 ex.assigned_to = Some(assign);
             }
 
+            // Try to update the requirement
+            if let Some(requirement) = self.requirement {
+                let changes = t.execute(
+                    "UPDATE experiments SET requirement = ?1 WHERE name = ?2;",
+                    &[&requirement.to_string(), &self.name],
+                )?;
+                assert_eq!(changes, 1);
+                ex.requirement = Some(requirement);
+            }
+
             Ok(())
         })?;
         Ok(())
@@ -194,6 +206,7 @@ mod tests {
             github_issue: None,
             ignore_blacklist: false,
             assign: None,
+            requirement: None,
         }
         .apply(&ctx)
         .unwrap();
@@ -211,6 +224,7 @@ mod tests {
             priority: Some(10),
             ignore_blacklist: Some(true),
             assign: Some(Assignee::CLI),
+            requirement: Some("windows".to_string()),
         }
         .apply(&ctx)
         .unwrap();
@@ -225,6 +239,7 @@ mod tests {
         assert_eq!(ex.priority, 10);
         assert_eq!(ex.ignore_blacklist, true);
         assert_eq!(ex.assigned_to, Some(Assignee::CLI));
+        assert_eq!(ex.requirement, Some("windows".to_string()));
 
         assert_eq!(
             ex.get_crates(&ctx.db).unwrap(),

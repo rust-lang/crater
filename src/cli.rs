@@ -118,10 +118,12 @@ pub enum Crater {
         #[structopt(
             name = "crate-select",
             long = "crate-select",
-            raw(
-                default_value = "CrateSelect::Demo.to_str()",
-                possible_values = "CrateSelect::possible_values()"
-            )
+            help = "The set of crates on which the experiment will run.",
+            long_help = "The set of crates on which the experiment will run.\n\n\
+                         This can be one of (full, demo, random-{d}, top-{d}, local) \
+                         where {d} is a positive integer, or \"list:\" followed \
+                         by a comma-separated list of crates.",
+            raw(default_value = "\"demo\"",)
         )]
         crates: CrateSelect,
         #[structopt(
@@ -160,7 +162,11 @@ pub enum Crater {
         #[structopt(
             name = "crates",
             long = "crates",
-            raw(possible_values = "CrateSelect::possible_values()")
+            help = "The set of crates on which the experiment will run.",
+            long_help = "The set of crates on which the experiment will run.\n\n\
+                         This can be one of (full, demo, random-{d}, top-{d}, local) \
+                         where {d} is a positive integer, or \"list:\" followed \
+                         by a comma-separated list of crates."
         )]
         crates: Option<CrateSelect>,
         #[structopt(
@@ -360,7 +366,7 @@ impl Crater {
                     name: ex.0.clone(),
                     toolchains: [tc1.clone(), tc2.clone()],
                     mode: *mode,
-                    crates: *crates,
+                    crates: crates.clone(),
                     cap_lints: *cap_lints,
                     priority: *priority,
                     github_issue: None,
@@ -399,7 +405,7 @@ impl Crater {
                     name: name.clone(),
                     toolchains: [tc1.clone(), tc2.clone()],
                     mode: *mode,
-                    crates: *crates,
+                    crates: crates.clone(),
                     cap_lints: *cap_lints,
                     priority: *priority,
                     ignore_blacklist,

@@ -5,6 +5,7 @@ use crate::toolchain::Toolchain;
 use chrono::{DateTime, Utc};
 use rusqlite::Row;
 use serde_json;
+use std::collections::HashSet;
 use std::fmt;
 use std::str::FromStr;
 
@@ -34,14 +35,17 @@ string_enum!(pub enum CapLints {
     Forbid => "forbid",
 });
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+const SMALL_RANDOM_COUNT: u32 = 20;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CrateSelect {
     Full,
     Demo,
-    SmallRandom,
-    Top100,
+    Top(u32),
     Local,
     Dummy,
+    Random(u32),
+    List(HashSet<String>),
 }
 
 impl FromStr for CrateSelect {
@@ -49,12 +53,30 @@ impl FromStr for CrateSelect {
 
     fn from_str(s: &str) -> failure::Fallible<Self> {
         let ret = match s {
-            "full" => Self::Full,
-            "demo" => Self::Demo,
-            "small-random" => Self::SmallRandom,
-            "top-100" => Self::Top100,
-            "local" => Self::Local,
-            "dummy" => Self::Dummy,
+            s if s.starts_with("top-") => {
+                let n: u32 = s["top-".len()..].parse()?;
+                CrateSelect::Top(n)
+            }
+
+            "small-random" => CrateSelect::Random(SMALL_RANDOM_COUNT),
+            s if s.starts_with("random-") => {
+                let n: u32 = s["random-".len()..].parse()?;
+                CrateSelect::Random(n)
+            }
+
+            s if s.starts_with("list:") => {
+                let list = s["list:".len()..]
+                    .split(',')
+                    .map(|s| s.to_owned())
+                    .collect();
+
+                CrateSelect::List(list)
+            }
+
+            "full" => CrateSelect::Full,
+            "demo" => CrateSelect::Demo,
+            "local" => CrateSelect::Local,
+            "dummy" => CrateSelect::Dummy,
             s => bail!("invalid CrateSelect: {}", s),
         };
 
@@ -62,20 +84,31 @@ impl FromStr for CrateSelect {
     }
 }
 
-impl CrateSelect {
-    pub fn to_str(&self) -> &'static str {
-        match *self {
-            Self::Full => "full",
-            Self::Demo => "demo",
-            Self::SmallRandom => "small-random",
-            Self::Top100 => "top-100",
-            Self::Local => "local",
-            Self::Dummy => "dummy",
-        }
-    }
+impl fmt::Display for CrateSelect {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CrateSelect::Full => write!(f, "full"),
+            CrateSelect::Demo => write!(f, "demo"),
+            CrateSelect::Dummy => write!(f, "dummy"),
+            CrateSelect::Top(n) => write!(f, "top-{}", n),
+            CrateSelect::Local => write!(f, "local"),
+            CrateSelect::Random(n) => write!(f, "random-{}", n),
+            CrateSelect::List(list) => {
+                let mut first = true;
+                write!(f, "list:")?;
 
-    pub fn possible_values() -> &'static [&'static str] {
-        &["full", "demo", "small-random", "top-100", "local", "dummy"]
+                for krate in list {
+                    if !first {
+                        write!(f, ",")?;
+                    }
+
+                    write!(f, "{}", krate)?;
+                    first = false;
+                }
+
+                Ok(())
+            }
+        }
     }
 }
 

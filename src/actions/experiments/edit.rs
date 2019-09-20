@@ -199,7 +199,7 @@ mod tests {
             name: "foo".to_string(),
             toolchains: ["stable".parse().unwrap(), "beta".parse().unwrap()],
             mode: Mode::BuildAndTest,
-            crates: CrateSelect::SmallRandom,
+            crates: CrateSelect::Random(20),
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,

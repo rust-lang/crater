@@ -83,6 +83,11 @@ pub fn run(
 
     // Make crater runs created via webhook require linux by default.
     let requirement = args.requirement.unwrap_or_else(|| "linux".to_string());
+    let crates = args
+        .crates
+        .map(|c| c.resolve())
+        .transpose()
+        .map_err(|e| e.context("Failed to resolve crate list"))?;
 
     actions::CreateExperiment {
         name: name.clone(),
@@ -95,7 +100,7 @@ pub fn run(
                 .ok_or_else(|| err_msg("missing end toolchain"))?,
         ],
         mode: args.mode.unwrap_or(Mode::BuildAndTest),
-        crates: args.crates.unwrap_or(CrateSelect::Full),
+        crates: crates.unwrap_or(CrateSelect::Full),
         cap_lints: args.cap_lints.unwrap_or(CapLints::Forbid),
         priority: args.priority.unwrap_or(0),
         github_issue: Some(GitHubIssue {
@@ -131,10 +136,16 @@ pub fn run(
 pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
+    let crates = args
+        .crates
+        .map(|c| c.resolve())
+        .transpose()
+        .map_err(|e| e.context("Failed to resolve crate list"))?;
+
     actions::EditExperiment {
         name: name.clone(),
         toolchains: [args.start, args.end],
-        crates: args.crates,
+        crates,
         mode: args.mode,
         cap_lints: args.cap_lints,
         priority: args.priority,

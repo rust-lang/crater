@@ -27,21 +27,59 @@ string_enum!(pub enum Mode {
     UnstableFeatures => "unstable-features",
 });
 
-string_enum!(pub enum CrateSelect {
-    Full => "full",
-    Demo => "demo",
-    SmallRandom => "small-random",
-    Top100 => "top-100",
-    Local => "local",
-    Dummy => "dummy",
-});
-
 string_enum!(pub enum CapLints {
     Allow => "allow",
     Warn => "warn",
     Deny => "deny",
     Forbid => "forbid",
 });
+
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+pub enum CrateSelect {
+    Full,
+    Demo,
+    SmallRandom,
+    Top100,
+    Local,
+    Dummy,
+}
+
+impl FromStr for CrateSelect {
+    type Err = failure::Error;
+
+    fn from_str(s: &str) -> failure::Fallible<Self> {
+        let ret = match s {
+            "full" => Self::Full,
+            "demo" => Self::Demo,
+            "small-random" => Self::SmallRandom,
+            "top-100" => Self::Top100,
+            "local" => Self::Local,
+            "dummy" => Self::Dummy,
+            s => bail!("invalid CrateSelect: {}", s),
+        };
+
+        Ok(ret)
+    }
+}
+
+impl CrateSelect {
+    pub fn to_str(&self) -> &'static str {
+        match *self {
+            Self::Full => "full",
+            Self::Demo => "demo",
+            Self::SmallRandom => "small-random",
+            Self::Top100 => "top-100",
+            Self::Local => "local",
+            Self::Dummy => "dummy",
+        }
+    }
+
+    pub fn possible_values() -> &'static [&'static str] {
+        &["full", "demo", "small-random", "top-100", "local", "dummy"]
+    }
+}
+
+impl_serde_from_parse!(CrateSelect, expecting = "A valid value of `CrateSelect`");
 
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[derive(Clone, Serialize, Deserialize)]

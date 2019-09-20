@@ -63,7 +63,7 @@ pub(crate) trait List {
 }
 
 pub(crate) fn get_crates(
-    select: CrateSelect,
+    select: &CrateSelect,
     db: &Database,
     config: &Config,
 ) -> Fallible<Vec<Crate>> {

@@ -146,7 +146,7 @@ impl Config {
         let mut has_errors = Self::check_for_dup_keys(&buffer).is_err();
         let cfg: Self = ::toml::from_str(&buffer)?;
         let db = crate::db::Database::open()?;
-        let crates = crate::crates::lists::get_crates(CrateSelect::Full, &db, &cfg)?;
+        let crates = crate::crates::lists::get_crates(&CrateSelect::Full, &db, &cfg)?;
         has_errors |= cfg.check_for_missing_crates(&crates).is_err();
         has_errors |= cfg.check_for_missing_repos(&crates).is_err();
         if has_errors {

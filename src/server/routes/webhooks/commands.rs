@@ -42,6 +42,7 @@ pub fn run(
                 },
                 rustflags: None,
                 ci_try: false,
+                patches: Vec::new(),
             });
             detected_end = Some(Toolchain {
                 source: RustwideToolchain::CI {
@@ -50,6 +51,7 @@ pub fn run(
                 },
                 rustflags: None,
                 ci_try: true,
+                patches: Vec::new(),
             });
         }
     }

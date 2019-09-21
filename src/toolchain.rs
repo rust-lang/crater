@@ -13,6 +13,7 @@ pub(crate) static MAIN_TOOLCHAIN: Toolchain = Toolchain {
     },
     rustflags: None,
     ci_try: false,
+    patches: Vec::new(),
 };
 
 /// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
@@ -23,6 +24,7 @@ pub(crate) static TEST_TOOLCHAIN: Toolchain = Toolchain {
     },
     rustflags: None,
     ci_try: false,
+    patches: Vec::new(),
 };
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
@@ -30,6 +32,7 @@ pub struct Toolchain {
     pub source: RustwideToolchain,
     pub rustflags: Option<String>,
     pub ci_try: bool,
+    pub patches: Vec<CratePatch>,
 }
 
 impl Toolchain {
@@ -64,6 +67,10 @@ impl fmt::Display for Toolchain {
 
         if let Some(ref flag) = self.rustflags {
             write!(f, "+rustflags={}", flag)?;
+        }
+
+        for patch in self.patches.iter() {
+            write!(f, "+patch={}", patch)?;
         }
 
         Ok(())
@@ -119,6 +126,7 @@ impl FromStr for Toolchain {
         };
 
         let mut rustflags = None;
+        let mut patches: Vec<CratePatch> = vec![];
         for part in parts {
             if let Some(equal_idx) = part.find('=') {
                 let (flag, value_with_equal) = part.split_at(equal_idx);
@@ -130,6 +138,7 @@ impl FromStr for Toolchain {
 
                 match flag {
                     "rustflags" => rustflags = Some(value),
+                    "patch" => patches.push(value.parse()?),
                     unknown => return Err(ToolchainParseError::InvalidFlag(unknown.to_string())),
                 }
             } else {
@@ -141,9 +150,38 @@ impl FromStr for Toolchain {
             source,
             rustflags,
             ci_try,
+            patches,
         })
     }
 }
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
+pub struct CratePatch {
+    pub name: String,
+    pub repo: String,
+    pub branch: String,
+}
+
+impl FromStr for CratePatch {
+    type Err = ToolchainParseError;
+
+    fn from_str(input: &str) -> Result<Self, ToolchainParseError> {
+        let params: Vec<&str> = input.split('=').collect();
+
+        if params.len() != 3 {
+            Err(ToolchainParseError::InvalidFlag(input.to_string()))
+        } else {
+            Ok(CratePatch { name: params[0].into(), repo: params[1].into(), branch: params[2].into() })
+        }
+    }
+}
+
+impl fmt::Display for CratePatch {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}={}={}", self.name, self.repo, self.branch)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

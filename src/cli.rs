@@ -623,6 +623,7 @@ impl Crater {
     fn workspace(&self, docker_env: Option<&str>, fast_init: bool) -> Result<Workspace, Error> {
         let mut builder = WorkspaceBuilder::new(&crater::dirs::WORK_DIR, &crater::USER_AGENT)
             .fast_init(fast_init)
+            .fetch_registry_index_during_builds(false)
             .command_timeout(Some(Duration::from_secs(15 * 60)))
             .command_no_output_timeout(Some(Duration::from_secs(5 * 60)));
         if let Some(env) = docker_env {

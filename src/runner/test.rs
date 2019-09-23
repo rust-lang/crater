@@ -115,12 +115,13 @@ pub(super) fn run_test<DB: WriteResults>(
                 let sandbox = SandboxBuilder::new()
                     .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
                     .enable_networking(false);
-                detect_broken(ctx.build_dir.lock().unwrap().build(
-                    &ctx.toolchain,
-                    &ctx.krate.to_rustwide(),
-                    sandbox,
-                    |build| test_fn(ctx, build),
-                ))
+                detect_broken(
+                    ctx.build_dir
+                        .lock()
+                        .unwrap()
+                        .build(&ctx.toolchain, &ctx.krate.to_rustwide(), sandbox)
+                        .run(|build| test_fn(ctx, build)),
+                )
             },
         )?;
     }

@@ -37,7 +37,7 @@ third-party code, the first thing is to request a **try build** to get a valid
 toolchain. You can do that with the `@bors try` GitHub comment.
 
 **After** the try build is done you need to choose the [experiment mode you want to
-use][h-experiment-moes] and type up the command in your GitHub PR:
+use][h-experiment-modes] and type up the command in your GitHub PR:
 
 ```
 @craterbot run mode=YOUR-MODE
@@ -58,7 +58,7 @@ You must prefix the start commit with `master#`, and the end commit with
 `try#`, and both of them should be written with the full 40-chars hash.
 
 Then you need to choose the [experiment mode you want to
-use][h-experiment-mode] and type up the command in your GitHub PR:
+use][h-experiment-modes] and type up the command in your GitHub PR:
 
 ```
 @craterbot run start=master#fullhash end=try#fullhash mode=YOUR-MODE

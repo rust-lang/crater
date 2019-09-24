@@ -1,0 +1,24 @@
+[server.bot-acl]
+rust-teams = true
+github = ["pietroalbini"]
+
+[server.labels]
+remove = "^S-"
+experiment-queued = "S-waiting-on-crater"
+experiment-completed = "S-waiting-on-review"
+
+[demo-crates]
+crates = []
+github-repos = []
+local-crates = []
+
+[sandbox]
+memory-limit = "512M"
+build-log-max-size = "2M"
+build-log-max-lines = 1000
+
+[crates]
+
+[github-repos]
+
+[local-crates]

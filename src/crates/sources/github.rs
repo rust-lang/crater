@@ -5,6 +5,8 @@ use std::str::FromStr;
 
 static CACHED_LIST: &str =
     "https://raw.githubusercontent.com/rust-ops/rust-repos/master/data/github.csv";
+const DUMMY_ORG: &str = "ghost";
+const DUMMY_NAME: &str = "missing";
 
 #[derive(Deserialize)]
 struct ListRepo {
@@ -72,6 +74,13 @@ pub struct GitHubRepo {
 impl GitHubRepo {
     pub(crate) fn slug(&self) -> String {
         format!("{}/{}", self.org, self.name)
+    }
+
+    pub(crate) fn dummy() -> GitHubRepo {
+        GitHubRepo {
+            org: DUMMY_ORG.to_string(),
+            name: DUMMY_NAME.to_string(),
+        }
     }
 }
 

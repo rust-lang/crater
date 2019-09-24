@@ -42,6 +42,12 @@ minicrater! {
         ..Default::default()
     },
 
+    single_thread_missing_repo {
+        ex: "missing-repo",
+        crate_select: "dummy",
+        ..Default::default()
+    },
+
     #[cfg(not(windows))] // `State.OOMKilled` is not set on Windows
     resource_exhaustion {
         ex: "resource-exhaustion",

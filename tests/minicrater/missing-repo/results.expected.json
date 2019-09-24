@@ -1,0 +1,19 @@
+{
+  "crates": [
+    {
+      "name": "ghost.missing",
+      "res": "broken",
+      "runs": [
+        {
+          "log": "stable/gh/ghost.missing",
+          "res": "broken:missing-git-repository"
+        },
+        {
+          "log": "beta/gh/ghost.missing",
+          "res": "broken:missing-git-repository"
+        }
+      ],
+      "url": "https://github.com/ghost/missing"
+    }
+  ]
+}

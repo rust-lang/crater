@@ -1,9 +1,9 @@
-use chrono::{DateTime, Utc};
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
 use crate::utils;
+use chrono::{DateTime, Utc};
 use rusqlite::Row;
 use serde_json;
 use std::collections::HashSet;
@@ -120,10 +120,7 @@ impl CrateSelect {
             bail!("Crate identifiers must not contain a comma");
         }
 
-        let crates = s
-            .split_whitespace()
-            .map(|s| s.to_owned())
-            .collect();
+        let crates = s.split_whitespace().map(|s| s.to_owned()).collect();
         Ok(CrateSelect::List(crates))
     }
 }
@@ -570,7 +567,9 @@ impl ExperimentDBRecord {
 
 #[cfg(test)]
 mod tests {
-    use super::{Assignee, AssigneeParseError, CrateSelect, DeferredCrateSelect, Experiment, Status};
+    use super::{
+        Assignee, AssigneeParseError, CrateSelect, DeferredCrateSelect, Experiment, Status,
+    };
     use crate::actions::{Action, ActionsCtx, CreateExperiment};
     use crate::agent::Capabilities;
     use crate::config::Config;
@@ -592,7 +591,10 @@ mod tests {
             ("top-25", CrateSelect::Top(25)),
             ("random-87", CrateSelect::Random(87)),
             ("small-random", CrateSelect::Random(20)),
-            ("list:brson/hello-rs,lazy_static", CrateSelect::List(demo_crates.clone())),
+            (
+                "list:brson/hello-rs,lazy_static",
+                CrateSelect::List(demo_crates.clone()),
+            ),
         ];
 
         for (s, output) in suite.into_iter() {
@@ -613,11 +615,13 @@ mod tests {
             DeferredCrateSelect::Indirect("https://git.io/Jes7o".parse().unwrap()),
         );
 
-        let list = CrateSelect::from_newline_separated_list(r"
+        let list = CrateSelect::from_newline_separated_list(
+            r"
             brson/hello-rs
 
-            lazy_static"
-        ).unwrap();
+            lazy_static",
+        )
+        .unwrap();
 
         assert_eq!(list, CrateSelect::List(demo_crates));
     }

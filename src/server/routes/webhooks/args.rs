@@ -1,52 +1,6 @@
-use crate::experiments::{Assignee, CapLints, CrateSelect, Mode};
+use crate::experiments::{Assignee, CapLints, DeferredCrateSelect, Mode};
 use crate::toolchain::Toolchain;
 use failure::{self, Fallible};
-use reqwest;
-use url::Url;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum DeferredCrateSelect {
-    Direct(CrateSelect),
-    Indirect(Url),
-}
-
-impl From<CrateSelect> for DeferredCrateSelect {
-    fn from(v: CrateSelect) -> Self {
-        DeferredCrateSelect::Direct(v)
-    }
-}
-
-impl DeferredCrateSelect {
-    pub fn resolve(self) -> Fallible<CrateSelect> {
-        let url = match self {
-            DeferredCrateSelect::Direct(v) => return Ok(v),
-            DeferredCrateSelect::Indirect(url) => url,
-        };
-
-        let body = reqwest::get(url)?.text()?;
-        if body.contains(',') {
-            bail!("Crate identifiers must not contain a comma");
-        }
-
-        let crates = body
-            .split(|c: char| c.is_whitespace())
-            .map(|s| s.to_owned())
-            .collect();
-        Ok(CrateSelect::List(crates))
-    }
-}
-
-impl FromStr for DeferredCrateSelect {
-    type Err = failure::Error;
-
-    fn from_str(input: &str) -> Fallible<Self> {
-        if input.starts_with("https://") || input.starts_with("http://") {
-            Ok(DeferredCrateSelect::Indirect(input.parse()?))
-        } else {
-            Ok(DeferredCrateSelect::Direct(input.parse()?))
-        }
-    }
-}
 
 #[derive(Debug, Fail)]
 #[cfg_attr(test, derive(PartialEq, Eq))]

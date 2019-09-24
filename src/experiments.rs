@@ -1,13 +1,15 @@
+use chrono::{DateTime, Utc};
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
-use chrono::{DateTime, Utc};
+use crate::utils;
 use rusqlite::Row;
 use serde_json;
 use std::collections::HashSet;
 use std::fmt;
 use std::str::FromStr;
+use url::Url;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -108,6 +110,51 @@ impl fmt::Display for CrateSelect {
 
                 Ok(())
             }
+        }
+    }
+}
+
+/// Either a `CrateSelect` or `Url` pointing to a list of crates.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum DeferredCrateSelect {
+    Direct(CrateSelect),
+    Indirect(Url),
+}
+
+impl From<CrateSelect> for DeferredCrateSelect {
+    fn from(v: CrateSelect) -> Self {
+        DeferredCrateSelect::Direct(v)
+    }
+}
+
+impl DeferredCrateSelect {
+    pub fn resolve(self) -> Fallible<CrateSelect> {
+        let url = match self {
+            DeferredCrateSelect::Direct(v) => return Ok(v),
+            DeferredCrateSelect::Indirect(url) => url,
+        };
+
+        let body = utils::http::get_sync(url.as_str())?.text()?;
+        if body.contains(',') {
+            bail!("Crate identifiers must not contain a comma");
+        }
+
+        let crates = body
+            .split(|c: char| c.is_whitespace())
+            .map(|s| s.to_owned())
+            .collect();
+        Ok(CrateSelect::List(crates))
+    }
+}
+
+impl FromStr for DeferredCrateSelect {
+    type Err = failure::Error;
+
+    fn from_str(input: &str) -> Fallible<Self> {
+        if input.starts_with("https://") || input.starts_with("http://") {
+            Ok(DeferredCrateSelect::Indirect(input.parse()?))
+        } else {
+            Ok(DeferredCrateSelect::Direct(input.parse()?))
         }
     }
 }

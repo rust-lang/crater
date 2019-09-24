@@ -14,7 +14,7 @@ use crater::agent::{self, Capabilities};
 use crater::config::Config;
 use crater::crates::Crate;
 use crater::db::Database;
-use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
+use crater::experiments::{Assignee, CapLints, DeferredCrateSelect, Experiment, Mode, Status};
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
 use crater::runner;
@@ -125,7 +125,7 @@ pub enum Crater {
                          by a comma-separated list of crates.",
             raw(default_value = "\"demo\"",)
         )]
-        crates: CrateSelect,
+        crates: DeferredCrateSelect,
         #[structopt(
             name = "level",
             long = "cap-lints",
@@ -168,7 +168,7 @@ pub enum Crater {
                          where {d} is a positive integer, or \"list:\" followed \
                          by a comma-separated list of crates."
         )]
-        crates: Option<CrateSelect>,
+        crates: Option<DeferredCrateSelect>,
         #[structopt(
             name = "cap-lints",
             long = "cap-lints",
@@ -366,7 +366,7 @@ impl Crater {
                     name: ex.0.clone(),
                     toolchains: [tc1.clone(), tc2.clone()],
                     mode: *mode,
-                    crates: crates.clone(),
+                    crates: crates.clone().resolve()?,
                     cap_lints: *cap_lints,
                     priority: *priority,
                     github_issue: None,
@@ -405,7 +405,7 @@ impl Crater {
                     name: name.clone(),
                     toolchains: [tc1.clone(), tc2.clone()],
                     mode: *mode,
-                    crates: crates.clone(),
+                    crates: crates.clone().map(|cs| cs.resolve()).transpose()?,
                     cap_lints: *cap_lints,
                     priority: *priority,
                     ignore_blacklist,

@@ -225,7 +225,7 @@ impl Experiment {
         let agent_name = if let Assignee::Agent(agent_name) = agent {
             agent_name.to_string()
         } else {
-            unimplemented!("msg");
+            unimplemented!("experiment requirements are not respected when assigning to CLI");
         };
 
         let (query, params) = if let Some(assignee) = assignee {
@@ -234,19 +234,19 @@ impl Experiment {
                     const AGENT_QUERY: &str = r#"
                         SELECT *
                         FROM   experiments ex
-                        WHERE  ( ex.status = "queued"
-                                    OR ( status = "running"
-                                        AND ( SELECT COUNT (*)
-                                              FROM  experiment_crates ex_crates
-                                              WHERE ex_crates.experiment = ex.name
-                                                      AND ( status = "queued") 
-                                                      AND ( skipped = 0) 
-                                            > 0 ) )
-                                AND ( ex.assigned_to = ?2 )
+                        WHERE  ( ex.status = "queued" 
+                                OR ( status = "running"
+                                            AND ( SELECT COUNT (*)
+                                                  FROM  experiment_crates ex_crates
+                                                  WHERE ex_crates.experiment = ex.name
+                                                          AND ( status = "queued") 
+                                                          AND ( skipped = 0) 
+                                                  > 0 ) ) )
+                                AND ( ex.assigned_to = ?1 ) 
                                 AND ( ex.requirement IS NULL
                                     OR ex.requirement IN (  SELECT capability
                                                             FROM   agent_capabilities
-                                                            WHERE  agent_name = ?1) )
+                                                            WHERE  agent_name = ?2) )
                         ORDER  BY ex.priority DESC,
                                   ex.created_at
                         LIMIT  1;
@@ -263,22 +263,22 @@ impl Experiment {
                     const CLI_QUERY: &str = r#"
                         SELECT     *
                         FROM       experiments ex
-                        WHERE      ( ex.status = "queued"
+                        WHERE      ( ex.status = "queued" 
                                         OR ( status = "running"
                                             AND ( SELECT COUNT (*)
                                                   FROM  experiment_crates ex_crates
                                                   WHERE ex_crates.experiment = ex.name
                                                           AND ( status = "queued") 
                                                           AND ( skipped = 0) 
-                                                  > 0 ) )
-                                   AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?2 )
+                                                  > 0 ) ) )
+                                   AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?1 )
                         ORDER BY   ex.assigned_to IS NULL,
                                    ex.priority DESC,
                                    ex.created_at
                         LIMIT 1;
                     "#;
 
-                    (CLI_QUERY, vec![assignee.to_string(), agent_name])
+                    (CLI_QUERY, vec![assignee.to_string()])
                 }
             }
         } else {
@@ -286,14 +286,14 @@ impl Experiment {
                 SELECT *
                 FROM   experiments ex
                 WHERE  ( ex.status = "queued"
-                            OR ( status = "running"
-                                AND ( SELECT COUNT (*)
-                                      FROM  experiment_crates ex_crates
-                                      WHERE ex_crates.experiment = ex.name
-                                              AND ( status = "queued") 
-                                              AND ( skipped = 0) 
-                                    > 0 ) )
-                        AND ( ex.assigned_to IS NULL )
+                        OR ( status = "running"
+                                            AND ( SELECT COUNT (*)
+                                                  FROM  experiment_crates ex_crates
+                                                  WHERE ex_crates.experiment = ex.name
+                                                          AND ( status = "queued") 
+                                                          AND ( skipped = 0) 
+                                                  > 0 ) ) )
+                        AND ( ex.assigned_to IS NULL ) 
                         AND ( ex.requirement IS NULL
                             OR ex.requirement IN (  SELECT capability
                                                     FROM   agent_capabilities
@@ -450,38 +450,42 @@ impl Experiment {
         assigned_to: &Assignee,
     ) -> Fallible<Vec<Crate>> {
         let limit = self.crate_list_size(config);
+        let assigned_to = assigned_to.to_string();
 
         db.transaction(|transaction| {
             //get the first 'limit' queued crates from the experiment crates list
+            let mut params: Vec<&dyn rusqlite::types::ToSql> = vec![&assigned_to, &self.name];
             let crates = transaction
                 .query(
                     "SELECT crate FROM experiment_crates WHERE experiment = ?1
                      AND status = ?2 AND skipped = 0 LIMIT ?3;",
                     &[&self.name, &Status::Queued.to_string(), &limit],
-                    |r| {
-                        let value: String = r.get("crate");
-                        Ok(serde_json::from_str(&value)?)
-                    },
+                    |r| r.get("crate"),
                 )?
                 .into_iter()
-                .collect::<Fallible<Vec<Crate>>>();
+                .collect::<Vec<String>>();
 
-            //update the status of the previously selected crates to 'Running'
-            transaction.execute(
-                "UPDATE experiment_crates SET assigned_to = ?1, status = ?2 \
-                 WHERE experiment = ?3 AND crate IN (SELECT crate FROM \
-                 experiment_crates WHERE experiment = ?3
-                 AND status = ?4 AND skipped = 0 LIMIT ?5) ",
-                &[
-                    &assigned_to.to_string(),
-                    &Status::Running.to_string(),
-                    &self.name,
-                    &Status::Queued.to_string(),
-                    &limit,
-                ],
-            )?;
+            crates.iter().for_each(|krate| params.push(krate));
+            if params.len() > 2 {
+                let update_query = &[
+                    "
+                    UPDATE experiment_crates 
+                    SET assigned_to = ?1, status = \"running\" \
+                    WHERE experiment = ?2 
+                    AND crate IN ("
+                        .to_string(),
+                    "?,".repeat(params.len() - 3),
+                    "?)".to_string(),
+                ]
+                .join("");
 
+                //update the status of the previously selected crates to 'Running'
+                transaction.execute(update_query, params.as_slice())?;
+            }
             crates
+                .iter()
+                .map(|krate| Ok(serde_json::from_str(&krate)?))
+                .collect::<Fallible<Vec<Crate>>>()
         })
     }
 
@@ -725,18 +729,22 @@ mod tests {
             .apply(&ctx)
             .unwrap();
 
-        let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
+        let (new, mut ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.name.as_str(), "no-requirements");
         assert_eq!(ex.status, Status::Running);
-        assert_eq!(ex.assigned_to.unwrap(), agent1);
+        assert_eq!(ex.assigned_to.clone().unwrap(), Assignee::Distributed);
+
+        //Mark the experiment as completed, otherwise agent2 will still pick it
+        //as it has uncompleted crates
+        ex.set_status(&db, Status::Completed).unwrap();
 
         // Test that an experiment will be assigned to an agent with the required capabilities.
         let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.name.as_str(), "windows");
         assert_eq!(ex.status, Status::Running);
-        assert_eq!(ex.assigned_to.unwrap(), agent2);
+        assert_eq!(ex.assigned_to.unwrap(), Assignee::Distributed);
     }
 
     #[test]

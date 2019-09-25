@@ -284,21 +284,6 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
             "
             ALTER TABLE experiment_crates ADD COLUMN status TEXT NOT NULL DEFAULT 'queued';
             ALTER TABLE experiment_crates ADD COLUMN assigned_to TEXT;
-
-            CREATE TABLE experiment_crates_new (
-                experiment TEXT NOT NULL,
-                crate TEXT NOT NULL,
-                skipped INTEGER NOT NULL,
-                status TEXT NOT NULL,
-                assigned_to TEXT,
-
-                FOREIGN KEY (experiment) REFERENCES experiments(name) ON DELETE CASCADE
-            );
-
-            INSERT INTO experiment_crates_new  SELECT * FROM experiment_crates;
-
-            DROP TABLE experiment_crates;
-            ALTER TABLE experiment_crates_new RENAME TO experiment_crates;
             ",
         ),
     ));

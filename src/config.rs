@@ -44,6 +44,7 @@ fn default_false() -> bool {
 pub struct ServerConfig {
     pub bot_acl: BotACL,
     pub labels: ServerLabels,
+    pub chunk: ChunkConfig,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -93,7 +94,6 @@ pub struct Config {
     pub local_crates: HashMap<String, CrateConfig>,
     pub server: ServerConfig,
     pub sandbox: SandboxConfig,
-    pub chunk: ChunkConfig,
 }
 
 impl Config {
@@ -139,7 +139,7 @@ impl Config {
     }
 
     pub fn chunk_size(&self) -> i32 {
-        self.chunk.chunk_size
+        self.server.chunk.chunk_size
     }
 
     pub fn check(file: &Option<String>) -> Fallible<()> {
@@ -268,8 +268,8 @@ impl Default for Config {
                     experiment_queued: "".into(),
                     experiment_completed: "".into(),
                 },
+                chunk: ChunkConfig { chunk_size: 1 },
             },
-            chunk: ChunkConfig { chunk_size: 1 },
         }
     }
 }
@@ -299,6 +299,8 @@ mod tests {
             "remove = \"\"\n",
             "experiment-queued = \"\"\n",
             "experiment-completed = \"\"\n",
+            "[server.chunk]\n",
+            "chunk-size = 32\n",
             "[demo-crates]\n",
             "crates = []\n",
             "github-repos = []\n",
@@ -307,8 +309,6 @@ mod tests {
             "memory-limit = \"2G\"\n",
             "build-log-max-size = \"2M\"\n",
             "build-log-max-lines = 1000\n",
-            "[chunk]\n",
-            "chunk-size = 32\n",
             "[crates]\n",
             "lazy_static = { skip = true }\n",
             "[github-repos]\n",

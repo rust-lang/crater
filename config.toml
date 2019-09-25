@@ -12,6 +12,10 @@ remove = "^S-"
 experiment-queued = "S-waiting-on-crater"
 experiment-completed = "S-waiting-on-review"
 
+[server.chunk]
+# Number of crates in each chunk when running distributed experiments
+# A negative value selects all the available crates
+chunk-size = 32
 
 # This section contains the list of tested crates when defining an experiment
 # with `--crate-select demo`.
@@ -21,18 +25,12 @@ crates = ["lazy_static"]
 github-repos = ["brson/hello-rs"]
 local-crates = []
 
-
 [sandbox]
 # Maximum amount of RAM allowed during builds
 memory-limit = "1536M"  # 1.5G
 # Restrictions on the amount of information stored in build logs
 build-log-max-size = "5M"
 build-log-max-lines = 10000
-
-[chunk]
-# Number of crates in each chunk when running distributed experiments
-# A negative value selects all the available crates
-chunk-size = 32
 
 
 # These sections allows to customize how crater treats specific crates/repos

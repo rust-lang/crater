@@ -7,6 +7,9 @@ remove = "^S-"
 experiment-queued = "S-waiting-on-crater"
 experiment-completed = "S-waiting-on-review"
 
+[server.chunk]
+chunk-size = 32
+
 [demo-crates]
 crates = []
 github-repos = []
@@ -16,9 +19,6 @@ local-crates = ["build-pass", "build-fail", "test-fail"]
 memory-limit = "512M"
 build-log-max-size = "2M"
 build-log-max-lines = 1000
-
-[chunk]
-chunk-size = 32
 
 [crates]
 

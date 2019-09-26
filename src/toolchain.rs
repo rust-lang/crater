@@ -172,7 +172,11 @@ impl FromStr for CratePatch {
         if params.len() != 3 {
             Err(ToolchainParseError::InvalidFlag(input.to_string()))
         } else {
-            Ok(CratePatch { name: params[0].into(), repo: params[1].into(), branch: params[2].into() })
+            Ok(CratePatch {
+                name: params[0].into(),
+                repo: params[1].into(),
+                branch: params[2].into(),
+            })
         }
     }
 }
@@ -182,7 +186,6 @@ impl fmt::Display for CratePatch {
         write!(f, "{}={}={}", self.name, self.repo, self.branch)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

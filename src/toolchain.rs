@@ -5,27 +5,28 @@ use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
-/// This toolchain is used during internal tests, and must be different than TEST_TOOLCHAIN
 #[cfg(test)]
-pub(crate) static MAIN_TOOLCHAIN: Toolchain = Toolchain {
-    source: RustwideToolchain::Dist {
-        name: Cow::Borrowed("stable"),
-    },
-    rustflags: None,
-    ci_try: false,
-    patches: Vec::new(),
-};
+lazy_static! {
+    /// This toolchain is used during internal tests, and must be different than TEST_TOOLCHAIN
+    pub(crate) static ref MAIN_TOOLCHAIN: Toolchain = Toolchain {
+        source: RustwideToolchain::Dist {
+            name: Cow::Borrowed("stable"),
+        },
+        rustflags: None,
+        ci_try: false,
+        patches: Vec::new(),
+    };
 
-/// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
-#[cfg(test)]
-pub(crate) static TEST_TOOLCHAIN: Toolchain = Toolchain {
-    source: RustwideToolchain::Dist {
-        name: Cow::Borrowed("beta"),
-    },
-    rustflags: None,
-    ci_try: false,
-    patches: Vec::new(),
-};
+    /// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
+    pub(crate) static ref TEST_TOOLCHAIN: Toolchain = Toolchain {
+        source: RustwideToolchain::Dist {
+            name: Cow::Borrowed("beta"),
+        },
+        rustflags: None,
+        ci_try: false,
+        patches: Vec::new(),
+    };
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Toolchain {
@@ -185,7 +186,7 @@ impl fmt::Display for CratePatch {
 
 #[cfg(test)]
 mod tests {
-    use super::Toolchain;
+    use super::{CratePatch, Toolchain};
     use rustwide::Toolchain as RustwideToolchain;
     use std::str::FromStr;
 
@@ -199,6 +200,7 @@ mod tests {
                         source: $source,
                         rustflags: None,
                         ci_try: $ci_try,
+                        patches: Vec::new(),
                     });
 
                     // Test parsing with flags
@@ -206,6 +208,31 @@ mod tests {
                         source: $source,
                         rustflags: Some("foo bar".to_string()),
                         ci_try: $ci_try,
+                        patches: Vec::new(),
+                    });
+
+                    // Test parsing with patches
+                    test_from_str!(concat!($str, "+patch=example=https://git.example.com/some/repo=master") => Toolchain {
+                        source: $source,
+                        rustflags: None,
+                        ci_try: $ci_try,
+                        patches: vec![CratePatch {
+                            name: "example".to_string(),
+                            repo: "https://git.example.com/some/repo".to_string(),
+                            branch: "master".to_string()
+                        }]
+                    });
+
+                    // Test parsing with patches & rustflags
+                    test_from_str!(concat!($str, "+rustflags=foo bar+patch=example=https://git.example.com/some/repo=master") => Toolchain {
+                        source: $source,
+                        rustflags: Some("foo bar".to_string()),
+                        ci_try: $ci_try,
+                        patches: vec![CratePatch {
+                            name: "example".to_string(),
+                            repo: "https://git.example.com/some/repo".to_string(),
+                            branch: "master".to_string()
+                        }]
                     });
                 )*
             };
@@ -263,6 +290,7 @@ mod tests {
         assert!(Toolchain::from_str("foo#0000000000000000000000000000000000000000").is_err());
         assert!(Toolchain::from_str("stable+rustflags").is_err());
         assert!(Toolchain::from_str("stable+rustflags=").is_err());
-        assert!(Toolchain::from_str("stable+donotusethisflag=ever").is_err())
+        assert!(Toolchain::from_str("stable+donotusethisflag=ever").is_err());
+        assert!(Toolchain::from_str("stable+patch=").is_err())
     }
 }

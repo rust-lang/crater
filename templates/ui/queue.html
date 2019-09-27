@@ -19,15 +19,15 @@
                         <tr>
                             <td><a href="/ex/{{ experiment.name }}">{{ experiment.name }}</a></td>
                             <td>
-                                {% if experiment.requirement %}
-                                    {{ experiment.requirement }}
+                                {% if experiment.assigned_to %}
+                                    {{ experiment.assigned_to }}
                                 {% else %}
                                     -
                                 {% endif %}
                             </td>
                             <td>
-                                {% if experiment.assigned_to %}
-                                    {{ experiment.assigned_to }}
+                                {% if experiment.requirement %}
+                                    {{ experiment.requirement }}
                                 {% else %}
                                     -
                                 {% endif %}

@@ -40,8 +40,16 @@ toolchain. You can do that with the `@bors try` GitHub comment.
 use][h-experiment-modes] and type up the command in your GitHub PR:
 
 ```
-@craterbot run mode=YOUR-MODE
+@craterbot check
 ```
+
+This is a shorthand for:
+
+```
+@craterbot run mode=check-only
+```
+
+For more on available modes, [read on][h-experiment-modes].
 
 If you don't want to do a Crater run with the last try build but with an older
 one, you need to get the SHA of the start and end commits. Bors should have

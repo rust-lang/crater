@@ -5,7 +5,7 @@ use crate::prelude::*;
 use crate::server::github::{Issue, Repository};
 use crate::server::messages::{Label, Message};
 use crate::server::routes::webhooks::args::{
-    AbortArgs, EditArgs, RetryArgs, RetryReportArgs, RunArgs,
+    AbortArgs, CheckArgs, EditArgs, RetryArgs, RetryReportArgs, RunArgs,
 };
 use crate::server::Data;
 use crate::toolchain::Toolchain;
@@ -17,6 +17,33 @@ pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
         .send(&issue.url, data)?;
 
     Ok(())
+}
+
+pub fn check(
+    host: &str,
+    data: &Data,
+    repo: &Repository,
+    issue: &Issue,
+    args: CheckArgs,
+) -> Fallible<()> {
+    run(
+        host,
+        data,
+        repo,
+        issue,
+        RunArgs {
+            mode: Some(Mode::CheckOnly),
+            name: args.name,
+            start: args.start,
+            end: args.end,
+            crates: args.crates,
+            cap_lints: args.cap_lints,
+            priority: args.priority,
+            ignore_blacklist: args.ignore_blacklist,
+            assign: args.assign,
+            requirement: args.requirement,
+        },
+    )
 }
 
 pub fn run(
@@ -473,7 +500,7 @@ mod tests {
         assert_eq!(new_name, "pr-12345-1");
         actions::CreateExperiment::dummy("pr-12345-1")
             .apply(&ctx)
-            .expect("could not store dummy experiment");;
+            .expect("could not store dummy experiment");
         assert_eq!(
             &generate_new_experiment_name(&db, &pr).unwrap(),
             "pr-12345-2"

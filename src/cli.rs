@@ -521,7 +521,7 @@ impl Crater {
 
                     if let Err(err) = res {
                         experiment.set_status(&db, Status::ReportFailed)?;
-                        return Err(err)?;
+                        return Err(err);
                     } else {
                         experiment.set_status(&db, Status::Completed)?;
                     }
@@ -563,7 +563,7 @@ impl Crater {
 
                     if let Err(err) = res {
                         experiment.set_status(&db, Status::ReportFailed)?;
-                        return Err(err)?;
+                        return Err(err);
                     } else {
                         experiment.set_status(&db, Status::Completed)?;
                     }

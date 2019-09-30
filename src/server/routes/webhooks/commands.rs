@@ -473,7 +473,7 @@ mod tests {
         assert_eq!(new_name, "pr-12345-1");
         actions::CreateExperiment::dummy("pr-12345-1")
             .apply(&ctx)
-            .expect("could not store dummy experiment");;
+            .expect("could not store dummy experiment");
         assert_eq!(
             &generate_new_experiment_name(&db, &pr).unwrap(),
             "pr-12345-2"

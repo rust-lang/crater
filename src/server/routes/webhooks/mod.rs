@@ -120,6 +120,10 @@ fn process_command(
                 commands::run(host, data, repo, issue, args)?;
             }
 
+            Command::Check(args) => {
+                commands::check(host, data, repo, issue, args)?;
+            }
+
             Command::Edit(args) => {
                 commands::edit(data, issue, args)?;
             }

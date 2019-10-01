@@ -12,7 +12,7 @@ remove = "^S-"
 experiment-queued = "S-waiting-on-crater"
 experiment-completed = "S-waiting-on-review"
 
-[server.chunk]
+[server.distributed]
 # Number of crates in each chunk when running distributed experiments
 # A negative value selects all the available crates
 chunk-size = 32

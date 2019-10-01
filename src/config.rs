@@ -44,7 +44,7 @@ fn default_false() -> bool {
 pub struct ServerConfig {
     pub bot_acl: BotACL,
     pub labels: ServerLabels,
-    pub chunk: ChunkConfig,
+    pub distributed: ChunkConfig,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -139,7 +139,7 @@ impl Config {
     }
 
     pub fn chunk_size(&self) -> i32 {
-        self.server.chunk.chunk_size
+        self.server.distributed.chunk_size
     }
 
     pub fn check(file: &Option<String>) -> Fallible<()> {
@@ -268,7 +268,7 @@ impl Default for Config {
                     experiment_queued: "".into(),
                     experiment_completed: "".into(),
                 },
-                chunk: ChunkConfig { chunk_size: 1 },
+                distributed: ChunkConfig { chunk_size: 1 },
             },
         }
     }
@@ -299,7 +299,7 @@ mod tests {
             "remove = \"\"\n",
             "experiment-queued = \"\"\n",
             "experiment-completed = \"\"\n",
-            "[server.chunk]\n",
+            "[server.distributed]\n",
             "chunk-size = 32\n",
             "[demo-crates]\n",
             "crates = []\n",

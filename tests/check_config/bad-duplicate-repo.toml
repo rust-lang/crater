@@ -7,7 +7,7 @@ remove = "^S-"
 experiment-queued = "S-waiting-on-crater"
 experiment-completed = "S-waiting-on-review"
 
-[server.chunk]
+[server.distributed]
 chunk-size = 32
 
 [demo-crates]

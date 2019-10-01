@@ -216,6 +216,7 @@ impl Experiment {
             })
     }
 
+    //CLI query is only partially implemented and is therefore preceded by "unimplemented!"
     #[allow(unreachable_code)]
     fn next_inner(
         db: &Database,

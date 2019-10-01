@@ -101,12 +101,12 @@ impl FromStr for Toolchain {
                     ci_try = true;
                     RustwideToolchain::CI {
                         sha: Cow::Owned(sha),
-                        alt: true,
+                        alt: false,
                     }
                 }
                 "master" => RustwideToolchain::CI {
                     sha: Cow::Owned(sha),
-                    alt: true,
+                    alt: false,
                 },
                 name => return Err(ToolchainParseError::InvalidSourceName(name.to_string())),
             }
@@ -206,14 +206,14 @@ mod tests {
             "master#0000000000000000000000000000000000000000" => {
                 source: RustwideToolchain::CI {
                     sha: "0000000000000000000000000000000000000000".into(),
-                    alt: true,
+                    alt: false,
                 },
                 ci_try: false,
             },
             "try#0000000000000000000000000000000000000000" => {
                 source: RustwideToolchain::CI {
                     sha: "0000000000000000000000000000000000000000".into(),
-                    alt: true,
+                    alt: false,
                 },
                 ci_try: true,
             },

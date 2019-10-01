@@ -65,7 +65,7 @@ pub fn run(
             detected_start = Some(Toolchain {
                 source: RustwideToolchain::CI {
                     sha: build.base_sha.into(),
-                    alt: true,
+                    alt: false,
                 },
                 rustflags: None,
                 ci_try: false,
@@ -73,7 +73,7 @@ pub fn run(
             detected_end = Some(Toolchain {
                 source: RustwideToolchain::CI {
                     sha: build.merge_sha.into(),
-                    alt: true,
+                    alt: false,
                 },
                 rustflags: None,
                 ci_try: true,

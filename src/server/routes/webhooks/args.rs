@@ -120,7 +120,7 @@ generate_parser!(pub enum Command {
         name: Option<String> = "name",
         start: Option<Toolchain> = "start",
         end: Option<Toolchain> = "end",
-        crates: Option<CrateSelect> = "crates",
+        crates: Option<DeferredCrateSelect> = "crates",
         cap_lints: Option<CapLints> = "cap-lints",
         priority: Option<i32> = "p",
         ignore_blacklist: Option<bool> = "ignore-blacklist",

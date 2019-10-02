@@ -119,13 +119,16 @@ pub(super) fn run_test<DB: WriteResults>(
                 let sandbox = SandboxBuilder::new()
                     .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
                     .enable_networking(false);
-                detect_broken(
-                    ctx.build_dir
-                        .lock()
-                        .unwrap()
-                        .build(&ctx.toolchain, &ctx.krate.to_rustwide(), sandbox)
-                        .run(|build| test_fn(ctx, build)),
-                )
+
+                let krate = &ctx.krate.to_rustwide();
+                let mut build_dir = ctx.build_dir.lock().unwrap();
+                let mut build = build_dir.build(&ctx.toolchain, krate, sandbox);
+
+                for patch in ctx.toolchain.patches.iter() {
+                    build = build.patch_with_git(&patch.name, &patch.repo, &patch.branch);
+                }
+
+                detect_broken(build.run(|build| test_fn(ctx, build)))
             },
         )?;
     }

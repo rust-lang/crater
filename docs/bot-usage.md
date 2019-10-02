@@ -111,6 +111,16 @@ capability `windows`. You must specify a requirement for your experiment
 (either `linux` or `windows`), and your experiment will only run on agents with
 that capability.
 
+### Specifying Toolchains
+
+Crater allows some configurations to the toolchains used in an experiment.
+You can specify a toolchain using a rustup name or `branch#sha`, and use the
+following flags:
+* `+rustflags={flags}`: sets the `RUSTFLAGS` environment variable to `{flags}` when
+  building with this toolchain
+* `+patch={crate_name}={git_repo_url}={branch}`: patches all crates built by
+  this toolchain to resolve the given crate from the given git repository and branch.
+
 ## Commands reference
 
 ### Creating experiments
@@ -126,10 +136,10 @@ beta run you can use:
 
 * `name`: name of the experiment; required only if Crater [can't determine it
   automatically][h-experiment-names]
-* `start`: name of the first toolchain; can be either a rustup name or
-  `branch#sha` (required if no try build is automatically detected)
-* `end`: name of the second toolchain; can be either a rustup name or
-  `branch#sha` (required if no try build is automatically detected)
+* `start`: the first toolchain; see [specifying toolchains](#specifying-toolchains)
+  (required if no try build is automatically detected)
+* `end`: the second toolchain; see [specifying toolchains](#specifying-toolchains)
+  (required if no try build is automatically detected)
 * `mode`: the experiment mode (default: `build-and-test`)
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)
@@ -155,10 +165,10 @@ priority of the `foo` experiment you can use:
 
 * `name`: name of the experiment; required only if Crater [can't determine it
   automatically][h-experiment-names]
-* `start`: name of the first toolchain; can be either a rustup name or
-  `branch#sha` (required)
-* `end`: name of the second toolchain; can be either a rustup name or
-  `branch#sha` (required)
+* `start`: the first toolchain; see [specifying toolchains](#specifying-toolchains)
+  (required if no try build is automatically detected)
+* `end`: the second toolchain; see [specifying toolchains](#specifying-toolchains)
+  (required if no try build is automatically detected)
 * `mode`: the experiment mode (default: `build-and-test`)
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)

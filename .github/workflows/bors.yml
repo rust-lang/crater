@@ -1,3 +1,4 @@
+name: Bors build
 on:
   push:
     branches:

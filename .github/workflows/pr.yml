@@ -1,3 +1,4 @@
+name: PR build
 on: [pull_request]
 
 jobs:

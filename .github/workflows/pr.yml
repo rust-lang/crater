@@ -1,0 +1,39 @@
+on: [pull_request]
+
+jobs:
+  lint:
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Install Rust Stable
+        run: rustup update stable && rustup default stable
+
+      - name: Check the code formatting with rustfmt
+        run: cargo fmt --all -- --check
+
+      - name: Ensure there are no warnings with Clippy
+        run: cargo clippy --all -- -Dwarnings
+
+      - name: Check if the configuration is correct
+        run: |
+          cargo run -- create-lists
+          cargo run -- check-config
+
+  test:
+    name: Linux testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Install Rust Stable
+        run: rustup update stable && rustup default stable
+
+      - name: Build Crater
+        run: cargo build
+
+      - name: Run Crater tests
+        run: |
+          cargo run -- create-lists
+          cargo test

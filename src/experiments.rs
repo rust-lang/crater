@@ -2,11 +2,14 @@ use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
+use crate::utils;
 use chrono::{DateTime, Utc};
 use rusqlite::Row;
 use serde_json;
+use std::collections::HashSet;
 use std::fmt;
 use std::str::FromStr;
+use url::Url;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -27,21 +30,139 @@ string_enum!(pub enum Mode {
     UnstableFeatures => "unstable-features",
 });
 
-string_enum!(pub enum CrateSelect {
-    Full => "full",
-    Demo => "demo",
-    SmallRandom => "small-random",
-    Top100 => "top-100",
-    Local => "local",
-    Dummy => "dummy",
-});
-
 string_enum!(pub enum CapLints {
     Allow => "allow",
     Warn => "warn",
     Deny => "deny",
     Forbid => "forbid",
 });
+
+const SMALL_RANDOM_COUNT: u32 = 20;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum CrateSelect {
+    Full,
+    Demo,
+    Top(u32),
+    Local,
+    Dummy,
+    Random(u32),
+    List(HashSet<String>),
+}
+
+impl FromStr for CrateSelect {
+    type Err = failure::Error;
+
+    fn from_str(s: &str) -> failure::Fallible<Self> {
+        let ret = match s {
+            s if s.starts_with("top-") => {
+                let n: u32 = s["top-".len()..].parse()?;
+                CrateSelect::Top(n)
+            }
+
+            "small-random" => CrateSelect::Random(SMALL_RANDOM_COUNT),
+            s if s.starts_with("random-") => {
+                let n: u32 = s["random-".len()..].parse()?;
+                CrateSelect::Random(n)
+            }
+
+            s if s.starts_with("list:") => {
+                let list = s["list:".len()..]
+                    .split(',')
+                    .map(|s| s.to_owned())
+                    .collect();
+
+                CrateSelect::List(list)
+            }
+
+            "full" => CrateSelect::Full,
+            "demo" => CrateSelect::Demo,
+            "local" => CrateSelect::Local,
+            "dummy" => CrateSelect::Dummy,
+            s => bail!("invalid CrateSelect: {}", s),
+        };
+
+        Ok(ret)
+    }
+}
+
+impl fmt::Display for CrateSelect {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CrateSelect::Full => write!(f, "full"),
+            CrateSelect::Demo => write!(f, "demo"),
+            CrateSelect::Dummy => write!(f, "dummy"),
+            CrateSelect::Top(n) => write!(f, "top-{}", n),
+            CrateSelect::Local => write!(f, "local"),
+            CrateSelect::Random(n) => write!(f, "random-{}", n),
+            CrateSelect::List(list) => {
+                let mut first = true;
+                write!(f, "list:")?;
+
+                for krate in list {
+                    if !first {
+                        write!(f, ",")?;
+                    }
+
+                    write!(f, "{}", krate)?;
+                    first = false;
+                }
+
+                Ok(())
+            }
+        }
+    }
+}
+
+impl CrateSelect {
+    fn from_newline_separated_list(s: &str) -> Fallible<CrateSelect> {
+        if s.contains(',') {
+            bail!("Crate identifiers must not contain a comma");
+        }
+
+        let crates = s.split_whitespace().map(|s| s.to_owned()).collect();
+        Ok(CrateSelect::List(crates))
+    }
+}
+
+/// Either a `CrateSelect` or `Url` pointing to a list of crates.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum DeferredCrateSelect {
+    Direct(CrateSelect),
+    Indirect(Url),
+}
+
+impl From<CrateSelect> for DeferredCrateSelect {
+    fn from(v: CrateSelect) -> Self {
+        DeferredCrateSelect::Direct(v)
+    }
+}
+
+impl DeferredCrateSelect {
+    pub fn resolve(self) -> Fallible<CrateSelect> {
+        let url = match self {
+            DeferredCrateSelect::Direct(v) => return Ok(v),
+            DeferredCrateSelect::Indirect(url) => url,
+        };
+
+        let body = utils::http::get_sync(url.as_str())?.text()?;
+        CrateSelect::from_newline_separated_list(&body)
+    }
+}
+
+impl FromStr for DeferredCrateSelect {
+    type Err = failure::Error;
+
+    fn from_str(input: &str) -> Fallible<Self> {
+        if input.starts_with("https://") || input.starts_with("http://") {
+            Ok(DeferredCrateSelect::Indirect(input.parse()?))
+        } else {
+            Ok(DeferredCrateSelect::Direct(input.parse()?))
+        }
+    }
+}
+
+impl_serde_from_parse!(CrateSelect, expecting = "A valid value of `CrateSelect`");
 
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[derive(Clone, Serialize, Deserialize)]
@@ -446,14 +567,64 @@ impl ExperimentDBRecord {
 
 #[cfg(test)]
 mod tests {
-    use super::{Assignee, AssigneeParseError, Experiment, Status};
+    use super::{
+        Assignee, AssigneeParseError, CrateSelect, DeferredCrateSelect, Experiment, Status,
+    };
     use crate::actions::{Action, ActionsCtx, CreateExperiment};
     use crate::agent::Capabilities;
     use crate::config::Config;
     use crate::db::Database;
     use crate::server::agents::Agents;
     use crate::server::tokens::Tokens;
+    use std::collections::HashSet;
     use std::str::FromStr;
+
+    #[test]
+    fn test_crate_select_parsing() {
+        let demo_crates: HashSet<_> = ["brson/hello-rs", "lazy_static"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        let suite = vec![
+            ("demo", CrateSelect::Demo),
+            ("top-25", CrateSelect::Top(25)),
+            ("random-87", CrateSelect::Random(87)),
+            ("small-random", CrateSelect::Random(20)),
+            (
+                "list:brson/hello-rs,lazy_static",
+                CrateSelect::List(demo_crates.clone()),
+            ),
+        ];
+
+        for (s, output) in suite.into_iter() {
+            assert_eq!(CrateSelect::from_str(s).unwrap(), output);
+            assert_eq!(
+                DeferredCrateSelect::from_str(s).unwrap(),
+                DeferredCrateSelect::Direct(output),
+            );
+        }
+
+        assert_eq!(
+            DeferredCrateSelect::from_str("http://git.io/Jes7o").unwrap(),
+            DeferredCrateSelect::Indirect("http://git.io/Jes7o".parse().unwrap()),
+        );
+
+        assert_eq!(
+            DeferredCrateSelect::from_str("https://git.io/Jes7o").unwrap(),
+            DeferredCrateSelect::Indirect("https://git.io/Jes7o".parse().unwrap()),
+        );
+
+        let list = CrateSelect::from_newline_separated_list(
+            r"
+            brson/hello-rs
+
+            lazy_static",
+        )
+        .unwrap();
+
+        assert_eq!(list, CrateSelect::List(demo_crates));
+    }
 
     #[test]
     fn test_assignee_parsing() {

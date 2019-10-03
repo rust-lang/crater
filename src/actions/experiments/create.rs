@@ -50,7 +50,7 @@ impl Action for CreateExperiment {
             return Err(ExperimentError::DuplicateToolchains.into());
         }
 
-        let crates = crate::crates::lists::get_crates(self.crates, &ctx.db, &ctx.config)?;
+        let crates = crate::crates::lists::get_crates(&self.crates, &ctx.db, &ctx.config)?;
 
         ctx.db.transaction(|transaction| {
             transaction.execute(
@@ -143,7 +143,7 @@ mod tests {
         assert_eq!(ex.mode, Mode::BuildAndTest);
         assert_eq!(
             ex.get_crates(&ctx.db).unwrap(),
-            crate::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
+            crate::crates::lists::get_crates(&CrateSelect::Local, &db, &config).unwrap()
         );
         assert_eq!(ex.cap_lints, CapLints::Forbid);
         assert_eq!(ex.github_issue.as_ref().unwrap().api_url.as_str(), api_url);

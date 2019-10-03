@@ -12,8 +12,6 @@ pub(crate) use crate::crates::sources::{
     github::GitHubList, local::LocalList, registry::RegistryList,
 };
 
-const SMALL_RANDOM_COUNT: usize = 20;
-
 pub(crate) trait List {
     const NAME: &'static str;
 
@@ -63,7 +61,7 @@ pub(crate) trait List {
 }
 
 pub(crate) fn get_crates(
-    select: CrateSelect,
+    select: &CrateSelect,
     db: &Database,
     config: &Config,
 ) -> Fallible<Vec<Crate>> {
@@ -74,6 +72,7 @@ pub(crate) fn get_crates(
             crates.append(&mut RegistryList::get(db)?);
             crates.append(&mut GitHubList::get(db)?);
         }
+
         CrateSelect::Demo => {
             let mut demo_registry = config.demo_crates().crates.iter().collect::<HashSet<_>>();
             let mut demo_github = config
@@ -115,17 +114,41 @@ pub(crate) fn get_crates(
                 bail!("missing demo local crates: {:?}", demo_local);
             }
         }
-        CrateSelect::SmallRandom => {
+        CrateSelect::List(list) => {
+            let mut desired = list.clone();
+
+            let mut all_crates = Vec::new();
+            all_crates.append(&mut RegistryList::get(db)?);
+            all_crates.append(&mut GitHubList::get(db)?);
+
+            for krate in all_crates {
+                let is_desired = match krate {
+                    Crate::Registry(RegistryCrate { ref name, .. }) => desired.remove(name),
+                    Crate::GitHub(ref repo) => desired.remove(&repo.slug()),
+                    _ => unreachable!(),
+                };
+
+                if is_desired {
+                    crates.push(krate);
+                }
+            }
+
+            if !desired.is_empty() {
+                bail!("missing desired crates: {:?}", desired);
+            }
+        }
+
+        CrateSelect::Random(n) => {
             crates.append(&mut RegistryList::get(db)?);
             crates.append(&mut GitHubList::get(db)?);
 
             let mut rng = thread_rng();
             rng.shuffle(&mut crates);
-            crates.truncate(SMALL_RANDOM_COUNT);
+            crates.truncate(*n as usize);
         }
-        CrateSelect::Top100 => {
+        CrateSelect::Top(n) => {
             crates.append(&mut RegistryList::get(db)?);
-            crates.truncate(100);
+            crates.truncate(*n as usize);
         }
         CrateSelect::Local => {
             crates.append(&mut LocalList::get(db)?);

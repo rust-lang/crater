@@ -95,6 +95,29 @@ The mode you should use depends on what your experiment is testing:
 
 [Go back to the TOC][h-toc]
 
+## Available crate selections
+
+By default, your experiment will be run on all crates known to Crater.
+However, it is possible to run an experiment on a subset of the ecosystem by
+passing a different value to `crates`. The following options are currently
+available:
+
+* `full`: run the experiment on every crate.
+* `top-{n}`: run the experiment on the `n` most downloaded crates on
+  [crates.io](crates.io) (e.g. `top-100`).
+* `random-{n}`: run the experiment on `n` randomly selected crates (e.g. `random-20`).
+* `list:{...}`: run the experiment on the specified crates.
+
+For `list:`, the value after the colon can either be a comma-separated list of
+crates to run or a link to a newline-separated list of crates ([example][list]).
+For example, `list:lazy_static,brson/hello-rs` and `list:https://git.io/Jes7o`
+will both run an experiment on the `lazy_static` crate and the git repo at
+`github.com/brson/hello-rs`. A link must begin with `http[s]://`.
+
+[list]: https://gist.githubusercontent.com/ecstatic-morse/837c558b63fc73ab469bfbf4ad419a1f/raw/example-crate-list
+
+[Go back to the TOC][h-toc]
+
 ## Automatic experiment names
 
 [h-experiment-names]: #automatic-experiment-names

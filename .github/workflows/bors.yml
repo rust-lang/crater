@@ -1,4 +1,4 @@
-name: Bors build
+name: bors build
 on:
   push:
     branches:
@@ -73,18 +73,34 @@ jobs:
           MINICRATER_FAST_WORKSPACE_INIT: 1
           MINICRATER_SHOW_OUTPUT: 1
 
-  # This job doesn't actually test anything, but it's only used to tell bors
-  # the build completed, as there is no practical way to detect when a workflow
-  # is successful listening to webhooks only.
+  # These jobs doesn't actually test anything, but they're only used to tell
+  # bors the build completed, as there is no practical way to detect when a
+  # workflow is successful listening to webhooks only.
   #
   # ALL THE PREVIOUS JOBS NEEDS TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
-  build-completed:
-    name: bors build completed
+
+  end-success:
+    name: bors build finished
+    if: success()
+    runs-on: ubuntu-latest
     needs:
       - lint
       - test
       - minicrater
-    runs-on: ubuntu-latest
+
     steps:
-      - name: Dummy step
-        run: echo dummy
+      - name: Mark the job as successful
+        run: exit 0
+
+  end-failure:
+    name: bors build finished
+    if: "!success()"
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - test
+      - minicrater
+
+    steps:
+      - name: Mark the job as a failure
+        run: exit 1

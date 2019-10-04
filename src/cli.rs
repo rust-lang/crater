@@ -14,7 +14,7 @@ use crater::agent::{self, Capabilities};
 use crater::config::Config;
 use crater::crates::Crate;
 use crater::db::Database;
-use crater::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Status};
+use crater::experiments::{Assignee, CapLints, DeferredCrateSelect, Experiment, Mode, Status};
 use crater::report;
 use crater::results::{DatabaseDB, DeleteResults};
 use crater::runner;
@@ -118,12 +118,14 @@ pub enum Crater {
         #[structopt(
             name = "crate-select",
             long = "crate-select",
-            raw(
-                default_value = "CrateSelect::Demo.to_str()",
-                possible_values = "CrateSelect::possible_values()"
-            )
+            help = "The set of crates on which the experiment will run.",
+            long_help = "The set of crates on which the experiment will run.\n\n\
+                         This can be one of (full, demo, random-{d}, top-{d}, local) \
+                         where {d} is a positive integer, or \"list:\" followed \
+                         by a comma-separated list of crates.",
+            raw(default_value = "\"demo\"",)
         )]
-        crates: CrateSelect,
+        crates: DeferredCrateSelect,
         #[structopt(
             name = "level",
             long = "cap-lints",
@@ -160,9 +162,13 @@ pub enum Crater {
         #[structopt(
             name = "crates",
             long = "crates",
-            raw(possible_values = "CrateSelect::possible_values()")
+            help = "The set of crates on which the experiment will run.",
+            long_help = "The set of crates on which the experiment will run.\n\n\
+                         This can be one of (full, demo, random-{d}, top-{d}, local) \
+                         where {d} is a positive integer, or \"list:\" followed \
+                         by a comma-separated list of crates."
         )]
-        crates: Option<CrateSelect>,
+        crates: Option<DeferredCrateSelect>,
         #[structopt(
             name = "cap-lints",
             long = "cap-lints",
@@ -360,7 +366,7 @@ impl Crater {
                     name: ex.0.clone(),
                     toolchains: [tc1.clone(), tc2.clone()],
                     mode: *mode,
-                    crates: *crates,
+                    crates: crates.clone().resolve()?,
                     cap_lints: *cap_lints,
                     priority: *priority,
                     github_issue: None,
@@ -399,7 +405,7 @@ impl Crater {
                     name: name.clone(),
                     toolchains: [tc1.clone(), tc2.clone()],
                     mode: *mode,
-                    crates: *crates,
+                    crates: crates.clone().map(|cs| cs.resolve()).transpose()?,
                     cap_lints: *cap_lints,
                     priority: *priority,
                     ignore_blacklist,
@@ -521,7 +527,7 @@ impl Crater {
 
                     if let Err(err) = res {
                         experiment.set_status(&db, Status::ReportFailed)?;
-                        return Err(err)?;
+                        return Err(err);
                     } else {
                         experiment.set_status(&db, Status::Completed)?;
                     }
@@ -563,7 +569,7 @@ impl Crater {
 
                     if let Err(err) = res {
                         experiment.set_status(&db, Status::ReportFailed)?;
-                        return Err(err)?;
+                        return Err(err);
                     } else {
                         experiment.set_status(&db, Status::Completed)?;
                     }
@@ -623,6 +629,7 @@ impl Crater {
     fn workspace(&self, docker_env: Option<&str>, fast_init: bool) -> Result<Workspace, Error> {
         let mut builder = WorkspaceBuilder::new(&crater::dirs::WORK_DIR, &crater::USER_AGENT)
             .fast_init(fast_init)
+            .fetch_registry_index_during_builds(false)
             .command_timeout(Some(Duration::from_secs(15 * 60)))
             .command_no_output_timeout(Some(Duration::from_secs(5 * 60)));
         if let Some(env) = docker_env {

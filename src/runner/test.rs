@@ -21,22 +21,26 @@ fn failure_reason(err: &Error) -> FailureReason {
     FailureReason::Unknown
 }
 
-fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
+pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
     match res {
         Ok(ok) => Ok(ok),
         Err(err) => {
             let mut reason = None;
             for cause in err.iter_chain() {
-                if let Some(&PrepareError::MissingCargoToml) = cause.downcast_ctx() {
-                    reason = Some(BrokenReason::CargoToml);
-                } else if let Some(&PrepareError::InvalidCargoTomlSyntax) = cause.downcast_ctx() {
-                    reason = Some(BrokenReason::CargoToml);
-                } else if let Some(&PrepareError::YankedDependencies) = cause.downcast_ctx() {
-                    reason = Some(BrokenReason::Yanked);
-                } else {
-                    continue;
+                if let Some(error) = cause.downcast_ctx() {
+                    reason = match *error {
+                        PrepareError::MissingCargoToml => Some(BrokenReason::CargoToml),
+                        PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
+                        PrepareError::YankedDependencies => Some(BrokenReason::Yanked),
+                        PrepareError::PrivateGitRepository => {
+                            Some(BrokenReason::MissingGitRepository)
+                        }
+                        _ => None,
+                    }
                 }
-                break;
+                if reason.is_some() {
+                    break;
+                }
             }
             if let Some(reason) = reason {
                 Err(err
@@ -115,12 +119,16 @@ pub(super) fn run_test<DB: WriteResults>(
                 let sandbox = SandboxBuilder::new()
                     .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
                     .enable_networking(false);
-                detect_broken(ctx.build_dir.lock().unwrap().build(
-                    &ctx.toolchain,
-                    &ctx.krate.to_rustwide(),
-                    sandbox,
-                    |build| test_fn(ctx, build),
-                ))
+
+                let krate = &ctx.krate.to_rustwide();
+                let mut build_dir = ctx.build_dir.lock().unwrap();
+                let mut build = build_dir.build(&ctx.toolchain, krate, sandbox);
+
+                for patch in ctx.toolchain.patches.iter() {
+                    build = build.patch_with_git(&patch.name, &patch.repo, &patch.branch);
+                }
+
+                detect_broken(build.run(|build| test_fn(ctx, build)))
             },
         )?;
     }

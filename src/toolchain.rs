@@ -5,31 +5,35 @@ use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
-/// This toolchain is used during internal tests, and must be different than TEST_TOOLCHAIN
 #[cfg(test)]
-pub(crate) static MAIN_TOOLCHAIN: Toolchain = Toolchain {
-    source: RustwideToolchain::Dist {
-        name: Cow::Borrowed("stable"),
-    },
-    rustflags: None,
-    ci_try: false,
-};
+lazy_static! {
+    /// This toolchain is used during internal tests, and must be different than TEST_TOOLCHAIN
+    pub(crate) static ref MAIN_TOOLCHAIN: Toolchain = Toolchain {
+        source: RustwideToolchain::Dist {
+            name: Cow::Borrowed("stable"),
+        },
+        rustflags: None,
+        ci_try: false,
+        patches: Vec::new(),
+    };
 
-/// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
-#[cfg(test)]
-pub(crate) static TEST_TOOLCHAIN: Toolchain = Toolchain {
-    source: RustwideToolchain::Dist {
-        name: Cow::Borrowed("beta"),
-    },
-    rustflags: None,
-    ci_try: false,
-};
+    /// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
+    pub(crate) static ref TEST_TOOLCHAIN: Toolchain = Toolchain {
+        source: RustwideToolchain::Dist {
+            name: Cow::Borrowed("beta"),
+        },
+        rustflags: None,
+        ci_try: false,
+        patches: Vec::new(),
+    };
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Toolchain {
     pub source: RustwideToolchain,
     pub rustflags: Option<String>,
     pub ci_try: bool,
+    pub patches: Vec<CratePatch>,
 }
 
 impl Toolchain {
@@ -64,6 +68,10 @@ impl fmt::Display for Toolchain {
 
         if let Some(ref flag) = self.rustflags {
             write!(f, "+rustflags={}", flag)?;
+        }
+
+        for patch in self.patches.iter() {
+            write!(f, "+patch={}", patch)?;
         }
 
         Ok(())
@@ -101,12 +109,12 @@ impl FromStr for Toolchain {
                     ci_try = true;
                     RustwideToolchain::CI {
                         sha: Cow::Owned(sha),
-                        alt: true,
+                        alt: false,
                     }
                 }
                 "master" => RustwideToolchain::CI {
                     sha: Cow::Owned(sha),
-                    alt: true,
+                    alt: false,
                 },
                 name => return Err(ToolchainParseError::InvalidSourceName(name.to_string())),
             }
@@ -119,6 +127,7 @@ impl FromStr for Toolchain {
         };
 
         let mut rustflags = None;
+        let mut patches: Vec<CratePatch> = vec![];
         for part in parts {
             if let Some(equal_idx) = part.find('=') {
                 let (flag, value_with_equal) = part.split_at(equal_idx);
@@ -130,6 +139,7 @@ impl FromStr for Toolchain {
 
                 match flag {
                     "rustflags" => rustflags = Some(value),
+                    "patch" => patches.push(value.parse()?),
                     unknown => return Err(ToolchainParseError::InvalidFlag(unknown.to_string())),
                 }
             } else {
@@ -141,13 +151,45 @@ impl FromStr for Toolchain {
             source,
             rustflags,
             ci_try,
+            patches,
         })
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
+pub struct CratePatch {
+    pub name: String,
+    pub repo: String,
+    pub branch: String,
+}
+
+impl FromStr for CratePatch {
+    type Err = ToolchainParseError;
+
+    fn from_str(input: &str) -> Result<Self, ToolchainParseError> {
+        let params: Vec<&str> = input.split('=').collect();
+
+        if params.len() != 3 {
+            Err(ToolchainParseError::InvalidFlag(input.to_string()))
+        } else {
+            Ok(CratePatch {
+                name: params[0].into(),
+                repo: params[1].into(),
+                branch: params[2].into(),
+            })
+        }
+    }
+}
+
+impl fmt::Display for CratePatch {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}={}={}", self.name, self.repo, self.branch)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Toolchain;
+    use super::{CratePatch, Toolchain};
     use rustwide::Toolchain as RustwideToolchain;
     use std::str::FromStr;
 
@@ -161,6 +203,7 @@ mod tests {
                         source: $source,
                         rustflags: None,
                         ci_try: $ci_try,
+                        patches: Vec::new(),
                     });
 
                     // Test parsing with flags
@@ -168,6 +211,31 @@ mod tests {
                         source: $source,
                         rustflags: Some("foo bar".to_string()),
                         ci_try: $ci_try,
+                        patches: Vec::new(),
+                    });
+
+                    // Test parsing with patches
+                    test_from_str!(concat!($str, "+patch=example=https://git.example.com/some/repo=master") => Toolchain {
+                        source: $source,
+                        rustflags: None,
+                        ci_try: $ci_try,
+                        patches: vec![CratePatch {
+                            name: "example".to_string(),
+                            repo: "https://git.example.com/some/repo".to_string(),
+                            branch: "master".to_string()
+                        }]
+                    });
+
+                    // Test parsing with patches & rustflags
+                    test_from_str!(concat!($str, "+rustflags=foo bar+patch=example=https://git.example.com/some/repo=master") => Toolchain {
+                        source: $source,
+                        rustflags: Some("foo bar".to_string()),
+                        ci_try: $ci_try,
+                        patches: vec![CratePatch {
+                            name: "example".to_string(),
+                            repo: "https://git.example.com/some/repo".to_string(),
+                            branch: "master".to_string()
+                        }]
                     });
                 )*
             };
@@ -206,14 +274,14 @@ mod tests {
             "master#0000000000000000000000000000000000000000" => {
                 source: RustwideToolchain::CI {
                     sha: "0000000000000000000000000000000000000000".into(),
-                    alt: true,
+                    alt: false,
                 },
                 ci_try: false,
             },
             "try#0000000000000000000000000000000000000000" => {
                 source: RustwideToolchain::CI {
                     sha: "0000000000000000000000000000000000000000".into(),
-                    alt: true,
+                    alt: false,
                 },
                 ci_try: true,
             },
@@ -225,6 +293,7 @@ mod tests {
         assert!(Toolchain::from_str("foo#0000000000000000000000000000000000000000").is_err());
         assert!(Toolchain::from_str("stable+rustflags").is_err());
         assert!(Toolchain::from_str("stable+rustflags=").is_err());
-        assert!(Toolchain::from_str("stable+donotusethisflag=ever").is_err())
+        assert!(Toolchain::from_str("stable+donotusethisflag=ever").is_err());
+        assert!(Toolchain::from_str("stable+patch=").is_err())
     }
 }

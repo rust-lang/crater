@@ -79,7 +79,7 @@ impl Action for EditExperiment {
             // This is also done if ignore_blacklist is changed to recalculate the skipped crates
             let new_crates = if let Some(crates) = self.crates {
                 Some(crate::crates::lists::get_crates(
-                    crates,
+                    &crates,
                     &ctx.db,
                     &ctx.config,
                 )?)
@@ -200,7 +200,7 @@ mod tests {
             name: "foo".to_string(),
             toolchains: ["stable".parse().unwrap(), "beta".parse().unwrap()],
             mode: Mode::BuildAndTest,
-            crates: CrateSelect::SmallRandom,
+            crates: CrateSelect::Random(20),
             cap_lints: CapLints::Forbid,
             priority: 0,
             github_issue: None,
@@ -243,7 +243,7 @@ mod tests {
 
         assert_eq!(
             ex.get_crates(&ctx.db).unwrap(),
-            crate::crates::lists::get_crates(CrateSelect::Local, &db, &config).unwrap()
+            crate::crates::lists::get_crates(&CrateSelect::Local, &db, &config).unwrap()
         );
     }
 

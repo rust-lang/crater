@@ -37,11 +37,19 @@ third-party code, the first thing is to request a **try build** to get a valid
 toolchain. You can do that with the `@bors try` GitHub comment.
 
 **After** the try build is done you need to choose the [experiment mode you want to
-use][h-experiment-moes] and type up the command in your GitHub PR:
+use][h-experiment-modes] and type up the command in your GitHub PR:
 
 ```
-@craterbot run mode=YOUR-MODE
+@craterbot check
 ```
+
+This is a shorthand for:
+
+```
+@craterbot run mode=check-only
+```
+
+For more on available modes, [read on][h-experiment-modes].
 
 If you don't want to do a Crater run with the last try build but with an older
 one, you need to get the SHA of the start and end commits. Bors should have
@@ -58,7 +66,7 @@ You must prefix the start commit with `master#`, and the end commit with
 `try#`, and both of them should be written with the full 40-chars hash.
 
 Then you need to choose the [experiment mode you want to
-use][h-experiment-mode] and type up the command in your GitHub PR:
+use][h-experiment-modes] and type up the command in your GitHub PR:
 
 ```
 @craterbot run start=master#fullhash end=try#fullhash mode=YOUR-MODE
@@ -87,6 +95,29 @@ The mode you should use depends on what your experiment is testing:
 
 [Go back to the TOC][h-toc]
 
+## Available crate selections
+
+By default, your experiment will be run on all crates known to Crater.
+However, it is possible to run an experiment on a subset of the ecosystem by
+passing a different value to `crates`. The following options are currently
+available:
+
+* `full`: run the experiment on every crate.
+* `top-{n}`: run the experiment on the `n` most downloaded crates on
+  [crates.io](crates.io) (e.g. `top-100`).
+* `random-{n}`: run the experiment on `n` randomly selected crates (e.g. `random-20`).
+* `list:{...}`: run the experiment on the specified crates.
+
+For `list:`, the value after the colon can either be a comma-separated list of
+crates to run or a link to a newline-separated list of crates ([example][list]).
+For example, `list:lazy_static,brson/hello-rs` and `list:https://git.io/Jes7o`
+will both run an experiment on the `lazy_static` crate and the git repo at
+`github.com/brson/hello-rs`. A link must begin with `http[s]://`.
+
+[list]: https://gist.githubusercontent.com/ecstatic-morse/837c558b63fc73ab469bfbf4ad419a1f/raw/example-crate-list
+
+[Go back to the TOC][h-toc]
+
 ## Automatic experiment names
 
 [h-experiment-names]: #automatic-experiment-names
@@ -111,6 +142,16 @@ capability `windows`. You must specify a requirement for your experiment
 (either `linux` or `windows`), and your experiment will only run on agents with
 that capability.
 
+### Specifying Toolchains
+
+Crater allows some configurations to the toolchains used in an experiment.
+You can specify a toolchain using a rustup name or `branch#sha`, and use the
+following flags:
+* `+rustflags={flags}`: sets the `RUSTFLAGS` environment variable to `{flags}` when
+  building with this toolchain
+* `+patch={crate_name}={git_repo_url}={branch}`: patches all crates built by
+  this toolchain to resolve the given crate from the given git repository and branch.
+
 ## Commands reference
 
 ### Creating experiments
@@ -126,10 +167,10 @@ beta run you can use:
 
 * `name`: name of the experiment; required only if Crater [can't determine it
   automatically][h-experiment-names]
-* `start`: name of the first toolchain; can be either a rustup name or
-  `branch#sha` (required if no try build is automatically detected)
-* `end`: name of the second toolchain; can be either a rustup name or
-  `branch#sha` (required if no try build is automatically detected)
+* `start`: the first toolchain; see [specifying toolchains](#specifying-toolchains)
+  (required if no try build is automatically detected)
+* `end`: the second toolchain; see [specifying toolchains](#specifying-toolchains)
+  (required if no try build is automatically detected)
 * `mode`: the experiment mode (default: `build-and-test`)
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)
@@ -155,10 +196,10 @@ priority of the `foo` experiment you can use:
 
 * `name`: name of the experiment; required only if Crater [can't determine it
   automatically][h-experiment-names]
-* `start`: name of the first toolchain; can be either a rustup name or
-  `branch#sha` (required)
-* `end`: name of the second toolchain; can be either a rustup name or
-  `branch#sha` (required)
+* `start`: the first toolchain; see [specifying toolchains](#specifying-toolchains)
+  (required if no try build is automatically detected)
+* `end`: the second toolchain; see [specifying toolchains](#specifying-toolchains)
+  (required if no try build is automatically detected)
 * `mode`: the experiment mode (default: `build-and-test`)
 * `crates`: the selection of crates to use (default: `full`)
 * `cap-lints`: the lints cap (default: `forbid`, which means no cap)

@@ -1,5 +1,6 @@
-use crate::experiments::{Assignee, CapLints, CrateSelect, Mode};
+use crate::experiments::{Assignee, CapLints, DeferredCrateSelect, Mode};
 use crate::toolchain::Toolchain;
+use failure::{self, Fallible};
 
 #[derive(Debug, Fail)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -107,7 +108,19 @@ generate_parser!(pub enum Command {
         start: Option<Toolchain> = "start",
         end: Option<Toolchain> = "end",
         mode: Option<Mode> = "mode",
-        crates: Option<CrateSelect> = "crates",
+        crates: Option<DeferredCrateSelect> = "crates",
+        cap_lints: Option<CapLints> = "cap-lints",
+        priority: Option<i32> = "p",
+        ignore_blacklist: Option<bool> = "ignore-blacklist",
+        assign: Option<Assignee> = "assign",
+        requirement: Option<String> = "requirement",
+    })
+
+    "check" => Check(CheckArgs {
+        name: Option<String> = "name",
+        start: Option<Toolchain> = "start",
+        end: Option<Toolchain> = "end",
+        crates: Option<DeferredCrateSelect> = "crates",
         cap_lints: Option<CapLints> = "cap-lints",
         priority: Option<i32> = "p",
         ignore_blacklist: Option<bool> = "ignore-blacklist",
@@ -136,7 +149,7 @@ generate_parser!(pub enum Command {
         start: Option<Toolchain> = "start",
         end: Option<Toolchain> = "end",
         mode: Option<Mode> = "mode",
-        crates: Option<CrateSelect> = "crates",
+        crates: Option<DeferredCrateSelect> = "crates",
         cap_lints: Option<CapLints> = "cap-lints",
         priority: Option<i32> = "p",
         ignore_blacklist: Option<bool> = "ignore-blacklist",

@@ -5,7 +5,7 @@ use crate::prelude::*;
 use crate::server::github::{Issue, Repository};
 use crate::server::messages::{Label, Message};
 use crate::server::routes::webhooks::args::{
-    AbortArgs, EditArgs, RetryArgs, RetryReportArgs, RunArgs,
+    AbortArgs, CheckArgs, EditArgs, RetryArgs, RetryReportArgs, RunArgs,
 };
 use crate::server::Data;
 use crate::toolchain::Toolchain;
@@ -17,6 +17,33 @@ pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
         .send(&issue.url, data)?;
 
     Ok(())
+}
+
+pub fn check(
+    host: &str,
+    data: &Data,
+    repo: &Repository,
+    issue: &Issue,
+    args: CheckArgs,
+) -> Fallible<()> {
+    run(
+        host,
+        data,
+        repo,
+        issue,
+        RunArgs {
+            mode: Some(Mode::CheckOnly),
+            name: args.name,
+            start: args.start,
+            end: args.end,
+            crates: args.crates,
+            cap_lints: args.cap_lints,
+            priority: args.priority,
+            ignore_blacklist: args.ignore_blacklist,
+            assign: args.assign,
+            requirement: args.requirement,
+        },
+    )
 }
 
 pub fn run(
@@ -38,24 +65,31 @@ pub fn run(
             detected_start = Some(Toolchain {
                 source: RustwideToolchain::CI {
                     sha: build.base_sha.into(),
-                    alt: true,
+                    alt: false,
                 },
                 rustflags: None,
                 ci_try: false,
+                patches: Vec::new(),
             });
             detected_end = Some(Toolchain {
                 source: RustwideToolchain::CI {
                     sha: build.merge_sha.into(),
-                    alt: true,
+                    alt: false,
                 },
                 rustflags: None,
                 ci_try: true,
+                patches: Vec::new(),
             });
         }
     }
 
     // Make crater runs created via webhook require linux by default.
     let requirement = args.requirement.unwrap_or_else(|| "linux".to_string());
+    let crates = args
+        .crates
+        .map(|c| c.resolve())
+        .transpose()
+        .map_err(|e| e.context("Failed to resolve crate list"))?;
 
     actions::CreateExperiment {
         name: name.clone(),
@@ -68,7 +102,7 @@ pub fn run(
                 .ok_or_else(|| err_msg("missing end toolchain"))?,
         ],
         mode: args.mode.unwrap_or(Mode::BuildAndTest),
-        crates: args.crates.unwrap_or(CrateSelect::Full),
+        crates: crates.unwrap_or(CrateSelect::Full),
         cap_lints: args.cap_lints.unwrap_or(CapLints::Forbid),
         priority: args.priority.unwrap_or(0),
         github_issue: Some(GitHubIssue {
@@ -104,10 +138,16 @@ pub fn run(
 pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
+    let crates = args
+        .crates
+        .map(|c| c.resolve())
+        .transpose()
+        .map_err(|e| e.context("Failed to resolve crate list"))?;
+
     actions::EditExperiment {
         name: name.clone(),
         toolchains: [args.start, args.end],
-        crates: args.crates,
+        crates,
         mode: args.mode,
         cap_lints: args.cap_lints,
         priority: args.priority,
@@ -473,7 +513,7 @@ mod tests {
         assert_eq!(new_name, "pr-12345-1");
         actions::CreateExperiment::dummy("pr-12345-1")
             .apply(&ctx)
-            .expect("could not store dummy experiment");;
+            .expect("could not store dummy experiment");
         assert_eq!(
             &generate_new_experiment_name(&db, &pr).unwrap(),
             "pr-12345-2"

@@ -268,7 +268,11 @@ mod tests {
 
         // Create a new experiment and assign it to the agent
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
-        Experiment::next(&db, &Assignee::Agent("agent".to_string())).unwrap();
+        let (_new, ex) = Experiment::next(&db, &Assignee::Agent("agent".to_string()))
+            .unwrap()
+            .unwrap();
+        ex.get_uncompleted_crates(&db, &config, &Assignee::Agent("agent".to_string()))
+            .unwrap();
 
         // After an experiment is assigned to the agent, the agent is working
         let agent = agents.get("agent").unwrap().unwrap();

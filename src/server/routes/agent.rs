@@ -10,7 +10,7 @@ use failure::Compat;
 use http::{Response, StatusCode};
 use hyper::Body;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use warp::{self, Filter, Rejection};
 
 #[derive(Deserialize)]
@@ -23,9 +23,11 @@ pub struct ExperimentData<T> {
 
 pub fn routes(
     data: Arc<Data>,
+    mutex: Arc<Mutex<Data>>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
     let data_cloned = data.clone();
     let data_filter = warp::any().map(move || data_cloned.clone());
+    let mutex_filter = warp::any().map(move || mutex.clone());
 
     let config = warp::post2()
         .and(warp::path("config"))
@@ -46,7 +48,7 @@ pub fn routes(
     let next_experiment = warp::get2()
         .and(warp::path("next-experiment"))
         .and(warp::path::end())
-        .and(data_filter.clone())
+        .and(mutex_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_experiment);
 
@@ -54,7 +56,7 @@ pub fn routes(
         .and(warp::path("record-progress"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(data_filter.clone())
+        .and(mutex_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_record_progress);
 
@@ -69,7 +71,7 @@ pub fn routes(
         .and(warp::path("error"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(data_filter.clone())
+        .and(mutex_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_error);
 
@@ -108,25 +110,41 @@ fn endpoint_config(
     .into_response()?)
 }
 
-fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
+fn endpoint_next_experiment(
+    mutex: Arc<Mutex<Data>>,
+    auth: AuthDetails,
+) -> Fallible<Response<Body>> {
+    //we need to make sure that Experiment::next executes uninterrupted
+    let data = mutex.lock().unwrap();
     let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
-
     let result = if let Some((new, ex)) = next {
         if new {
             if let Some(ref github_issue) = ex.github_issue {
                 Message::new()
                     .line(
                         "construction",
-                        format!(
-                            "Experiment **`{}`** is now **running** on agent `{}`.",
-                            ex.name, auth.name,
-                        ),
+                        format!("Experiment **`{}`** is now **running**", ex.name,),
                     )
                     .send(&github_issue.api_url, &data)?;
             }
         }
 
-        Some((ex.clone(), ex.get_uncompleted_crates(&data.db)?))
+        let running_crates =
+            ex.get_running_crates(&data.db, &Assignee::Agent(auth.name.clone()))?;
+
+        //if the agent crashed (i.e. there are already running crates) return those crates
+        if !running_crates.is_empty() {
+            Some((ex, running_crates))
+        } else {
+            Some((
+                ex.clone(),
+                ex.get_uncompleted_crates(
+                    &data.db,
+                    &data.config,
+                    &Assignee::Agent(auth.name.clone()),
+                )?,
+            ))
+        }
     } else {
         None
     };
@@ -136,9 +154,10 @@ fn endpoint_next_experiment(data: Arc<Data>, auth: AuthDetails) -> Fallible<Resp
 
 fn endpoint_record_progress(
     result: ExperimentData<ProgressData>,
-    data: Arc<Data>,
+    mutex: Arc<Mutex<Data>>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
+    let data = mutex.lock().unwrap();
     let mut ex = Experiment::get(&data.db, &result.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
@@ -171,9 +190,10 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<B
 
 fn endpoint_error(
     error: ExperimentData<HashMap<String, String>>,
-    data: Arc<Data>,
+    mutex: Arc<Mutex<Data>>,
     _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
+    let data = mutex.lock().unwrap();
     let mut ex = Experiment::get(&data.db, &error.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 

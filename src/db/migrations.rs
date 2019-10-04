@@ -279,6 +279,16 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
     ));
 
     migrations.push((
+        "add_experiment_crates_field_assigned_to",
+        MigrationKind::SQL(
+            "
+            ALTER TABLE experiment_crates ADD COLUMN status TEXT NOT NULL DEFAULT 'queued';
+            ALTER TABLE experiment_crates ADD COLUMN assigned_to TEXT;
+            ",
+        ),
+    ));
+
+    migrations.push((
         "add_experiment_field_requirement",
         MigrationKind::SQL(
             "

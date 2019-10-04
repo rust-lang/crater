@@ -485,7 +485,7 @@ impl Crater {
                             docker_env.as_ref().map(|s| s.as_str()),
                             fast_workspace_init,
                         )?,
-                        &experiment.get_uncompleted_crates(&db)?,
+                        &experiment.get_uncompleted_crates(&db, &config, &Assignee::CLI)?,
                         &result_db,
                         threads,
                         &config,

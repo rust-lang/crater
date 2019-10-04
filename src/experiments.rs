@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::prelude::*;
@@ -10,6 +11,9 @@ use std::collections::HashSet;
 use std::fmt;
 use std::str::FromStr;
 use url::Url;
+
+//sqlite limit is ignored if the expression evaluates to a negative value
+static FULL_LIST: i32 = -1;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -168,6 +172,7 @@ impl_serde_from_parse!(CrateSelect, expecting = "A valid value of `CrateSelect`"
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Assignee {
     Agent(String),
+    Distributed,
     CLI,
 }
 
@@ -175,6 +180,7 @@ impl fmt::Display for Assignee {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Assignee::Agent(ref name) => write!(f, "agent:{}", name),
+            Assignee::Distributed => write!(f, "distributed"),
             Assignee::CLI => write!(f, "cli"),
         }
     }
@@ -217,6 +223,13 @@ impl FromStr for Assignee {
                 }
 
                 Ok(Assignee::CLI)
+            }
+            "distributed" => {
+                if split.next().is_some() {
+                    return Err(AssigneeParseError::UnexpectedPayload);
+                }
+
+                Ok(Assignee::Distributed)
             }
             invalid => Err(AssigneeParseError::InvalidKind(invalid.into())),
         }
@@ -268,8 +281,10 @@ impl Experiment {
     pub fn run_by(db: &Database, assignee: &Assignee) -> Fallible<Option<Experiment>> {
         let record = db.get_row(
             "SELECT * FROM experiments \
-             WHERE status = ?1 AND assigned_to = ?2;",
-            &[Status::Running.to_str(), &assignee.to_string()],
+             INNER JOIN experiment_crates ON experiment_crates.experiment \
+             = experiments.name WHERE experiment_crates.assigned_to = ?1 \
+             AND experiment_crates.status = ?2  AND experiment_crates.skipped = 0 LIMIT 1",
+            &[&assignee.to_string(), Status::Running.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
 
@@ -302,61 +317,132 @@ impl Experiment {
             return Ok(Some((false, experiment)));
         }
 
-        let assigned_to = assignee.to_string();
-
         // Get an experiment whose requirements are met by this agent, preferring (in order of
         // importance):
         //    - experiments that were explicitly assigned to us.
+        //    - distributed experiments.
         //    - experiments with a higher priority.
         //    - older experiments.
-        let (query, params) = match assignee {
-            Assignee::Agent(agent_name) => {
-                const AGENT_QUERY: &str = r#"
-                    SELECT *
-                    FROM   experiments ex
-                    WHERE  ex.status = "queued"
-                           AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?2 )
-                           AND ( ex.requirement IS NULL
-                                  OR ex.requirement IN (SELECT capability
-                                                        FROM   agent_capabilities
-                                                        WHERE  agent_name = ?1) )
-                    ORDER  BY ex.assigned_to IS NULL,
-                              ex.priority DESC,
-                              ex.created_at
-                    LIMIT  1;
-                "#;
+        Experiment::next_inner(db, Some(assignee), assignee)
+            .and_then(|ex| {
+                ex.map_or_else(
+                    || Experiment::next_inner(db, Some(&Assignee::Distributed), assignee),
+                    |exp| Ok(Some(exp)),
+                )
+            })
+            .and_then(|ex| {
+                ex.map_or_else(
+                    || Experiment::next_inner(db, None, assignee),
+                    |exp| Ok(Some(exp)),
+                )
+            })
+    }
 
-                (AGENT_QUERY, vec![agent_name, &assigned_to])
+    //CLI query is only partially implemented and is therefore preceded by "unimplemented!"
+    #[allow(unreachable_code)]
+    fn next_inner(
+        db: &Database,
+        assignee: Option<&Assignee>,
+        agent: &Assignee,
+    ) -> Fallible<Option<(bool, Experiment)>> {
+        let agent_name = if let Assignee::Agent(agent_name) = agent {
+            agent_name.to_string()
+        } else {
+            unimplemented!("experiment requirements are not respected when assigning to CLI");
+        };
+
+        let (query, params) = if let Some(assignee) = assignee {
+            match assignee {
+                Assignee::Distributed | Assignee::Agent(_) => {
+                    const AGENT_QUERY: &str = r#"
+                        SELECT *
+                        FROM   experiments ex
+                        WHERE  ( ex.status = "queued" 
+                                OR ( status = "running"
+                                            AND ( SELECT COUNT (*)
+                                                  FROM  experiment_crates ex_crates
+                                                  WHERE ex_crates.experiment = ex.name
+                                                          AND ( status = "queued") 
+                                                          AND ( skipped = 0) 
+                                                  > 0 ) ) )
+                                AND ( ex.assigned_to = ?1 ) 
+                                AND ( ex.requirement IS NULL
+                                    OR ex.requirement IN (  SELECT capability
+                                                            FROM   agent_capabilities
+                                                            WHERE  agent_name = ?2) )
+                        ORDER  BY ex.priority DESC,
+                                  ex.created_at
+                        LIMIT  1;
+                    "#;
+
+                    (AGENT_QUERY, vec![assignee.to_string(), agent_name])
+                }
+                // FIXME: We don't respect experiment requirements when assigning experiments to the
+                // CLI. We need to decide what capabilities the CLI should have first.
+                _ => {
+                    unimplemented!(
+                        "experiment requirements are not respected when assigning to CLI"
+                    );
+                    const CLI_QUERY: &str = r#"
+                        SELECT     *
+                        FROM       experiments ex
+                        WHERE      ( ex.status = "queued" 
+                                        OR ( status = "running"
+                                            AND ( SELECT COUNT (*)
+                                                  FROM  experiment_crates ex_crates
+                                                  WHERE ex_crates.experiment = ex.name
+                                                          AND ( status = "queued") 
+                                                          AND ( skipped = 0) 
+                                                  > 0 ) ) )
+                                   AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?1 )
+                        ORDER BY   ex.assigned_to IS NULL,
+                                   ex.priority DESC,
+                                   ex.created_at
+                        LIMIT 1;
+                    "#;
+
+                    (CLI_QUERY, vec![assignee.to_string()])
+                }
             }
+        } else {
+            const AGENT_UNASSIGNED_QUERY: &str = r#"
+                SELECT *
+                FROM   experiments ex
+                WHERE  ( ex.status = "queued"
+                        OR ( status = "running"
+                                            AND ( SELECT COUNT (*)
+                                                  FROM  experiment_crates ex_crates
+                                                  WHERE ex_crates.experiment = ex.name
+                                                          AND ( status = "queued") 
+                                                          AND ( skipped = 0) 
+                                                  > 0 ) ) )
+                        AND ( ex.assigned_to IS NULL ) 
+                        AND ( ex.requirement IS NULL
+                            OR ex.requirement IN (  SELECT capability
+                                                    FROM   agent_capabilities
+                                                    WHERE  agent_name = ?1) )
+                ORDER  BY ex.priority DESC,
+                          ex.created_at
+                LIMIT  1;
+            "#;
 
-            // FIXME: We don't respect experiment requirements when assigning experiments to the
-            // CLI. We need to decide what capabilities the CLI should have first.
-            Assignee::CLI => {
-                const CLI_QUERY: &str = r#"
-                    SELECT     *
-                    FROM       experiments ex
-                    WHERE      ex.status = "queued"
-                               AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?2 )
-                    ORDER BY   ex.assigned_to IS NULL,
-                               ex.priority DESC,
-                               ex.created_at
-                    LIMIT 1;
-                "#;
-
-                (CLI_QUERY, vec![&assigned_to])
-            }
+            (AGENT_UNASSIGNED_QUERY, vec![agent_name])
         };
 
         let next = db.get_row(query, params.as_slice(), |r| {
             ExperimentDBRecord::from_row(r)
         })?;
+
         if let Some(record) = next {
             let mut experiment = record.into_experiment()?;
-            experiment.set_status(&db, Status::Running)?;
-            experiment.set_assigned_to(&db, Some(assignee))?;
-            return Ok(Some((true, experiment)));
+            let new_ex = experiment.status != Status::Running;
+            if new_ex {
+                experiment.set_status(&db, Status::Running)?;
+                // If this experiment was not assigned to a specific agent make it distributed
+                experiment.set_assigned_to(&db, assignee.or(Some(&Assignee::Distributed)))?;
+            }
+            return Ok(Some((new_ex, experiment)));
         }
-
         Ok(None)
     }
 
@@ -471,11 +557,74 @@ impl Experiment {
         .collect::<Fallible<Vec<Crate>>>()
     }
 
-    pub fn get_uncompleted_crates(&self, db: &Database) -> Fallible<Vec<Crate>> {
+    fn crate_list_size(&self, config: &Config) -> i32 {
+        match self.assigned_to {
+            //if experiment is distributed return chunk
+            Some(Assignee::Distributed) => config.chunk_size(),
+            //if experiment is assigned to specific agent return all the crates
+            _ => FULL_LIST,
+        }
+    }
+
+    pub fn get_uncompleted_crates(
+        &self,
+        db: &Database,
+        config: &Config,
+        assigned_to: &Assignee,
+    ) -> Fallible<Vec<Crate>> {
+        let limit = self.crate_list_size(config);
+        let assigned_to = assigned_to.to_string();
+
+        db.transaction(|transaction| {
+            //get the first 'limit' queued crates from the experiment crates list
+            let mut params: Vec<&dyn rusqlite::types::ToSql> = vec![&assigned_to, &self.name];
+            let crates = transaction
+                .query(
+                    "SELECT crate FROM experiment_crates WHERE experiment = ?1
+                     AND status = ?2 AND skipped = 0 LIMIT ?3;",
+                    &[&self.name, &Status::Queued.to_string(), &limit],
+                    |r| r.get("crate"),
+                )?
+                .into_iter()
+                .collect::<Vec<String>>();
+
+            crates.iter().for_each(|krate| params.push(krate));
+            if params.len() > 2 {
+                let update_query = &[
+                    "
+                    UPDATE experiment_crates 
+                    SET assigned_to = ?1, status = \"running\" \
+                    WHERE experiment = ?2 
+                    AND crate IN ("
+                        .to_string(),
+                    "?,".repeat(params.len() - 3),
+                    "?)".to_string(),
+                ]
+                .join("");
+
+                //update the status of the previously selected crates to 'Running'
+                transaction.execute(update_query, params.as_slice())?;
+            }
+            crates
+                .iter()
+                .map(|krate| Ok(serde_json::from_str(&krate)?))
+                .collect::<Fallible<Vec<Crate>>>()
+        })
+    }
+
+    pub fn get_running_crates(
+        &self,
+        db: &Database,
+        assigned_to: &Assignee,
+    ) -> Fallible<Vec<Crate>> {
         db.query(
-            "SELECT crate FROM experiment_crates WHERE experiment = ?1
-            AND (SELECT COUNT(*) AS count FROM results WHERE results.experiment = ?1 AND results.crate = experiment_crates.crate) < 2;",
-            &[&self.name],
+            "SELECT crate FROM experiment_crates WHERE experiment = ?1 \
+             AND status = ?2 AND assigned_to = ?3",
+            &[
+                &self.name,
+                &Status::Running.to_string(),
+                &assigned_to.to_string(),
+            ],
             |r| {
                 let value: String = r.get("crate");
                 Ok(serde_json::from_str(&value)?)
@@ -687,19 +836,25 @@ mod tests {
         assert!(new);
         assert_eq!(ex.name.as_str(), "important");
         assert_eq!(ex.status, Status::Running);
-        assert_eq!(ex.assigned_to.unwrap(), agent1);
+        assert_eq!(ex.assigned_to.unwrap(), Assignee::Distributed);
 
         // Test the same experiment is returned to the agent
-        let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
+        let (new, mut ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
         assert!(!new);
         assert_eq!(ex.name.as_str(), "important");
 
+        //Mark the experiment as completed, otherwise agent2 will still pick it as has uncompleted crates
+        ex.set_status(&db, Status::Completed).unwrap();
+
         // Test the less important experiment is assigned to the next agent
-        let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
+        let (new, mut ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.name.as_str(), "test");
         assert_eq!(ex.status, Status::Running);
-        assert_eq!(ex.assigned_to.unwrap(), agent2);
+        assert_eq!(ex.assigned_to.clone().unwrap(), Assignee::Distributed);
+
+        //Mark the experiment as completed, otherwise agent3 will still pick it as has uncompleted crates
+        ex.set_status(&db, Status::Completed).unwrap();
 
         // Test no other experiment is available for the other agents
         assert!(Experiment::next(&db, &agent3).unwrap().is_none());
@@ -747,18 +902,22 @@ mod tests {
             .apply(&ctx)
             .unwrap();
 
-        let (new, ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
+        let (new, mut ex) = Experiment::next(&db, &agent1).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.name.as_str(), "no-requirements");
         assert_eq!(ex.status, Status::Running);
-        assert_eq!(ex.assigned_to.unwrap(), agent1);
+        assert_eq!(ex.assigned_to.clone().unwrap(), Assignee::Distributed);
+
+        //Mark the experiment as completed, otherwise agent2 will still pick it
+        //as it has uncompleted crates
+        ex.set_status(&db, Status::Completed).unwrap();
 
         // Test that an experiment will be assigned to an agent with the required capabilities.
         let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
         assert!(new);
         assert_eq!(ex.name.as_str(), "windows");
         assert_eq!(ex.status, Status::Running);
-        assert_eq!(ex.assigned_to.unwrap(), agent2);
+        assert_eq!(ex.assigned_to.unwrap(), Assignee::Distributed);
     }
 
     #[test]
@@ -799,15 +958,12 @@ mod tests {
         // Then the 'important' experiment will be picked by agent 2
         let (new, ex) = Experiment::next(&db, &agent2).unwrap().unwrap();
         assert!(new);
-        assert_eq!(ex.assigned_to.unwrap(), agent2);
+        assert_eq!(ex.assigned_to.unwrap(), Assignee::Distributed);
         assert_eq!(ex.name.as_str(), "important");
     }
 
     #[test]
-    fn test_completed_crates() {
-        use crate::prelude::*;
-        use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
-
+    fn test_full_completed_crates() {
         rustwide::logging::init();
 
         let db = Database::temp().unwrap();
@@ -819,57 +975,16 @@ mod tests {
         // Create a dummy experiment
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
-        let crates = ex.get_uncompleted_crates(&db).unwrap();
-        let crate1 = &crates[0];
-        let crate2 = &crates[1];
-
-        // Fill some dummy results into the database
-        let results = DatabaseDB::new(&db);
-        results
-            .record_result(
-                &ex,
-                &ex.toolchains[0],
-                &crate1,
-                None,
-                &config,
-                EncodingType::Gzip,
-                || {
-                    info!("tc1 crate1");
-                    Ok(TestResult::TestPass)
-                },
-            )
+        let crates = ex
+            .get_uncompleted_crates(&db, &config, &Assignee::CLI)
             .unwrap();
-        results
-            .record_result(
-                &ex,
-                &ex.toolchains[1],
-                &crate1,
-                None,
-                &config,
-                EncodingType::Plain,
-                || {
-                    info!("tc2 crate1");
-                    Ok(TestResult::BuildFail(FailureReason::Unknown))
-                },
-            )
-            .unwrap();
-        results
-            .record_result(
-                &ex,
-                &ex.toolchains[1],
-                &crate2,
-                None,
-                &config,
-                EncodingType::Plain,
-                || {
-                    info!("tc1 crate2");
-                    Ok(TestResult::BuildFail(FailureReason::Unknown))
-                },
-            )
-            .unwrap();
+        // Assert the whole list is returned
+        assert_eq!(crates.len(), ex.get_crates(&db).unwrap().len());
 
         // Test already completed crates does not show up again
-        let uncompleted_crates = ex.get_uncompleted_crates(&db).unwrap();
-        assert_eq!(uncompleted_crates.len(), crates.len() - 1);
+        let uncompleted_crates = ex
+            .get_uncompleted_crates(&db, &config, &Assignee::CLI)
+            .unwrap();
+        assert_eq!(uncompleted_crates.len(), 0);
     }
 }

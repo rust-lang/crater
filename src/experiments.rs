@@ -14,6 +14,7 @@ use url::Url;
 
 //sqlite limit is ignored if the expression evaluates to a negative value
 static FULL_LIST: i32 = -1;
+static SQL_VARIABLE_LIMIT: usize = 500;
 
 string_enum!(pub enum Status {
     Queued => "queued",
@@ -577,7 +578,7 @@ impl Experiment {
 
         db.transaction(|transaction| {
             //get the first 'limit' queued crates from the experiment crates list
-            let mut params: Vec<&dyn rusqlite::types::ToSql> = vec![&assigned_to, &self.name];
+            let mut params: Vec<&dyn rusqlite::types::ToSql> = Vec::new();
             let crates = transaction
                 .query(
                     "SELECT crate FROM experiment_crates WHERE experiment = ?1
@@ -589,7 +590,10 @@ impl Experiment {
                 .collect::<Vec<String>>();
 
             crates.iter().for_each(|krate| params.push(krate));
-            if params.len() > 2 {
+            let params_header: &[&dyn rusqlite::types::ToSql] = &[&assigned_to, &self.name];
+            //SQLite cannot handle queries with more than 999 variables
+            for params in params.chunks(SQL_VARIABLE_LIMIT) {
+                let params = [params_header, params].concat();
                 let update_query = &[
                     "
                     UPDATE experiment_crates 
@@ -603,7 +607,7 @@ impl Experiment {
                 .join("");
 
                 //update the status of the previously selected crates to 'Running'
-                transaction.execute(update_query, params.as_slice())?;
+                transaction.execute(update_query, &params)?;
             }
             crates
                 .iter()

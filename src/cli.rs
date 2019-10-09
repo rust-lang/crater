@@ -631,7 +631,8 @@ impl Crater {
             .fast_init(fast_init)
             .fetch_registry_index_during_builds(false)
             .command_timeout(Some(Duration::from_secs(15 * 60)))
-            .command_no_output_timeout(Some(Duration::from_secs(5 * 60)));
+            .command_no_output_timeout(Some(Duration::from_secs(5 * 60)))
+            .running_inside_docker(std::env::var("CRATER_INSIDE_DOCKER").is_ok());
         if let Some(env) = docker_env {
             builder = builder.sandbox_image(if env.contains('/') {
                 SandboxImage::remote(env)?

@@ -13,6 +13,12 @@ fn main() {
     // Ignore errors loading `.env` file.
     let _ = dotenv::dotenv();
 
+    // Ensure it's possible to close Crater with a Ctrl+C even inside Docker (as PID 1).
+    ctrlc::set_handler(|| {
+        std::process::exit(1);
+    })
+    .unwrap();
+
     // Initialize env_logger
     // This doesn't use from_default_env() because it doesn't allow to override filter_module()
     // with the RUST_LOG environment variable

@@ -73,6 +73,55 @@ jobs:
           MINICRATER_FAST_WORKSPACE_INIT: 1
           MINICRATER_SHOW_OUTPUT: 1
 
+  docker-build:
+    name: Build the Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Build the Docker image
+        run: docker build -t crater .
+
+      - name: Prepare the Docker image to be uploaded
+        run: |
+          mkdir -p /tmp/docker-images
+          docker save crater | gzip > /tmp/docker-images/crater.tar.gz
+
+      - name: Upload the image to GitHub Actions artifacts
+        uses: actions/upload-artifact@master
+        with:
+          name: docker-images
+          path: /tmp/docker-images
+
+  docker-upload:
+    name: Upload the Docker images to ECR
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - test
+      - minicrater
+      - docker-build
+
+    steps:
+      - name: Download the image from GitHub Actions artifacts
+        uses: actions/download-artifact@master
+        with:
+          name: docker-images
+
+      - name: Load the downloaded image
+        run: cat docker-images/crater.tar.gz | gunzip | docker load
+
+      - name: Upload the Docker image to ECR
+        uses: rust-lang/simpleinfra/github-actions/upload-docker-image@master
+        with:
+          image: crater
+          repository: crater
+          region: us-west-1
+          aws_access_key_id: "${{ secrets.aws_access_key_id }}"
+          aws_secret_access_key: "${{ secrets.aws_secret_access_key }}"
+        if: github.ref == 'refs/heads/auto'
+
+
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a
   # workflow is successful listening to webhooks only.
@@ -83,10 +132,7 @@ jobs:
     name: bors build finished
     if: success()
     runs-on: ubuntu-latest
-    needs:
-      - lint
-      - test
-      - minicrater
+    needs: [docker-upload]
 
     steps:
       - name: Mark the job as successful
@@ -96,10 +142,7 @@ jobs:
     name: bors build finished
     if: "!success()"
     runs-on: ubuntu-latest
-    needs:
-      - lint
-      - test
-      - minicrater
+    needs: [docker-upload]
 
     steps:
       - name: Mark the job as a failure

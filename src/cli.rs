@@ -479,17 +479,21 @@ impl Crater {
                     }
 
                     let result_db = DatabaseDB::new(&db);
-                    runner::run_ex(
+
+                    let workspace = self
+                        .workspace(docker_env.as_ref().map(|s| s.as_str()), fast_workspace_init)?;
+                    workspace.purge_all_build_dirs()?;
+                    let res = runner::run_ex(
                         &experiment,
-                        &self.workspace(
-                            docker_env.as_ref().map(|s| s.as_str()),
-                            fast_workspace_init,
-                        )?,
+                        &workspace,
                         &experiment.get_uncompleted_crates(&db, &config, &Assignee::CLI)?,
                         &result_db,
                         threads,
                         &config,
-                    )?;
+                    );
+                    workspace.purge_all_build_dirs()?;
+                    res?;
+
                     experiment.set_status(&db, Status::NeedsReport)?;
                 } else {
                     bail!("missing experiment {}", ex.0);

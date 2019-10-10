@@ -61,19 +61,6 @@ pub fn run_ex<DB: WriteResults + Sync>(
         return Err(err_msg("docker is not running"));
     }
 
-    let res = run_ex_inner(ex, workspace, crates, db, threads_count, config);
-    workspace.purge_all_build_dirs()?;
-    res
-}
-
-fn run_ex_inner<DB: WriteResults + Sync>(
-    ex: &Experiment,
-    workspace: &Workspace,
-    crates: &[Crate],
-    db: &DB,
-    threads_count: usize,
-    config: &Config,
-) -> Fallible<()> {
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(ex, crates, config));
 

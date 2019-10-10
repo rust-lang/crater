@@ -107,8 +107,16 @@ fn run_experiment(
     workspace: &Workspace,
     db: &ResultsUploader,
     threads_count: usize,
+    past_experiment: &mut Option<String>,
 ) -> Result<(), (Option<Experiment>, Error)> {
     let (ex, crates) = agent.experiment().map_err(|e| (None, e))?;
+
+    if Some(&ex.name) != past_experiment.as_ref() {
+        debug!("purging build directories...");
+        workspace.purge_all_build_dirs().map_err(|e| (None, e))?;
+    }
+    *past_experiment = Some(ex.name.clone());
+
     crate::runner::run_ex(&ex, workspace, &crates, db, threads_count, &agent.config)
         .map_err(|err| (Some(ex), err))?;
     Ok(())
@@ -126,8 +134,11 @@ pub fn run(
 
     run_heartbeat(url, token);
 
+    let mut past_experiment = None;
     loop {
-        if let Err((ex, err)) = run_experiment(&agent, workspace, &db, threads_count) {
+        if let Err((ex, err)) =
+            run_experiment(&agent, workspace, &db, threads_count, &mut past_experiment)
+        {
             utils::report_failure(&err);
             if let Some(ex) = ex {
                 if let Err(e) = agent

@@ -3,6 +3,7 @@ pub mod api_types;
 mod auth;
 mod github;
 mod messages;
+mod metrics;
 mod reports;
 mod routes;
 pub mod tokens;
@@ -17,7 +18,7 @@ use crate::server::github::{GitHub, GitHubApi};
 use crate::server::tokens::Tokens;
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
-use prometheus::{IntCounterVec, __register_counter_vec};
+use metrics::Metrics;
 use std::sync::{Arc, Mutex};
 use warp::{self, Filter};
 
@@ -44,7 +45,7 @@ pub struct Data {
     pub db: Database,
     pub reports_worker: reports::ReportsWorker,
     pub acl: ACL,
-    pub metric: IntCounterVec,
+    pub metrics: Metrics,
 }
 
 pub fn run(config: Config) -> Fallible<()> {
@@ -54,9 +55,7 @@ pub fn run(config: Config) -> Fallible<()> {
     let agents = Agents::new(db.clone(), &tokens)?;
     let bot_username = github.username()?;
     let acl = ACL::new(&config, &github)?;
-
-    let opts = prometheus::opts!("crater_completed_jobs", "completed jobs");
-    let metric = prometheus::register_int_counter_vec!(opts, &["agent", "experiment"])?;
+    let metrics = Metrics::new()?;
 
     info!("bot username: {}", bot_username);
 
@@ -69,7 +68,7 @@ pub fn run(config: Config) -> Fallible<()> {
         db: db.clone(),
         reports_worker: reports::ReportsWorker::new(),
         acl,
-        metric,
+        metrics,
     };
 
     let mutex = Arc::new(Mutex::new(data.clone()));

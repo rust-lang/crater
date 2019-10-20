@@ -26,6 +26,17 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
     let crates = ex.get_crates(&data.db)?;
     let res = report::gen(results, &ex, &crates, &writer, &data.config)?;
 
+    //remove metrics about completed experiments
+    data.metrics.on_complete_experiment(
+        &ex.name,
+        &data
+            .agents
+            .all()?
+            .iter()
+            .map(|agent| agent.name())
+            .collect::<Vec<&str>>(),
+    )?;
+
     Ok(res)
 }
 

@@ -20,8 +20,8 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(600);
-const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.9;
+const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(300);
+const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.85;
 
 #[derive(Debug, Fail)]
 #[fail(display = "overridden task result to {}", _0)]

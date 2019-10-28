@@ -141,19 +141,22 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<B
             if let Some(started_at) = ex.started_at {
                 let res = if let Some(completed_at) = ex.completed_at {
                     let total = completed_at.signed_duration_since(started_at);
-                    (
-                        Some(total),
-                        None,
-                        Some((total / completed_jobs as i32).num_seconds()),
-                    )
+                    (Some(total), None, total / completed_jobs as i32)
                 } else {
                     let total = Utc::now().signed_duration_since(started_at);
                     let job_duration = total / completed_jobs as i32;
                     (
                         None,
                         Some(job_duration * (total_jobs as i32 - completed_jobs as i32)),
-                        Some(job_duration.num_seconds()),
+                        job_duration,
                     )
+                };
+
+                let job_duration = if res.2 < Duration::seconds(3) {
+                    let job_duration = res.2.to_std().expect("negative job time");
+                    format!("{:.2?}", job_duration)
+                } else {
+                    HumanTime::from(res.2).to_text_en(Accuracy::Precise, Tense::Present)
                 };
 
                 (
@@ -161,10 +164,7 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<B
                         .map(|r| HumanTime::from(r).to_text_en(Accuracy::Rough, Tense::Present)),
                     res.1
                         .map(|r| HumanTime::from(r).to_text_en(Accuracy::Rough, Tense::Present)),
-                    res.2.map(|r| {
-                        HumanTime::from(Duration::seconds(r))
-                            .to_text_en(Accuracy::Precise, Tense::Present)
-                    }),
+                    Some(job_duration),
                 )
             } else {
                 (None, None, None)

@@ -284,7 +284,8 @@ impl Experiment {
             "SELECT * FROM experiments \
              INNER JOIN experiment_crates ON experiment_crates.experiment \
              = experiments.name WHERE experiment_crates.assigned_to = ?1 \
-             AND experiment_crates.status = ?2  AND experiment_crates.skipped = 0 LIMIT 1",
+             AND experiment_crates.status = ?2 AND experiments.status = ?2 \
+             AND experiment_crates.skipped = 0 LIMIT 1",
             &[&assignee.to_string(), Status::Running.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;

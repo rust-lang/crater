@@ -171,7 +171,9 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Fallib
     let name = get_name(&data.db, issue, args.name)?;
 
     if let Some(mut experiment) = Experiment::get(&data.db, &name)? {
-        if experiment.status != Status::ReportFailed {
+        if experiment.status != Status::ReportFailed
+            && experiment.status != Status::GeneratingReport
+        {
             bail!(
                 "generation of the report of the **`{}`** experiment didn't fail!",
                 name

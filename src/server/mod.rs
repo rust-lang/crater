@@ -85,7 +85,7 @@ pub fn run(config: Config) -> Fallible<()> {
                 .and(warp::path("webhooks").and(routes::webhooks::routes(data.clone())))
                 .or(warp::path("agent-api").and(routes::agent::routes(data.clone(), mutex.clone())))
                 .unify()
-                .or(warp::path("metrics").and(routes::metrics::routes()))
+                .or(warp::path("metrics").and(routes::metrics::routes(data.clone())))
                 .unify()
                 .or(routes::ui::routes(data.clone()))
                 .unify(),

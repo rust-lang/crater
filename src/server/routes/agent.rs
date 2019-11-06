@@ -190,13 +190,14 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<B
 fn endpoint_error(
     error: ExperimentData<HashMap<String, String>>,
     mutex: Arc<Mutex<Data>>,
-    _auth: AuthDetails,
+    auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
     let data = mutex.lock().unwrap();
     let mut ex = Experiment::get(&data.db, &error.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
-    ex.set_status(&data.db, Status::Failed)?;
+    //also set status to failed
+    ex.report_failure(&data.db, &Assignee::Agent(auth.name))?;
 
     if let Some(ref github_issue) = ex.github_issue {
         Message::new()

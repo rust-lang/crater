@@ -313,10 +313,10 @@ impl Experiment {
         }
     }
 
-    pub fn next(db: &Database, assignee: &Assignee) -> Fallible<Option<(bool, Experiment)>> {
+    pub fn find_next(db: &Database, assignee: &Assignee) -> Fallible<Option<Experiment>> {
         // Avoid assigning two experiments to the same agent
         if let Some(experiment) = Experiment::run_by(db, assignee)? {
-            return Ok(Some((false, experiment)));
+            return Ok(Some(experiment));
         }
 
         // Get an experiment whose requirements are met by this agent, preferring (in order of
@@ -340,13 +340,43 @@ impl Experiment {
             })
     }
 
+    pub fn next(db: &Database, assignee: &Assignee) -> Fallible<Option<(bool, Experiment)>> {
+        Self::find_next(db, assignee).and_then(|ex| Self::assign_experiment(db, ex))
+    }
+    pub fn has_next(db: &Database, assignee: &Assignee) -> Fallible<bool> {
+        Ok(Self::find_next(db, assignee)?.is_some())
+    }
+
+    fn assign_experiment(
+        db: &Database,
+        ex: Option<Experiment>,
+    ) -> Fallible<Option<(bool, Experiment)>> {
+        if let Some(mut experiment) = ex {
+            let new_ex = experiment.status != Status::Running;
+            if new_ex {
+                experiment.set_status(&db, Status::Running)?;
+                // If this experiment was not assigned to a specific agent make it distributed
+                experiment.set_assigned_to(
+                    &db,
+                    experiment
+                        .assigned_to
+                        .clone()
+                        .or(Some(Assignee::Distributed))
+                        .as_ref(),
+                )?;
+            }
+            return Ok(Some((new_ex, experiment)));
+        }
+        Ok(None)
+    }
+
     //CLI query is only partially implemented and is therefore preceded by "unimplemented!"
     #[allow(unreachable_code)]
     fn next_inner(
         db: &Database,
         assignee: Option<&Assignee>,
         agent: &Assignee,
-    ) -> Fallible<Option<(bool, Experiment)>> {
+    ) -> Fallible<Option<Experiment>> {
         let agent_name = if let Assignee::Agent(agent_name) = agent {
             agent_name.to_string()
         } else {
@@ -431,21 +461,13 @@ impl Experiment {
             (AGENT_UNASSIGNED_QUERY, vec![agent_name])
         };
 
-        let next = db.get_row(query, params.as_slice(), |r| {
+        if let Some(record) = db.get_row(query, params.as_slice(), |r| {
             ExperimentDBRecord::from_row(r)
-        })?;
-
-        if let Some(record) = next {
-            let mut experiment = record.into_experiment()?;
-            let new_ex = experiment.status != Status::Running;
-            if new_ex {
-                experiment.set_status(&db, Status::Running)?;
-                // If this experiment was not assigned to a specific agent make it distributed
-                experiment.set_assigned_to(&db, assignee.or(Some(&Assignee::Distributed)))?;
-            }
-            return Ok(Some((new_ex, experiment)));
+        })? {
+            Ok(Some(record.into_experiment()?))
+        } else {
+            Ok(None)
         }
-        Ok(None)
     }
 
     pub fn get(db: &Database, name: &str) -> Fallible<Option<Experiment>> {

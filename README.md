@@ -1,4 +1,4 @@
-# Crater [![Build Status](https://travis-ci.com/rust-lang/crater.svg?branch=master)](https://travis-ci.com/rust-lang/crater)
+# Crater
 
 Crater is a tool to run experiments across parts of the Rust ecosystem. Its
 primary purpose is to detect regressions in the Rust compiler, and it does this

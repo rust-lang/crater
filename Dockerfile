@@ -19,7 +19,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 # Install the currently pinned toolchain with rustup
 RUN curl https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init >/tmp/rustup-init && \
     chmod +x /tmp/rustup-init && \
-    /tmp/rustup-init -y --no-modify-path --default-toolchain stable
+    /tmp/rustup-init -y --no-modify-path --default-toolchain stable --profile minimal
 ENV PATH=/root/.cargo/bin:$PATH
 
 # Build the dependencies in a separate step to avoid rebuilding all of them

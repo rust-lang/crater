@@ -62,7 +62,7 @@ impl<'a> DatabaseDB<'a> {
         Ok(())
     }
 
-    fn mark_crate_as_completed(&self, ex: &Experiment, krate: &Crate) -> Fallible<(usize)> {
+    fn mark_crate_as_completed(&self, ex: &Experiment, krate: &Crate) -> Fallible<usize> {
         self.db.execute(
             "UPDATE experiment_crates SET status = ?1 WHERE experiment = ?2 AND crate = ?3 \
              AND ( (SELECT COUNT(*) FROM results WHERE experiment = ?2 AND crate = ?3) > 1 )",

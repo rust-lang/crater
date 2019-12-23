@@ -42,7 +42,7 @@ impl Action for CreateExperiment {
     fn apply(self, ctx: &ActionsCtx) -> Fallible<()> {
         // Ensure no duplicate experiments are created
         if Experiment::exists(&ctx.db, &self.name)? {
-            return Err(ExperimentError::AlreadyExists(self.name.clone()).into());
+            return Err(ExperimentError::AlreadyExists(self.name).into());
         }
 
         // Ensure no experiment with duplicate toolchains is created

@@ -39,7 +39,7 @@ impl ops::DerefMut for Capabilities {
 
 impl Capabilities {
     pub fn new(caps: &[&str]) -> Self {
-        let capabilities = caps.iter().map(|s| s.to_string()).collect();
+        let capabilities = caps.iter().map(|s| (*s).to_string()).collect();
         Capabilities { capabilities }
     }
 

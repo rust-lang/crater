@@ -65,7 +65,7 @@ pub fn run(config: Config) -> Fallible<()> {
         github,
         tokens,
         agents,
-        db: db.clone(),
+        db,
         reports_worker: reports::ReportsWorker::new(),
         acl,
         metrics,
@@ -83,11 +83,11 @@ pub fn run(config: Config) -> Fallible<()> {
         .and(
             warp::any()
                 .and(warp::path("webhooks").and(routes::webhooks::routes(data.clone())))
-                .or(warp::path("agent-api").and(routes::agent::routes(data.clone(), mutex.clone())))
+                .or(warp::path("agent-api").and(routes::agent::routes(data.clone(), mutex)))
                 .unify()
                 .or(warp::path("metrics").and(routes::metrics::routes(data.clone())))
                 .unify()
-                .or(routes::ui::routes(data.clone()))
+                .or(routes::ui::routes(data))
                 .unify(),
         )
         .map(|mut resp: Response<Body>| {

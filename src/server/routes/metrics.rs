@@ -10,12 +10,11 @@ use warp::{self, Filter, Rejection};
 pub fn routes(
     data: Arc<Data>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
-    let data_cloned = data.clone();
-    let data_filter = warp::any().map(move || data_cloned.clone());
+    let data_filter = warp::any().map(move || data.clone());
 
     warp::get2()
         .and(warp::path::end())
-        .and(data_filter.clone())
+        .and(data_filter)
         .map(|data| match endpoint_metrics(data) {
             Ok(resp) => resp,
             Err(err) => {

@@ -176,7 +176,7 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<B
         let experiment = ExperimentExt {
             common: ExperimentData::new(&data, &ex)?,
 
-            github_url: ex.github_issue.map(|i| i.html_url.clone()),
+            github_url: ex.github_issue.map(|i| i.html_url),
             report_url: ex.report_url.clone(),
 
             created_at: ex.created_at.to_rfc3339_opts(SecondsFormat::Secs, true),

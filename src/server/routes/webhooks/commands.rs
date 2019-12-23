@@ -63,19 +63,13 @@ pub fn run(
         {
             try_build = Some(build.merge_sha.clone());
             detected_start = Some(Toolchain {
-                source: RustwideToolchain::CI {
-                    sha: build.base_sha.into(),
-                    alt: false,
-                },
+                source: RustwideToolchain::ci(&build.base_sha, false),
                 rustflags: None,
                 ci_try: false,
                 patches: Vec::new(),
             });
             detected_end = Some(Toolchain {
-                source: RustwideToolchain::CI {
-                    sha: build.merge_sha.into(),
-                    alt: false,
-                },
+                source: RustwideToolchain::ci(&build.merge_sha, false),
                 rustflags: None,
                 ci_try: true,
                 patches: Vec::new(),

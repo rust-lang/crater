@@ -44,7 +44,7 @@ pub fn routes(
     let agents = warp::get2()
         .and(warp::path("agents"))
         .and(warp::path::end())
-        .and(data_filter.clone())
+        .and(data_filter)
         .map(agents::endpoint_list);
 
     let assets = warp::get2()

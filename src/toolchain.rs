@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use crate::utils;
 use rustwide::Toolchain as RustwideToolchain;
-use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
@@ -9,9 +8,7 @@ use std::str::FromStr;
 lazy_static! {
     /// This toolchain is used during internal tests, and must be different than TEST_TOOLCHAIN
     pub(crate) static ref MAIN_TOOLCHAIN: Toolchain = Toolchain {
-        source: RustwideToolchain::Dist {
-            name: Cow::Borrowed("stable"),
-        },
+        source: RustwideToolchain::dist("stable"),
         rustflags: None,
         ci_try: false,
         patches: Vec::new(),
@@ -19,9 +16,7 @@ lazy_static! {
 
     /// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
     pub(crate) static ref TEST_TOOLCHAIN: Toolchain = Toolchain {
-        source: RustwideToolchain::Dist {
-            name: Cow::Borrowed("beta"),
-        },
+        source: RustwideToolchain::dist("beta"),
         rustflags: None,
         ci_try: false,
         patches: Vec::new(),
@@ -54,17 +49,17 @@ impl std::ops::Deref for Toolchain {
 
 impl fmt::Display for Toolchain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self.source {
-            RustwideToolchain::Dist { name } => write!(f, "{}", name)?,
-            RustwideToolchain::CI { sha, .. } => {
-                if self.ci_try {
-                    write!(f, "try#{}", sha)?;
-                } else {
-                    write!(f, "master#{}", sha)?;
-                }
+        if let Some(dist) = self.source.as_dist() {
+            write!(f, "{}", dist.name())?;
+        } else if let Some(ci) = self.source.as_ci() {
+            if self.ci_try {
+                write!(f, "try#{}", ci.sha())?;
+            } else {
+                write!(f, "master#{}", ci.sha())?;
             }
-            _ => panic!("unsupported rustwide toolchain"),
-        };
+        } else {
+            panic!("unsupported rustwide toolchain");
+        }
 
         if let Some(ref flag) = self.rustflags {
             write!(f, "+rustflags={}", flag)?;
@@ -99,7 +94,7 @@ impl FromStr for Toolchain {
         let source = if let Some(hash_idx) = raw_source.find('#') {
             let (source_name, sha_with_hash) = raw_source.split_at(hash_idx);
 
-            let sha = (&sha_with_hash[1..]).to_string();
+            let sha = &sha_with_hash[1..];
             if sha.is_empty() {
                 return Err(ToolchainParseError::EmptyName);
             }
@@ -107,23 +102,15 @@ impl FromStr for Toolchain {
             match source_name {
                 "try" => {
                     ci_try = true;
-                    RustwideToolchain::CI {
-                        sha: Cow::Owned(sha),
-                        alt: false,
-                    }
+                    RustwideToolchain::ci(sha, false)
                 }
-                "master" => RustwideToolchain::CI {
-                    sha: Cow::Owned(sha),
-                    alt: false,
-                },
+                "master" => RustwideToolchain::ci(sha, false),
                 name => return Err(ToolchainParseError::InvalidSourceName(name.to_string())),
             }
         } else if raw_source.is_empty() {
             return Err(ToolchainParseError::EmptyName);
         } else {
-            RustwideToolchain::Dist {
-                name: Cow::Owned(raw_source.to_string()),
-            }
+            RustwideToolchain::dist(raw_source)
         };
 
         let mut rustflags = None;
@@ -254,35 +241,23 @@ mod tests {
         // Test valid reprs
         test_from_str! {
             "stable" => {
-                source:RustwideToolchain::Dist {
-                    name: "stable".into(),
-                },
+                source: RustwideToolchain::dist("stable"),
                 ci_try: false,
             },
             "beta-1970-01-01" => {
-                source: RustwideToolchain::Dist {
-                    name: "beta-1970-01-01".into(),
-                },
+                source: RustwideToolchain::dist("beta-1970-01-01"),
                 ci_try: false,
             },
             "nightly-1970-01-01" => {
-                source: RustwideToolchain::Dist {
-                    name: "nightly-1970-01-01".into(),
-                },
+                source: RustwideToolchain::dist("nightly-1970-01-01"),
                 ci_try: false,
             },
             "master#0000000000000000000000000000000000000000" => {
-                source: RustwideToolchain::CI {
-                    sha: "0000000000000000000000000000000000000000".into(),
-                    alt: false,
-                },
+                source: RustwideToolchain::ci("0000000000000000000000000000000000000000", false),
                 ci_try: false,
             },
             "try#0000000000000000000000000000000000000000" => {
-                source: RustwideToolchain::CI {
-                    sha: "0000000000000000000000000000000000000000".into(),
-                    alt: false,
-                },
+                source: RustwideToolchain::ci("0000000000000000000000000000000000000000", false),
                 ci_try: true,
             },
         };

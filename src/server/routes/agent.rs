@@ -63,7 +63,7 @@ pub fn routes(
     let heartbeat = warp::post2()
         .and(warp::path("heartbeat"))
         .and(warp::path::end())
-        .and(data_filter.clone())
+        .and(data_filter)
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_heartbeat);
 
@@ -71,8 +71,8 @@ pub fn routes(
         .and(warp::path("error"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(mutex_filter.clone())
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(mutex_filter)
+        .and(auth_filter(data, TokenType::Agent))
         .map(endpoint_error);
 
     warp::any()
@@ -138,11 +138,7 @@ fn endpoint_next_experiment(
         } else {
             Some((
                 ex.clone(),
-                ex.get_uncompleted_crates(
-                    &data.db,
-                    &data.config,
-                    &Assignee::Agent(auth.name.clone()),
-                )?,
+                ex.get_uncompleted_crates(&data.db, &data.config, &Assignee::Agent(auth.name))?,
             ))
         }
     } else {

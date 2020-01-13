@@ -105,16 +105,11 @@ which is installed by default on newer versions of Windows or available via
 
 ```powershell
 curl.exe -o rustup-init.exe https://win.rustup.rs/x86_64
-.\rustup-init.exe
+.\rustup-init.exe --profile=minimal
 ```
 
 [rustup-download]: https://github.com/rust-lang/rustup.rs/issues/829
 ["Trusted Sites"]: https://www.itg.ias.edu/content/how-add-trusted-sites-internet-explorer
-
-Disabling "Real-time Protection" in "Settings > Update & Security > Windows
-Defender" may speed up [the installation of `rust-docs`][rust-docs].
-
-[rust-docs]: https://github.com/rust-lang/rustup.rs/issues/1540
 
 ## Build crater
 

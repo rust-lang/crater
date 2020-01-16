@@ -77,6 +77,7 @@ hyperdav = { skip-tests = true } # relies on an external service
 idx = { skip-tests = true } # depends on filesystem
 image-stream = { skip-tests = true } # depends on network
 ipc-channel = { slow = true } # tests slow to run
+jemalloc-ctl = { skip-tests = true } # flaky tests
 libfuzzy-sys = { skip = true } # flaky build
 loadconf = { skip-tests = true } # flaky test
 loaded_dice = { skip-tests = true } # may fail due to randomness
@@ -96,6 +97,7 @@ read-process-memory = { skip-tests = true } # flaky tests
 restson = { skip-tests = true } # uses HTTP requests
 rspotify = { slow = true } # slow build
 rustlearn = { skip-tests = true } # non-deterministic
+s_app_dir = { skip-tests = true } # flaky tests
 sacn = { skip-tests = true } # Tests just fail if RUST_TEST_THREADS > 1 -author
 sbrsk = { skip-tests = true } # flaky tests
 signatory-ring = { skip-tests = true } # flaky tests
@@ -103,6 +105,7 @@ silk = { slow = true } # tests slow to run
 simd = { broken = true } # missing feature
 simple-munin-plugin = { skip-tests = true } # flaky test
 slotmap = { skip-tests = true } # flaky tests
+sodium-rust = { skip-tests = true } # flaky tests
 structopt = { broken = true } # missing feature
 sysconf = { skip-tests = true } # flaky test
 tasks-framework = { skip-tests = true } # flaky tests
@@ -123,5 +126,9 @@ vidar = { skip-tests = true } # flaky test
 "johnedmonds/chance" = { skip-tests = true } # flaky tests
 "simulacrumparty/casaubon" = { skip-tests = true } # flaky tests
 "sozu-proxy/sozu" = { skip-tests = true } # flaky tests
+"cryptonote/rust.account" = { skip-tests = true } # flaky tests
+"kellymclaughlin/rust-quickcheck-example" = { skip-tests = true } # flaky tests
+"otaviopace/minigrep" = { skip-tests = true } # flaky tests
+"wischli/rpaillier" = { skip-tests = true } # flaky tests
 
 [local-crates]

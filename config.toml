@@ -126,7 +126,6 @@ vidar = { skip-tests = true } # flaky test
 "johnedmonds/chance" = { skip-tests = true } # flaky tests
 "simulacrumparty/casaubon" = { skip-tests = true } # flaky tests
 "sozu-proxy/sozu" = { skip-tests = true } # flaky tests
-"cryptonote/rust.account" = { skip-tests = true } # flaky tests
 "kellymclaughlin/rust-quickcheck-example" = { skip-tests = true } # flaky tests
 "otaviopace/minigrep" = { skip-tests = true } # flaky tests
 "wischli/rpaillier" = { skip-tests = true } # flaky tests

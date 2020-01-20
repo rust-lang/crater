@@ -104,6 +104,12 @@
                             <td>{{ experiment.average_job_duration }}</td>
                         </tr>
                         {% endif %}
+                        {% for result_count in experiment.result_counts %}
+                        <tr>
+                            <th>{{ result_count.0 }} jobs:</th>
+                            <td>{{ result_count.1}}</td>
+                        </tr>
+                        {% endfor %}
                     </table>
                 </div>
             </div>

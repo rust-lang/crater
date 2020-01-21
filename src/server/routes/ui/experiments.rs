@@ -1,5 +1,6 @@
 use crate::experiments::{Experiment, Mode, Status};
 use crate::prelude::*;
+use crate::results::TestResult;
 use crate::server::routes::ui::{render_template, LayoutContext};
 use crate::server::{Data, HttpError};
 use chrono::{Duration, SecondsFormat, Utc};
@@ -120,6 +121,7 @@ struct ExperimentExt {
 
     total_jobs: u32,
     completed_jobs: u32,
+    result_counts: Vec<(TestResult, u32)>,
     duration: Option<String>,
     estimated_end: Option<String>,
     average_job_duration: Option<String>,
@@ -134,6 +136,7 @@ struct ExperimentContext {
 pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<Body>> {
     if let Some(ex) = Experiment::get(&data.db, &name)? {
         let (completed_jobs, total_jobs) = ex.raw_progress(&data.db)?;
+        let result_counts = ex.get_result_counts(&data.db)?;
 
         let (duration, estimated_end, average_job_duration) = if completed_jobs > 0
             && total_jobs > 0
@@ -189,6 +192,7 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<B
 
             total_jobs,
             completed_jobs,
+            result_counts,
             duration,
             estimated_end,
             average_job_duration,

@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::prelude::*;
+use crate::results::TestResult;
 use crate::toolchain::Toolchain;
 use crate::utils;
 use chrono::{DateTime, Utc};
@@ -556,6 +557,17 @@ impl Experiment {
             .unwrap();
 
         Ok((results_len, crates_len * 2))
+    }
+
+    pub fn get_result_counts(&self, db: &Database) -> Fallible<Vec<(TestResult, u32)>> {
+        let results: Vec<Fallible<(TestResult, u32)>> = db.query(
+            "SELECT result, COUNT(*) FROM results \
+             WHERE experiment = ?1 GROUP BY result;",
+            &[&self.name.as_str()],
+            |r| Ok((TestResult::from_str(&r.get::<_, String>(0))?, r.get(1))),
+        )?;
+
+        results.into_iter().collect()
     }
 
     pub fn progress(&self, db: &Database) -> Fallible<u8> {

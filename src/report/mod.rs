@@ -45,6 +45,7 @@ pub struct TestResults {
 pub struct CrateResult {
     name: String,
     url: String,
+    krate: Crate,
     pub res: Comparison,
     runs: [Option<BuildTestResult>; 2],
 }
@@ -179,6 +180,7 @@ pub fn generate_report<DB: ReadResults>(
             Ok(CrateResult {
                 name: crate_to_name(&krate, &shas)?,
                 url: crate_to_url(&krate, &shas)?,
+                krate: krate.clone(),
                 res: comp,
                 runs: [crate1, crate2],
             })
@@ -257,6 +259,11 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
         serde_json::to_string(&ex)?.into(),
         &mime::APPLICATION_JSON,
     )?;
+    dest.write_string(
+        "retry-regressed-list.txt",
+        gen_retry_list(&res).into(),
+        &mime::TEXT_PLAIN_UTF_8,
+    )?;
 
     info!("writing archives");
     let available_archives = archives::write_logs_archives(db, ex, crates, dest, config)?;
@@ -266,6 +273,30 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     write_logs(db, ex, crates, dest, config)?;
 
     Ok(res)
+}
+
+/// Generates a list of regressed crate names that can be passed to crater via
+/// `crates=list:...` to retry those.
+fn gen_retry_list(res: &TestResults) -> String {
+    use std::fmt::Write;
+
+    let mut out = String::new();
+
+    let regressed_crates = res
+        .crates
+        .iter()
+        .filter(|crate_res| crate_res.res == Comparison::Regressed)
+        .map(|crate_res| &crate_res.krate);
+
+    for krate in regressed_crates {
+        match krate {
+            Crate::Registry(details) => writeln!(out, "{}", details.name).unwrap(),
+            Crate::GitHub(repo) => writeln!(out, "{}/{}", repo.org, repo.name).unwrap(),
+            Crate::Local(_) => {}
+        }
+    }
+
+    out
 }
 
 fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Fallible<String> {

@@ -711,6 +711,10 @@ mod tests {
             name: "hello-rs".into(),
         };
         let gh = Crate::GitHub(repo.clone());
+        let reg = Crate::Registry(RegistryCrate {
+            name: "syn".into(),
+            version: "1.0.0".into(),
+        });
 
         let ex = Experiment {
             name: "foo".to_string(),
@@ -756,8 +760,33 @@ mod tests {
             EncodedLog::Plain(b"beta log".to_vec()),
         );
 
+        db.add_dummy_result(
+            &ex,
+            reg.clone(),
+            MAIN_TOOLCHAIN.clone(),
+            TestResult::TestPass,
+        );
+        db.add_dummy_result(
+            &ex,
+            reg.clone(),
+            TEST_TOOLCHAIN.clone(),
+            TestResult::BuildFail(FailureReason::Unknown),
+        );
+        db.add_dummy_log(
+            &ex,
+            reg.clone(),
+            MAIN_TOOLCHAIN.clone(),
+            EncodedLog::Plain(b"stable log".to_vec()),
+        );
+        db.add_dummy_log(
+            &ex,
+            reg.clone(),
+            TEST_TOOLCHAIN.clone(),
+            EncodedLog::Plain(b"beta log".to_vec()),
+        );
+
         let writer = DummyWriter::default();
-        gen(&db, &ex, &[gh], &writer, &config).unwrap();
+        gen(&db, &ex, &[gh, reg], &writer, &config).unwrap();
 
         assert_eq!(
             writer.get("config.json", &mime::APPLICATION_JSON),
@@ -776,30 +805,59 @@ mod tests {
         let result: TestResults =
             serde_json::from_slice(&writer.get("results.json", &mime::APPLICATION_JSON)).unwrap();
 
-        assert_eq!(result.crates.len(), 1);
-        let crate_result = &result.crates[0];
+        assert_eq!(result.crates.len(), 2);
+        let gh_result = &result.crates[0];
+        let reg_result = &result.crates[1];
 
-        assert_eq!(crate_result.name.as_str(), "brson.hello-rs.f00");
+        assert_eq!(gh_result.name.as_str(), "brson.hello-rs.f00");
         assert_eq!(
-            crate_result.url.as_str(),
+            gh_result.url.as_str(),
             "https://github.com/brson/hello-rs/tree/f00"
         );
-        assert_eq!(crate_result.res, Comparison::Regressed);
+        assert_eq!(gh_result.res, Comparison::Regressed);
         assert_eq!(
-            (&crate_result.runs[0]).as_ref().unwrap().res,
+            (&gh_result.runs[0]).as_ref().unwrap().res,
             TestResult::TestPass
         );
         assert_eq!(
-            (&crate_result.runs[1]).as_ref().unwrap().res,
+            (&gh_result.runs[1]).as_ref().unwrap().res,
             TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
-            (&crate_result.runs[0]).as_ref().unwrap().log.as_str(),
+            (&gh_result.runs[0]).as_ref().unwrap().log.as_str(),
             "stable/gh/brson.hello-rs"
         );
         assert_eq!(
-            (&crate_result.runs[1]).as_ref().unwrap().log.as_str(),
+            (&gh_result.runs[1]).as_ref().unwrap().log.as_str(),
             "beta/gh/brson.hello-rs"
+        );
+
+        assert_eq!(reg_result.name.as_str(), "syn-1.0.0");
+        assert_eq!(
+            reg_result.url.as_str(),
+            "https://crates.io/crates/syn/1.0.0"
+        );
+        assert_eq!(reg_result.res, Comparison::Regressed);
+        assert_eq!(
+            (&reg_result.runs[0]).as_ref().unwrap().res,
+            TestResult::TestPass
+        );
+        assert_eq!(
+            (&reg_result.runs[1]).as_ref().unwrap().res,
+            TestResult::BuildFail(FailureReason::Unknown)
+        );
+        assert_eq!(
+            (&reg_result.runs[0]).as_ref().unwrap().log.as_str(),
+            "stable/reg/syn-1.0.0"
+        );
+        assert_eq!(
+            (&reg_result.runs[1]).as_ref().unwrap().log.as_str(),
+            "beta/reg/syn-1.0.0"
+        );
+
+        assert_eq!(
+            writer.get("retry-regressed-list.txt", &mime::TEXT_PLAIN_UTF_8),
+            b"brson/hello-rs\nsyn\n",
         );
     }
 }

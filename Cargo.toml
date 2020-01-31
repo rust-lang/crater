@@ -63,7 +63,7 @@ hmac = "0.7"
 sha-1 = "0.8"
 rust_team_data = { git = "https://github.com/rust-lang/team" }
 systemstat = "0.1.4"
-rustwide = { version = "0.4.0", features = ["unstable"] }
+rustwide = { version = "0.5.1", features = ["unstable"] }
 percent-encoding = "2.1.0"
 remove_dir_all = "0.5.2"
 ctrlc = "3.1.3"

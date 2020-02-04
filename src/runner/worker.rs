@@ -63,7 +63,11 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         // This uses a `loop` instead of a `while let` to avoid locking the graph too much
         loop {
             self.maybe_cleanup_target_dir()?;
-            let walk_result = self.graph.lock().unwrap().next_task(self.ex, self.db);
+            let walk_result = self
+                .graph
+                .lock()
+                .unwrap()
+                .next_task(self.ex, self.db, &self.name);
             match walk_result {
                 WalkResult::Task(id, task) => {
                     info!("running task: {:?}", task);
@@ -100,6 +104,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                             self.config,
                             &e,
                             result,
+                            &self.name,
                         )?;
                     } else {
                         self.graph.lock().unwrap().mark_as_completed(id);

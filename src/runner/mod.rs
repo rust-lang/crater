@@ -128,7 +128,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     // Only the root node must be present
     let mut g = graph.lock().unwrap();
-    assert!(g.next_task(ex, db).is_finished());
+    assert!(g.next_task(ex, db, "master").is_finished());
     assert_eq!(g.pending_crates_count(), 0);
 
     Ok(())

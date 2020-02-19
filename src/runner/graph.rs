@@ -110,9 +110,14 @@ impl TasksGraph {
         id
     }
 
-    pub(super) fn next_task<DB: WriteResults>(&mut self, ex: &Experiment, db: &DB) -> WalkResult {
+    pub(super) fn next_task<DB: WriteResults>(
+        &mut self,
+        ex: &Experiment,
+        db: &DB,
+        worker: &str,
+    ) -> WalkResult {
         let root = self.root;
-        self.walk_graph(root, ex, db)
+        self.walk_graph(root, ex, db, worker)
     }
 
     fn walk_graph<DB: WriteResults>(
@@ -120,8 +125,14 @@ impl TasksGraph {
         node: NodeIndex,
         ex: &Experiment,
         db: &DB,
+        worker: &str,
     ) -> WalkResult {
-        log::trace!("{:?}: walked to node {:?}", node, self.graph[node]);
+        log::trace!(
+            "{} | {:?}: walked to node {:?}",
+            worker,
+            node,
+            self.graph[node]
+        );
         // Ensure tasks are only executed if needed
         let mut already_executed = false;
         if let Node::Task {
@@ -141,10 +152,11 @@ impl TasksGraph {
         // Try to check for the dependencies of this node
         // The list is collected to make the borrowchecker happy
         let mut neighbors = self.graph.neighbors(node).collect::<Vec<_>>();
-        log::trace!("{:?}: neighbors: {:?}", node, neighbors);
+        log::trace!("{} | {:?}: neighbors: {:?}", worker, node, neighbors);
+
         let mut blocked = false;
         for neighbor in neighbors.drain(..) {
-            match self.walk_graph(neighbor, ex, db) {
+            match self.walk_graph(neighbor, ex, db, worker) {
                 WalkResult::Task(id, task) => return WalkResult::Task(id, task),
                 WalkResult::Finished => return WalkResult::Finished,
                 WalkResult::Blocked => blocked = true,
@@ -154,7 +166,7 @@ impl TasksGraph {
         // The early return for Blocked is done outside of the loop, allowing other dependent tasks
         // to be checked first: if they contain a non-blocked task that is returned instead
         if blocked {
-            log::trace!("{:?}: this is blocked", node);
+            log::trace!("{} | {:?}: this is blocked", worker, node);
             return WalkResult::Blocked;
         }
 
@@ -178,7 +190,7 @@ impl TasksGraph {
 
         // This is done after the match to avoid borrowck issues
         if delete {
-            log::trace!("{:?}: marked as complete", node);
+            log::trace!("{} | {:?}: marked as complete", worker, node);
             self.mark_as_completed(node);
         }
 
@@ -199,6 +211,7 @@ impl TasksGraph {
         config: &Config,
         error: &failure::Error,
         result: TestResult,
+        worker: &str,
     ) -> Fallible<()> {
         let mut children = self
             .graph
@@ -212,12 +225,13 @@ impl TasksGraph {
                 .count();
             if parents > 1 {
                 log::trace!(
-                    "{:?}: prevented recursive mark_as_failed as it has other parents",
+                    "{} | {:?} prevented recursive mark_as_failed as it has other parents",
+                    worker,
                     child
                 );
                 continue;
             }
-            self.mark_as_failed(child, ex, db, state, config, error, result)?;
+            self.mark_as_failed(child, ex, db, state, config, error, result, worker)?;
         }
 
         match self.graph[node] {

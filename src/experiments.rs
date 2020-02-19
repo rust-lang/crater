@@ -485,6 +485,26 @@ impl Experiment {
         }
     }
 
+    pub fn report_failure(&mut self, db: &Database, agent: &Assignee) -> Fallible<()> {
+        // Mark all the running crates from this agent as failed as well if the experiment failed
+        db.execute(
+            "
+            UPDATE experiment_crates 
+            SET assigned_to = NULL, status = ?1 \
+            WHERE experiment = ?2 AND status = ?3 \
+            AND assigned_to = ?4
+            ",
+            &[
+                &Status::Failed.to_string(),
+                &self.name,
+                &Status::Running.to_string(),
+                &agent.to_string(),
+            ],
+        )?;
+
+        self.set_status(db, Status::Failed)
+    }
+
     pub fn set_status(&mut self, db: &Database, status: Status) -> Fallible<()> {
         db.execute(
             "UPDATE experiments SET status = ?1 WHERE name = ?2;",
@@ -493,23 +513,40 @@ impl Experiment {
 
         let now = Utc::now();
 
-        // Check if the new status is "running" and there is no starting date
-        if status == Status::Running && self.started_at.is_none() {
-            db.execute(
-                "UPDATE experiments SET started_at = ?1 WHERE name = ?2;",
-                &[&now, &self.name.as_str()],
-            )?;
-            self.started_at = Some(now);
-        // Check if the old status was "running" and there is no completed date
-        } else if self.status == Status::Running
-            && self.completed_at.is_none()
-            && status != Status::Failed
-        {
-            db.execute(
-                "UPDATE experiments SET completed_at = ?1 WHERE name = ?2;",
-                &[&now, &self.name.as_str()],
-            )?;
-            self.completed_at = Some(now);
+        match (self.status, status) {
+            // Check if the new status is "running" and there is no starting date
+            (_, Status::Running) if self.started_at.is_none() => {
+                db.execute(
+                    "UPDATE experiments SET started_at = ?1 WHERE name = ?2;",
+                    &[&now, &self.name.as_str()],
+                )?;
+                self.started_at = Some(now);
+            }
+            // Check if the old status was "running" and there is no completed date
+            (Status::Running, new_status)
+                if self.completed_at.is_none() && new_status != Status::Failed =>
+            {
+                db.execute(
+                    "UPDATE experiments SET completed_at = ?1 WHERE name = ?2;",
+                    &[&now, &self.name.as_str()],
+                )?;
+                self.completed_at = Some(now);
+            }
+            // Queue again failed crates
+            (Status::Failed, Status::Queued) => {
+                db.execute(
+                    "UPDATE experiment_crates 
+                    SET status = ?1 \
+                    WHERE experiment = ?2 AND status = ?3
+                    ",
+                    &[
+                        &Status::Queued.to_string(),
+                        &self.name,
+                        &Status::Failed.to_string(),
+                    ],
+                )?;
+            }
+            _ => (),
         }
 
         self.status = status;
@@ -1025,5 +1062,27 @@ mod tests {
             .get_uncompleted_crates(&db, &config, &Assignee::CLI)
             .unwrap();
         assert_eq!(uncompleted_crates.len(), 0);
+    }
+
+    #[test]
+    fn test_failed_experiment() {
+        let db = Database::temp().unwrap();
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+        let agent1 = Assignee::Agent("agent-1".to_string());
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        // Create a dummy experiment
+        CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
+        let mut ex = Experiment::next(&db, &agent1).unwrap().unwrap().1;
+        assert!(!ex
+            .get_uncompleted_crates(&db, &config, &agent1)
+            .unwrap()
+            .is_empty());
+        ex.report_failure(&db, &agent1).unwrap();
+        assert!(!Experiment::next(&db, &agent1).unwrap().is_some());
+        assert_eq!(ex.status, Status::Failed);
+        assert!(ex.get_running_crates(&db, &agent1).unwrap().is_empty());
     }
 }

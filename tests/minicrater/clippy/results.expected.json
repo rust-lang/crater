@@ -1,6 +1,9 @@
 {
   "crates": [
     {
+      "krate": {
+        "Local": "build-pass"
+      },
       "name": "build-pass (local)",
       "res": "test-pass",
       "runs": [
@@ -16,6 +19,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
     },
     {
+      "krate": {
+        "Local": "clippy-warn"
+      },
       "name": "clippy-warn (local)",
       "res": "regressed",
       "runs": [

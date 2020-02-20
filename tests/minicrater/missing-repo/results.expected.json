@@ -1,6 +1,12 @@
 {
   "crates": [
     {
+      "krate": {
+        "GitHub": {
+          "name": "missing",
+          "org": "ghost"
+        }
+      },
       "name": "ghost.missing",
       "res": "broken",
       "runs": [

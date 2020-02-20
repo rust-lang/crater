@@ -1,6 +1,9 @@
 {
   "crates": [
     {
+      "krate": {
+        "Local": "beta-fixed"
+      },
       "name": "beta-fixed (local)",
       "res": "fixed",
       "runs": [
@@ -16,6 +19,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-fixed"
     },
     {
+      "krate": {
+        "Local": "beta-regression"
+      },
       "name": "beta-regression (local)",
       "res": "regressed",
       "runs": [
@@ -31,6 +37,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
     },
     {
+      "krate": {
+        "Local": "broken-cargotoml"
+      },
       "name": "broken-cargotoml (local)",
       "res": "broken",
       "runs": [
@@ -46,6 +55,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/broken-cargotoml"
     },
     {
+      "krate": {
+        "Local": "build-fail"
+      },
       "name": "build-fail (local)",
       "res": "build-fail",
       "runs": [
@@ -61,6 +73,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
     },
     {
+      "krate": {
+        "Local": "build-pass"
+      },
       "name": "build-pass (local)",
       "res": "test-pass",
       "runs": [
@@ -76,6 +91,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
     },
     {
+      "krate": {
+        "Local": "clippy-warn"
+      },
       "name": "clippy-warn (local)",
       "res": "test-pass",
       "runs": [
@@ -91,6 +109,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
     },
     {
+      "krate": {
+        "Local": "memory-hungry"
+      },
       "name": "memory-hungry (local)",
       "res": "skipped",
       "runs": [
@@ -100,6 +121,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
     },
     {
+      "krate": {
+        "Local": "missing-examples"
+      },
       "name": "missing-examples (local)",
       "res": "test-pass",
       "runs": [
@@ -115,6 +139,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/missing-examples"
     },
     {
+      "krate": {
+        "Local": "network-access"
+      },
       "name": "network-access (local)",
       "res": "fixed",
       "runs": [
@@ -130,6 +157,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
     },
     {
+      "krate": {
+        "Local": "outdated-lockfile"
+      },
       "name": "outdated-lockfile (local)",
       "res": "test-pass",
       "runs": [
@@ -145,6 +175,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/outdated-lockfile"
     },
     {
+      "krate": {
+        "Local": "test-fail"
+      },
       "name": "test-fail (local)",
       "res": "test-fail",
       "runs": [
@@ -160,6 +193,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
     },
     {
+      "krate": {
+        "Local": "yanked-deps"
+      },
       "name": "yanked-deps (local)",
       "res": "broken",
       "runs": [

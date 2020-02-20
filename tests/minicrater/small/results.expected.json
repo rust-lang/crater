@@ -1,6 +1,9 @@
 {
   "crates": [
     {
+      "krate": {
+        "Local": "beta-regression"
+      },
       "name": "beta-regression (local)",
       "res": "regressed",
       "runs": [
@@ -16,6 +19,9 @@
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
     },
     {
+      "krate": {
+        "Local": "build-pass"
+      },
       "name": "build-pass (local)",
       "res": "test-pass",
       "runs": [

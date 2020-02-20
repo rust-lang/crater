@@ -807,7 +807,7 @@ mod tests {
     #[test]
     fn test_crate_select_parsing() {
         let demo_crates: HashSet<_> = ["brson/hello-rs", "lazy_static"]
-            .into_iter()
+            .iter()
             .map(|s| s.to_string())
             .collect();
 

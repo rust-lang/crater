@@ -58,6 +58,7 @@ impl ResultName for FailureReason {
             FailureReason::Unknown => "failed".into(),
             FailureReason::Timeout => "timed out".into(),
             FailureReason::OOM => "OOM".into(),
+            FailureReason::ICE => "ICE".into(),
         }
     }
 }

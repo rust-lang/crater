@@ -1,0 +1,9 @@
+[package]
+name = "beta-regression"
+version = "0.1.0"
+authors = ["Pietro Albini <pietro@pietroalbini.org>"]
+
+[dependencies]
+
+[build-dependencies]
+rustc_version = "0.2.3"

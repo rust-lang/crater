@@ -110,6 +110,24 @@
     },
     {
       "krate": {
+        "Local": "ice-regression"
+      },
+      "name": "ice-regression (local)",
+      "res": "regressed",
+      "runs": [
+        {
+          "log": "stable/local/ice-regression",
+          "res": "build-fail:unknown"
+        },
+        {
+          "log": "beta/local/ice-regression",
+          "res": "build-fail:ice"
+        }
+      ],
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
+    },
+    {
+      "krate": {
         "Local": "memory-hungry"
       },
       "name": "memory-hungry (local)",

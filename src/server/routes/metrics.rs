@@ -33,6 +33,9 @@ fn endpoint_metrics(data: Arc<Data>) -> Fallible<Response<Body>> {
         &data.db,
         &data.agents.all()?.iter().collect::<Vec<&Agent>>(),
     )?;
+
+    data.metrics.update_crates_lists(&data.db)?;
+
     let mut buffer = Vec::new();
     let families = prometheus::gather();
     TextEncoder::new().encode(&families, &mut buffer)?;

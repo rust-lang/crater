@@ -1,16 +1,21 @@
-use crate::db::Database;
+use crate::db::{Database, QueryUtils};
 use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
 use crate::server::agents::Agent;
 use prometheus::proto::{Metric, MetricFamily};
-use prometheus::{IntCounterVec, IntGaugeVec, __register_counter_vec, __register_gauge_vec};
+use prometheus::{
+    IntCounterVec, IntGauge, IntGaugeVec, __register_counter_vec, __register_gauge,
+    __register_gauge_vec,
+};
 const JOBS_METRIC: &str = "crater_completed_jobs_total";
 const AGENT_WORK_METRIC: &str = "crater_agent_supposed_to_work";
+const LAST_CRATES_UPDATE_METRIC: &str = "crater_last_crates_update";
 
 #[derive(Clone)]
 pub struct Metrics {
     crater_completed_jobs_total: IntCounterVec,
     crater_work_status: IntGaugeVec,
+    crater_last_crates_update: IntGauge,
 }
 
 impl Metrics {
@@ -20,10 +25,14 @@ impl Metrics {
             prometheus::register_int_counter_vec!(jobs_opts, &["agent", "experiment"])?;
         let agent_opts = prometheus::opts!(AGENT_WORK_METRIC, "is agent supposed to work");
         let crater_work_status = prometheus::register_int_gauge_vec!(agent_opts, &["agent"])?;
+        let crates_update_opts =
+            prometheus::opts!(LAST_CRATES_UPDATE_METRIC, "last update of crates lists");
+        let crater_last_crates_update = prometheus::register_int_gauge!(crates_update_opts)?;
 
         Ok(Metrics {
             crater_completed_jobs_total,
             crater_work_status,
+            crater_last_crates_update,
         })
     }
 
@@ -77,6 +86,20 @@ impl Metrics {
         }
 
         Ok(())
+    }
+
+    pub fn update_crates_lists(&self, db: &Database) -> Fallible<()> {
+        //&[] as &[u32] is just a hint to make the compiler happy
+        let timestamp = db.get_row("SELECT MAX(loaded_at) FROM crates;", &[] as &[u32], |r| {
+            r.get(0)
+        })?;
+
+        if let Some(timestamp) = timestamp {
+            self.crater_last_crates_update.set(timestamp);
+            Ok(())
+        } else {
+            bail!("no crates loaded");
+        }
     }
 
     pub fn on_complete_experiment(&self, experiment: &str) -> Fallible<()> {

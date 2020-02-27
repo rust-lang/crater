@@ -2,11 +2,13 @@ use crate::db::{Database, QueryUtils};
 use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
 use crate::server::agents::Agent;
+use chrono::{DateTime, Utc};
 use prometheus::proto::{Metric, MetricFamily};
 use prometheus::{
     IntCounterVec, IntGauge, IntGaugeVec, __register_counter_vec, __register_gauge,
     __register_gauge_vec,
 };
+
 const JOBS_METRIC: &str = "crater_completed_jobs_total";
 const AGENT_WORK_METRIC: &str = "crater_agent_supposed_to_work";
 const LAST_CRATES_UPDATE_METRIC: &str = "crater_last_crates_update";
@@ -90,12 +92,13 @@ impl Metrics {
 
     pub fn update_crates_lists(&self, db: &Database) -> Fallible<()> {
         //&[] as &[u32] is just a hint to make the compiler happy
-        let timestamp = db.get_row("SELECT MAX(loaded_at) FROM crates;", &[] as &[u32], |r| {
-            r.get(0)
-        })?;
+        let datetime: Option<DateTime<Utc>> =
+            db.get_row("SELECT MAX(loaded_at) FROM crates;", &[] as &[u32], |r| {
+                r.get(0)
+            })?;
 
-        if let Some(timestamp) = timestamp {
-            self.crater_last_crates_update.set(timestamp);
+        if let Some(datetime) = datetime {
+            self.crater_last_crates_update.set(datetime.timestamp());
             Ok(())
         } else {
             bail!("no crates loaded");
@@ -109,13 +112,14 @@ impl Metrics {
 
 #[cfg(test)]
 mod tests {
-    use super::{Metrics, AGENT_WORK_METRIC, JOBS_METRIC};
+    use super::{Metrics, AGENT_WORK_METRIC, JOBS_METRIC, LAST_CRATES_UPDATE_METRIC};
     use crate::actions::{Action, ActionsCtx, CreateExperiment, EditExperiment};
     use crate::config::Config;
     use crate::db::Database;
     use crate::experiments::{Assignee, Experiment};
     use crate::server::agents::{Agent, Agents};
     use crate::server::tokens::Tokens;
+    use chrono::Utc;
     use lazy_static::lazy_static;
     use prometheus::proto::MetricFamily;
 
@@ -224,5 +228,21 @@ mod tests {
         let status = Metrics::get_metric_by_name(AGENT_WORK_METRIC).unwrap();
         assert!(supposed_to_work(&status, Some(agent1)));
         assert!(!supposed_to_work(&status, Some(agent2)));
+    }
+
+    #[test]
+    fn test_crates_list_update() {
+        let db = Database::temp().unwrap();
+        let config = Config::default();
+
+        let now = Utc::now();
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+        METRICS.update_crates_lists(&db).unwrap();
+        let last_update = Metrics::get_metric_by_name(LAST_CRATES_UPDATE_METRIC)
+            .unwrap()
+            .get_metric()[0]
+            .get_gauge()
+            .get_value() as i64;
+        assert!(last_update >= now.timestamp());
     }
 }

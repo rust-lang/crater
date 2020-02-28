@@ -7,13 +7,14 @@ use std::thread;
 use std::time::Duration;
 
 const DAY: Duration = Duration::from_secs(60 * 60 * 24);
+// The tuple is composed of:
+// - job name
+// - interval between executions
+// - function to execute at specified intervals
+type JobDescription = (&'static str, Duration, fn(Arc<Data>) -> Fallible<()>);
 
 lazy_static! {
-    // The tuple is composed of:
-    // - job name
-    // - interval between executions
-    // - function to execute at specified intervals
-    static ref JOBS: Vec<(&'static str, Duration, fn(Arc<Data>) -> Fallible<()>)> = {
+    static ref JOBS: Vec<JobDescription> = {
         let mut jobs = Vec::new();
         jobs.push((
             "crate list update",

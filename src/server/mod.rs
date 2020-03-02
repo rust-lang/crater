@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod api_types;
 mod auth;
+mod cronjobs;
 mod github;
 mod messages;
 mod metrics;
@@ -74,6 +75,7 @@ pub fn run(config: Config) -> Fallible<()> {
     let mutex = Arc::new(Mutex::new(data.clone()));
 
     data.reports_worker.spawn(data.clone());
+    cronjobs::spawn(data.clone());
 
     info!("running server...");
 

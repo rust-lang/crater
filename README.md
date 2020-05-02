@@ -2,7 +2,7 @@
 
 Crater is a tool to run experiments across parts of the Rust ecosystem. Its
 primary purpose is to detect regressions in the Rust compiler, and it does this
-by building large number of crates, running their test suites and comparing the
+by building a large number of crates, running their test suites and comparing the
 results between two versions of the Rust compiler.
 
 It can operate locally (with Docker as the only dependency) or distributed on

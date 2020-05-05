@@ -7,9 +7,7 @@ use crate::results::{
     DeleteResults, EncodedLog, EncodingType, ReadResults, TestResult, WriteResults,
 };
 use crate::toolchain::Toolchain;
-use base64;
 use rustwide::logging::{self, LogStorage};
-use serde_json;
 use std::collections::HashMap;
 
 #[derive(Deserialize)]

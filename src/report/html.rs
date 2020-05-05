@@ -3,8 +3,6 @@ use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::{archives::Archive, Comparison, CrateResult, ReportWriter, TestResults};
 use crate::results::{BrokenReason, EncodingType, FailureReason, TestResult};
-use mime;
-use minifier;
 use std::collections::HashMap;
 
 #[derive(Serialize)]

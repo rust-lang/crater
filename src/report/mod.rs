@@ -7,7 +7,6 @@ use crate::toolchain::Toolchain;
 use crate::utils;
 use mime::{self, Mime};
 use percent_encoding::{utf8_percent_encode, AsciiSet};
-use serde_json;
 use std::borrow::Cow;
 #[cfg(test)]
 use std::cell::RefCell;

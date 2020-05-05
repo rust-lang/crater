@@ -10,7 +10,7 @@ jobs:
     name: Linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
 
       - name: Install Rust stable
         run: rustup update --no-self-update stable && rustup default stable
@@ -34,7 +34,7 @@ jobs:
         channel: [stable, beta, nightly]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
 
       - name: Install Rust ${{ matrix.channel }}
         shell: bash
@@ -59,7 +59,7 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
 
       - name: Install Rust stable
         run: rustup update --no-self-update stable && rustup default stable
@@ -77,7 +77,7 @@ jobs:
     name: Build the Docker image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
 
       - name: Build the Docker image
         run: docker build -t crater .
@@ -88,7 +88,7 @@ jobs:
           docker save crater | gzip > /tmp/docker-images/crater.tar.gz
 
       - name: Upload the image to GitHub Actions artifacts
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v2
         with:
           name: docker-images
           path: /tmp/docker-images
@@ -104,9 +104,10 @@ jobs:
 
     steps:
       - name: Download the image from GitHub Actions artifacts
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v2
         with:
           name: docker-images
+          path: docker-images
 
       - name: Load the downloaded image
         run: cat docker-images/crater.tar.gz | gunzip | docker load

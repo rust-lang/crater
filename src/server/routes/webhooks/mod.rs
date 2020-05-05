@@ -10,7 +10,6 @@ use bytes::buf::Buf;
 use hmac::{Hmac, Mac};
 use http::{HeaderMap, Response, StatusCode};
 use hyper::Body;
-use serde_json;
 use std::str::FromStr;
 use std::sync::Arc;
 use warp::{self, filters::body::FullBody, Filter, Rejection};

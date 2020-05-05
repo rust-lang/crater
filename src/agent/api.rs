@@ -6,7 +6,6 @@ use crate::results::TestResult;
 use crate::server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use crate::toolchain::Toolchain;
 use crate::utils;
-use base64;
 use http::{header::AUTHORIZATION, Method, StatusCode};
 use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;

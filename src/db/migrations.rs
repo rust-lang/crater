@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use rand::{self, distributions::Alphanumeric, Rng};
 use rusqlite::{Connection, Transaction};
-use serde_json;
 use std::collections::HashSet;
 
 fn no_args() -> impl Iterator<Item = &'static str> {

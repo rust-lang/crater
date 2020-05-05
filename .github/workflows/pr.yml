@@ -6,7 +6,7 @@ jobs:
     name: Linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
 
       - name: Install Rust Stable
         run: rustup update stable && rustup default stable
@@ -26,7 +26,7 @@ jobs:
     name: Linux testing
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
 
       - name: Install Rust Stable
         run: rustup update stable && rustup default stable

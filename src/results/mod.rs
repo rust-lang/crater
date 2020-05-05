@@ -170,12 +170,15 @@ string_enum!(pub enum FailureReason {
     Unknown => "unknown",
     OOM => "oom",
     Timeout => "timeout",
+    ICE => "ice",
 });
+
+impl Fail for FailureReason {}
 
 impl FailureReason {
     pub(crate) fn is_spurious(self) -> bool {
         match self {
-            FailureReason::Unknown => false,
+            FailureReason::Unknown | FailureReason::ICE => false,
             FailureReason::OOM | FailureReason::Timeout => true,
         }
     }

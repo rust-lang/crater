@@ -339,10 +339,17 @@ fn compare(
     r1: Option<TestResult>,
     r2: Option<TestResult>,
 ) -> Comparison {
+    use crate::results::FailureReason;
     use crate::results::TestResult::*;
 
     match (r1, r2) {
         (Some(res1), Some(res2)) => match (res1, res2) {
+            // ICE -> ICE is not a regression, but anything else to an ICE is.
+            (BuildFail(FailureReason::ICE), BuildFail(FailureReason::ICE)) => {
+                Comparison::SameBuildFail
+            }
+            (BuildFail(_), BuildFail(FailureReason::ICE)) => Comparison::Regressed,
+
             (BuildFail(_), BuildFail(_)) => Comparison::SameBuildFail,
             (TestFail(_), TestFail(_)) => Comparison::SameTestFail,
             (TestSkipped, TestSkipped) => Comparison::SameTestSkipped,
@@ -652,6 +659,11 @@ mod tests {
                 TestPass, BuildFail(Unknown) => Regressed;
                 TestSkipped, BuildFail(Unknown) => Regressed;
                 TestFail(Unknown), BuildFail(Unknown) => Regressed;
+
+                // ICE is special
+                BuildFail(Unknown), BuildFail(ICE) => Regressed;
+                BuildFail(OOM), BuildFail(ICE) => Regressed;
+                BuildFail(ICE), BuildFail(ICE) => SameBuildFail;
 
                 // Spurious fixes/regressions
                 BuildFail(OOM), TestFail(Unknown) => SpuriousFixed;

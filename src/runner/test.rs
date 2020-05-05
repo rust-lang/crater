@@ -15,6 +15,8 @@ fn failure_reason(err: &Error) -> FailureReason {
             return FailureReason::Timeout;
         } else if let Some(&CommandError::Timeout(_)) = cause.downcast_ctx() {
             return FailureReason::Timeout;
+        } else if let Some(reason) = cause.downcast_ctx::<FailureReason>() {
+            return *reason;
         }
     }
 
@@ -70,16 +72,30 @@ fn run_cargo<DB: WriteResults>(
         "RUSTFLAGS"
     };
 
+    let mut did_ice = false;
+    let mut tracker = |line: &str| {
+        did_ice |= line.contains("error: internal compiler error");
+    };
     let mut command = build_env
         .cargo()
         .args(args)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
-        .env(rustflags_env, rustflags);
+        .env(rustflags_env, rustflags)
+        .process_lines(&mut tracker);
     if ctx.quiet {
         command = command.no_output_timeout(None);
     }
-    command.run()?;
+    match command.run() {
+        Ok(()) => {}
+        Err(e) => {
+            if did_ice {
+                return Err(e.context(FailureReason::ICE).into());
+            } else {
+                return Err(e);
+            }
+        }
+    }
 
     Ok(())
 }

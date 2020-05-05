@@ -4,7 +4,6 @@ use crate::utils::size::Size;
 use log::LevelFilter;
 use regex::Regex;
 use rustwide::logging::LogStorage;
-use serde_regex;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::OsStr;

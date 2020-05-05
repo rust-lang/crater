@@ -7,7 +7,6 @@ use crate::toolchain::Toolchain;
 use crate::utils;
 use chrono::{DateTime, Utc};
 use rusqlite::Row;
-use serde_json;
 use std::collections::HashSet;
 use std::fmt;
 use std::str::FromStr;

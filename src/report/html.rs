@@ -1,7 +1,7 @@
 use crate::assets;
 use crate::experiments::Experiment;
 use crate::prelude::*;
-use crate::report::{archives::Archive, Comparison, CrateResult, ReportWriter, TestResults};
+use crate::report::{archives::Archive, Comparison, ReportWriter, TestResults};
 use crate::results::{BrokenReason, EncodingType, FailureReason, TestResult};
 use std::collections::HashMap;
 
@@ -125,13 +125,13 @@ impl CurrentPage {
 struct ResultsContext<'a> {
     ex: &'a Experiment,
     nav: Vec<NavbarItem>,
-    categories: HashMap<Comparison, Vec<CrateResult>>,
+    categories: HashMap<Comparison, Vec<CrateResultHTML>>,
     full: bool,
     crates_count: usize,
 
     comparison_colors: HashMap<Comparison, Color>,
-    result_colors: HashMap<TestResult, Color>,
-    result_names: HashMap<TestResult, String>,
+    result_colors: Vec<Color>,
+    result_names: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -143,6 +143,21 @@ struct DownloadsContext<'a> {
     available_archives: Vec<Archive>,
 }
 
+#[derive(Serialize)]
+struct CrateResultHTML {
+    name: String,
+    url: String,
+    res: Comparison,
+    runs: [Option<BuildTestResultHTML>; 2],
+}
+
+// Map TestResult to usize to avoid the presence of special characters in html
+#[derive(Serialize)]
+struct BuildTestResultHTML {
+    res: usize,
+    log: String,
+}
+
 fn write_report<W: ReportWriter>(
     ex: &Experiment,
     crates_count: usize,
@@ -152,8 +167,10 @@ fn write_report<W: ReportWriter>(
     dest: &W,
 ) -> Fallible<()> {
     let mut comparison_colors = HashMap::new();
-    let mut result_colors = HashMap::new();
-    let mut result_names = HashMap::new();
+    let mut test_results_to_int = HashMap::new();
+    let mut result_colors = Vec::new();
+    let mut result_names = Vec::new();
+    let mut index: i32 = -1;
 
     let mut categories = HashMap::new();
     for result in &res.crates {
@@ -166,25 +183,32 @@ fn write_report<W: ReportWriter>(
         comparison_colors
             .entry(result.res)
             .or_insert_with(|| result.res.color());
-        if let Some(ref run) = result.runs[0] {
-            result_colors
-                .entry(run.res)
-                .or_insert_with(|| run.res.color());
-            result_names
-                .entry(run.res)
-                .or_insert_with(|| run.res.name());
-        }
-        if let Some(ref run) = result.runs[1] {
-            result_colors
-                .entry(run.res)
-                .or_insert_with(|| run.res.color());
-            result_names
-                .entry(run.res)
-                .or_insert_with(|| run.res.name());
+
+        let mut runs = [None, None];
+
+        for (pos, run) in result.runs.iter().enumerate() {
+            if let Some(ref run) = run {
+                let idx = test_results_to_int.entry(&run.res).or_insert_with(|| {
+                    result_colors.push(run.res.color());
+                    result_names.push(run.res.name());
+                    index += 1;
+                    index
+                });
+                runs[pos] = Some(BuildTestResultHTML {
+                    res: *idx as usize,
+                    log: run.log.clone(),
+                });
+            }
         }
 
         let category = categories.entry(result.res).or_insert_with(Vec::new);
-        category.push(result.clone());
+        let result = CrateResultHTML {
+            name: result.name.clone(),
+            url: result.url.clone(),
+            res: result.res,
+            runs,
+        };
+        category.push(result);
     }
 
     let context = ResultsContext {

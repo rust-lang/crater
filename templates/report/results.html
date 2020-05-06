@@ -4,8 +4,8 @@
 
 {% block extra_head %}
     <style>
-        {% for name, color in result_colors %}
-            .cr-{{ name|replace(from=":", to="\:") }} {
+        {% for color in result_colors %}
+            .cr-{{ loop.index0 }} {
                 {% if color.Single %}
                     background: {{ color.Single }};
                 {% elif color.Striped %}

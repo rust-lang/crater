@@ -170,7 +170,6 @@ fn write_report<W: ReportWriter>(
     let mut test_results_to_int = HashMap::new();
     let mut result_colors = Vec::new();
     let mut result_names = Vec::new();
-    let mut index: i32 = -1;
 
     let mut categories = HashMap::new();
     for result in &res.crates {
@@ -191,8 +190,7 @@ fn write_report<W: ReportWriter>(
                 let idx = test_results_to_int.entry(&run.res).or_insert_with(|| {
                     result_colors.push(run.res.color());
                     result_names.push(run.res.name());
-                    index += 1;
-                    index
+                    result_names.len() - 1
                 });
                 runs[pos] = Some(BuildTestResultHTML {
                     res: *idx as usize,

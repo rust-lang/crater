@@ -1,11 +1,17 @@
+use crate::crates::Crate;
 use crate::prelude::*;
+use crate::results::DiagnosticCode;
 use crate::results::{BrokenReason, EncodingType, FailureReason, TestResult, WriteResults};
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
+use cargo_metadata::diagnostic::DiagnosticLevel;
+use cargo_metadata::Message;
 use failure::Error;
 use remove_dir_all::remove_dir_all;
-use rustwide::cmd::{CommandError, SandboxBuilder};
+use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
 use rustwide::{Build, PrepareError};
+use std::collections::BTreeSet;
+use std::convert::TryFrom;
 
 fn failure_reason(err: &Error) -> FailureReason {
     for cause in err.iter_chain() {
@@ -16,7 +22,7 @@ fn failure_reason(err: &Error) -> FailureReason {
         } else if let Some(&CommandError::Timeout(_)) = cause.downcast_ctx() {
             return FailureReason::Timeout;
         } else if let Some(reason) = cause.downcast_ctx::<FailureReason>() {
-            return *reason;
+            return reason.clone();
         }
     }
 
@@ -73,31 +79,76 @@ fn run_cargo<DB: WriteResults>(
     };
 
     let mut did_ice = false;
-    let mut tracker = |line: &str| {
-        did_ice |= line.contains("error: internal compiler error");
+    let mut error_codes = BTreeSet::new();
+    let mut deps = BTreeSet::new();
+
+    let mut detect_error = |line: &str, actions: &mut ProcessLinesActions| {
+        // Avoid trying to deserialize non JSON output
+        if line.starts_with('{') {
+            let message = serde_json::from_str(line);
+            if let Ok(message) = message {
+                match message {
+                    Message::CompilerMessage(compiler_message) => {
+                        let inner_message = compiler_message.message;
+                        match (
+                            inner_message.level,
+                            Crate::try_from(&compiler_message.package_id),
+                        ) {
+                            // the only local crate in a well defined job is the crate currently being tested
+                            (DiagnosticLevel::Error, Ok(Crate::Local(_))) => {
+                                if let Some(code) = inner_message.code {
+                                    error_codes.insert(DiagnosticCode::from(code.code));
+                                }
+                            }
+                            (DiagnosticLevel::Ice, Ok(Crate::Local(_))) => did_ice = true,
+                            // If the error is in a crate that is not local then it's referred to a dependency
+                            // of the current crate
+                            (DiagnosticLevel::Error, Ok(krate)) => {
+                                deps.insert(krate);
+                            }
+                            (DiagnosticLevel::Ice, Ok(krate)) => {
+                                deps.insert(krate);
+                            }
+
+                            _ => (),
+                        }
+
+                        actions.replace_with_lines(
+                            inner_message.rendered.unwrap_or_default().split('\n'),
+                        );
+                    }
+                    _ => actions.remove_line(),
+                }
+            }
+        }
     };
+
     let mut command = build_env
         .cargo()
         .args(args)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env(rustflags_env, rustflags)
-        .process_lines(&mut tracker);
+        .process_lines(&mut detect_error);
+
     if ctx.quiet {
         command = command.no_output_timeout(None);
     }
+
     match command.run() {
-        Ok(()) => {}
+        Ok(()) => Ok(()),
         Err(e) => {
             if did_ice {
-                return Err(e.context(FailureReason::ICE).into());
+                Err(e.context(FailureReason::ICE).into())
+            } else if !deps.is_empty() {
+                Err(e.context(FailureReason::DependsOn(deps)).into())
+            } else if !error_codes.is_empty() {
+                Err(e.context(FailureReason::CompilerError(error_codes)).into())
             } else {
-                return Err(e);
+                Err(e)
             }
         }
     }
-
-    Ok(())
 }
 
 pub(super) fn run_test<DB: WriteResults>(
@@ -152,13 +203,25 @@ pub(super) fn run_test<DB: WriteResults>(
 }
 
 fn build<DB: WriteResults>(ctx: &TaskCtx<DB>, build_env: &Build) -> Fallible<()> {
-    run_cargo(ctx, build_env, &["build", "--frozen"])?;
-    run_cargo(ctx, build_env, &["test", "--frozen", "--no-run"])?;
+    run_cargo(
+        ctx,
+        build_env,
+        &["build", "--frozen", "--message-format=json"],
+    )?;
+    run_cargo(
+        ctx,
+        build_env,
+        &["test", "--frozen", "--no-run", "--message-format=json"],
+    )?;
     Ok(())
 }
 
 fn test<DB: WriteResults>(ctx: &TaskCtx<DB>, build_env: &Build) -> Fallible<()> {
-    run_cargo(ctx, build_env, &["test", "--frozen"])
+    run_cargo(
+        ctx,
+        build_env,
+        &["test", "--frozen", "--message-format=json"],
+    )
 }
 
 pub(super) fn test_build_and_test<DB: WriteResults>(

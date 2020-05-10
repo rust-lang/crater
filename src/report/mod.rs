@@ -6,7 +6,7 @@ use crate::results::{EncodedLog, EncodingType, ReadResults, TestResult};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use mime::{self, Mime};
-use percent_encoding::{utf8_percent_encode, AsciiSet};
+use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use std::borrow::Cow;
 #[cfg(test)]
 use std::cell::RefCell;
@@ -133,6 +133,12 @@ fn crate_to_path_fragment(
         Crate::Local(ref name) => {
             path.push("local");
             path.push(name);
+        }
+        Crate::Git(ref repo) => {
+            path.push("git");
+
+            let name = utf8_percent_encode(&repo.url, &NON_ALPHANUMERIC).to_string();
+            path.push(dest.sanitize(&name).into_owned());
         }
     }
 
@@ -291,7 +297,7 @@ fn gen_retry_list(res: &TestResults) -> String {
         match krate {
             Crate::Registry(details) => writeln!(out, "{}", details.name).unwrap(),
             Crate::GitHub(repo) => writeln!(out, "{}/{}", repo.org, repo.name).unwrap(),
-            Crate::Local(_) => {}
+            Crate::Local(_) | Crate::Git(_) => {}
         }
     }
 
@@ -309,6 +315,17 @@ fn crate_to_name(c: &Crate) -> Fallible<String> {
             }
         }
         Crate::Local(ref name) => format!("{} (local)", name),
+        Crate::Git(ref repo) => {
+            if let Some(ref sha) = repo.sha {
+                format!(
+                    "{}.{}",
+                    utf8_percent_encode(&repo.url, &REPORT_ENCODE_SET),
+                    sha
+                )
+            } else {
+                utf8_percent_encode(&repo.url, &REPORT_ENCODE_SET).to_string()
+            }
+        }
     })
 }
 
@@ -330,6 +347,7 @@ fn crate_to_url(c: &Crate) -> Fallible<String> {
             crate::CRATER_REPO_URL,
             name
         ),
+        Crate::Git(ref repo) => repo.url.clone(),
     })
 }
 

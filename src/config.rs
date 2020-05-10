@@ -114,6 +114,7 @@ impl Config {
             Crate::Registry(ref details) => self.crates.get(&details.name),
             Crate::GitHub(ref repo) => self.github_repos.get(&repo.slug()),
             Crate::Local(ref name) => self.local_crates.get(name),
+            Crate::Git(_) => unimplemented!("unsupported crate"),
         }
     }
 

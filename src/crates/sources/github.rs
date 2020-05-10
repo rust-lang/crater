@@ -100,14 +100,20 @@ impl FromStr for GitHubRepo {
         let name = components.pop();
         let sha = components.pop();
 
-        if let (Some(org), Some(name)) = (org, name) {
-            Ok(GitHubRepo {
+        match (org, name, sha) {
+            (Some(org), Some(name), None) => Ok(GitHubRepo {
                 org: org.to_string(),
                 name: name.to_string(),
-                sha: sha.map(|s| s.to_string()),
-            })
-        } else {
-            bail!("malformed repo url: {}", input);
+                sha: None,
+            }),
+            (Some(org), Some(name), Some(sha)) => Ok(GitHubRepo {
+                org: org.to_string(),
+                // remove additional queries if the sha is present
+                // as the crate version is already uniquely determined
+                name: name.split('?').next().unwrap().to_string(),
+                sha: Some(sha.to_string()),
+            }),
+            _ => bail!("malformed repo url: {}", input),
         }
     }
 }

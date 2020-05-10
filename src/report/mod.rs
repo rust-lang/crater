@@ -178,8 +178,8 @@ pub fn generate_report<DB: ReadResults>(
             let comp = compare(
                 config,
                 &krate,
-                crate1.as_ref().map(|b| b.res),
-                crate2.as_ref().map(|b| b.res),
+                crate1.as_ref().map(|b| &b.res),
+                crate2.as_ref().map(|b| &b.res),
             );
 
             Ok(CrateResult {
@@ -354,8 +354,8 @@ fn crate_to_url(c: &Crate) -> Fallible<String> {
 fn compare(
     config: &Config,
     krate: &Crate,
-    r1: Option<TestResult>,
-    r2: Option<TestResult>,
+    r1: Option<&TestResult>,
+    r2: Option<&TestResult>,
 ) -> Comparison {
     use crate::results::FailureReason;
     use crate::results::TestResult::*;
@@ -373,14 +373,14 @@ fn compare(
             (TestSkipped, TestSkipped) => Comparison::SameTestSkipped,
             (TestPass, TestPass) => Comparison::SameTestPass,
 
-            (BuildFail(reason1), TestFail(reason2))
+            (BuildFail(ref reason1), TestFail(ref reason2))
                 if reason1.is_spurious() || reason2.is_spurious() =>
             {
                 Comparison::SpuriousFixed
             }
-            (BuildFail(reason), TestSkipped)
-            | (BuildFail(reason), TestPass)
-            | (TestFail(reason), TestPass)
+            (BuildFail(ref reason), TestSkipped)
+            | (BuildFail(ref reason), TestPass)
+            | (TestFail(ref reason), TestPass)
                 if reason.is_spurious() =>
             {
                 Comparison::SpuriousFixed
@@ -659,8 +659,8 @@ mod tests {
                         $cmp(
                             $config,
                             $reg,
-                            Some($a),
-                            Some($b),
+                            Some(&$a),
+                            Some(&$b),
                         ),
                         Comparison::$c
                     );

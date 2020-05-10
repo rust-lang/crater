@@ -210,7 +210,7 @@ impl TasksGraph {
         state: &RunnerState,
         config: &Config,
         error: &failure::Error,
-        result: TestResult,
+        result: &TestResult,
         worker: &str,
     ) -> Fallible<()> {
         let mut children = self

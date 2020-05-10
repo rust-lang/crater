@@ -126,7 +126,7 @@ impl Task {
         state: &RunnerState,
         config: &Config,
         err: &failure::Error,
-        result: TestResult,
+        result: &TestResult,
     ) -> Fallible<()> {
         match self.step {
             TaskStep::Prepare | TaskStep::Cleanup => {}
@@ -152,7 +152,7 @@ impl Task {
                     || {
                         error!("this task or one of its parent failed!");
                         utils::report_failure(err);
-                        Ok(result)
+                        Ok(result.clone())
                     },
                 )?;
             }

@@ -86,7 +86,7 @@ impl<'a> WriteResults for ResultsUploader<'a> {
             updated.as_ref().unwrap_or(krate),
             toolchain,
             output.as_bytes(),
-            result,
+            &result,
             new_version.map(|new| (krate, new)),
         )?;
 

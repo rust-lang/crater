@@ -84,13 +84,13 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                         utils::report_failure(&e);
 
                         let mut result = if self.config.is_broken(&task.krate) {
-                            TestResult::BrokenCrate(BrokenReason::Unknown)
+                            &TestResult::BrokenCrate(BrokenReason::Unknown)
                         } else {
-                            TestResult::Error
+                            &TestResult::Error
                         };
 
                         for err in e.iter_chain() {
-                            if let Some(&OverrideResult(res)) = err.downcast_ctx() {
+                            if let Some(&OverrideResult(ref res)) = err.downcast_ctx() {
                                 result = res;
                                 break;
                             }

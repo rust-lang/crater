@@ -32,7 +32,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
 
         let res1 = db.load_test_result(ex, &ex.toolchains[0], krate)?;
         let res2 = db.load_test_result(ex, &ex.toolchains[1], krate)?;
-        let comparison = compare(config, krate, res1, res2);
+        let comparison = compare(config, krate, res1.as_ref(), res2.as_ref());
 
         for tc in &ex.toolchains {
             let log = db

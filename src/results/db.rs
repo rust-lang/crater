@@ -44,7 +44,7 @@ impl<'a> DatabaseDB<'a> {
                 ex,
                 &result.krate,
                 &result.toolchain,
-                result.result,
+                &result.result,
                 &base64::decode(&result.log).with_context(|_| "invalid base64 log provided")?,
                 encoding_type,
             )?;
@@ -72,7 +72,7 @@ impl<'a> DatabaseDB<'a> {
         ex: &Experiment,
         krate: &Crate,
         toolchain: &Toolchain,
-        res: TestResult,
+        res: &TestResult,
         log: &[u8],
         desired_encoding_type: EncodingType,
     ) -> Fallible<()> {
@@ -86,7 +86,7 @@ impl<'a> DatabaseDB<'a> {
         ex: &Experiment,
         krate: &Crate,
         toolchain: &Toolchain,
-        res: TestResult,
+        res: &TestResult,
         log: EncodedLog,
     ) -> Fallible<usize> {
         self.db.execute(
@@ -192,7 +192,7 @@ impl<'a> WriteResults for DatabaseDB<'a> {
             ex,
             krate,
             toolchain,
-            result,
+            &result,
             output.as_bytes(),
             encoding_type,
         )?;

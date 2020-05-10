@@ -150,7 +150,7 @@ impl AgentApi {
         krate: &Crate,
         toolchain: &Toolchain,
         log: &[u8],
-        result: TestResult,
+        result: &TestResult,
         version: Option<(&Crate, &Crate)>,
     ) -> Fallible<()> {
         self.retry(|this| {

@@ -329,10 +329,12 @@ mod tests {
         assert!(list.is_quiet(&Crate::GitHub(GitHubRepo {
             org: "rust-lang".into(),
             name: "rust".into(),
+            sha: None,
         })));
         assert!(!list.is_quiet(&Crate::GitHub(GitHubRepo {
             org: "rust-lang".into(),
             name: "cargo".into(),
+            sha: None,
         })));
 
         assert_eq!(list.chunk_size(), 32);

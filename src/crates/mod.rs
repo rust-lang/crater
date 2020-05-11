@@ -21,7 +21,13 @@ impl Crate {
     pub(crate) fn id(&self) -> String {
         match *self {
             Crate::Registry(ref details) => format!("reg/{}/{}", details.name, details.version),
-            Crate::GitHub(ref repo) => format!("gh/{}/{}", repo.org, repo.name),
+            Crate::GitHub(ref repo) => {
+                if let Some(ref sha) = repo.sha {
+                    format!("gh/{}/{}/{}", repo.org, repo.name, sha)
+                } else {
+                    format!("gh/{}/{}", repo.org, repo.name)
+                }
+            }
             Crate::Local(ref name) => format!("local/{}", name),
         }
     }
@@ -54,18 +60,56 @@ impl fmt::Display for Crate {
 impl FromStr for Crate {
     type Err = ::failure::Error;
 
+    // matches with `Crate::id'
     fn from_str(s: &str) -> Fallible<Self> {
-        if s.starts_with("https://github.com/") {
-            Ok(Crate::GitHub(s.parse()?))
-        } else if let Some(dash_idx) = s.rfind('-') {
-            let name = &s[..dash_idx];
-            let version = &s[dash_idx + 1..];
-            Ok(Crate::Registry(RegistryCrate {
+        match s.split('/').collect::<Vec<_>>()[..] {
+            ["reg", name, version] => Ok(Crate::Registry(RegistryCrate {
                 name: name.to_string(),
                 version: version.to_string(),
-            }))
-        } else {
-            bail!("crate not found");
+            })),
+            ["gh", org, name, sha] => Ok(Crate::GitHub(GitHubRepo {
+                org: org.to_string(),
+                name: name.to_string(),
+                sha: Some(sha.to_string()),
+            })),
+            ["gh", org, name] => Ok(Crate::GitHub(GitHubRepo {
+                org: org.to_string(),
+                name: name.to_string(),
+                sha: None,
+            })),
+            ["local", name] => Ok(Crate::Local(name.to_string())),
+            _ => bail!("unexpected crate value"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Crate, GitHubRepo, RegistryCrate};
+    use std::str::FromStr;
+
+    #[test]
+    fn test_parse() {
+        macro_rules! test_from_str {
+            ($($str:expr => $rust:expr,)*) => {
+                $(
+                    // Test parsing from string to rust
+                    assert_eq!(Crate::from_str($str).unwrap(), $rust);
+
+                    // Test dumping from rust to string
+                    assert_eq!(&$rust.id(), $str);
+
+                    // Test dumping from rust to string to rust
+                    assert_eq!(Crate::from_str($rust.id().as_ref()).unwrap(), $rust);
+                )*
+            };
+        }
+
+        test_from_str! {
+            "local/build-fail" => Crate::Local("build-fail".to_string()),
+            "gh/org/user" => Crate::GitHub(GitHubRepo{org: "org".to_string(), name: "user".to_string(), sha: None}),
+            "gh/org/user/sha" => Crate::GitHub(GitHubRepo{org: "org".to_string(), name: "user".to_string(), sha: Some("sha".to_string())}),
+            "reg/name/version" => Crate::Registry(RegistryCrate{name: "name".to_string(), version: "version".to_string()}),
         }
     }
 }

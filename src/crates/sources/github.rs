@@ -55,6 +55,7 @@ impl List for GitHubList {
                 list.push(Crate::GitHub(GitHubRepo {
                     org: org.to_string(),
                     name: name.to_string(),
+                    sha: None,
                 }));
             } else {
                 warn!("skipping malformed repo name: {}", line.name);
@@ -69,6 +70,7 @@ impl List for GitHubList {
 pub struct GitHubRepo {
     pub org: String,
     pub name: String,
+    pub sha: Option<String>,
 }
 
 impl GitHubRepo {
@@ -80,6 +82,7 @@ impl GitHubRepo {
         GitHubRepo {
             org: DUMMY_ORG.to_string(),
             name: DUMMY_NAME.to_string(),
+            sha: None,
         }
     }
 }
@@ -91,11 +94,13 @@ impl FromStr for GitHubRepo {
         let mut components = input.split('/').collect::<Vec<_>>();
         let name = components.pop();
         let org = components.pop();
+        let sha = components.pop();
 
         if let (Some(org), Some(name)) = (org, name) {
             Ok(GitHubRepo {
                 org: org.to_string(),
                 name: name.to_string(),
+                sha: sha.map(|s| s.to_string()),
             })
         } else {
             bail!("malformed repo url: {}", input);

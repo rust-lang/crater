@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::crates::{Crate, GitHubRepo};
+use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::experiments::{Experiment, Status};
 use crate::prelude::*;
@@ -8,7 +8,6 @@ use crate::results::{
 };
 use crate::toolchain::Toolchain;
 use rustwide::logging::{self, LogStorage};
-use std::collections::HashMap;
 
 #[derive(Deserialize)]
 pub struct TaskResult {
@@ -22,7 +21,7 @@ pub struct TaskResult {
 #[derive(Deserialize)]
 pub struct ProgressData {
     pub results: Vec<TaskResult>,
-    pub shas: Vec<(GitHubRepo, String)>,
+    pub version: Option<(Crate, Crate)>,
 }
 
 pub struct DatabaseDB<'a> {
@@ -50,11 +49,11 @@ impl<'a> DatabaseDB<'a> {
                 encoding_type,
             )?;
 
-            self.mark_crate_as_completed(ex, &result.krate)?;
-        }
+            if let Some((old, new)) = &data.version {
+                self.update_crate_version(ex, old, new)?;
+            }
 
-        for &(ref repo, ref sha) in &data.shas {
-            self.record_sha(ex, repo, sha)?;
+            self.mark_crate_as_completed(ex, &result.krate)?;
         }
 
         Ok(())
@@ -110,26 +109,6 @@ impl<'a> DatabaseDB<'a> {
 }
 
 impl<'a> ReadResults for DatabaseDB<'a> {
-    fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>> {
-        Ok(self
-            .db
-            .query(
-                "SELECT * FROM shas WHERE experiment = ?1;",
-                &[&ex.name],
-                |row| {
-                    (
-                        GitHubRepo {
-                            org: row.get("org"),
-                            name: row.get("name"),
-                        },
-                        row.get("sha"),
-                    )
-                },
-            )?
-            .into_iter()
-            .collect())
-    }
-
     fn load_log(
         &self,
         ex: &Experiment,
@@ -197,12 +176,15 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         self.load_test_result(ex, toolchain, krate)
     }
 
-    fn record_sha(&self, ex: &Experiment, repo: &GitHubRepo, sha: &str) -> Fallible<()> {
+    fn update_crate_version(&self, ex: &Experiment, old: &Crate, new: &Crate) -> Fallible<()> {
         self.db.execute(
-            "INSERT INTO shas (experiment, org, name, sha) VALUES (?1, ?2, ?3, ?4)",
-            &[&ex.name, &repo.org, &repo.name, &sha],
+            "UPDATE experiment_crates SET crate = ?3 WHERE experiment = ?1 AND crate = ?2;",
+            &[
+                &ex.name,
+                &serde_json::to_string(old)?,
+                &serde_json::to_string(new)?,
+            ],
         )?;
-
         Ok(())
     }
 
@@ -259,7 +241,7 @@ mod tests {
     use super::{DatabaseDB, ProgressData, TaskResult};
     use crate::actions::{Action, ActionsCtx, CreateExperiment};
     use crate::config::Config;
-    use crate::crates::{Crate, GitHubRepo, RegistryCrate};
+    use crate::crates::{Crate, RegistryCrate};
     use crate::db::Database;
     use crate::experiments::Experiment;
     use crate::prelude::*;
@@ -269,9 +251,10 @@ mod tests {
     };
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
     use base64;
+    use std::collections::BTreeSet;
 
     #[test]
-    fn test_shas() {
+    fn test_versions() {
         let db = Database::temp().unwrap();
         let results = DatabaseDB::new(&db);
         let config = Config::default();
@@ -283,51 +266,43 @@ mod tests {
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
 
-        // Define some dummy GitHub repositories
-        let repo1 = GitHubRepo {
-            org: "foo".to_string(),
-            name: "bar".to_string(),
-        };
-        let repo2 = GitHubRepo {
-            org: "foo".to_string(),
-            name: "baz".to_string(),
-        };
+        let crates = ex
+            .get_crates(&db)
+            .unwrap()
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        let build_fail = Crate::Local("build-fail".to_string());
+        let updated = Crate::Local("updated".to_string());
 
-        // Store some SHAs for those repos
+        assert!(crates.contains(&build_fail));
+
+        // update crate version
         results
-            .record_sha(&ex, &repo1, "0000000000000000000000000000000000000000")
-            .unwrap();
-        results
-            .record_sha(&ex, &repo2, "ffffffffffffffffffffffffffffffffffffffff")
+            .update_crate_version(&ex, &build_fail, &updated)
             .unwrap();
 
-        // Ensure all the SHAs were recorded correctly
-        let shas = results.load_all_shas(&ex).unwrap();
-        assert_eq!(shas.len(), 2);
-        assert_eq!(
-            shas.get(&repo1).unwrap(),
-            "0000000000000000000000000000000000000000"
-        );
-        assert_eq!(
-            shas.get(&repo2).unwrap(),
-            "ffffffffffffffffffffffffffffffffffffffff"
-        );
+        let crates = ex
+            .get_crates(&db)
+            .unwrap()
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        assert!(!crates.contains(&build_fail));
+        assert!(crates.contains(&updated));
 
-        // Ensure results are cleanly overridden when recording the same repo again
+        let updated_again = Crate::Local("updated, again".to_string());
+
         results
-            .record_sha(&ex, &repo1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            .update_crate_version(&ex, &updated, &updated_again)
             .unwrap();
 
-        let shas = results.load_all_shas(&ex).unwrap();
-        assert_eq!(shas.len(), 2);
-        assert_eq!(
-            shas.get(&repo1).unwrap(),
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        );
-        assert_eq!(
-            shas.get(&repo2).unwrap(),
-            "ffffffffffffffffffffffffffffffffffffffff"
-        );
+        let crates = ex
+            .get_crates(&db)
+            .unwrap()
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        assert!(!crates.contains(&build_fail));
+        assert!(!crates.contains(&updated));
+        assert!(crates.contains(&updated_again));
     }
 
     #[test]
@@ -455,48 +430,48 @@ mod tests {
             name: "lazy_static".into(),
             version: "1".into(),
         });
+        let updated = Crate::Registry(RegistryCrate {
+            name: "lazy_static".into(),
+            version: "1.2".into(),
+        });
 
-        // Store a result and some SHAs
+        // Store a result and versions
         results
             .store(
                 &ex,
                 &ProgressData {
                     results: vec![TaskResult {
-                        krate: krate.clone(),
+                        krate: updated.clone(),
                         toolchain: MAIN_TOOLCHAIN.clone(),
                         result: TestResult::TestPass,
                         log: base64::encode("foo"),
                     }],
-                    shas: vec![
-                        (
-                            GitHubRepo {
-                                org: "foo".into(),
-                                name: "bar".into(),
-                            },
-                            "42".into(),
-                        ),
-                        (
-                            GitHubRepo {
-                                org: "foo".into(),
-                                name: "baz".into(),
-                            },
-                            "beef".into(),
-                        ),
-                    ],
+                    version: Some((krate.clone(), updated.clone())),
                 },
                 EncodingType::Plain,
             )
             .unwrap();
 
         assert_eq!(
-            results.load_log(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
+            results.load_log(&ex, &MAIN_TOOLCHAIN, &updated).unwrap(),
             Some(EncodedLog::Plain("foo".as_bytes().to_vec()))
+        );
+        assert_eq!(
+            results
+                .load_test_result(&ex, &MAIN_TOOLCHAIN, &updated)
+                .unwrap(),
+            Some(TestResult::TestPass)
+        );
+
+        assert_eq!(
+            results.load_log(&ex, &MAIN_TOOLCHAIN, &krate).unwrap(),
+            None
         );
         assert_eq!(
             results
                 .load_test_result(&ex, &MAIN_TOOLCHAIN, &krate)
                 .unwrap(),
-            Some(TestResult::TestPass)
+            None
         );
     }
 }

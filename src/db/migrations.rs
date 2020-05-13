@@ -313,6 +313,15 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "delete_sha_table",
+        MigrationKind::SQL(
+            "
+            DROP TABLE shas;
+            ",
+        ),
+    ));
+
     migrations
 }
 

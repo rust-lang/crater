@@ -63,11 +63,7 @@ impl<'a> DatabaseDB<'a> {
         self.db.execute(
             "UPDATE experiment_crates SET status = ?1 WHERE experiment = ?2 AND crate = ?3 \
              AND ( (SELECT COUNT(*) FROM results WHERE experiment = ?2 AND crate = ?3) > 1 )",
-            &[
-                &Status::Completed.to_string(),
-                &ex.name,
-                &serde_json::to_string(krate)?,
-            ],
+            &[&Status::Completed.to_string(), &ex.name, &krate.id()],
         )
     }
 
@@ -98,7 +94,7 @@ impl<'a> DatabaseDB<'a> {
              VALUES (?1, ?2, ?3, ?4, ?5, ?6);",
             &[
                 &ex.name,
-                &serde_json::to_string(krate)?,
+                &krate.id(),
                 &toolchain.to_string(),
                 &res.to_string(),
                 &log.as_slice(),
@@ -119,11 +115,7 @@ impl<'a> ReadResults for DatabaseDB<'a> {
             "SELECT log, encoding FROM results \
              WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
              LIMIT 1;",
-            &[
-                &ex.name,
-                &toolchain.to_string(),
-                &serde_json::to_string(krate)?,
-            ],
+            &[&ex.name, &toolchain.to_string(), &krate.id()],
             |row| {
                 let log: Vec<u8> = row.get("log");
                 let encoding: String = row.get("encoding");
@@ -149,11 +141,7 @@ impl<'a> ReadResults for DatabaseDB<'a> {
                 "SELECT result FROM results \
                  WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
                  LIMIT 1;",
-                &[
-                    &ex.name,
-                    &toolchain.to_string(),
-                    &serde_json::to_string(krate)?,
-                ],
+                &[&ex.name, &toolchain.to_string(), &krate.id()],
                 |row| row.get("result"),
             )?
             .pop();
@@ -178,12 +166,8 @@ impl<'a> WriteResults for DatabaseDB<'a> {
 
     fn update_crate_version(&self, ex: &Experiment, old: &Crate, new: &Crate) -> Fallible<()> {
         self.db.execute(
-            "UPDATE experiment_crates SET crate = ?3 WHERE experiment = ?1 AND crate = ?2;",
-            &[
-                &ex.name,
-                &serde_json::to_string(old)?,
-                &serde_json::to_string(new)?,
-            ],
+            "UPDATE experiment_crates SET crate = ?1 WHERE experiment = ?2 AND crate = ?3;",
+            &[&new.id(), &ex.name, &old.id()],
         )?;
         Ok(())
     }
@@ -226,11 +210,7 @@ impl<'a> DeleteResults for DatabaseDB<'a> {
     fn delete_result(&self, ex: &Experiment, tc: &Toolchain, krate: &Crate) -> Fallible<()> {
         self.db.execute(
             "DELETE FROM results WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3;",
-            &[
-                &ex.name,
-                &tc.to_string(),
-                &serde_json::to_string(krate).unwrap(),
-            ],
+            &[&ex.name, &tc.to_string(), &krate.id()],
         )?;
         Ok(())
     }

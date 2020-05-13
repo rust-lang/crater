@@ -27,7 +27,7 @@ pub(crate) trait List {
             for krate in &crates {
                 t.execute(
                     "INSERT INTO crates (crate, list, loaded_at) VALUES (?1, ?2, ?3);",
-                    &[&::serde_json::to_string(krate)?, &Self::NAME, &now],
+                    &[&krate.id(), &Self::NAME, &now],
                 )
                 .with_context(|_| {
                     format!(
@@ -51,7 +51,7 @@ pub(crate) trait List {
             &[&Self::NAME],
             |r| {
                 let raw: String = r.get("crate");
-                Ok(::serde_json::from_str(&raw)?)
+                Ok(raw.parse()?)
             },
         )?;
 

@@ -4,8 +4,8 @@
 
 {% block extra_head %}
     <style>
-        {% for name, color in result_colors %}
-            .cr-{{ name|replace(from=":", to="\:") }} {
+        {% for color in result_colors %}
+            .r{{ loop.index0 }} {
                 {% if color.Single %}
                     background: {{ color.Single }};
                 {% elif color.Striped %}
@@ -15,7 +15,7 @@
         {% endfor %}
 
         {% for name, color in comparison_colors %}
-            .cc-{{ name }} {
+            .c{{ name }} {
                 {% if color.Single %}
                     background: {{ color.Single }};
                 {% elif color.Striped %}
@@ -30,7 +30,7 @@
     {% if categories %}
         {% for name, crates in categories %}
         <div class="category">
-            <div class="header cc-{{ name }} toggle" data-toggle="#crates-{{ name }}">
+            <div class="header c{{ name }} toggle" data-toggle="#crates-{{ name }}">
                 {{ name }} ({{ crates|length }})
             </div>
 
@@ -41,12 +41,12 @@
                         {% for run in crate.runs %}
                             <span class="run">
                                 {% if run %}
-                                    <b class="cr-{{ run.res }}"></b>
+                                    <b class="r{{ run.res }}"></b>
                                     <a href="{{ run.log|safe }}/log.txt">
                                         {{ result_names[run.res] }}
                                     </a>
                                 {% else %}
-                                    <b class="cc-{{ crate.res }}"></b>
+                                    <b class="c{{ crate.res }}"></b>
                                     {{ crate.res }}
                                 {% endif %}
                             </span>

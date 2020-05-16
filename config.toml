@@ -118,6 +118,7 @@ treeflection = { skip-tests = true } # flaky test
 update_rate = { skip-tests = true } # flaky tests
 urdf-viz = { skip = true } # flaky build
 vidar = { skip-tests = true } # flaky test
+xtp  = { skip-tests = true } # setrlimit(RLIMIT_CORE): Operation not permitted
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
@@ -129,5 +130,6 @@ vidar = { skip-tests = true } # flaky test
 "kellymclaughlin/rust-quickcheck-example" = { skip-tests = true } # flaky tests
 "otaviopace/minigrep" = { skip-tests = true } # flaky tests
 "wischli/rpaillier" = { skip-tests = true } # flaky tests
+"luc-tielen/fire-emblem-rs" = { skip-tests = true } # setrlimit(RLIMIT_CORE): Operation not permitted
 
 [local-crates]

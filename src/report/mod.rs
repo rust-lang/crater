@@ -391,6 +391,7 @@ fn compare(
             | (TestFail(_), BuildFail(_)) => Comparison::Regressed,
 
             (Error, _) | (_, Error) => Comparison::Error,
+            (Skipped, _) | (_, Skipped) => Comparison::Skipped,
             (BrokenCrate(_), _) | (_, BrokenCrate(_)) => Comparison::Broken,
             (TestFail(_), TestSkipped)
             | (TestPass, TestSkipped)
@@ -686,6 +687,18 @@ mod tests {
                 TestSkipped, Error => Error;
                 TestFail(Unknown), Error => Error;
                 BuildFail(Unknown), Error => Error;
+
+                // Skipped
+                Skipped, Skipped => Skipped;
+                Skipped, TestPass => Skipped;
+                Skipped, TestSkipped => Skipped;
+                Skipped, TestFail(Unknown) => Skipped;
+                Skipped, BuildFail(Unknown) => Skipped;
+                TestPass, Skipped => Skipped;
+                TestSkipped, Skipped => Skipped;
+                TestFail(Unknown), Skipped => Skipped;
+                BuildFail(Unknown), Skipped => Skipped;
+
 
                 // Broken
                 BrokenCrate(BrokenReason::Unknown), TestPass => Broken;

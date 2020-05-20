@@ -260,6 +260,16 @@ pub(super) fn build_graph(ex: &Experiment, crates: &[Crate], config: &Config) ->
 
     for krate in crates {
         if !ex.ignore_blacklist && config.should_skip(krate) {
+            for tc in &ex.toolchains {
+                let id = graph.add_task(
+                    Task {
+                        krate: krate.clone(),
+                        step: TaskStep::Skip { tc: tc.clone() },
+                    },
+                    &[],
+                );
+                graph.add_crate(&[id]);
+            }
             continue;
         }
 

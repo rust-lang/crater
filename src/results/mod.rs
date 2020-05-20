@@ -200,6 +200,7 @@ test_result_enum!(pub enum TestResult {
     without_reason {
         TestSkipped => "test-skipped",
         TestPass => "test-pass",
+        Skipped => "skipped",
         Error => "error",
     }
 });

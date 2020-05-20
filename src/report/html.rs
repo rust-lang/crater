@@ -42,6 +42,7 @@ impl ResultColor for TestResult {
             TestResult::TestFail(_) => Color::Single("#65461e"),
             TestResult::TestSkipped | TestResult::TestPass => Color::Single("#62a156"),
             TestResult::Error => Color::Single("#d77026"),
+            TestResult::Skipped => Color::Single("#494b4a"),
         }
     }
 }
@@ -81,6 +82,7 @@ impl ResultName for TestResult {
             TestResult::TestSkipped => "test skipped".into(),
             TestResult::TestPass => "test passed".into(),
             TestResult::Error => "error".into(),
+            TestResult::Skipped => "skipped".into(),
         }
     }
 }

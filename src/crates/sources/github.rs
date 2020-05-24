@@ -91,9 +91,13 @@ impl FromStr for GitHubRepo {
     type Err = ::failure::Error;
 
     fn from_str(input: &str) -> Fallible<Self> {
-        let mut components = input.split('/').collect::<Vec<_>>();
-        let name = components.pop();
+        let mut components = input
+            .trim_start_matches("https://github.com/")
+            .split('/')
+            .rev()
+            .collect::<Vec<_>>();
         let org = components.pop();
+        let name = components.pop();
         let sha = components.pop();
 
         if let (Some(org), Some(name)) = (org, name) {
@@ -105,5 +109,31 @@ impl FromStr for GitHubRepo {
         } else {
             bail!("malformed repo url: {}", input);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GitHubRepo;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_from_str() {
+        assert_eq!(
+            GitHubRepo::from_str("https://github.com/dummy_org/dummy/dummy_sha").unwrap(),
+            GitHubRepo {
+                org: "dummy_org".to_string(),
+                name: "dummy".to_string(),
+                sha: Some("dummy_sha".to_string())
+            }
+        );
+        assert_eq!(
+            GitHubRepo::from_str("https://github.com/dummy_org/dummy").unwrap(),
+            GitHubRepo {
+                org: "dummy_org".to_string(),
+                name: "dummy".to_string(),
+                sha: None
+            }
+        );
     }
 }

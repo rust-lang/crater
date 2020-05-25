@@ -622,7 +622,7 @@ impl Experiment {
             &[&self.name],
             |r| {
                 let value: String = r.get("crate");
-                Ok(serde_json::from_str(&value)?)
+                Ok(value.parse()?)
             },
         )?
         .into_iter()
@@ -682,7 +682,7 @@ impl Experiment {
             }
             crates
                 .iter()
-                .map(|krate| Ok(serde_json::from_str(&krate)?))
+                .map(|krate| Ok(krate.parse()?))
                 .collect::<Fallible<Vec<Crate>>>()
         })
     }
@@ -702,7 +702,7 @@ impl Experiment {
             ],
             |r| {
                 let value: String = r.get("crate");
-                Ok(serde_json::from_str(&value)?)
+                Ok(value.parse()?)
             },
         )?
         .into_iter()

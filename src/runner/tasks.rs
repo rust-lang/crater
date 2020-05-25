@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::crates::Crate;
+use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{EncodingType, TestResult, WriteResults};
@@ -187,7 +187,16 @@ impl Task {
 
                     if let Crate::GitHub(repo) = &self.krate {
                         if let Some(sha) = rustwide_crate.git_commit(workspace) {
-                            db.record_sha(ex, repo, &sha).with_context(|_| {
+                            let updated = GitHubRepo {
+                                sha: Some(sha),
+                                ..repo.clone()
+                            };
+                            db.update_crate_version(
+                                ex,
+                                &Crate::GitHub(repo.clone()),
+                                &Crate::GitHub(updated),
+                            )
+                            .with_context(|_| {
                                 format!("failed to record the sha of GitHub repo {}", repo.slug())
                             })?;
                         } else {

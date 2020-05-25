@@ -2,7 +2,7 @@ mod db;
 #[cfg(test)]
 mod dummy;
 use crate::config::Config;
-use crate::crates::{Crate, GitHubRepo};
+use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 pub use crate::results::db::{DatabaseDB, ProgressData};
@@ -13,11 +13,9 @@ use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use rustwide::logging::LogStorage;
-use std::collections::HashMap;
 use std::{fmt, io::Read, io::Write, str::FromStr};
 
 pub trait ReadResults {
-    fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>>;
     fn load_log(
         &self,
         ex: &Experiment,
@@ -39,7 +37,7 @@ pub trait WriteResults {
         toolchain: &Toolchain,
         krate: &Crate,
     ) -> Fallible<Option<TestResult>>;
-    fn record_sha(&self, ex: &Experiment, repo: &GitHubRepo, sha: &str) -> Fallible<()>;
+    fn update_crate_version(&self, ex: &Experiment, old: &Crate, new: &Crate) -> Fallible<()>;
     fn record_result<F>(
         &self,
         ex: &Experiment,

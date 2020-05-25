@@ -101,7 +101,7 @@ impl Action for EditExperiment {
                          VALUES (?1, ?2, ?3, ?4);",
                         &[
                             &self.name,
-                            &::serde_json::to_string(&krate)?,
+                            &krate.id(),
                             &(!ex.ignore_blacklist && ctx.config.should_skip(krate)),
                             &Status::Queued.to_string(),
                         ],
@@ -256,7 +256,7 @@ mod tests {
                     &[&ex],
                     |row| {
                         let krate: String = row.get("crate");
-                        serde_json::from_str(&krate).unwrap()
+                        krate.parse().unwrap()
                     },
                 )
                 .unwrap();

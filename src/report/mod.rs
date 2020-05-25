@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::crates::{Crate, GitHubRepo};
+use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{EncodedLog, EncodingType, ReadResults, TestResult};
@@ -10,6 +10,7 @@ use percent_encoding::{utf8_percent_encode, AsciiSet};
 use std::borrow::Cow;
 #[cfg(test)]
 use std::cell::RefCell;
+#[cfg(test)]
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt::{self, Display};
@@ -144,7 +145,6 @@ pub fn generate_report<DB: ReadResults>(
     ex: &Experiment,
     crates: &[Crate],
 ) -> Fallible<TestResults> {
-    let shas = db.load_all_shas(ex)?;
     let mut crates = crates.to_vec();
     //crate ids are unique so unstable sort is equivalent to stable sort but is generally faster
     crates.sort_unstable_by(|a, b| a.id().cmp(&b.id()));
@@ -177,8 +177,8 @@ pub fn generate_report<DB: ReadResults>(
             );
 
             Ok(CrateResult {
-                name: crate_to_name(&krate, &shas)?,
-                url: crate_to_url(&krate, &shas)?,
+                name: crate_to_name(&krate)?,
+                url: crate_to_url(&krate)?,
                 krate: krate.clone(),
                 res: comp,
                 runs: [crate1, crate2],
@@ -298,11 +298,11 @@ fn gen_retry_list(res: &TestResults) -> String {
     out
 }
 
-fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Fallible<String> {
+fn crate_to_name(c: &Crate) -> Fallible<String> {
     Ok(match *c {
         Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
         Crate::GitHub(ref repo) => {
-            if let Some(sha) = shas.get(repo) {
+            if let Some(ref sha) = repo.sha {
                 format!("{}.{}.{}", repo.org, repo.name, sha)
             } else {
                 format!("{}.{}", repo.org, repo.name)
@@ -312,14 +312,14 @@ fn crate_to_name(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Fallible<Stri
     })
 }
 
-fn crate_to_url(c: &Crate, shas: &HashMap<GitHubRepo, String>) -> Fallible<String> {
+fn crate_to_url(c: &Crate) -> Fallible<String> {
     Ok(match *c {
         Crate::Registry(ref details) => format!(
             "https://crates.io/crates/{}/{}",
             details.name, details.version
         ),
         Crate::GitHub(ref repo) => {
-            if let Some(sha) = shas.get(repo) {
+            if let Some(ref sha) = repo.sha {
                 format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)
             } else {
                 format!("https://github.com/{}/{}", repo.org, repo.name)
@@ -530,7 +530,6 @@ mod tests {
     use crate::experiments::{CapLints, Experiment, Mode, Status};
     use crate::results::{BrokenReason, DummyDB, FailureReason, TestResult};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
-    use std::collections::HashMap;
 
     #[test]
     fn test_crate_to_path_fragment() {
@@ -541,6 +540,7 @@ mod tests {
         let gh = Crate::GitHub(GitHubRepo {
             org: "brson".into(),
             name: "hello-rs".into(),
+            sha: None,
         });
         let gt_plus = Crate::Registry(RegistryCrate {
             name: "foo".into(),
@@ -571,21 +571,26 @@ mod tests {
             name: "lazy_static".into(),
             version: "1.0".into(),
         });
+        assert_eq!(crate_to_name(&reg).unwrap(), "lazy_static-1.0".to_string());
+
         let repo = GitHubRepo {
             org: "brson".into(),
             name: "hello-rs".into(),
+            sha: None,
         };
-        let gh = Crate::GitHub(repo.clone());
+        let gh = Crate::GitHub(repo);
 
-        let mut shas = HashMap::new();
-        shas.insert(repo, "f00".into());
+        assert_eq!(crate_to_name(&gh).unwrap(), "brson.hello-rs".to_string());
+
+        let repo = GitHubRepo {
+            org: "brson".into(),
+            name: "hello-rs".into(),
+            sha: Some("f00".into()),
+        };
+        let gh = Crate::GitHub(repo);
 
         assert_eq!(
-            crate_to_name(&reg, &shas).unwrap(),
-            "lazy_static-1.0".to_string()
-        );
-        assert_eq!(
-            crate_to_name(&gh, &shas).unwrap(),
+            crate_to_name(&gh).unwrap(),
             "brson.hello-rs.f00".to_string()
         );
     }
@@ -596,21 +601,31 @@ mod tests {
             name: "lazy_static".into(),
             version: "1.0".into(),
         });
+        assert_eq!(
+            crate_to_url(&reg).unwrap(),
+            "https://crates.io/crates/lazy_static/1.0".to_string()
+        );
+
         let repo = GitHubRepo {
             org: "brson".into(),
             name: "hello-rs".into(),
+            sha: None,
         };
         let gh = Crate::GitHub(repo.clone());
 
-        let mut shas = HashMap::new();
-        shas.insert(repo, "f00".into());
-
         assert_eq!(
-            crate_to_url(&reg, &shas).unwrap(),
-            "https://crates.io/crates/lazy_static/1.0".to_string()
+            crate_to_url(&gh).unwrap(),
+            "https://github.com/brson/hello-rs".to_string()
         );
+
+        let repo = GitHubRepo {
+            org: "brson".into(),
+            name: "hello-rs".into(),
+            sha: Some("f00".into()),
+        };
+        let gh = Crate::GitHub(repo);
         assert_eq!(
-            crate_to_url(&gh, &shas).unwrap(),
+            crate_to_url(&gh).unwrap(),
             "https://github.com/brson/hello-rs/tree/f00".to_string()
         );
     }
@@ -733,6 +748,7 @@ mod tests {
         let repo = GitHubRepo {
             org: "brson".into(),
             name: "hello-rs".into(),
+            sha: Some("f00".into()),
         };
         let gh = Crate::GitHub(repo.clone());
         let reg = Crate::Registry(RegistryCrate {
@@ -758,7 +774,6 @@ mod tests {
         };
 
         let mut db = DummyDB::default();
-        db.add_dummy_sha(&ex, repo.clone(), "f00".to_string());
         db.add_dummy_result(
             &ex,
             gh.clone(),

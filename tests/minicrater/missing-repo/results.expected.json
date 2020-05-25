@@ -4,7 +4,8 @@
       "krate": {
         "GitHub": {
           "name": "missing",
-          "org": "ghost"
+          "org": "ghost",
+          "sha": null
         }
       },
       "name": "ghost.missing",

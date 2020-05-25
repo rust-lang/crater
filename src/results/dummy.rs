@@ -1,4 +1,4 @@
-use crate::crates::{Crate, GitHubRepo};
+use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{EncodedLog, ReadResults, TestResult};
@@ -7,7 +7,6 @@ use std::collections::HashMap;
 
 #[derive(Default)]
 struct DummyData {
-    shas: HashMap<GitHubRepo, String>,
     logs: HashMap<(Crate, Toolchain), EncodedLog>,
     results: HashMap<(Crate, Toolchain), TestResult>,
 }
@@ -23,14 +22,6 @@ impl DummyDB {
             .experiments
             .get(&ex.name)
             .ok_or_else(|| err_msg(format!("missing experiment {}", ex.name)))?)
-    }
-
-    pub fn add_dummy_sha(&mut self, ex: &Experiment, repo: GitHubRepo, sha: String) {
-        self.experiments
-            .entry(ex.name.to_string())
-            .or_insert_with(DummyData::default)
-            .shas
-            .insert(repo, sha);
     }
 
     pub fn add_dummy_log(&mut self, ex: &Experiment, krate: Crate, tc: Toolchain, log: EncodedLog) {
@@ -57,10 +48,6 @@ impl DummyDB {
 }
 
 impl ReadResults for DummyDB {
-    fn load_all_shas(&self, ex: &Experiment) -> Fallible<HashMap<GitHubRepo, String>> {
-        Ok(self.get_data(ex)?.shas.clone())
-    }
-
     fn load_log(
         &self,
         ex: &Experiment,

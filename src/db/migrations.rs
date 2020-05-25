@@ -313,6 +313,56 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         ),
     ));
 
+    migrations.push((
+        "delete_sha_table",
+        MigrationKind::SQL(
+            "
+            DROP TABLE shas;
+            ",
+        ),
+    ));
+
+    migrations.push((
+        "stringify_crate_names",
+        MigrationKind::Code(Box::new(|t| {
+            use crate::crates::Crate;
+
+            let fn_name = format!(
+                "crater_migration__{}",
+                rand::thread_rng()
+                    .sample_iter(&Alphanumeric)
+                    .take(10)
+                    .collect::<String>()
+            );
+            t.create_scalar_function(&fn_name, 1, true, |ctx| {
+                let legacy = ctx.get::<String>(0)?;
+
+                if let Ok(parsed) = serde_json::from_str::<Crate>(&legacy) {
+                    Ok(parsed.id())
+                } else {
+                    Ok(legacy)
+                }
+            })?;
+
+            t.execute("PRAGMA foreign_keys = OFF;", no_args())?;
+            t.execute(
+                &format!("UPDATE experiment_crates SET crate = {}(crate);", fn_name),
+                no_args(),
+            )?;
+            t.execute(
+                &format!("UPDATE results SET crate = {}(crate);", fn_name),
+                no_args(),
+            )?;
+            t.execute(
+                &format!("UPDATE crates SET crate = {}(crate);", fn_name),
+                no_args(),
+            )?;
+            t.execute("PRAGMA foreign_keys = ON;", no_args())?;
+
+            Ok(())
+        })),
+    ));
+
     migrations
 }
 

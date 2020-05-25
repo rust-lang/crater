@@ -1,5 +1,5 @@
 use crate::agent::Capabilities;
-use crate::crates::{Crate, GitHubRepo};
+use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::TestResult;
@@ -151,7 +151,7 @@ impl AgentApi {
         toolchain: &Toolchain,
         log: &[u8],
         result: TestResult,
-        shas: &[(GitHubRepo, String)],
+        version: Option<(&Crate, &Crate)>,
     ) -> Fallible<()> {
         self.retry(|this| {
             let _: bool = this
@@ -166,7 +166,7 @@ impl AgentApi {
                             "log": base64::encode(log),
                         },
                     ],
-                    "shas": shas,
+                    "version": version
                 }))
                 .send()?
                 .to_api_response()?;

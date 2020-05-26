@@ -110,6 +110,24 @@
     },
     {
       "krate": {
+        "Local": "error-code"
+      },
+      "name": "error-code (local)",
+      "res": "build-fail",
+      "runs": [
+        {
+          "log": "stable/local/error-code",
+          "res": "build-fail:unknown"
+        },
+        {
+          "log": "beta/local/error-code",
+          "res": "build-fail:unknown"
+        }
+      ],
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+    },
+    {
+      "krate": {
         "Local": "ice-regression"
       },
       "name": "ice-regression (local)",

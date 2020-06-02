@@ -238,7 +238,7 @@ impl ::std::str::FromStr for FailureReason {
     type Err = ::failure::Error;
 
     fn from_str(s: &str) -> ::failure::Fallible<FailureReason> {
-        if let Some(idx) = s.find('(') {
+        if let (Some(idx), true) = (s.find('('), s.ends_with(')')) {
             let prefix = &s[..idx];
             let contents = s[idx + 1..s.len() - 1].split(", ");
             match prefix {

@@ -8,6 +8,7 @@ use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC
 use rustwide::Crate as RustwideCrate;
 use std::convert::TryFrom;
 use std::fmt;
+use std::path::Path;
 use std::str::FromStr;
 
 pub(crate) use crate::crates::sources::github::GitHubRepo;
@@ -24,6 +25,7 @@ pub enum Crate {
     Registry(RegistryCrate),
     GitHub(GitHubRepo),
     Local(String),
+    Path(String),
     Git(GitRepo),
 }
 
@@ -39,6 +41,9 @@ impl Crate {
                 }
             }
             Crate::Local(ref name) => format!("local/{}", name),
+            Crate::Path(ref path) => {
+                format!("path/{}", utf8_percent_encode(&path, &NON_ALPHANUMERIC))
+            }
             Crate::Git(ref repo) => {
                 if let Some(ref sha) = repo.sha {
                     format!(
@@ -60,6 +65,7 @@ impl Crate {
                 RustwideCrate::git(&format!("https://github.com/{}/{}", repo.org, repo.name))
             }
             Self::Local(name) => RustwideCrate::local(&LOCAL_CRATES_DIR.join(name)),
+            Self::Path(path) => RustwideCrate::local(Path::new(&path)),
             Self::Git(repo) => RustwideCrate::git(&repo.url),
         }
     }
@@ -85,7 +91,7 @@ impl TryFrom<&'_ PackageId> for Crate {
                 name: name.to_string(),
                 version: version.to_string(),
             })),
-            [name, _, "path", _] => Ok(Crate::Local(name.to_string())),
+            [_, _, "path", path] => Ok(Crate::Path(path.to_string())),
             [_, _, "git", repo] => {
                 if repo.starts_with("https://github.com") {
                     Ok(Crate::GitHub(repo.replace("#", "/").parse()?))
@@ -131,6 +137,8 @@ impl fmt::Display for Crate {
                         format!("{}/{}", repo.org, repo.name)
                     },
                 Crate::Local(ref name) => format!("{} (local)", name),
+                Crate::Path(ref path) =>
+                    format!("{}", utf8_percent_encode(path, &NON_ALPHANUMERIC)),
                 Crate::Git(ref repo) =>
                     if let Some(ref sha) = repo.sha {
                         format!(
@@ -175,6 +183,9 @@ impl FromStr for Crate {
                 sha: None,
             })),
             ["local", name] => Ok(Crate::Local(name.to_string())),
+            ["path", path] => Ok(Crate::Path(
+                percent_decode_str(path).decode_utf8()?.to_string(),
+            )),
             _ => bail!("unexpected crate value"),
         }
     }
@@ -203,7 +214,7 @@ mod tests {
     #[test]
     fn test_parse_from_pkgid() {
         test_from_pkgid! {
-            "dummy 0.1.0 (path+file:///opt/rustwide/workdir)" => Crate::Local("dummy".to_string()),
+            "dummy 0.1.0 (path+file:///opt/rustwide/workdir)" => Crate::Path("file:///opt/rustwide/workdir".to_string()),
             "dummy 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" => Crate::Registry(RegistryCrate {
                 name: "dummy".to_string(),
                 version: "0.1.0".to_string()
@@ -270,6 +281,8 @@ mod tests {
 
         test_from_str! {
             "local/build-fail" => Crate::Local("build-fail".to_string()),
+            "path/pathtofile" => Crate::Path("pathtofile".to_string()),
+            &format!("path/{}", utf8_percent_encode("path/with:stange?characters", &NON_ALPHANUMERIC)) => Crate::Path("path/with:stange?characters".to_string()),
             "gh/org/user" => Crate::GitHub(GitHubRepo{org: "org".to_string(), name: "user".to_string(), sha: None}),
             "gh/org/user/sha" => Crate::GitHub(GitHubRepo{org: "org".to_string(), name: "user".to_string(), sha: Some("sha".to_string())}),
             "git/url" => Crate::Git(GitRepo{url: "url".to_string(), sha: None}),

@@ -117,14 +117,32 @@
       "runs": [
         {
           "log": "stable/local/error-code",
-          "res": "build-fail:unknown"
+          "res": "build-fail:compiler-error(E0013, E0015)"
         },
         {
           "log": "beta/local/error-code",
-          "res": "build-fail:unknown"
+          "res": "build-fail:compiler-error(E0013, E0015)"
         }
       ],
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+    },
+    {
+      "krate": {
+        "Local": "faulty-deps"
+      },
+      "name": "faulty-deps (local)",
+      "res": "build-fail",
+      "runs": [
+        {
+          "log": "stable/local/faulty-deps",
+          "res": "build-fail:depends-on(reg/lazy_static/0.1.0, gh/rust-lang/crater/c3f462bdab37a93c24b2b172b90564749e892cbc)"
+        },
+        {
+          "log": "beta/local/faulty-deps",
+          "res": "build-fail:depends-on(reg/lazy_static/0.1.0, gh/rust-lang/crater/c3f462bdab37a93c24b2b172b90564749e892cbc)"
+        }
+      ],
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/faulty-deps"
     },
     {
       "krate": {
@@ -135,7 +153,7 @@
       "runs": [
         {
           "log": "stable/local/ice-regression",
-          "res": "build-fail:unknown"
+          "res": "build-fail:compiler-error(E0425)"
         },
         {
           "log": "beta/local/ice-regression",

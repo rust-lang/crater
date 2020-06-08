@@ -125,7 +125,8 @@ macro_rules! test_result_enum {
             type Err = ::failure::Error;
 
             fn from_str(input: &str) -> Fallible<Self> {
-                let parts: Vec<&str> = input.split(':').collect();
+                // if there is more than one ':' we assume it's part of a failure reason serialization
+                let parts: Vec<&str> = input.splitn(2, ':').collect();
 
                 if parts.len() == 1 {
                     match parts[0] {
@@ -133,14 +134,12 @@ macro_rules! test_result_enum {
                         $($reasonless_repr => Ok($name::$reasonless_name),)*
                         other => Err(TestResultParseError::UnknownResult(other.into()).into()),
                     }
-                } else if parts.len() == 2 {
+                } else {
                     match parts[0] {
                         $($reasonless_repr => Err(TestResultParseError::UnexpectedFailureReason.into()),)*
                         $($with_reason_repr => Ok($name::$with_reason_name(parts[1].parse()?)),)*
                         other => Err(TestResultParseError::UnknownResult(other.into()).into()),
                     }
-                } else {
-                    Err(TestResultParseError::TooManySegments.into())
                 }
             }
         }
@@ -162,8 +161,6 @@ pub enum TestResultParseError {
     UnknownResult(String),
     #[fail(display = "unexpected failure reason")]
     UnexpectedFailureReason,
-    #[fail(display = "too many segments")]
-    TooManySegments,
 }
 
 // simplified and lighter version of cargo-metadata::diagnostic::DiagnosticCode

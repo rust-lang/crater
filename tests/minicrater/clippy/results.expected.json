@@ -31,7 +31,7 @@
         },
         {
           "log": "stable%2Brustflags=-Dclippy::all/local/clippy-warn",
-          "res": "build-fail:unknown"
+          "res": "build-fail:compiler-error(clippy::print_with_newline)"
         }
       ],
       "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"

@@ -2,9 +2,10 @@ use crate::assets;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::{
-    archives::Archive, Color, Comparison, ReportWriter, ResultColor, ResultName, TestResults,
+    analyzer::ReportCrates, archives::Archive, Color, Comparison, CrateResult, ReportWriter,
+    ResultColor, ResultName, TestResults,
 };
-use crate::results::EncodingType;
+use crate::results::{EncodingType, FailureReason, TestResult};
 use std::collections::HashMap;
 
 #[derive(Serialize)]
@@ -19,6 +20,19 @@ enum CurrentPage {
     Summary,
     Full,
     Downloads,
+}
+
+#[derive(Serialize)]
+enum ReportCratesHTML {
+    Plain(Vec<CrateResultHTML>),
+    Tree {
+        count: u32,
+        tree: HashMap<String, Vec<CrateResultHTML>>,
+    },
+    RootResults {
+        count: u32,
+        results: HashMap<String, Vec<CrateResultHTML>>,
+    },
 }
 
 impl CurrentPage {
@@ -47,7 +61,8 @@ impl CurrentPage {
 struct ResultsContext<'a> {
     ex: &'a Experiment,
     nav: Vec<NavbarItem>,
-    categories: HashMap<Comparison, Vec<CrateResultHTML>>,
+    categories: Vec<(Comparison, ReportCratesHTML)>,
+    info: HashMap<Comparison, u32>,
     full: bool,
     crates_count: usize,
 
@@ -93,27 +108,18 @@ fn write_report<W: ReportWriter>(
     let mut result_colors = Vec::new();
     let mut result_names = Vec::new();
 
-    let mut categories = HashMap::new();
-    for result in &res.crates {
-        // Skip some categories if this is not the full report
-        if !full && !result.res.show_in_summary() {
-            continue;
-        }
-
-        // Add the colors and names used in this run
-        comparison_colors
-            .entry(result.res)
-            .or_insert_with(|| result.res.color());
-
+    let mut to_html_crate_result = |result: CrateResult| {
         let mut runs = [None, None];
 
         for (pos, run) in result.runs.iter().enumerate() {
             if let Some(ref run) = run {
-                let idx = test_results_to_int.entry(&run.res).or_insert_with(|| {
-                    result_colors.push(run.res.color());
-                    result_names.push(run.res.name());
-                    result_names.len() - 1
-                });
+                let idx = test_results_to_int
+                    .entry(run.res.clone())
+                    .or_insert_with(|| {
+                        result_colors.push(run.res.color());
+                        result_names.push(run.res.name());
+                        result_names.len() - 1
+                    });
                 runs[pos] = Some(BuildTestResultHTML {
                     res: *idx as usize,
                     log: run.log.clone(),
@@ -121,15 +127,84 @@ fn write_report<W: ReportWriter>(
             }
         }
 
-        let category = categories.entry(result.res).or_insert_with(Vec::new);
-        let result = CrateResultHTML {
+        CrateResultHTML {
             name: result.name.clone(),
             url: result.url.clone(),
             res: result.res,
             runs,
-        };
-        category.push(result);
-    }
+        }
+    };
+
+    let categories = res
+        .categories
+        .iter()
+        .filter(|(category, _)| full || category.show_in_summary())
+        .map(|(&category, crates)| (category, crates.to_owned()))
+        .flat_map(|(category, crates)| {
+            comparison_colors.insert(category, category.color());
+
+            match crates {
+                ReportCrates::Plain(crates) => vec![(
+                    category,
+                    ReportCratesHTML::Plain(
+                        crates
+                            .into_iter()
+                            .map(|result| to_html_crate_result(result))
+                            .collect::<Vec<_>>(),
+                    ),
+                )]
+                .into_iter(),
+                ReportCrates::Complete { tree, results } => {
+                    let tree = tree
+                        .into_iter()
+                        .map(|(root, deps)| {
+                            (
+                                root.to_string(),
+                                deps.into_iter()
+                                    .map(|result| to_html_crate_result(result))
+                                    .collect::<Vec<_>>(),
+                            )
+                        })
+                        .collect::<HashMap<_, _>>();
+                    let results = results
+                        .into_iter()
+                        .map(|(res, krates)| {
+                            (
+                                if let TestResult::BuildFail(FailureReason::CompilerError(_)) = res
+                                {
+                                    res.to_string()
+                                } else {
+                                    res.name()
+                                },
+                                krates
+                                    .into_iter()
+                                    .map(|result| to_html_crate_result(result))
+                                    .collect::<Vec<_>>(),
+                            )
+                        })
+                        .collect::<HashMap<_, _>>();
+
+                    vec![
+                        (
+                            category,
+                            ReportCratesHTML::Tree {
+                                count: tree.keys().len() as u32,
+                                tree,
+                            },
+                        ),
+                        (
+                            category,
+                            ReportCratesHTML::RootResults {
+                                count: results.keys().len() as u32,
+                                results,
+                            },
+                        ),
+                    ]
+                    .into_iter()
+                }
+            }
+        })
+        .collect();
 
     let context = ResultsContext {
         ex,
@@ -140,6 +215,7 @@ fn write_report<W: ReportWriter>(
         }
         .navbar(),
         categories,
+        info: res.info.clone(),
         full,
         crates_count,
         comparison_colors,

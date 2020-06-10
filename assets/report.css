@@ -149,6 +149,12 @@ div.category div.header.header-background {
     background: #292929;
 }
 
+
+div.category div.subheader.header {
+    margin: 10px;
+    top: 2em;
+}
+
 div.category div.crate {
     display: flex;
     padding: 0.8em;

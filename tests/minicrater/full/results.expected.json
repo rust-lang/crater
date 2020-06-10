@@ -113,11 +113,11 @@
         "Local": "error-code"
       },
       "name": "error-code (local)",
-      "res": "build-fail",
+      "res": "regressed",
       "runs": [
         {
           "log": "stable/local/error-code",
-          "res": "build-fail:compiler-error(E0013, E0015)"
+          "res": "test-pass"
         },
         {
           "log": "beta/local/error-code",

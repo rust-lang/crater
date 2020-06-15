@@ -2,6 +2,7 @@ use crate::prelude::*;
 use crate::results::TestResult;
 use crate::results::WriteResults;
 use crate::runner::tasks::TaskCtx;
+use cargo_metadata::PackageId;
 use rustwide::Build;
 use std::collections::HashSet;
 use std::path::Path;
@@ -10,6 +11,7 @@ use walkdir::{DirEntry, WalkDir};
 pub(super) fn find_unstable_features<DB: WriteResults>(
     _ctx: &TaskCtx<DB>,
     build: &Build,
+    _local_packages_id: &HashSet<PackageId>,
 ) -> Fallible<TestResult> {
     let mut features = HashSet::new();
 

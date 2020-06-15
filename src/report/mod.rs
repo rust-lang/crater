@@ -134,6 +134,14 @@ fn crate_to_path_fragment(
             path.push("local");
             path.push(name);
         }
+        Crate::Path(ref krate_path) => {
+            path.push("path");
+            path.push(dest.sanitize(&krate_path).into_owned());
+        }
+        Crate::Git(ref repo) => {
+            path.push("git");
+            path.push(dest.sanitize(&repo.url).into_owned());
+        }
     }
 
     path
@@ -172,8 +180,8 @@ pub fn generate_report<DB: ReadResults>(
             let comp = compare(
                 config,
                 &krate,
-                crate1.as_ref().map(|b| b.res),
-                crate2.as_ref().map(|b| b.res),
+                crate1.as_ref().map(|b| &b.res),
+                crate2.as_ref().map(|b| &b.res),
             );
 
             Ok(CrateResult {
@@ -291,7 +299,7 @@ fn gen_retry_list(res: &TestResults) -> String {
         match krate {
             Crate::Registry(details) => writeln!(out, "{}", details.name).unwrap(),
             Crate::GitHub(repo) => writeln!(out, "{}/{}", repo.org, repo.name).unwrap(),
-            Crate::Local(_) => {}
+            Crate::Local(_) | Crate::Git(_) | Crate::Path(_) => {}
         }
     }
 
@@ -309,6 +317,18 @@ fn crate_to_name(c: &Crate) -> Fallible<String> {
             }
         }
         Crate::Local(ref name) => format!("{} (local)", name),
+        Crate::Path(ref path) => utf8_percent_encode(path, &REPORT_ENCODE_SET).to_string(),
+        Crate::Git(ref repo) => {
+            if let Some(ref sha) = repo.sha {
+                format!(
+                    "{}.{}",
+                    utf8_percent_encode(&repo.url, &REPORT_ENCODE_SET),
+                    sha
+                )
+            } else {
+                utf8_percent_encode(&repo.url, &REPORT_ENCODE_SET).to_string()
+            }
+        }
     })
 }
 
@@ -330,14 +350,16 @@ fn crate_to_url(c: &Crate) -> Fallible<String> {
             crate::CRATER_REPO_URL,
             name
         ),
+        Crate::Path(ref path) => utf8_percent_encode(path, &REPORT_ENCODE_SET).to_string(),
+        Crate::Git(ref repo) => repo.url.clone(),
     })
 }
 
 fn compare(
     config: &Config,
     krate: &Crate,
-    r1: Option<TestResult>,
-    r2: Option<TestResult>,
+    r1: Option<&TestResult>,
+    r2: Option<&TestResult>,
 ) -> Comparison {
     use crate::results::FailureReason;
     use crate::results::TestResult::*;
@@ -355,14 +377,14 @@ fn compare(
             (TestSkipped, TestSkipped) => Comparison::SameTestSkipped,
             (TestPass, TestPass) => Comparison::SameTestPass,
 
-            (BuildFail(reason1), TestFail(reason2))
+            (BuildFail(ref reason1), TestFail(ref reason2))
                 if reason1.is_spurious() || reason2.is_spurious() =>
             {
                 Comparison::SpuriousFixed
             }
-            (BuildFail(reason), TestSkipped)
-            | (BuildFail(reason), TestPass)
-            | (TestFail(reason), TestPass)
+            (BuildFail(ref reason), TestSkipped)
+            | (BuildFail(ref reason), TestPass)
+            | (TestFail(ref reason), TestPass)
                 if reason.is_spurious() =>
             {
                 Comparison::SpuriousFixed
@@ -641,8 +663,8 @@ mod tests {
                         $cmp(
                             $config,
                             $reg,
-                            Some($a),
-                            Some($b),
+                            Some(&$a),
+                            Some(&$b),
                         ),
                         Comparison::$c
                     );

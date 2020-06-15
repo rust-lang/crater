@@ -96,6 +96,7 @@ pub(crate) fn get_crates(
                     Crate::Registry(RegistryCrate { ref name, .. }) => demo_registry.remove(name),
                     Crate::GitHub(ref repo) => demo_github.remove(&repo.slug()),
                     Crate::Local(ref name) => demo_local.remove(name),
+                    Crate::Git(_) | Crate::Path(_) => unimplemented!("unsupported crate"),
                 };
 
                 if add {

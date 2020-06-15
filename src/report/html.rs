@@ -58,6 +58,8 @@ impl ResultName for FailureReason {
             FailureReason::Timeout => "timed out".into(),
             FailureReason::OOM => "OOM".into(),
             FailureReason::ICE => "ICE".into(),
+            FailureReason::CompilerError(_) => "compiler error".into(),
+            FailureReason::DependsOn(_) => "faulty deps".into(),
         }
     }
 }

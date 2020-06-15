@@ -153,7 +153,7 @@ impl Action for EditExperiment {
             if let Some(requirement) = self.requirement {
                 let changes = t.execute(
                     "UPDATE experiments SET requirement = ?1 WHERE name = ?2;",
-                    &[&requirement.to_string(), &self.name],
+                    &[&requirement, &self.name],
                 )?;
                 assert_eq!(changes, 1);
                 ex.requirement = Some(requirement);

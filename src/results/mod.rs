@@ -5,6 +5,7 @@ use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
+
 pub use crate::results::db::{DatabaseDB, ProgressData};
 #[cfg(test)]
 pub use crate::results::dummy::DummyDB;
@@ -13,6 +14,7 @@ use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use rustwide::logging::LogStorage;
+use std::collections::BTreeSet;
 use std::{fmt, io::Read, io::Write, str::FromStr};
 
 pub trait ReadResults {
@@ -113,7 +115,7 @@ macro_rules! test_result_enum {
         with_reason { $($with_reason_name:ident($reason:ident) => $with_reason_repr:expr,)* }
         without_reason { $($reasonless_name:ident => $reasonless_repr:expr,)* }
     }) => {
-        #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+        #[derive(Debug, PartialEq, Eq, Hash, Clone)]
         pub enum $name {
             $($with_reason_name($reason),)*
             $($reasonless_name,)*
@@ -123,7 +125,8 @@ macro_rules! test_result_enum {
             type Err = ::failure::Error;
 
             fn from_str(input: &str) -> Fallible<Self> {
-                let parts: Vec<&str> = input.split(':').collect();
+                // if there is more than one ':' we assume it's part of a failure reason serialization
+                let parts: Vec<&str> = input.splitn(2, ':').collect();
 
                 if parts.len() == 1 {
                     match parts[0] {
@@ -131,14 +134,12 @@ macro_rules! test_result_enum {
                         $($reasonless_repr => Ok($name::$reasonless_name),)*
                         other => Err(TestResultParseError::UnknownResult(other.into()).into()),
                     }
-                } else if parts.len() == 2 {
+                } else {
                     match parts[0] {
                         $($reasonless_repr => Err(TestResultParseError::UnexpectedFailureReason.into()),)*
                         $($with_reason_repr => Ok($name::$with_reason_name(parts[1].parse()?)),)*
                         other => Err(TestResultParseError::UnknownResult(other.into()).into()),
                     }
-                } else {
-                    Err(TestResultParseError::TooManySegments.into())
                 }
             }
         }
@@ -160,24 +161,120 @@ pub enum TestResultParseError {
     UnknownResult(String),
     #[fail(display = "unexpected failure reason")]
     UnexpectedFailureReason,
-    #[fail(display = "too many segments")]
-    TooManySegments,
 }
 
-string_enum!(pub enum FailureReason {
-    Unknown => "unknown",
-    OOM => "oom",
-    Timeout => "timeout",
-    ICE => "ice",
-});
+// simplified and lighter version of cargo-metadata::diagnostic::DiagnosticCode
+#[derive(Debug, PartialEq, Serialize, Deserialize, Eq, Clone, Hash, PartialOrd, Ord)]
+pub struct DiagnosticCode {
+    code: String,
+}
+
+impl ::std::fmt::Display for DiagnosticCode {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{}", self.code)
+    }
+}
+
+impl DiagnosticCode {
+    pub fn from(s: String) -> DiagnosticCode {
+        DiagnosticCode { code: s }
+    }
+}
+
+impl ::std::str::FromStr for DiagnosticCode {
+    type Err = ::failure::Error;
+
+    fn from_str(s: &str) -> ::failure::Fallible<DiagnosticCode> {
+        Ok(DiagnosticCode {
+            code: s.to_string(),
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
+pub enum FailureReason {
+    Unknown,
+    OOM,
+    Timeout,
+    ICE,
+    CompilerError(BTreeSet<DiagnosticCode>),
+    DependsOn(BTreeSet<Crate>),
+}
 
 impl Fail for FailureReason {}
 
-impl FailureReason {
-    pub(crate) fn is_spurious(self) -> bool {
+impl ::std::fmt::Display for FailureReason {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
-            FailureReason::Unknown | FailureReason::ICE => false,
+            FailureReason::Unknown => write!(f, "unknown"),
+            FailureReason::OOM => write!(f, "oom"),
+            FailureReason::Timeout => write!(f, "timeout"),
+            FailureReason::ICE => write!(f, "ice"),
+            FailureReason::CompilerError(codes) => write!(
+                f,
+                "compiler-error({})",
+                codes
+                    .iter()
+                    .map(|diag| diag.code.clone())
+                    .collect::<Vec<String>>()
+                    .join(", "),
+            ),
+            FailureReason::DependsOn(deps) => write!(
+                f,
+                "depends-on({})",
+                deps.iter()
+                    .map(|dep| dep.id())
+                    .collect::<Vec<String>>()
+                    .join(", "),
+            ),
+        }
+    }
+}
+
+impl ::std::str::FromStr for FailureReason {
+    type Err = ::failure::Error;
+
+    fn from_str(s: &str) -> ::failure::Fallible<FailureReason> {
+        if let (Some(idx), true) = (s.find('('), s.ends_with(')')) {
+            let prefix = &s[..idx];
+            let contents = s[idx + 1..s.len() - 1].split(", ");
+            match prefix {
+                "compiler-error" => Ok(FailureReason::CompilerError(
+                    contents
+                        .map(|st| DiagnosticCode {
+                            code: st.to_string(),
+                        })
+                        .collect(),
+                )),
+                "depends-on" => {
+                    let mut krates: BTreeSet<Crate> = BTreeSet::new();
+                    for krate in contents {
+                        krates.insert(krate.parse()?);
+                    }
+                    Ok(FailureReason::DependsOn(krates))
+                }
+                _ => bail!("unexpected value"),
+            }
+        } else {
+            match s {
+                "unknown" => Ok(FailureReason::Unknown),
+                "oom" => Ok(FailureReason::OOM),
+                "timeout" => Ok(FailureReason::Timeout),
+                "ice" => Ok(FailureReason::ICE),
+                _ => bail!("unexpected value"),
+            }
+        }
+    }
+}
+
+impl FailureReason {
+    pub(crate) fn is_spurious(&self) -> bool {
+        match *self {
             FailureReason::OOM | FailureReason::Timeout => true,
+            FailureReason::CompilerError(_)
+            | FailureReason::DependsOn(_)
+            | FailureReason::Unknown
+            | FailureReason::ICE => false,
         }
     }
 }
@@ -207,6 +304,8 @@ impl_serde_from_parse!(TestResult, expecting = "a test result");
 
 #[cfg(test)]
 mod tests {
+    use crate::crates::*;
+    use std::collections::BTreeSet;
     use std::str::FromStr;
 
     #[test]
@@ -215,6 +314,12 @@ mod tests {
             FailureReason::*,
             TestResult::{self, *},
         };
+
+        macro_rules! btreeset {
+            ($($x:expr),+ $(,)?) => (
+                vec![$($x),+].into_iter().collect::<BTreeSet<_>>()
+            );
+        }
 
         macro_rules! test_from_str {
             ($($str:expr => $rust:expr,)*) => {
@@ -231,12 +336,17 @@ mod tests {
             };
         }
 
+        //"build-fail:depends-on()" => BuildFail(DependsOn(vec!["001"])),
         test_from_str! {
             "build-fail:unknown" => BuildFail(Unknown),
+            "build-fail:compiler-error(001, 002)" => BuildFail(CompilerError(btreeset!["001".parse().unwrap(), "002".parse().unwrap()])),
+            "build-fail:compiler-error(001)" => BuildFail(CompilerError(btreeset!["001".parse().unwrap()])),
             "build-fail:oom" => BuildFail(OOM),
+            "build-fail:ice" => BuildFail(ICE),
             "test-fail:timeout" => TestFail(Timeout),
             "test-pass" => TestPass,
             "error" => Error,
+            "build-fail:depends-on(reg/clint/0.2.1)" => BuildFail(DependsOn(btreeset![Crate::Registry(RegistryCrate{name: "clint".to_string(), version: "0.2.1".to_string()})])),
         }
 
         // Backward compatibility
@@ -244,7 +354,6 @@ mod tests {
             TestResult::from_str("build-fail").unwrap(),
             BuildFail(Unknown)
         );
-
         assert!(TestResult::from_str("error:oom").is_err());
         assert!(TestResult::from_str("build-fail:pleasedonotaddthis").is_err());
     }

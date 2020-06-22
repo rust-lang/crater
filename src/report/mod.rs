@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
-use crate::results::{EncodedLog, EncodingType, ReadResults, TestResult};
+use crate::results::{EncodedLog, EncodingType, FailureReason, ReadResults, TestResult};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use mime::{self, Mime};
@@ -19,9 +19,11 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 mod archives;
+mod display;
 mod html;
 mod s3;
 
+pub use self::display::{Color, ResultColor, ResultName};
 pub use self::s3::{get_client_for_bucket, S3Prefix, S3Writer};
 
 pub(crate) const REPORT_ENCODE_SET: AsciiSet = percent_encoding::CONTROLS
@@ -361,7 +363,6 @@ fn compare(
     r1: Option<&TestResult>,
     r2: Option<&TestResult>,
 ) -> Comparison {
-    use crate::results::FailureReason;
     use crate::results::TestResult::*;
 
     match (r1, r2) {

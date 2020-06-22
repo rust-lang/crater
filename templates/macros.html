@@ -19,3 +19,20 @@
     {{ date | date(format="%H:%M:%S") }}
     UTC
 {% endmacro %}
+
+{% macro crate_div(crate) %}
+    <div class="crate">
+        <a href="{{ crate.url|safe }}" target="_blank" rel="noopener">{{ crate.name }}</a>
+        {% for run in crate.runs %}
+            <span class="run">
+                {% if run %}
+                    <b class="r{{ run.res }}"></b>
+                    <a href="{{ run.log|safe }}/log.txt">{{ result_names[run.res] }}</a>
+                {% else %}
+                    <b class="c{{ crate.res }}"></b>
+                    {{ crate.res }}
+                {% endif %}
+            </span>
+        {% endfor %}
+    </div>
+{% endmacro %}

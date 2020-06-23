@@ -46,8 +46,8 @@ pub struct RawTestResults {
     pub crates: Vec<CrateResult>,
 }
 
-#[cfg_attr(test, derive(Debug, PartialEq))]
-#[derive(Serialize, Deserialize, Clone)]
+#[cfg_attr(test, derive(Debug))]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct CrateResult {
     name: String,
     url: String,
@@ -107,8 +107,8 @@ impl Comparison {
     }
 }
 
-#[cfg_attr(test, derive(Debug, PartialEq))]
-#[derive(Serialize, Deserialize, Clone)]
+#[cfg_attr(test, derive(Debug))]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 struct BuildTestResult {
     res: TestResult,
     log: String,

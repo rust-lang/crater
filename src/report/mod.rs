@@ -23,6 +23,7 @@ mod analyzer;
 mod archives;
 mod display;
 mod html;
+mod markdown;
 mod s3;
 
 pub use self::display::{Color, ResultColor, ResultName};
@@ -309,6 +310,8 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
         dest,
         output_templates,
     )?;
+    info!("writing markdown files");
+    markdown::write_markdown_report(ex, crates.len(), &res, dest, output_templates)?;
     info!("writing logs");
     write_logs(db, ex, crates, dest, config)?;
 

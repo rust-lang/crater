@@ -7,9 +7,14 @@ use crate::results::{
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
+pub enum ToolchainSelect {
+    Start,
+    End,
+}
+
 pub enum ReportConfig {
     Simple,
-    Complete { toolchain: usize },
+    Complete(ToolchainSelect),
 }
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
@@ -85,8 +90,10 @@ pub fn analyze_report(test: RawTestResults) -> TestResults {
 
     let mut categories = HashMap::new();
     for (cat, crates) in comparison {
-        if let ReportConfig::Complete { toolchain } = cat.report_config() {
-            categories.insert(cat, analyze_detailed(toolchain, crates));
+        if let ReportConfig::Complete(toolchain) = cat.report_config() {
+            // variants in an enum are numbered following an
+            // increasing sequence starting from 0
+            categories.insert(cat, analyze_detailed(toolchain as usize, crates));
         } else {
             categories.insert(cat, ReportCrates::Plain(crates));
         }

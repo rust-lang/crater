@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
-use crate::report::analyzer::{analyze_report, ReportConfig};
+use crate::report::analyzer::{analyze_report, ReportConfig, ToolchainSelect};
 use crate::results::{EncodedLog, EncodingType, FailureReason, ReadResults, TestResult};
 use crate::toolchain::Toolchain;
 use crate::utils;
@@ -91,8 +91,8 @@ impl Comparison {
 
     pub fn report_config(self) -> ReportConfig {
         match self {
-            Comparison::Regressed => ReportConfig::Complete { toolchain: 1 },
-            Comparison::Fixed => ReportConfig::Complete { toolchain: 0 },
+            Comparison::Regressed => ReportConfig::Complete(ToolchainSelect::End),
+            Comparison::Fixed => ReportConfig::Complete(ToolchainSelect::Start),
             Comparison::Unknown
             | Comparison::Error
             | Comparison::SpuriousRegressed

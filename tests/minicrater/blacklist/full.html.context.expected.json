@@ -1,0 +1,117 @@
+{
+  "categories": [
+    [
+      "skipped",
+      {
+        "Plain": [
+          {
+            "name": "build-fail (local)",
+            "res": "skipped",
+            "runs": [
+              null,
+              null
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
+          }
+        ]
+      }
+    ],
+    [
+      "test-pass",
+      {
+        "Plain": [
+          {
+            "name": "build-pass (local)",
+            "res": "test-pass",
+            "runs": [
+              {
+                "log": "stable/local/build-pass",
+                "res": 0
+              },
+              {
+                "log": "beta/local/build-pass",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
+          }
+        ]
+      }
+    ],
+    [
+      "test-skipped",
+      {
+        "Plain": [
+          {
+            "name": "test-fail (local)",
+            "res": "test-skipped",
+            "runs": [
+              {
+                "log": "stable/local/test-fail",
+                "res": 1
+              },
+              {
+                "log": "beta/local/test-fail",
+                "res": 1
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
+          }
+        ]
+      }
+    ]
+  ],
+  "comparison_colors": {
+    "skipped": {
+      "Striped": [
+        "#494b4a",
+        "#555555"
+      ]
+    },
+    "test-pass": {
+      "Single": "#72a156"
+    },
+    "test-skipped": {
+      "Striped": [
+        "#72a156",
+        "#80b65f"
+      ]
+    }
+  },
+  "crates_count": 3,
+  "full": true,
+  "info": {
+    "skipped": 1,
+    "test-pass": 1,
+    "test-skipped": 1
+  },
+  "nav": [
+    {
+      "active": false,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": true,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": false,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ],
+  "result_colors": [
+    {
+      "Single": "#62a156"
+    },
+    {
+      "Single": "#62a156"
+    }
+  ],
+  "result_names": [
+    "test passed",
+    "test skipped"
+  ]
+}

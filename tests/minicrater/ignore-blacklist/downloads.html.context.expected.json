@@ -1,0 +1,34 @@
+{
+  "available_archives": [
+    {
+      "name": "All the crates",
+      "path": "logs-archives/all.tar.gz"
+    },
+    {
+      "name": "test-pass crates",
+      "path": "logs-archives/test-pass.tar.gz"
+    },
+    {
+      "name": "test-fail crates",
+      "path": "logs-archives/test-fail.tar.gz"
+    }
+  ],
+  "crates_count": 3,
+  "nav": [
+    {
+      "active": false,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": false,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": true,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ]
+}

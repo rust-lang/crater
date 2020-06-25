@@ -1,0 +1,69 @@
+{
+  "categories": [
+    [
+      "spurious-fixed",
+      {
+        "Plain": [
+          {
+            "name": "memory-hungry (local)",
+            "res": "spurious-fixed",
+            "runs": [
+              {
+                "log": "stable/local/memory-hungry",
+                "res": 0
+              },
+              {
+                "log": "beta/local/memory-hungry",
+                "res": 1
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
+          }
+        ]
+      }
+    ]
+  ],
+  "comparison_colors": {
+    "spurious-fixed": {
+      "Striped": [
+        "#5630db",
+        "#5d3dcf"
+      ]
+    }
+  },
+  "crates_count": 2,
+  "full": false,
+  "info": {
+    "spurious-fixed": 1,
+    "test-pass": 1
+  },
+  "nav": [
+    {
+      "active": true,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": false,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": false,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ],
+  "result_colors": [
+    {
+      "Single": "#db3026"
+    },
+    {
+      "Single": "#65461e"
+    }
+  ],
+  "result_names": [
+    "build OOM",
+    "test OOM"
+  ]
+}

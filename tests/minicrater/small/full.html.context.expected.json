@@ -1,0 +1,105 @@
+{
+  "categories": [
+    [
+      "regressed",
+      {
+        "Tree": {
+          "count": 0,
+          "tree": {}
+        }
+      }
+    ],
+    [
+      "regressed",
+      {
+        "RootResults": {
+          "count": 1,
+          "results": {
+            "build failed (unknown)": [
+              {
+                "name": "beta-regression (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/beta-regression",
+                    "res": 0
+                  },
+                  {
+                    "log": "beta/local/beta-regression",
+                    "res": 1
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    [
+      "test-pass",
+      {
+        "Plain": [
+          {
+            "name": "build-pass (local)",
+            "res": "test-pass",
+            "runs": [
+              {
+                "log": "stable/local/build-pass",
+                "res": 0
+              },
+              {
+                "log": "beta/local/build-pass",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
+          }
+        ]
+      }
+    ]
+  ],
+  "comparison_colors": {
+    "regressed": {
+      "Single": "#db3026"
+    },
+    "test-pass": {
+      "Single": "#72a156"
+    }
+  },
+  "crates_count": 2,
+  "full": true,
+  "info": {
+    "regressed": 1,
+    "test-pass": 1
+  },
+  "nav": [
+    {
+      "active": false,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": true,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": false,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ],
+  "result_colors": [
+    {
+      "Single": "#62a156"
+    },
+    {
+      "Single": "#db3026"
+    }
+  ],
+  "result_names": [
+    "test passed",
+    "build failed (unknown)"
+  ]
+}

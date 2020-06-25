@@ -1,0 +1,50 @@
+{
+  "available_archives": [
+    {
+      "name": "All the crates",
+      "path": "logs-archives/all.tar.gz"
+    },
+    {
+      "name": "regressed crates",
+      "path": "logs-archives/regressed.tar.gz"
+    },
+    {
+      "name": "fixed crates",
+      "path": "logs-archives/fixed.tar.gz"
+    },
+    {
+      "name": "broken crates",
+      "path": "logs-archives/broken.tar.gz"
+    },
+    {
+      "name": "build-fail crates",
+      "path": "logs-archives/build-fail.tar.gz"
+    },
+    {
+      "name": "test-pass crates",
+      "path": "logs-archives/test-pass.tar.gz"
+    },
+    {
+      "name": "test-fail crates",
+      "path": "logs-archives/test-fail.tar.gz"
+    }
+  ],
+  "crates_count": 16,
+  "nav": [
+    {
+      "active": false,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": false,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": true,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ]
+}

@@ -243,6 +243,8 @@ pub enum Crater {
         dest: Dest,
         #[structopt(name = "force", long = "force")]
         force: bool,
+        #[structopt(name = "output-templates", long = "output-templates")]
+        output_templates: bool,
     },
 
     #[structopt(name = "publish-report", about = "publish the experiment report to S3")]
@@ -258,6 +260,8 @@ pub enum Crater {
         s3_prefix: report::S3Prefix,
         #[structopt(name = "force", long = "force")]
         force: bool,
+        #[structopt(name = "output-templates", long = "output-templates")]
+        output_templates: bool,
     },
 
     #[structopt(name = "server")]
@@ -503,6 +507,7 @@ impl Crater {
                 ref ex,
                 ref dest,
                 force,
+                output_templates,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
@@ -527,6 +532,7 @@ impl Crater {
                         &experiment.get_crates(&db)?,
                         &report::FileWriter::create(dest.0.clone())?,
                         &config,
+                        output_templates,
                     );
 
                     if let Err(err) = res {
@@ -543,6 +549,7 @@ impl Crater {
                 ref ex,
                 ref s3_prefix,
                 force,
+                output_templates,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
@@ -569,6 +576,7 @@ impl Crater {
                         &experiment.get_crates(&db)?,
                         &report::S3Writer::create(client, s3_prefix.clone())?,
                         &config,
+                        output_templates,
                     );
 
                     if let Err(err) = res {

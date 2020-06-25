@@ -6,7 +6,7 @@ use crate::report::{
     ResultColor, ResultName, TestResults,
 };
 use crate::results::{EncodingType, FailureReason, TestResult};
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 #[derive(Serialize)]
 struct NavbarItem {
@@ -27,11 +27,11 @@ enum ReportCratesHTML {
     Plain(Vec<CrateResultHTML>),
     Tree {
         count: u32,
-        tree: HashMap<String, Vec<CrateResultHTML>>,
+        tree: IndexMap<String, Vec<CrateResultHTML>>,
     },
     RootResults {
         count: u32,
-        results: HashMap<String, Vec<CrateResultHTML>>,
+        results: IndexMap<String, Vec<CrateResultHTML>>,
     },
 }
 
@@ -62,10 +62,10 @@ struct ResultsContext<'a> {
     ex: &'a Experiment,
     nav: Vec<NavbarItem>,
     categories: Vec<(Comparison, ReportCratesHTML)>,
-    info: HashMap<Comparison, u32>,
+    info: IndexMap<Comparison, u32>,
     full: bool,
     crates_count: usize,
-    comparison_colors: HashMap<Comparison, Color>,
+    comparison_colors: IndexMap<Comparison, Color>,
     result_colors: Vec<Color>,
     result_names: Vec<String>,
 }
@@ -103,8 +103,8 @@ fn write_report<W: ReportWriter>(
     dest: &W,
     output_templates: bool,
 ) -> Fallible<()> {
-    let mut comparison_colors = HashMap::new();
-    let mut test_results_to_int = HashMap::new();
+    let mut comparison_colors = IndexMap::new();
+    let mut test_results_to_int = IndexMap::new();
     let mut result_colors = Vec::new();
     let mut result_names = Vec::new();
 
@@ -165,7 +165,7 @@ fn write_report<W: ReportWriter>(
                                     .collect::<Vec<_>>(),
                             )
                         })
-                        .collect::<HashMap<_, _>>();
+                        .collect::<IndexMap<_, _>>();
                     let results = results
                         .into_iter()
                         .map(|(res, krates)| {
@@ -182,7 +182,7 @@ fn write_report<W: ReportWriter>(
                                     .collect::<Vec<_>>(),
                             )
                         })
-                        .collect::<HashMap<_, _>>();
+                        .collect::<IndexMap<_, _>>();
 
                     vec![
                         (

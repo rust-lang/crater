@@ -4,7 +4,7 @@ use difference::Changeset;
 use rand::{self, distributions::Alphanumeric, Rng};
 use serde_json::{self, Value};
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 trait CommandMinicraterExt {
@@ -43,12 +43,102 @@ impl Default for MinicraterRun {
     }
 }
 
+fn expand_file_names(input: &str, add: &str) -> String {
+    let mut file = input.to_string();
+    file.insert_str(file.rfind('.').expect("no file extension given"), add);
+    file
+}
+
+trait Compare {
+    fn file_names(&self) -> Vec<String>;
+    fn format(&self, input: Vec<u8>) -> Vec<u8>;
+    fn compare(&self, ex_dir: &Path, file_dir: &Path) -> bool {
+        let file_names = self.file_names();
+        let mut failed = false;
+        for file in &file_names {
+            let actual_file = ex_dir.join(expand_file_names(file, ".actual"));
+            let expected_file = ex_dir.join(expand_file_names(file, ".expected"));
+            // Load actual report
+            let raw_report =
+                ::std::fs::read(file_dir.join(file)).expect(&format!("failed to read {}", file));
+            // Test report format
+            let actual_report = self.format(raw_report);
+
+            // Load the expected report
+            let expected_report = ::std::fs::read(&expected_file).unwrap_or(Vec::new());
+
+            // Write the actual JSON report
+            ::std::fs::write(&actual_file, &actual_report)
+                .expect("failed to write copy of the json report");
+
+            let changeset = Changeset::new(
+                &String::from_utf8(expected_report)
+                    .expect("invalid utf-8 in the expected report")
+                    .replace("\r\n", "\n"),
+                &String::from_utf8(actual_report).expect("invalid utf-8 in the actual report"),
+                "\n",
+            );
+            if changeset.distance != 0 {
+                eprintln!(
+                    "Difference between expected and actual reports:\n{}",
+                    changeset
+                );
+                eprintln!("To expect the new report in the future run:");
+                eprintln!(
+                    "$ cp {} {}\n",
+                    actual_file.to_string_lossy(),
+                    expected_file.to_string_lossy()
+                );
+                failed = true;
+            }
+        }
+        return failed;
+    }
+}
+
+enum Reports {
+    Raw,
+    HTMLContext,
+}
+
+impl Compare for Reports {
+    fn file_names(&self) -> Vec<String> {
+        match *self {
+            Self::Raw => vec!["results.json".into()],
+            Self::HTMLContext => vec![
+                "index.html.context.json".into(),
+                "downloads.html.context.json".into(),
+                "full.html.context.json".into(),
+            ],
+        }
+    }
+
+    fn format(&self, input: Vec<u8>) -> Vec<u8> {
+        let parsed_report = match *self {
+            Self::HTMLContext => {
+                if let Value::Object(mut map) =
+                    serde_json::from_slice(&input).expect("invalid json report")
+                {
+                    // drop experiment field as it contains non deterministic values
+                    map.remove("ex");
+                    Value::Object(map)
+                } else {
+                    panic!("invalid json report");
+                }
+            }
+            Self::Raw => serde_json::from_slice(&input).expect("invalid json report"),
+        };
+        let mut actual_report = serde_json::to_vec_pretty(&parsed_report).unwrap();
+        actual_report.push(b'\n');
+
+        actual_report
+    }
+}
+
 impl MinicraterRun {
     pub(super) fn execute(&self) {
         let ex_dir = PathBuf::from("tests").join("minicrater").join(self.ex);
         let config_file = ex_dir.join("config.toml");
-        let expected_file = ex_dir.join("results.expected.json");
-        let actual_file = ex_dir.join("results.actual.json");
 
         let threads_count = if self.multithread { num_cpus::get() } else { 1 };
 
@@ -97,16 +187,17 @@ impl MinicraterRun {
             .env("CRATER_CONFIG", &config_file)
             .minicrater_exec();
 
-        // Generate the report
+        let mut failed = false;
+
         Command::crater()
             .args(&["gen-report", &ex_arg])
             .env("CRATER_CONFIG", &config_file)
             .arg(report_dir.path())
+            .arg("--output-templates")
             .minicrater_exec();
 
-        // Read the JSON report
-        let json_report = ::std::fs::read(report_dir.path().join("results.json"))
-            .expect("failed to read json report");
+        failed |= Reports::Raw.compare(&ex_dir, report_dir.path());
+        failed |= Reports::HTMLContext.compare(&ex_dir, report_dir.path());
 
         // Delete the experiment
         Command::crater()
@@ -114,37 +205,7 @@ impl MinicraterRun {
             .env("CRATER_CONFIG", &config_file)
             .minicrater_exec();
 
-        // Load the generated JSON report
-        let parsed_report: Value =
-            serde_json::from_slice(&json_report).expect("invalid json report");
-        let mut actual_report = serde_json::to_vec_pretty(&parsed_report).unwrap();
-        actual_report.push(b'\n');
-
-        // Load the expected JSON report
-        let expected_report = ::std::fs::read(&expected_file).unwrap_or(Vec::new());
-
-        // Write the actual JSON report
-        ::std::fs::write(&actual_file, &actual_report)
-            .expect("failed to write copy of the json report");
-
-        let changeset = Changeset::new(
-            &String::from_utf8(expected_report)
-                .expect("invalid utf-8 in the expected report")
-                .replace("\r\n", "\n"),
-            &String::from_utf8(actual_report).expect("invalid utf-8 in the actual report"),
-            "\n",
-        );
-        if changeset.distance != 0 {
-            eprintln!(
-                "Difference between expected and actual reports:\n{}",
-                changeset
-            );
-            eprintln!("To expect the new report in the future run:");
-            eprintln!(
-                "$ cp {} {}\n",
-                actual_file.to_string_lossy(),
-                expected_file.to_string_lossy()
-            );
+        if failed {
             panic!("invalid report generated by Crater");
         }
     }

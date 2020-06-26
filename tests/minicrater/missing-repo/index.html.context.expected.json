@@ -1,0 +1,28 @@
+{
+  "categories": [],
+  "comparison_colors": {},
+  "crates_count": 1,
+  "full": false,
+  "info": {
+    "broken": 1
+  },
+  "nav": [
+    {
+      "active": true,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": false,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": false,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ],
+  "result_colors": [],
+  "result_names": []
+}

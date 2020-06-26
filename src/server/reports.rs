@@ -24,7 +24,7 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
     let writer = report::S3Writer::create(Box::new(client), dest.parse()?)?;
 
     let crates = ex.get_crates(&data.db)?;
-    let res = report::gen(results, &ex, &crates, &writer, &data.config)?;
+    let res = report::gen(results, &ex, &crates, &writer, &data.config, false)?;
 
     //remove metrics about completed experiments
     data.metrics.on_complete_experiment(&ex.name)?;

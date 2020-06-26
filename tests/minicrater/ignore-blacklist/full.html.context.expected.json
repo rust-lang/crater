@@ -1,0 +1,121 @@
+{
+  "categories": [
+    [
+      "build-fail",
+      {
+        "Plain": [
+          {
+            "name": "build-fail (local)",
+            "res": "build-fail",
+            "runs": [
+              {
+                "log": "stable/local/build-fail",
+                "res": 0
+              },
+              {
+                "log": "beta/local/build-fail",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
+          }
+        ]
+      }
+    ],
+    [
+      "test-pass",
+      {
+        "Plain": [
+          {
+            "name": "build-pass (local)",
+            "res": "test-pass",
+            "runs": [
+              {
+                "log": "stable/local/build-pass",
+                "res": 1
+              },
+              {
+                "log": "beta/local/build-pass",
+                "res": 1
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
+          }
+        ]
+      }
+    ],
+    [
+      "test-fail",
+      {
+        "Plain": [
+          {
+            "name": "test-fail (local)",
+            "res": "test-fail",
+            "runs": [
+              {
+                "log": "stable/local/test-fail",
+                "res": 2
+              },
+              {
+                "log": "beta/local/test-fail",
+                "res": 2
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
+          }
+        ]
+      }
+    ]
+  ],
+  "comparison_colors": {
+    "build-fail": {
+      "Single": "#65461e"
+    },
+    "test-fail": {
+      "Single": "#788843"
+    },
+    "test-pass": {
+      "Single": "#72a156"
+    }
+  },
+  "crates_count": 3,
+  "full": true,
+  "info": {
+    "build-fail": 1,
+    "test-fail": 1,
+    "test-pass": 1
+  },
+  "nav": [
+    {
+      "active": false,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": true,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": false,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ],
+  "result_colors": [
+    {
+      "Single": "#db3026"
+    },
+    {
+      "Single": "#62a156"
+    },
+    {
+      "Single": "#65461e"
+    }
+  ],
+  "result_names": [
+    "build failed (unknown)",
+    "test passed",
+    "test failed (unknown)"
+  ]
+}

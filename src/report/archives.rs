@@ -5,7 +5,7 @@ use crate::prelude::*;
 use crate::report::{compare, ReportWriter};
 use crate::results::{EncodedLog, EncodingType, ReadResults};
 use flate2::{write::GzEncoder, Compression};
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use tar::{Builder as TarBuilder, Header as TarHeader};
 
 #[derive(Serialize)]
@@ -23,7 +23,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
 ) -> Fallible<Vec<Archive>> {
     let mut archives = Vec::new();
     let mut all = TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()));
-    let mut by_comparison = HashMap::new();
+    let mut by_comparison = IndexMap::new();
 
     for krate in crates {
         if config.should_skip(krate) {
@@ -86,7 +86,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
         path: "logs-archives/all.tar.gz".to_string(),
     });
 
-    for (comparison, archive) in by_comparison.drain() {
+    for (comparison, archive) in by_comparison.drain(..) {
         let data = archive.into_inner()?.finish()?;
         dest.write_bytes(
             &format!("logs-archives/{}.tar.gz", comparison),

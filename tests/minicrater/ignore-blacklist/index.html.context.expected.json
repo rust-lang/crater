@@ -1,0 +1,30 @@
+{
+  "categories": [],
+  "comparison_colors": {},
+  "crates_count": 3,
+  "full": false,
+  "info": {
+    "build-fail": 1,
+    "test-fail": 1,
+    "test-pass": 1
+  },
+  "nav": [
+    {
+      "active": true,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": false,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": false,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ],
+  "result_colors": [],
+  "result_names": []
+}

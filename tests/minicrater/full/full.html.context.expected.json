@@ -1,0 +1,437 @@
+{
+  "categories": [
+    [
+      "regressed",
+      {
+        "Tree": {
+          "count": 1,
+          "tree": {
+            "rust-lang/crater/f190933e896443e285e3bb6962fb87d7439b8d65": [
+              {
+                "name": "beta-faulty-deps (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/beta-faulty-deps",
+                    "res": 0
+                  },
+                  {
+                    "log": "beta/local/beta-faulty-deps",
+                    "res": 1
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    [
+      "regressed",
+      {
+        "RootResults": {
+          "count": 4,
+          "results": {
+            "build ICE": [
+              {
+                "name": "ice-regression (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/ice-regression",
+                    "res": 4
+                  },
+                  {
+                    "log": "beta/local/ice-regression",
+                    "res": 5
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
+              }
+            ],
+            "build failed (unknown)": [
+              {
+                "name": "beta-regression (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/beta-regression",
+                    "res": 0
+                  },
+                  {
+                    "log": "beta/local/beta-regression",
+                    "res": 2
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
+              }
+            ],
+            "build-fail:compiler-error(E0013)": [
+              {
+                "name": "error-code (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/error-code",
+                    "res": 0
+                  },
+                  {
+                    "log": "beta/local/error-code",
+                    "res": 3
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+              }
+            ],
+            "build-fail:compiler-error(E0015)": [
+              {
+                "name": "error-code (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/error-code",
+                    "res": 0
+                  },
+                  {
+                    "log": "beta/local/error-code",
+                    "res": 3
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    [
+      "fixed",
+      {
+        "Tree": {
+          "count": 0,
+          "tree": {}
+        }
+      }
+    ],
+    [
+      "fixed",
+      {
+        "RootResults": {
+          "count": 1,
+          "results": {
+            "build failed (unknown)": [
+              {
+                "name": "beta-fixed (local)",
+                "res": "fixed",
+                "runs": [
+                  {
+                    "log": "stable/local/beta-fixed",
+                    "res": 2
+                  },
+                  {
+                    "log": "beta/local/beta-fixed",
+                    "res": 0
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-fixed"
+              },
+              {
+                "name": "network-access (local)",
+                "res": "fixed",
+                "runs": [
+                  {
+                    "log": "stable/local/network-access",
+                    "res": 2
+                  },
+                  {
+                    "log": "beta/local/network-access",
+                    "res": 6
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    [
+      "broken",
+      {
+        "Plain": [
+          {
+            "name": "broken-cargotoml (local)",
+            "res": "broken",
+            "runs": [
+              {
+                "log": "stable/local/broken-cargotoml",
+                "res": 7
+              },
+              {
+                "log": "beta/local/broken-cargotoml",
+                "res": 7
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/broken-cargotoml"
+          },
+          {
+            "name": "yanked-deps (local)",
+            "res": "broken",
+            "runs": [
+              {
+                "log": "stable/local/yanked-deps",
+                "res": 8
+              },
+              {
+                "log": "beta/local/yanked-deps",
+                "res": 8
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/yanked-deps"
+          }
+        ]
+      }
+    ],
+    [
+      "build-fail",
+      {
+        "Plain": [
+          {
+            "name": "build-fail (local)",
+            "res": "build-fail",
+            "runs": [
+              {
+                "log": "stable/local/build-fail",
+                "res": 2
+              },
+              {
+                "log": "beta/local/build-fail",
+                "res": 2
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
+          },
+          {
+            "name": "faulty-deps (local)",
+            "res": "build-fail",
+            "runs": [
+              {
+                "log": "stable/local/faulty-deps",
+                "res": 9
+              },
+              {
+                "log": "beta/local/faulty-deps",
+                "res": 9
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/faulty-deps"
+          }
+        ]
+      }
+    ],
+    [
+      "test-pass",
+      {
+        "Plain": [
+          {
+            "name": "build-pass (local)",
+            "res": "test-pass",
+            "runs": [
+              {
+                "log": "stable/local/build-pass",
+                "res": 0
+              },
+              {
+                "log": "beta/local/build-pass",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
+          },
+          {
+            "name": "clippy-warn (local)",
+            "res": "test-pass",
+            "runs": [
+              {
+                "log": "stable/local/clippy-warn",
+                "res": 0
+              },
+              {
+                "log": "beta/local/clippy-warn",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
+          },
+          {
+            "name": "missing-examples (local)",
+            "res": "test-pass",
+            "runs": [
+              {
+                "log": "stable/local/missing-examples",
+                "res": 0
+              },
+              {
+                "log": "beta/local/missing-examples",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/missing-examples"
+          },
+          {
+            "name": "outdated-lockfile (local)",
+            "res": "test-pass",
+            "runs": [
+              {
+                "log": "stable/local/outdated-lockfile",
+                "res": 0
+              },
+              {
+                "log": "beta/local/outdated-lockfile",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/outdated-lockfile"
+          }
+        ]
+      }
+    ],
+    [
+      "skipped",
+      {
+        "Plain": [
+          {
+            "name": "memory-hungry (local)",
+            "res": "skipped",
+            "runs": [
+              null,
+              null
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
+          }
+        ]
+      }
+    ],
+    [
+      "test-fail",
+      {
+        "Plain": [
+          {
+            "name": "test-fail (local)",
+            "res": "test-fail",
+            "runs": [
+              {
+                "log": "stable/local/test-fail",
+                "res": 6
+              },
+              {
+                "log": "beta/local/test-fail",
+                "res": 6
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
+          }
+        ]
+      }
+    ]
+  ],
+  "comparison_colors": {
+    "broken": {
+      "Single": "#44176e"
+    },
+    "build-fail": {
+      "Single": "#65461e"
+    },
+    "fixed": {
+      "Single": "#5630db"
+    },
+    "regressed": {
+      "Single": "#db3026"
+    },
+    "skipped": {
+      "Striped": [
+        "#494b4a",
+        "#555555"
+      ]
+    },
+    "test-fail": {
+      "Single": "#788843"
+    },
+    "test-pass": {
+      "Single": "#72a156"
+    }
+  },
+  "crates_count": 16,
+  "full": true,
+  "info": {
+    "broken": 2,
+    "build-fail": 2,
+    "fixed": 2,
+    "regressed": 4,
+    "skipped": 1,
+    "test-fail": 1,
+    "test-pass": 4
+  },
+  "nav": [
+    {
+      "active": false,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": true,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": false,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ],
+  "result_colors": [
+    {
+      "Single": "#62a156"
+    },
+    {
+      "Single": "#db3026"
+    },
+    {
+      "Single": "#db3026"
+    },
+    {
+      "Single": "#db3026"
+    },
+    {
+      "Single": "#db3026"
+    },
+    {
+      "Single": "#db3026"
+    },
+    {
+      "Single": "#65461e"
+    },
+    {
+      "Single": "#44176e"
+    },
+    {
+      "Single": "#44176e"
+    },
+    {
+      "Single": "#db3026"
+    }
+  ],
+  "result_names": [
+    "test passed",
+    "build faulty deps",
+    "build failed (unknown)",
+    "build compiler error",
+    "build compiler error",
+    "build ICE",
+    "test failed (unknown)",
+    "broken Cargo.toml",
+    "deps yanked",
+    "build faulty deps"
+  ]
+}

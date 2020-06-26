@@ -6,7 +6,7 @@ use crate::report::{
     ResultColor, ResultName, TestResults,
 };
 use crate::results::{EncodingType, FailureReason, TestResult};
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 #[derive(Serialize)]
 struct NavbarItem {
@@ -27,11 +27,11 @@ enum ReportCratesHTML {
     Plain(Vec<CrateResultHTML>),
     Tree {
         count: u32,
-        tree: HashMap<String, Vec<CrateResultHTML>>,
+        tree: IndexMap<String, Vec<CrateResultHTML>>,
     },
     RootResults {
         count: u32,
-        results: HashMap<String, Vec<CrateResultHTML>>,
+        results: IndexMap<String, Vec<CrateResultHTML>>,
     },
 }
 
@@ -62,11 +62,10 @@ struct ResultsContext<'a> {
     ex: &'a Experiment,
     nav: Vec<NavbarItem>,
     categories: Vec<(Comparison, ReportCratesHTML)>,
-    info: HashMap<Comparison, u32>,
+    info: IndexMap<Comparison, u32>,
     full: bool,
     crates_count: usize,
-
-    comparison_colors: HashMap<Comparison, Color>,
+    comparison_colors: IndexMap<Comparison, Color>,
     result_colors: Vec<Color>,
     result_names: Vec<String>,
 }
@@ -102,9 +101,10 @@ fn write_report<W: ReportWriter>(
     full: bool,
     to: &str,
     dest: &W,
+    output_templates: bool,
 ) -> Fallible<()> {
-    let mut comparison_colors = HashMap::new();
-    let mut test_results_to_int = HashMap::new();
+    let mut comparison_colors = IndexMap::new();
+    let mut test_results_to_int = IndexMap::new();
     let mut result_colors = Vec::new();
     let mut result_names = Vec::new();
 
@@ -165,7 +165,7 @@ fn write_report<W: ReportWriter>(
                                     .collect::<Vec<_>>(),
                             )
                         })
-                        .collect::<HashMap<_, _>>();
+                        .collect::<IndexMap<_, _>>();
                     let results = results
                         .into_iter()
                         .map(|(res, krates)| {
@@ -182,7 +182,7 @@ fn write_report<W: ReportWriter>(
                                     .collect::<Vec<_>>(),
                             )
                         })
-                        .collect::<HashMap<_, _>>();
+                        .collect::<IndexMap<_, _>>();
 
                     vec![
                         (
@@ -227,6 +227,14 @@ fn write_report<W: ReportWriter>(
     let html = minifier::html::minify(&assets::render_template("report/results.html", &context)?);
     dest.write_string(to, html.into(), &mime::TEXT_HTML)?;
 
+    if output_templates {
+        dest.write_string(
+            [to, ".context.json"].concat(),
+            serde_json::to_string(&context)?.into(),
+            &mime::APPLICATION_JSON,
+        )?;
+    }
+
     Ok(())
 }
 
@@ -235,6 +243,7 @@ fn write_downloads<W: ReportWriter>(
     crates_count: usize,
     available_archives: Vec<Archive>,
     dest: &W,
+    output_templates: bool,
 ) -> Fallible<()> {
     let context = DownloadsContext {
         ex,
@@ -247,6 +256,14 @@ fn write_downloads<W: ReportWriter>(
     let html = minifier::html::minify(&assets::render_template("report/downloads.html", &context)?);
     dest.write_string("downloads.html", html.into(), &mime::TEXT_HTML)?;
 
+    if output_templates {
+        dest.write_string(
+            "downloads.html.context.json",
+            serde_json::to_string(&context)?.into(),
+            &mime::APPLICATION_JSON,
+        )?;
+    }
+
     Ok(())
 }
 
@@ -256,12 +273,29 @@ pub fn write_html_report<W: ReportWriter>(
     res: &TestResults,
     available_archives: Vec<Archive>,
     dest: &W,
+    output_templates: bool,
 ) -> Fallible<()> {
     let js_in = assets::load("report.js")?;
     let css_in = assets::load("report.css")?;
-    write_report(ex, crates_count, res, false, "index.html", dest)?;
-    write_report(ex, crates_count, res, true, "full.html", dest)?;
-    write_downloads(ex, crates_count, available_archives, dest)?;
+    write_report(
+        ex,
+        crates_count,
+        res,
+        false,
+        "index.html",
+        dest,
+        output_templates,
+    )?;
+    write_report(
+        ex,
+        crates_count,
+        res,
+        true,
+        "full.html",
+        dest,
+        output_templates,
+    )?;
+    write_downloads(ex, crates_count, available_archives, dest, output_templates)?;
 
     info!("copying static assets");
     dest.write_bytes(

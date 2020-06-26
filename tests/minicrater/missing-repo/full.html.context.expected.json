@@ -1,0 +1,61 @@
+{
+  "categories": [
+    [
+      "broken",
+      {
+        "Plain": [
+          {
+            "name": "ghost.missing",
+            "res": "broken",
+            "runs": [
+              {
+                "log": "stable/gh/ghost.missing",
+                "res": 0
+              },
+              {
+                "log": "beta/gh/ghost.missing",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/ghost/missing"
+          }
+        ]
+      }
+    ]
+  ],
+  "comparison_colors": {
+    "broken": {
+      "Single": "#44176e"
+    }
+  },
+  "crates_count": 1,
+  "full": true,
+  "info": {
+    "broken": 1
+  },
+  "nav": [
+    {
+      "active": false,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": true,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": false,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ],
+  "result_colors": [
+    {
+      "Single": "#44176e"
+    }
+  ],
+  "result_names": [
+    "missing repo"
+  ]
+}

@@ -4,8 +4,8 @@ use crate::results::{
     FailureReason,
     TestResult::{self, BuildFail},
 };
+use indexmap::IndexMap;
 use std::collections::BTreeSet;
-use std::collections::HashMap;
 
 pub enum ToolchainSelect {
     Start,
@@ -22,20 +22,20 @@ pub enum ReportConfig {
 pub enum ReportCrates {
     Plain(Vec<CrateResult>),
     Complete {
-        tree: HashMap<Crate, Vec<CrateResult>>,
-        results: HashMap<TestResult, Vec<CrateResult>>,
+        tree: IndexMap<Crate, Vec<CrateResult>>,
+        results: IndexMap<TestResult, Vec<CrateResult>>,
     },
 }
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
 pub struct TestResults {
-    pub categories: HashMap<Comparison, ReportCrates>,
-    pub info: HashMap<Comparison, u32>,
+    pub categories: IndexMap<Comparison, ReportCrates>,
+    pub info: IndexMap<Comparison, u32>,
 }
 
 fn analyze_detailed(toolchain: usize, crates: Vec<CrateResult>) -> ReportCrates {
-    let mut tree = HashMap::new();
-    let mut results = HashMap::new();
+    let mut tree = IndexMap::new();
+    let mut results = IndexMap::new();
 
     let mut root = Vec::new();
     for krate in crates {
@@ -75,7 +75,7 @@ fn analyze_detailed(toolchain: usize, crates: Vec<CrateResult>) -> ReportCrates 
 }
 
 pub fn analyze_report(test: RawTestResults) -> TestResults {
-    let mut comparison = HashMap::new();
+    let mut comparison = IndexMap::new();
     for krate in test.crates {
         comparison
             .entry(krate.res)
@@ -86,9 +86,9 @@ pub fn analyze_report(test: RawTestResults) -> TestResults {
     let info = comparison
         .iter()
         .map(|(&key, vec)| (key, vec.len() as u32))
-        .collect::<HashMap<_, _>>();
+        .collect::<IndexMap<_, _>>();
 
-    let mut categories = HashMap::new();
+    let mut categories = IndexMap::new();
     for (cat, crates) in comparison {
         if let ReportConfig::Complete(toolchain) = cat.report_config() {
             // variants in an enum are numbered following an
@@ -191,10 +191,10 @@ mod tests {
                     panic!("invalid crate type")
                 }
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<IndexMap<_, _>>();
         let analyzed = analyze_report(raw);
 
-        let mut info = HashMap::new();
+        let mut info = IndexMap::new();
         info.insert(Comparison::Regressed, 5);
         info.insert(Comparison::Fixed, 2);
         info.insert(Comparison::SameTestPass, 1);
@@ -202,7 +202,7 @@ mod tests {
         macro_rules! create_results {
             ($src:expr, $($key:expr => ($($krate:expr),*)),*) => {
                 {
-                    let mut map = HashMap::new();
+                    let mut map = IndexMap::new();
                     $(
                         let mut crates = Vec::new();
                         $(
@@ -248,7 +248,7 @@ mod tests {
 
         let test_pass = ReportCrates::Plain(vec![crates.remove("test-pass").unwrap()]);
 
-        let mut categories = HashMap::new();
+        let mut categories = IndexMap::new();
         categories.insert(Comparison::Regressed, regressed);
         categories.insert(Comparison::Fixed, fixed);
         categories.insert(Comparison::SameTestPass, test_pass);

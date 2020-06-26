@@ -90,14 +90,10 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
                 ex.set_report_url(&data.db, &report_url)?;
                 info!("report for the experiment {} generated successfully!", name);
 
-                let (mut regressed, mut fixed) = (0, 0);
-                res.crates.iter().for_each(|krate| {
-                    match krate.res {
-                        Comparison::Regressed => regressed += 1,
-                        Comparison::Fixed => fixed += 1,
-                        _ => (),
-                    };
-                });
+                let (regressed, fixed) = (
+                    res.info.get(&Comparison::Regressed).unwrap_or(&0),
+                    res.info.get(&Comparison::Fixed).unwrap_or(&0),
+                );
 
                 if let Some(ref github_issue) = ex.github_issue {
                     Message::new()
@@ -108,7 +104,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
                                 " {} regressed and {} fixed ({} total)",
                                 regressed,
                                 fixed,
-                                res.crates.len(),
+                                res.info.values().sum::<u32>(),
                             ),
                         )
                         .line(

@@ -78,3 +78,9 @@ macro_rules! impl_serde_from_parse {
         }
     };
 }
+
+macro_rules! btreeset {
+    ($($x:expr),+ $(,)?) => (
+        vec![$($x),+].into_iter().collect::<BTreeSet<_>>()
+    );
+}

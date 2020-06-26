@@ -1,4 +1,5 @@
 {% extends "report/layout.html" %}
+{% import "macros.html" as macros %}
 
 {% block title %} {{ ex.name }} - Crater report {% endblock %}
 
@@ -28,33 +29,63 @@
 
 {% block body %}
     {% if categories %}
-        {% for name, crates in categories %}
-        <div class="category">
-            <div class="header c{{ name }} toggle" data-toggle="#crates-{{ name }}">
-                {{ name }} ({{ crates|length }})
-            </div>
-
-            <div class="crates hidden" id="crates-{{ name }}">
-                {% for crate in crates %}
-                    <div class="crate">
-                        <a href="{{ crate.url|safe }}" target="_blank" rel="noopener">{{ crate.name }}</a>
-                        {% for run in crate.runs %}
-                            <span class="run">
-                                {% if run %}
-                                    <b class="r{{ run.res }}"></b>
-                                    <a href="{{ run.log|safe }}/log.txt">
-                                        {{ result_names[run.res] }}
-                                    </a>
-                                {% else %}
-                                    <b class="c{{ crate.res }}"></b>
-                                    {{ crate.res }}
-                                {% endif %}
-                            </span>
+        {% for iter in categories %}
+            {% set name = iter.0 %}
+            {% set crates = iter.1 %}
+            <div class="category">
+                {% if crates.Plain %}
+                    <div class="header c{{ name }} toggle" data-toggle="#crt-{{ name }}">
+                        {{ name }} ({{ crates.Plain|length }})
+                    </div>
+                    <div class="crates hidden" id="crt-{{ name }}">
+                        {% for crate in crates.Plain %}
+                            {{ macros::crate_div(crate=crate) }}
                         {% endfor %}
                     </div>
-                {% endfor %}
+                {% elif crates.Tree and crates.Tree.count > 0 %}
+                    <div class="header c{{ name }} toggle" data-toggle="#crt-{{ name }}-tr">
+                        {{ name }}: dependencies ({{ crates.Tree.count }} root crates, {{info[name]}} {{ name }} crates in total) 
+                    </div>
+                    <div class="crates hidden" id="crt-{{ name }}-tr">
+                    {% for root, subcrates in crates.Tree.tree %}
+                            <div class="category">
+                                <div class="flex toggle" data-toggle="#{{ name }}-tr{{ loop.index }}">
+                                    <div class="header c{{ name}} subheader">{{ name}}</div>
+                                    <div class="header header-background">
+                                        {{ root }} ({{ subcrates|length }})
+                                    </div>
+                                </div>
+                                <div class="crates" id="{{ name }}-tr{{ loop.index }}">
+                                    {% for crate in subcrates %}
+                                        {{ macros::crate_div(crate=crate) }}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                    {% endfor %}
+                    </div>
+                {% elif crates.RootResults %}
+                    <div class="header c{{ name }} toggle" data-toggle="#crt-{{ name }}-rt">
+                        {{ name }}: root results ({{ crates.RootResults.count }} different results, {{info[name]}} {{ name }} crates in total)
+                    </div>
+                    <div class="crates hidden" id="crt-{{ name }}-rt">
+                    {% for result, subcrates in crates.RootResults.results %}
+                            <div class="category">
+                                <div class="flex toggle" data-toggle="#{{ name }}-rt{{ loop.index }}">
+                                    <div class="header c{{ name}} subheader">{{ name}}</div>
+                                    <div class="header header-background">
+                                        {{ result }} ({{ subcrates|length }})
+                                    </div>
+                                </div>
+                                <div class="crates" id="{{ name }}-rt{{ loop.index }}">
+                                    {% for crate in subcrates %}
+                                        {{ macros::crate_div(crate=crate) }}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                    {% endfor %}
+                    </div>
+                {% endif %}
             </div>
-        </div>
         {% endfor %}
     {% else %}
         <div class="nothing">

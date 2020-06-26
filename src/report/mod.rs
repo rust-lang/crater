@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
+use crate::report::analyzer::{analyze_report, ReportConfig, ToolchainSelect};
 use crate::results::{EncodedLog, EncodingType, FailureReason, ReadResults, TestResult};
 use crate::toolchain::Toolchain;
 use crate::utils;
@@ -18,6 +19,7 @@ use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
+mod analyzer;
 mod archives;
 mod display;
 mod html;
@@ -25,6 +27,7 @@ mod s3;
 
 pub use self::display::{Color, ResultColor, ResultName};
 pub use self::s3::{get_client_for_bucket, S3Prefix, S3Writer};
+pub use analyzer::TestResults;
 
 pub(crate) const REPORT_ENCODE_SET: AsciiSet = percent_encoding::CONTROLS
     .add(b' ')
@@ -39,10 +42,11 @@ pub(crate) const REPORT_ENCODE_SET: AsciiSet = percent_encoding::CONTROLS
     .add(b'+');
 
 #[derive(Serialize, Deserialize)]
-pub struct TestResults {
+pub struct RawTestResults {
     pub crates: Vec<CrateResult>,
 }
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CrateResult {
     name: String,
@@ -84,8 +88,26 @@ impl Comparison {
             | Comparison::SameTestPass => false,
         }
     }
+
+    pub fn report_config(self) -> ReportConfig {
+        match self {
+            Comparison::Regressed => ReportConfig::Complete(ToolchainSelect::End),
+            Comparison::Fixed => ReportConfig::Complete(ToolchainSelect::Start),
+            Comparison::Unknown
+            | Comparison::Error
+            | Comparison::SpuriousRegressed
+            | Comparison::SpuriousFixed
+            | Comparison::Skipped
+            | Comparison::Broken
+            | Comparison::SameBuildFail
+            | Comparison::SameTestFail
+            | Comparison::SameTestSkipped
+            | Comparison::SameTestPass => ReportConfig::Simple,
+        }
+    }
 }
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 #[derive(Serialize, Deserialize, Clone)]
 struct BuildTestResult {
     res: TestResult,
@@ -154,7 +176,7 @@ pub fn generate_report<DB: ReadResults>(
     config: &Config,
     ex: &Experiment,
     crates: &[Crate],
-) -> Fallible<TestResults> {
+) -> Fallible<RawTestResults> {
     let mut crates = crates.to_vec();
     //crate ids are unique so unstable sort is equivalent to stable sort but is generally faster
     crates.sort_unstable_by(|a, b| a.id().cmp(&b.id()));
@@ -196,7 +218,7 @@ pub fn generate_report<DB: ReadResults>(
         })
         .collect::<Fallible<Vec<_>>>()?;
 
-    Ok(TestResults { crates: res })
+    Ok(RawTestResults { crates: res })
 }
 
 const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
@@ -254,13 +276,13 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     dest: &W,
     config: &Config,
 ) -> Fallible<TestResults> {
-    let res = generate_report(db, config, ex, crates)?;
+    let raw = generate_report(db, config, ex, crates)?;
 
     info!("writing results to {}", dest);
     info!("writing metadata");
     dest.write_string(
         "results.json",
-        serde_json::to_string(&res)?.into(),
+        serde_json::to_string(&raw)?.into(),
         &mime::APPLICATION_JSON,
     )?;
     dest.write_string(
@@ -270,10 +292,11 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     )?;
     dest.write_string(
         "retry-regressed-list.txt",
-        gen_retry_list(&res).into(),
+        gen_retry_list(&raw).into(),
         &mime::TEXT_PLAIN_UTF_8,
     )?;
 
+    let res = analyze_report(raw);
     info!("writing archives");
     let available_archives = archives::write_logs_archives(db, ex, crates, dest, config)?;
     info!("writing html files");
@@ -286,7 +309,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
 
 /// Generates a list of regressed crate names that can be passed to crater via
 /// `crates=list:...` to retry those.
-fn gen_retry_list(res: &TestResults) -> String {
+fn gen_retry_list(res: &RawTestResults) -> String {
     use std::fmt::Write;
 
     let mut out = String::new();
@@ -864,7 +887,7 @@ mod tests {
             b"beta log"
         );
 
-        let result: TestResults =
+        let result: RawTestResults =
             serde_json::from_slice(&writer.get("results.json", &mime::APPLICATION_JSON)).unwrap();
 
         assert_eq!(result.crates.len(), 2);

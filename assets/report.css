@@ -139,10 +139,22 @@ div.category div.header {
     padding: 0.5em 0.8em;
     border-radius: 0.2em;
     box-shadow: 0 0.1em 0.2em rgba(0, 0, 0, 0.5);
+}
 
+.flex {
+    display: flex;
     position: -webkit-sticky;
     position: sticky;
     top: 0.5em;
+}
+
+div.category div.subheader.header {
+    border-radius: 0.2em 0 0 0.2em;
+}
+
+div.category div.subheader + div.header {
+    flex-grow: 1;
+    border-radius: 0 0.2em 0.2em 0;
 }
 
 div.category div.header.header-background {

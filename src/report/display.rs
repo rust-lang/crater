@@ -9,7 +9,7 @@ pub trait ResultName {
 impl ResultName for FailureReason {
     fn name(&self) -> String {
         match self {
-            FailureReason::Unknown => "failed".into(),
+            FailureReason::Unknown => "failed (unknown)".into(),
             FailureReason::Timeout => "timed out".into(),
             FailureReason::OOM => "OOM".into(),
             FailureReason::ICE => "ICE".into(),

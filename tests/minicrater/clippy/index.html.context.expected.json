@@ -15,7 +15,7 @@
         "RootResults": {
           "count": 1,
           "results": {
-            "build-fail:compiler-error(clippy::print_with_newline)": [
+            "build compiler-error(clippy::print_with_newline)": [
               {
                 "name": "clippy-warn (local)",
                 "res": "regressed",

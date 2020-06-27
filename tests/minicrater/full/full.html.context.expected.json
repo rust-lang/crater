@@ -50,6 +50,40 @@
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
               }
             ],
+            "build compiler-error(E0013)": [
+              {
+                "name": "error-code (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/error-code",
+                    "res": 0
+                  },
+                  {
+                    "log": "beta/local/error-code",
+                    "res": 3
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+              }
+            ],
+            "build compiler-error(E0015)": [
+              {
+                "name": "error-code (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/error-code",
+                    "res": 0
+                  },
+                  {
+                    "log": "beta/local/error-code",
+                    "res": 3
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+              }
+            ],
             "build failed (unknown)": [
               {
                 "name": "beta-regression (local)",
@@ -65,40 +99,6 @@
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
-              }
-            ],
-            "build-fail:compiler-error(E0013)": [
-              {
-                "name": "error-code (local)",
-                "res": "regressed",
-                "runs": [
-                  {
-                    "log": "stable/local/error-code",
-                    "res": 0
-                  },
-                  {
-                    "log": "beta/local/error-code",
-                    "res": 3
-                  }
-                ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
-              }
-            ],
-            "build-fail:compiler-error(E0015)": [
-              {
-                "name": "error-code (local)",
-                "res": "regressed",
-                "runs": [
-                  {
-                    "log": "stable/local/error-code",
-                    "res": 0
-                  },
-                  {
-                    "log": "beta/local/error-code",
-                    "res": 3
-                  }
-                ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
               }
             ]
           }

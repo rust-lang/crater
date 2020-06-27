@@ -4,6 +4,7 @@ use crate::results::{BrokenReason, FailureReason, TestResult};
 
 pub trait ResultName {
     fn name(&self) -> String;
+    fn long_name(&self) -> String;
 }
 
 impl ResultName for FailureReason {
@@ -17,6 +18,16 @@ impl ResultName for FailureReason {
             FailureReason::DependsOn(_) => "faulty deps".into(),
         }
     }
+
+    fn long_name(&self) -> String {
+        match self {
+            FailureReason::CompilerError(_) | FailureReason::DependsOn(_) => self.to_string(),
+            FailureReason::Unknown
+            | FailureReason::Timeout
+            | FailureReason::OOM
+            | FailureReason::ICE => self.name(),
+        }
+    }
 }
 
 impl ResultName for BrokenReason {
@@ -27,6 +38,10 @@ impl ResultName for BrokenReason {
             BrokenReason::Yanked => "deps yanked".into(),
             BrokenReason::MissingGitRepository => "missing repo".into(),
         }
+    }
+
+    fn long_name(&self) -> String {
+        self.name()
     }
 }
 
@@ -40,6 +55,18 @@ impl ResultName for TestResult {
             TestResult::TestPass => "test passed".into(),
             TestResult::Error => "error".into(),
             TestResult::Skipped => "skipped".into(),
+        }
+    }
+
+    fn long_name(&self) -> String {
+        match self {
+            TestResult::BuildFail(reason) => format!("build {}", reason.long_name()),
+            TestResult::TestFail(reason) => format!("test {}", reason.long_name()),
+            TestResult::BrokenCrate(reason) => reason.long_name(),
+            TestResult::TestSkipped
+            | TestResult::TestPass
+            | TestResult::Error
+            | TestResult::Skipped => self.name(),
         }
     }
 }

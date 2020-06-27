@@ -5,7 +5,7 @@ use crate::report::{
     analyzer::ReportCrates, archives::Archive, Color, Comparison, CrateResult, ReportWriter,
     ResultColor, ResultName, TestResults,
 };
-use crate::results::{EncodingType, FailureReason, TestResult};
+use crate::results::EncodingType;
 use indexmap::IndexMap;
 
 #[derive(Serialize)]
@@ -170,12 +170,7 @@ fn write_report<W: ReportWriter>(
                         .into_iter()
                         .map(|(res, krates)| {
                             (
-                                if let TestResult::BuildFail(FailureReason::CompilerError(_)) = res
-                                {
-                                    res.to_string()
-                                } else {
-                                    res.name()
-                                },
+                                res.long_name(),
                                 krates
                                     .into_iter()
                                     .map(|result| to_html_crate_result(result))

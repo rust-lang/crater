@@ -1,0 +1,41 @@
+{
+  "categories": [
+    [
+      "regressed",
+      {
+        "Complete": {
+          "orphans": [],
+          "res": [
+            [
+              {
+                "krate": {
+                  "Local": "clippy-warn"
+                },
+                "name": "clippy-warn (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/clippy-warn",
+                    "res": "test-pass"
+                  },
+                  {
+                    "log": "stable%2Brustflags=-Dclippy::all/local/clippy-warn",
+                    "res": "build-fail:compiler-error(clippy::print_with_newline)"
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
+              },
+              []
+            ]
+          ]
+        }
+      }
+    ]
+  ],
+  "crates_count": 2,
+  "full": false,
+  "info": {
+    "regressed": 1,
+    "test-pass": 1
+  }
+}

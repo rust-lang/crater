@@ -1,0 +1,10 @@
+{
+  "categories": [],
+  "crates_count": 3,
+  "full": false,
+  "info": {
+    "skipped": 1,
+    "test-pass": 1,
+    "test-skipped": 1
+  }
+}

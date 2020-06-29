@@ -1,0 +1,170 @@
+{
+  "categories": [
+    [
+      "regressed",
+      {
+        "Complete": {
+          "orphans": [
+            [
+              {
+                "GitHub": {
+                  "name": "crater",
+                  "org": "rust-lang",
+                  "sha": "f190933e896443e285e3bb6962fb87d7439b8d65"
+                }
+              },
+              [
+                {
+                  "krate": {
+                    "Local": "beta-faulty-deps"
+                  },
+                  "name": "beta-faulty-deps (local)",
+                  "res": "regressed",
+                  "runs": [
+                    {
+                      "log": "stable/local/beta-faulty-deps",
+                      "res": "test-pass"
+                    },
+                    {
+                      "log": "beta/local/beta-faulty-deps",
+                      "res": "build-fail:depends-on(gh/rust-lang/crater/f190933e896443e285e3bb6962fb87d7439b8d65)"
+                    }
+                  ],
+                  "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
+                }
+              ]
+            ]
+          ],
+          "res": [
+            [
+              {
+                "krate": {
+                  "Local": "beta-regression"
+                },
+                "name": "beta-regression (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/beta-regression",
+                    "res": "test-pass"
+                  },
+                  {
+                    "log": "beta/local/beta-regression",
+                    "res": "build-fail:unknown"
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
+              },
+              []
+            ],
+            [
+              {
+                "krate": {
+                  "Local": "error-code"
+                },
+                "name": "error-code (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/error-code",
+                    "res": "test-pass"
+                  },
+                  {
+                    "log": "beta/local/error-code",
+                    "res": "build-fail:compiler-error(E0013, E0015)"
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+              },
+              []
+            ],
+            [
+              {
+                "krate": {
+                  "Local": "ice-regression"
+                },
+                "name": "ice-regression (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "log": "stable/local/ice-regression",
+                    "res": "build-fail:compiler-error(E0425)"
+                  },
+                  {
+                    "log": "beta/local/ice-regression",
+                    "res": "build-fail:ice"
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
+              },
+              []
+            ]
+          ]
+        }
+      }
+    ],
+    [
+      "fixed",
+      {
+        "Complete": {
+          "orphans": [],
+          "res": [
+            [
+              {
+                "krate": {
+                  "Local": "beta-fixed"
+                },
+                "name": "beta-fixed (local)",
+                "res": "fixed",
+                "runs": [
+                  {
+                    "log": "stable/local/beta-fixed",
+                    "res": "build-fail:unknown"
+                  },
+                  {
+                    "log": "beta/local/beta-fixed",
+                    "res": "test-pass"
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-fixed"
+              },
+              []
+            ],
+            [
+              {
+                "krate": {
+                  "Local": "network-access"
+                },
+                "name": "network-access (local)",
+                "res": "fixed",
+                "runs": [
+                  {
+                    "log": "stable/local/network-access",
+                    "res": "build-fail:unknown"
+                  },
+                  {
+                    "log": "beta/local/network-access",
+                    "res": "test-fail:unknown"
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
+              },
+              []
+            ]
+          ]
+        }
+      }
+    ]
+  ],
+  "crates_count": 16,
+  "full": false,
+  "info": {
+    "broken": 2,
+    "build-fail": 2,
+    "fixed": 2,
+    "regressed": 4,
+    "skipped": 1,
+    "test-fail": 1,
+    "test-pass": 4
+  }
+}

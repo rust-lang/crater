@@ -99,6 +99,7 @@ trait Compare {
 enum Reports {
     Raw,
     HTMLContext,
+    MarkdownContext,
 }
 
 impl Compare for Reports {
@@ -110,12 +111,13 @@ impl Compare for Reports {
                 "downloads.html.context.json".into(),
                 "full.html.context.json".into(),
             ],
+            Self::MarkdownContext => vec!["markdown.md.context.json".into()],
         }
     }
 
     fn format(&self, input: Vec<u8>) -> Vec<u8> {
         let parsed_report = match *self {
-            Self::HTMLContext => {
+            Self::HTMLContext | Self::MarkdownContext => {
                 if let Value::Object(mut map) =
                     serde_json::from_slice(&input).expect("invalid json report")
                 {
@@ -198,6 +200,7 @@ impl MinicraterRun {
 
         failed |= Reports::Raw.compare(&ex_dir, report_dir.path());
         failed |= Reports::HTMLContext.compare(&ex_dir, report_dir.path());
+        failed |= Reports::MarkdownContext.compare(&ex_dir, report_dir.path());
 
         // Delete the experiment
         Command::crater()

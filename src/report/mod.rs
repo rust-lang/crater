@@ -23,6 +23,7 @@ mod analyzer;
 mod archives;
 mod display;
 mod html;
+mod markdown;
 mod s3;
 
 pub use self::display::{Color, ResultColor, ResultName};
@@ -46,8 +47,8 @@ pub struct RawTestResults {
     pub crates: Vec<CrateResult>,
 }
 
-#[cfg_attr(test, derive(Debug, PartialEq))]
-#[derive(Serialize, Deserialize, Clone)]
+#[cfg_attr(test, derive(Debug))]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct CrateResult {
     name: String,
     url: String,
@@ -107,8 +108,8 @@ impl Comparison {
     }
 }
 
-#[cfg_attr(test, derive(Debug, PartialEq))]
-#[derive(Serialize, Deserialize, Clone)]
+#[cfg_attr(test, derive(Debug))]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 struct BuildTestResult {
     res: TestResult,
     log: String,
@@ -309,6 +310,8 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
         dest,
         output_templates,
     )?;
+    info!("writing markdown files");
+    markdown::write_markdown_report(ex, crates.len(), &res, dest, output_templates)?;
     info!("writing logs");
     write_logs(db, ex, crates, dest, config)?;
 

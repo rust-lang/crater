@@ -57,6 +57,13 @@ pub struct CrateResult {
     runs: [Option<BuildTestResult>; 2],
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub enum ReportPriority {
+    Low,
+    Medium,
+    High,
+}
+
 string_enum!(pub enum Comparison {
     Regressed => "regressed",
     Fixed => "fixed",
@@ -73,20 +80,19 @@ string_enum!(pub enum Comparison {
 });
 
 impl Comparison {
-    pub fn show_in_summary(self) -> bool {
+    pub fn report_priority(self) -> ReportPriority {
         match self {
-            Comparison::Regressed
-            | Comparison::Fixed
-            | Comparison::Unknown
+            Comparison::Regressed | Comparison::Fixed => ReportPriority::High,
+            Comparison::Unknown
             | Comparison::Error
             | Comparison::SpuriousRegressed
-            | Comparison::SpuriousFixed => true,
+            | Comparison::SpuriousFixed => ReportPriority::Medium,
             Comparison::Skipped
             | Comparison::Broken
             | Comparison::SameBuildFail
             | Comparison::SameTestFail
             | Comparison::SameTestSkipped
-            | Comparison::SameTestPass => false,
+            | Comparison::SameTestPass => ReportPriority::Low,
         }
     }
 

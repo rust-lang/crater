@@ -3,7 +3,8 @@ use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::analyzer::{ReportConfig, ReportCrates, ToolchainSelect};
 use crate::report::{
-    crate_to_url, BuildTestResult, Comparison, CrateResult, ReportWriter, ResultName, TestResults,
+    crate_to_url, BuildTestResult, Comparison, CrateResult, ReportPriority, ReportWriter,
+    ResultName, TestResults,
 };
 use crate::utils::serialize::to_vec;
 use indexmap::{IndexMap, IndexSet};
@@ -143,7 +144,7 @@ fn write_report<W: ReportWriter>(
     ex: &Experiment,
     crates_count: usize,
     res: &TestResults,
-    full: bool,
+    priority: ReportPriority,
     to: &str,
     dest: &W,
     output_templates: bool,
@@ -151,7 +152,7 @@ fn write_report<W: ReportWriter>(
     let categories = res
         .categories
         .iter()
-        .filter(|(category, _)| full || category.show_in_summary())
+        .filter(|(category, _)| category.report_priority() >= priority)
         .map(|(&category, crates)| (category, crates.to_owned()))
         .map(|(category, crates)| match crates {
             ReportCrates::Plain(crates) => (
@@ -180,7 +181,7 @@ fn write_report<W: ReportWriter>(
         ex,
         categories,
         info: res.info.clone(),
-        full,
+        full: priority == ReportPriority::Low,
         crates_count,
     };
 
@@ -210,7 +211,7 @@ pub fn write_markdown_report<W: ReportWriter>(
         ex,
         crates_count,
         res,
-        false,
+        ReportPriority::High,
         "markdown.md",
         dest,
         output_templates,

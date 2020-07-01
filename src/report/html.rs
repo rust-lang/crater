@@ -2,8 +2,8 @@ use crate::assets;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::{
-    analyzer::ReportCrates, archives::Archive, Color, Comparison, CrateResult, ReportWriter,
-    ResultColor, ResultName, TestResults,
+    analyzer::ReportCrates, archives::Archive, Color, Comparison, CrateResult, ReportPriority,
+    ReportWriter, ResultColor, ResultName, TestResults,
 };
 use crate::results::EncodingType;
 use indexmap::IndexMap;
@@ -98,7 +98,7 @@ fn write_report<W: ReportWriter>(
     ex: &Experiment,
     crates_count: usize,
     res: &TestResults,
-    full: bool,
+    priority: ReportPriority,
     to: &str,
     dest: &W,
     output_templates: bool,
@@ -138,7 +138,7 @@ fn write_report<W: ReportWriter>(
     let categories = res
         .categories
         .iter()
-        .filter(|(category, _)| full || category.show_in_summary())
+        .filter(|(category, _)| category.report_priority() >= priority)
         .map(|(&category, crates)| (category, crates.to_owned()))
         .flat_map(|(category, crates)| {
             comparison_colors.insert(category, category.color());
@@ -201,6 +201,7 @@ fn write_report<W: ReportWriter>(
         })
         .collect();
 
+    let full = priority == ReportPriority::Low;
     let context = ResultsContext {
         ex,
         nav: if full {
@@ -276,7 +277,7 @@ pub fn write_html_report<W: ReportWriter>(
         ex,
         crates_count,
         res,
-        false,
+        ReportPriority::Medium,
         "index.html",
         dest,
         output_templates,
@@ -285,7 +286,7 @@ pub fn write_html_report<W: ReportWriter>(
         ex,
         crates_count,
         res,
-        true,
+        ReportPriority::Low,
         "full.html",
         dest,
         output_templates,

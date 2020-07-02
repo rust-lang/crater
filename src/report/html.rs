@@ -84,6 +84,8 @@ struct CrateResultHTML {
     name: String,
     url: String,
     res: Comparison,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    status: Option<String>,
     runs: [Option<BuildTestResultHTML>; 2],
 }
 
@@ -130,6 +132,7 @@ fn write_report<W: ReportWriter>(
         CrateResultHTML {
             name: result.name.clone(),
             url: result.url.clone(),
+            status: result.status.map(|status| status.to_string()),
             res: result.res,
             runs,
         }

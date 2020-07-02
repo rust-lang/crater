@@ -22,7 +22,9 @@
 
 {% macro crate_div(crate) %}
     <div class="crate">
-        <a href="{{ crate.url|safe }}" target="_blank" rel="noopener">{{ crate.name }}</a>
+        <a href="{{ crate.url|safe }}" target="_blank" rel="noopener">
+            {{ crate.name }} {% if crate.status %} ({{ crate.status }}) {% endif %}
+        </a>
         {% for run in crate.runs %}
             <span class="run">
                 {% if run %}

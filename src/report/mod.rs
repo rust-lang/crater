@@ -1,11 +1,13 @@
 use crate::config::Config;
 use crate::crates::Crate;
+use crate::dirs::WORK_DIR;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::analyzer::{analyze_report, ReportConfig, ToolchainSelect};
 use crate::results::{EncodedLog, EncodingType, FailureReason, ReadResults, TestResult};
 use crate::toolchain::Toolchain;
 use crate::utils;
+use crates_index::Index;
 use mime::{self, Mime};
 use percent_encoding::{utf8_percent_encode, AsciiSet};
 use std::borrow::Cow;
@@ -53,9 +55,18 @@ pub struct CrateResult {
     name: String,
     url: String,
     krate: Crate,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    status: Option<CrateVersionStatus>,
     pub res: Comparison,
     runs: [Option<BuildTestResult>; 2],
 }
+
+string_enum!(enum CrateVersionStatus {
+    Yanked => "yanked",
+    Outdated => "outdated",
+    UpToDate => "",
+    MissingFromIndex => "missing from the index",
+});
 
 string_enum!(pub enum Comparison {
     Regressed => "regressed",
@@ -172,6 +183,34 @@ fn crate_to_path_fragment(
     path
 }
 
+fn get_crate_version_status(index: &Index, krate: &Crate) -> Fallible<Option<CrateVersionStatus>> {
+    if let Crate::Registry(krate) = krate {
+        let index_krate = index
+            .crate_(&krate.name)
+            .ok_or_else(|| err_msg(format!("no crate found in index {:?}", &krate)))?;
+
+        let outdated = index_krate.latest_version().version() != krate.version;
+
+        for version in index_krate.versions().iter().rev() {
+            // Check if the tested version is yanked
+            if version.version() == krate.version {
+                if version.is_yanked() {
+                    return Ok(Some(CrateVersionStatus::Yanked));
+                } else if outdated {
+                    return Ok(Some(CrateVersionStatus::Outdated));
+                } else {
+                    return Ok(Some(CrateVersionStatus::UpToDate));
+                }
+            }
+        }
+
+        bail!("version not found");
+    } else {
+        // we do not check versions for other crates
+        Ok(None)
+    }
+}
+
 pub fn generate_report<DB: ReadResults>(
     db: &DB,
     config: &Config,
@@ -179,6 +218,7 @@ pub fn generate_report<DB: ReadResults>(
     crates: &[Crate],
 ) -> Fallible<RawTestResults> {
     let mut crates = crates.to_vec();
+    let index = Index::new(WORK_DIR.join("crates.io-index"));
     //crate ids are unique so unstable sort is equivalent to stable sort but is generally faster
     crates.sort_unstable_by(|a, b| a.id().cmp(&b.id()));
     let res = crates
@@ -212,6 +252,8 @@ pub fn generate_report<DB: ReadResults>(
             Ok(CrateResult {
                 name: crate_to_name(&krate)?,
                 url: crate_to_url(&krate)?,
+                status: get_crate_version_status(&index, &krate)
+                    .unwrap_or(Some(CrateVersionStatus::MissingFromIndex)),
                 krate: krate.clone(),
                 res: comp,
                 runs: [crate1, crate2],
@@ -584,9 +626,11 @@ mod tests {
     use super::*;
     use crate::config::{Config, CrateConfig};
     use crate::crates::{Crate, GitHubRepo, RegistryCrate};
+    use crate::dirs::WORK_DIR;
     use crate::experiments::{CapLints, Experiment, Mode, Status};
     use crate::results::{BrokenReason, DummyDB, FailureReason, TestResult};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
+    use crates_index::Index;
 
     #[test]
     fn test_crate_to_path_fragment() {
@@ -650,6 +694,39 @@ mod tests {
             crate_to_name(&gh).unwrap(),
             "brson.hello-rs.f00".to_string()
         );
+    }
+
+    #[test]
+    fn test_crate_version_status() {
+        let reg = Crate::Registry(RegistryCrate {
+            name: "lazy_static".into(),
+            version: "0.1.0".into(),
+        });
+
+        let yanked = Crate::Registry(RegistryCrate {
+            name: "structopt".into(),
+            version: "0.3.6".into(),
+        });
+
+        let repo = GitHubRepo {
+            org: "brson".into(),
+            name: "hello-rs".into(),
+            sha: None,
+        };
+        let gh = Crate::GitHub(repo.clone());
+
+        let index = Index::new(WORK_DIR.join("crates.io-index"));
+        index.retrieve_or_update().unwrap();
+
+        assert_eq!(
+            get_crate_version_status(&index, &reg).unwrap().unwrap(),
+            CrateVersionStatus::Outdated
+        );
+        assert_eq!(
+            get_crate_version_status(&index, &yanked).unwrap().unwrap(),
+            CrateVersionStatus::Yanked
+        );
+        assert!(get_crate_version_status(&index, &gh).unwrap().is_none());
     }
 
     #[test]

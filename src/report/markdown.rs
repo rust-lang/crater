@@ -64,6 +64,10 @@ fn write_crate(
     ];
 
     let prefix = if is_child { "  * " } else { "* " };
+    let status_warning = krate
+        .status
+        .map(|status| format!(" ({})", status.to_string()))
+        .unwrap_or_default();
 
     if let ReportConfig::Complete(toolchain) = comparison.report_config() {
         let (conj, run) = match toolchain {
@@ -73,9 +77,10 @@ fn write_crate(
 
         writeln!(
             &mut rendered,
-            "{}[{}]({}) {} {} **{}** [start]({}/log.txt) | [end]({}/log.txt)",
+            "{}[{}{}]({}) {} {} **{}** [start]({}/log.txt) | [end]({}/log.txt)",
             prefix,
             krate.name,
+            status_warning,
             krate.url,
             comparison.to_string(),
             conj,
@@ -86,9 +91,10 @@ fn write_crate(
     } else {
         writeln!(
             &mut rendered,
-            "{}[{}]({}) {} [start]({}/log.txt) | [end]({}/log.txt)",
+            "{}[{}{}]({}) {} [start]({}/log.txt) | [end]({}/log.txt)",
             prefix,
             krate.name,
+            status_warning,
             krate.url,
             comparison.to_string(),
             runs[1],

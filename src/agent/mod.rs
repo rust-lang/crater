@@ -9,6 +9,7 @@ use crate::db::{Database, QueryUtils};
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::utils;
+use crate::utils::disk_usage::DiskUsage;
 use failure::Error;
 use rustwide::Workspace;
 use std::collections::BTreeSet;
@@ -16,6 +17,9 @@ use std::iter::FromIterator;
 use std::ops;
 use std::thread;
 use std::time::Duration;
+
+// Purge all the caches if the disk is more than 50% full.
+const PURGE_CACHES_THRESHOLD: f32 = 0.5;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Capabilities {
@@ -116,6 +120,18 @@ fn run_experiment(
         workspace.purge_all_build_dirs().map_err(|e| (None, e))?;
     }
     *past_experiment = Some(ex.name.clone());
+
+    match DiskUsage::fetch() {
+        Ok(usage) => {
+            if usage.is_threshold_reached(PURGE_CACHES_THRESHOLD) {
+                warn!("purging all caches");
+                workspace.purge_all_caches().map_err(|err| (None, err))?;
+            }
+        }
+        Err(err) => {
+            warn!("failed to check the disk usage: {}", err);
+        }
+    }
 
     crate::runner::run_ex(&ex, workspace, &crates, db, threads_count, &agent.config)
         .map_err(|err| (Some(ex), err))?;

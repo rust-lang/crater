@@ -167,7 +167,7 @@ fn run_cargo<DB: WriteResults>(
             } else if !error_codes.is_empty() {
                 Err(e.context(FailureReason::CompilerError(error_codes)).into())
             } else {
-                Err(e)
+                Err(e.into())
             }
         }
     }

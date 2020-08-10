@@ -7,7 +7,6 @@ use crate::runner::{OverrideResult, RunnerState};
 use crate::utils;
 use rustwide::{BuildDirectory, Workspace};
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     mpsc::{self, RecvTimeoutError},
@@ -15,7 +14,6 @@ use std::sync::{
 };
 use std::thread;
 use std::time::Duration;
-use systemstat::{Filesystem, Platform, System};
 
 pub(super) struct Worker<'a, DB: WriteResults + Sync> {
     name: String,
@@ -185,54 +183,21 @@ impl<'a, DB: WriteResults + Sync> DiskSpaceWatcher<'a, DB> {
     }
 
     fn check(&self) -> Fallible<()> {
-        let fs = match self.current_mount() {
-            Ok(fs) => fs,
-            Err(e) => {
+        let usage = match crate::utils::disk_usage::DiskUsage::fetch() {
+            Ok(usage) => usage,
+            Err(err) => {
                 // TODO: `current_mount` fails sometimes on Windows with ERROR_DEVICE_NOT_READY.
-                warn!("Failed to check space remaining: {}", e);
+                warn!("Failed to check space remaining: {}", err);
                 return Ok(());
             }
         };
 
-        let usage = (fs.total.as_usize() - fs.free.as_usize()) as f32 / fs.total.as_usize() as f32;
-        if usage < self.threshold {
-            info!(
-                "{} disk usage at {}%",
-                fs.fs_mounted_on,
-                (usage * 100.0) as u8
-            );
-        } else {
-            warn!(
-                "{} disk usage at {}%, which is over the threshold of {}%",
-                fs.fs_mounted_on,
-                (usage * 100.0) as u8,
-                (self.threshold * 100.0) as u8,
-            );
-
+        if usage.is_threshold_reached(self.threshold) {
+            warn!("running the scheduled thread cleanup");
             for worker in self.workers {
                 worker.schedule_target_dir_cleanup();
             }
-            warn!("scheduled cleanup");
         }
         Ok(())
-    }
-
-    fn current_mount(&self) -> Fallible<Filesystem> {
-        let current_dir = crate::utils::path::normalize_path(&crate::dirs::WORK_DIR);
-        let system = System::new();
-
-        let mut found = None;
-        let mut found_pos = std::usize::MAX;
-        for mount in system.mounts()?.into_iter() {
-            let path = Path::new(&mount.fs_mounted_on);
-            for (i, ancestor) in current_dir.ancestors().enumerate() {
-                if ancestor == path && i < found_pos {
-                    found_pos = i;
-                    found = Some(mount);
-                    break;
-                }
-            }
-        }
-        found.ok_or_else(|| failure::err_msg("failed to find the current mount"))
     }
 }

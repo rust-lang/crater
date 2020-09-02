@@ -220,7 +220,7 @@ pub fn generate_report<DB: ReadResults>(
     let mut crates = crates.to_vec();
     let index = Index::new(WORK_DIR.join("crates.io-index"));
     //crate ids are unique so unstable sort is equivalent to stable sort but is generally faster
-    crates.sort_unstable_by(|a, b| a.id().cmp(&b.id()));
+    crates.sort_unstable_by_key(|a| a.id());
     let res = crates
         .iter()
         .map(|krate| {

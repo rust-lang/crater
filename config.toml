@@ -118,6 +118,16 @@ treeflection = { skip-tests = true } # flaky test
 update_rate = { skip-tests = true } # flaky tests
 urdf-viz = { skip = true } # flaky build
 vidar = { skip-tests = true } # flaky test
+carboxyl_time = { skip-tests = true } # flaky test (timing)
+cobalt = { skip-tests = true } # flaky test (timing)
+conduit-hyper = { skip-tests = true } # flaky test (timing)
+serialport = { skip-tests = true } # flaky test (timing)
+smartpool = { skip-tests = true } # flaky test (timing)
+softposit = { skip-tests = true } # flaky test (rng)
+test-patience = { skip-tests = true } # flaky test (timing)
+timekeeper = { skip-tests = true } # flaky test (timing)
+tokio-proto = { skip-tests = true } # flaky test (concurrency)
+toql_derive = { skip-tests = true } # flaky test ("Sometimes failes becuse join order different")
 
 [github-repos]
 # "org_name/repo_name" = { option = true }

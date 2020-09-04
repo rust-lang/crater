@@ -163,5 +163,9 @@ mod tests {
                 .remove(&(repo.into(), sha.into()))
                 .unwrap())
         }
+
+        fn get_pr_head_sha(&self, _repo: &str, _pr: i32) -> Fallible<String> {
+            unimplemented!();
+        }
     }
 }

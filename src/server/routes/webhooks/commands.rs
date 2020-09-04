@@ -2,7 +2,7 @@ use crate::actions::{self, Action, ActionsCtx};
 use crate::db::{Database, QueryUtils};
 use crate::experiments::{CapLints, CrateSelect, Experiment, GitHubIssue, Mode, Status};
 use crate::prelude::*;
-use crate::server::github::{Issue, Repository};
+use crate::server::github::{GitHub, Issue, Repository};
 use crate::server::messages::{Label, Message};
 use crate::server::routes::webhooks::args::{
     AbortArgs, CheckArgs, EditArgs, RetryArgs, RetryReportArgs, RunArgs,
@@ -55,13 +55,17 @@ pub fn run(
 ) -> Fallible<()> {
     let name = setup_run_name(&data.db, issue, args.name)?;
 
+    let mut message = Message::new().line(
+        "ok_hand",
+        format!("Experiment **`{}`** created and queued.", name),
+    );
+
     // Autodetect toolchains only if none of them was specified
-    let (mut detected_start, mut detected_end, mut try_build) = (None, None, None);
+    let (mut detected_start, mut detected_end) = (None, None);
     if args.start.is_none() && args.end.is_none() {
         if let Some(build) =
             crate::server::try_builds::get_sha(&data.db, &repo.full_name, issue.number)?
         {
-            try_build = Some(build.merge_sha.clone());
             detected_start = Some(Toolchain {
                 source: RustwideToolchain::ci(&build.base_sha, false),
                 rustflags: None,
@@ -74,6 +78,20 @@ pub fn run(
                 ci_try: true,
                 patches: Vec::new(),
             });
+            message = message.line(
+                "robot",
+                format!("Automatically detected try build {}", build.merge_sha),
+            );
+            let pr_head = data.github.get_pr_head_sha(&repo.full_name, issue.number)?;
+            if pr_head != build.base_sha {
+                message = message.line(
+                    "warning",
+                    format!(
+                        "Try build based on commit {}, but latest commit is {}. Did you forget to make a new try build?",
+                        build.base_sha, pr_head
+                    ),
+                );
+            }
         }
     }
 
@@ -110,13 +128,6 @@ pub fn run(
     }
     .apply(&ActionsCtx::new(&data.db, &data.config))?;
 
-    let mut message = Message::new().line(
-        "ok_hand",
-        format!("Experiment **`{}`** created and queued.", name),
-    );
-    if let Some(sha) = try_build {
-        message = message.line("robot", format!("Automatically detected try build {}", sha));
-    }
     message
         .line(
             "mag",

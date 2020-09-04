@@ -52,22 +52,13 @@ Once you cloned the repository, you can setup the local Crater environment with
 the following command:
 
 ```
-cargo run -- prepare-local --docker-env=mini
+cargo run -- prepare-local
 ```
 
 This command will setup the internal Rust toolchain used by Crater, generate
-the list of crates to test and build the Docker image used to test the crates.
-The generated image is **not** the image used in the production Crater
-instance, but a smaller one. If you want that you need to run instead:
+the list of crates to test and download [the Docker image] used to test the crates.
 
-```
-cargo run -- prepare-local --docker-env=full
-```
-
-You don't need the full image during normal development, but you might need it
-if you want to investigate why a crate isn't building on the production
-instance. The full image takes a long time to build (20+ minutes as of October
-2018) and weighs a lot (11GB).
+[the Docker image]: https://github.com/rust-lang/crates-build-env
 
 You can check out the [CLI Usage][cli-usage] documentation to learn how to
 interact with the Crater CLI.

@@ -7,7 +7,7 @@ use crate::runner::test::detect_broken;
 use crate::runner::{test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
-use rustwide::{BuildDirectory, Workspace};
+use rustwide::{Build, BuildDirectory, Workspace};
 use std::sync::Mutex;
 
 use rustwide::logging::{self, LogStorage};
@@ -170,88 +170,100 @@ impl Task {
         db: &'ctx DB,
         state: &'ctx RunnerState,
     ) -> Fallible<()> {
-        match self.step {
-            TaskStep::Cleanup => {
-                // Remove stored logs
-                state.lock().prepare_logs.remove(&self.krate);
-            }
-            TaskStep::Prepare => {
-                let storage = LogStorage::from(config);
-                state
-                    .lock()
-                    .prepare_logs
-                    .insert(self.krate.clone(), storage.clone());
-                logging::capture(&storage, || {
-                    let rustwide_crate = self.krate.to_rustwide();
-                    detect_broken(rustwide_crate.fetch(workspace))?;
-
-                    if let Crate::GitHub(repo) = &self.krate {
-                        if let Some(sha) = rustwide_crate.git_commit(workspace) {
-                            let updated = GitHubRepo {
-                                sha: Some(sha),
-                                ..repo.clone()
-                            };
-                            db.update_crate_version(
-                                ex,
-                                &Crate::GitHub(repo.clone()),
-                                &Crate::GitHub(updated),
-                            )
-                            .with_context(|_| {
-                                format!("failed to record the sha of GitHub repo {}", repo.slug())
-                            })?;
-                        } else {
-                            bail!("unable to capture sha for {}", repo.slug());
-                        }
-                    }
-                    Ok(())
-                })?;
-            }
-            TaskStep::BuildAndTest { ref tc, quiet } => {
-                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
-                test::run_test("testing", &ctx, test::test_build_and_test)?;
-            }
-            TaskStep::BuildOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
-                test::run_test("building", &ctx, test::test_build_only)?;
-            }
-            TaskStep::CheckOnly { ref tc, quiet } => {
-                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
-                test::run_test("checking", &ctx, test::test_check_only)?;
-            }
-            TaskStep::Clippy { ref tc, quiet } => {
-                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
-                test::run_test("linting", &ctx, test::test_clippy_only)?;
-            }
-            TaskStep::Rustdoc { ref tc, quiet } => {
-                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, quiet);
-                test::run_test("documenting", &ctx, test::test_rustdoc)?;
-            }
-            TaskStep::UnstableFeatures { ref tc } => {
-                let ctx = TaskCtx::new(build_dir, config, db, ex, tc, &self.krate, state, false);
-                test::run_test(
+        let (action, test, toolchain, quiet): (_, fn(&TaskCtx<_>, &Build, &_) -> _, _, _) =
+            match self.step {
+                TaskStep::BuildAndTest { ref tc, quiet } => {
+                    ("testing", test::test_build_and_test, tc, quiet)
+                }
+                TaskStep::BuildOnly { ref tc, quiet } => {
+                    ("building", test::test_build_only, tc, quiet)
+                }
+                TaskStep::CheckOnly { ref tc, quiet } => {
+                    ("checking", test::test_check_only, tc, quiet)
+                }
+                TaskStep::Clippy { ref tc, quiet } => {
+                    ("linting", test::test_clippy_only, tc, quiet)
+                }
+                TaskStep::Rustdoc { ref tc, quiet } => {
+                    ("documenting", test::test_rustdoc, tc, quiet)
+                }
+                TaskStep::UnstableFeatures { ref tc } => (
                     "checking unstable",
-                    &ctx,
                     crate::runner::unstable_features::find_unstable_features,
-                )?;
-            }
-            TaskStep::Skip { ref tc } => {
-                // If a skipped crate is somehow sent to the agent (for example, when a crate was
-                // added to the experiment and *then* blacklisted) report the crate as skipped
-                // instead of silently ignoring it.
-                db.record_result(
-                    ex,
                     tc,
-                    &self.krate,
-                    None,
-                    config,
-                    EncodingType::Plain,
-                    || {
-                        warn!("crate skipped");
-                        Ok(TestResult::Skipped)
-                    },
-                )?;
-            }
-        }
+                    false,
+                ),
+                TaskStep::Cleanup => {
+                    // Remove stored logs
+                    state.lock().prepare_logs.remove(&self.krate);
+                    return Ok(());
+                }
+                TaskStep::Prepare => {
+                    let storage = LogStorage::from(config);
+                    state
+                        .lock()
+                        .prepare_logs
+                        .insert(self.krate.clone(), storage.clone());
+                    logging::capture(&storage, || {
+                        let rustwide_crate = self.krate.to_rustwide();
+                        detect_broken(rustwide_crate.fetch(workspace))?;
+
+                        if let Crate::GitHub(repo) = &self.krate {
+                            if let Some(sha) = rustwide_crate.git_commit(workspace) {
+                                let updated = GitHubRepo {
+                                    sha: Some(sha),
+                                    ..repo.clone()
+                                };
+                                db.update_crate_version(
+                                    ex,
+                                    &Crate::GitHub(repo.clone()),
+                                    &Crate::GitHub(updated),
+                                )
+                                .with_context(|_| {
+                                    format!(
+                                        "failed to record the sha of GitHub repo {}",
+                                        repo.slug()
+                                    )
+                                })?;
+                            } else {
+                                bail!("unable to capture sha for {}", repo.slug());
+                            }
+                        }
+                        Ok(())
+                    })?;
+                    return Ok(());
+                }
+                TaskStep::Skip { ref tc } => {
+                    // If a skipped crate is somehow sent to the agent (for example, when a crate was
+                    // added to the experiment and *then* blacklisted) report the crate as skipped
+                    // instead of silently ignoring it.
+                    db.record_result(
+                        ex,
+                        tc,
+                        &self.krate,
+                        None,
+                        config,
+                        EncodingType::Plain,
+                        || {
+                            warn!("crate skipped");
+                            Ok(TestResult::Skipped)
+                        },
+                    )?;
+                    return Ok(());
+                }
+            };
+
+        let ctx = TaskCtx::new(
+            build_dir,
+            config,
+            db,
+            ex,
+            toolchain,
+            &self.krate,
+            state,
+            quiet,
+        );
+        test::run_test(action, &ctx, test)?;
 
         Ok(())
     }

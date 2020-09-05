@@ -1,0 +1,91 @@
+{
+  "categories": [
+    [
+      "test-pass",
+      {
+        "Plain": [
+          {
+            "name": "build-pass (local)",
+            "res": "test-pass",
+            "runs": [
+              {
+                "log": "stable/local/build-pass",
+                "res": 0
+              },
+              {
+                "log": "beta/local/build-pass",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
+          }
+        ]
+      }
+    ],
+    [
+      "build-fail",
+      {
+        "Plain": [
+          {
+            "name": "docs-rs-features (local)",
+            "res": "build-fail",
+            "runs": [
+              {
+                "log": "stable/local/docs-rs-features",
+                "res": 1
+              },
+              {
+                "log": "beta/local/docs-rs-features",
+                "res": 1
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/docs-rs-features"
+          }
+        ]
+      }
+    ]
+  ],
+  "comparison_colors": {
+    "build-fail": {
+      "Single": "#65461e"
+    },
+    "test-pass": {
+      "Single": "#72a156"
+    }
+  },
+  "crates_count": 2,
+  "full": true,
+  "info": {
+    "build-fail": 1,
+    "test-pass": 1
+  },
+  "nav": [
+    {
+      "active": false,
+      "label": "Summary",
+      "url": "index.html"
+    },
+    {
+      "active": true,
+      "label": "Full report",
+      "url": "full.html"
+    },
+    {
+      "active": false,
+      "label": "Downloads",
+      "url": "downloads.html"
+    }
+  ],
+  "result_colors": [
+    {
+      "Single": "#62a156"
+    },
+    {
+      "Single": "#db3026"
+    }
+  ],
+  "result_names": [
+    "test passed",
+    "build failed (unknown)"
+  ]
+}

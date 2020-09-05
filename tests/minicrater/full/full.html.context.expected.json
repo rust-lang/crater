@@ -265,6 +265,21 @@
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
           },
           {
+            "name": "docs-rs-features (local)",
+            "res": "test-pass",
+            "runs": [
+              {
+                "log": "stable/local/docs-rs-features",
+                "res": 0
+              },
+              {
+                "log": "beta/local/docs-rs-features",
+                "res": 0
+              }
+            ],
+            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/docs-rs-features"
+          },
+          {
             "name": "missing-examples (local)",
             "res": "test-pass",
             "runs": [
@@ -362,7 +377,7 @@
       "Single": "#72a156"
     }
   },
-  "crates_count": 16,
+  "crates_count": 17,
   "full": true,
   "info": {
     "broken": 2,
@@ -371,7 +386,7 @@
     "regressed": 4,
     "skipped": 1,
     "test-fail": 1,
-    "test-pass": 4
+    "test-pass": 5
   },
   "nav": [
     {

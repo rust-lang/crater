@@ -1,0 +1,9 @@
+{
+  "categories": [],
+  "crates_count": 2,
+  "full": false,
+  "info": {
+    "build-fail": 1,
+    "test-pass": 1
+  }
+}

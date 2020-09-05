@@ -5,12 +5,13 @@ use crate::results::{BrokenReason, EncodingType, FailureReason, TestResult, Writ
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
 use cargo_metadata::diagnostic::DiagnosticLevel;
-use cargo_metadata::{Message, Metadata, PackageId};
+use cargo_metadata::{Message, Metadata, Package, Target};
+use docsrs_metadata::Metadata as DocsrsMetadata;
 use failure::Error;
 use remove_dir_all::remove_dir_all;
 use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
 use rustwide::{Build, PrepareError};
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::convert::TryFrom;
 
 fn failure_reason(err: &Error) -> FailureReason {
@@ -64,7 +65,7 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
     }
 }
 
-fn get_local_packages(build_env: &Build) -> Fallible<HashSet<PackageId>> {
+fn get_local_packages(build_env: &Build) -> Fallible<Vec<Package>> {
     Ok(build_env
         .cargo()
         .args(&["metadata", "--no-deps", "--format-version=1"])
@@ -73,8 +74,8 @@ fn get_local_packages(build_env: &Build) -> Fallible<HashSet<PackageId>> {
         .stdout_lines()
         .iter()
         .filter_map(|line| serde_json::from_str::<Metadata>(line).ok())
-        .flat_map(|metadata| metadata.packages.into_iter().map(|pkg| pkg.id))
-        .collect::<HashSet<_>>())
+        .flat_map(|metadata| metadata.packages)
+        .collect())
 }
 
 fn run_cargo<DB: WriteResults>(
@@ -82,8 +83,11 @@ fn run_cargo<DB: WriteResults>(
     build_env: &Build,
     args: &[&str],
     check_errors: bool,
-    local_packages_id: &HashSet<PackageId>,
+    local_packages: &[Package],
+    env: HashMap<&'static str, String>,
 ) -> Fallible<()> {
+    let local_packages_id: HashSet<_> = local_packages.iter().map(|p| &p.id).collect();
+
     let mut args = args.to_vec();
     if let Some(ref tc_cargoflags) = ctx.toolchain.cargoflags {
         args.extend(tc_cargoflags.split(' '));
@@ -167,6 +171,9 @@ fn run_cargo<DB: WriteResults>(
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env(rustflags_env, rustflags);
+    for (var, data) in env {
+        command = command.env(var, data);
+    }
 
     if check_errors {
         command = command.process_lines(&mut detect_error);
@@ -197,7 +204,7 @@ fn run_cargo<DB: WriteResults>(
 pub(super) fn run_test<DB: WriteResults>(
     action: &str,
     ctx: &TaskCtx<DB>,
-    test_fn: fn(&TaskCtx<DB>, &Build, &HashSet<PackageId>) -> Fallible<TestResult>,
+    test_fn: fn(&TaskCtx<DB>, &Build, &[Package]) -> Fallible<TestResult>,
 ) -> Fallible<()> {
     if let Some(res) = ctx
         .db
@@ -239,8 +246,8 @@ pub(super) fn run_test<DB: WriteResults>(
                 }
 
                 detect_broken(build.run(|build| {
-                    let local_packages_id = get_local_packages(build)?;
-                    test_fn(ctx, build, &local_packages_id)
+                    let local_packages = get_local_packages(build)?;
+                    test_fn(ctx, build, &local_packages)
                 }))
             },
         )?;
@@ -251,21 +258,23 @@ pub(super) fn run_test<DB: WriteResults>(
 fn build<DB: WriteResults>(
     ctx: &TaskCtx<DB>,
     build_env: &Build,
-    local_packages_id: &HashSet<PackageId>,
+    local_packages: &[Package],
 ) -> Fallible<()> {
     run_cargo(
         ctx,
         build_env,
         &["build", "--frozen", "--message-format=json"],
         true,
-        local_packages_id,
+        local_packages,
+        HashMap::default(),
     )?;
     run_cargo(
         ctx,
         build_env,
         &["test", "--frozen", "--no-run", "--message-format=json"],
         true,
-        local_packages_id,
+        local_packages,
+        HashMap::default(),
     )?;
     Ok(())
 }
@@ -276,14 +285,15 @@ fn test<DB: WriteResults>(ctx: &TaskCtx<DB>, build_env: &Build) -> Fallible<()> 
         build_env,
         &["test", "--frozen"],
         false,
-        &HashSet::new(),
+        &[],
+        HashMap::default(),
     )
 }
 
 pub(super) fn test_build_and_test<DB: WriteResults>(
     ctx: &TaskCtx<DB>,
     build_env: &Build,
-    local_packages_id: &HashSet<PackageId>,
+    local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
     let build_r = build(ctx, build_env, local_packages_id);
     let test_r = if build_r.is_ok() {
@@ -303,7 +313,7 @@ pub(super) fn test_build_and_test<DB: WriteResults>(
 pub(super) fn test_build_only<DB: WriteResults>(
     ctx: &TaskCtx<DB>,
     build_env: &Build,
-    local_packages_id: &HashSet<PackageId>,
+    local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
     if let Err(err) = build(ctx, build_env, local_packages_id) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
@@ -315,7 +325,7 @@ pub(super) fn test_build_only<DB: WriteResults>(
 pub(super) fn test_check_only<DB: WriteResults>(
     ctx: &TaskCtx<DB>,
     build_env: &Build,
-    local_packages_id: &HashSet<PackageId>,
+    local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
     if let Err(err) = run_cargo(
         ctx,
@@ -329,6 +339,7 @@ pub(super) fn test_check_only<DB: WriteResults>(
         ],
         true,
         local_packages_id,
+        HashMap::default(),
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
@@ -339,7 +350,7 @@ pub(super) fn test_check_only<DB: WriteResults>(
 pub(super) fn test_clippy_only<DB: WriteResults>(
     ctx: &TaskCtx<DB>,
     build_env: &Build,
-    local_packages_id: &HashSet<PackageId>,
+    local_packages: &[Package],
 ) -> Fallible<TestResult> {
     if let Err(err) = run_cargo(
         ctx,
@@ -352,7 +363,8 @@ pub(super) fn test_clippy_only<DB: WriteResults>(
             "--message-format=json",
         ],
         true,
-        local_packages_id,
+        local_packages,
+        HashMap::default(),
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
@@ -363,11 +375,20 @@ pub(super) fn test_clippy_only<DB: WriteResults>(
 pub(super) fn test_rustdoc<DB: WriteResults>(
     ctx: &TaskCtx<DB>,
     build_env: &Build,
-    local_packages_id: &HashSet<PackageId>,
+    local_packages: &[Package],
 ) -> Fallible<TestResult> {
-    let res = run_cargo(
-        ctx,
-        build_env,
+    let run = |cargo_args, env| {
+        let res = run_cargo(ctx, build_env, cargo_args, true, local_packages, env);
+
+        // Make sure to remove the built documentation
+        // There is no point in storing it after the build is done
+        remove_dir_all(&build_env.host_target_dir().join("doc"))?;
+
+        res
+    };
+
+    // first, run a normal `cargo doc`
+    let res = run(
         &[
             "doc",
             "--frozen",
@@ -375,17 +396,43 @@ pub(super) fn test_rustdoc<DB: WriteResults>(
             "--document-private-items",
             "--message-format=json",
         ],
-        true,
-        local_packages_id,
+        HashMap::default(),
     );
-
-    // Make sure to remove the built documentation
-    // There is no point in storing it after the build is done
-    remove_dir_all(&build_env.host_target_dir().join("doc"))?;
-
     if let Err(err) = res {
-        Ok(TestResult::BuildFail(failure_reason(&err)))
-    } else {
-        Ok(TestResult::TestPass)
+        return Ok(TestResult::BuildFail(failure_reason(&err)));
     }
+
+    // next, if this is a library, run it with docs.rs metadata applied.
+    if local_packages
+        .iter()
+        .any(|p| p.targets.iter().any(is_library))
+    {
+        let src = build_env.host_source_dir();
+        let metadata = DocsrsMetadata::from_crate_root(src)?;
+        let cargo_args = metadata.cargo_args(
+            &["--frozen".into(), "--message-format=json".into()],
+            &["--document-private-items".into()],
+        );
+        assert_eq!(cargo_args[0], "rustdoc");
+        let cargo_args: Vec<_> = cargo_args.iter().map(|s| s.as_str()).collect();
+        let mut env = metadata.environment_variables();
+        // docsrs-metadata requires a nightly environment, but crater sometimes runs tests on beta and
+        // stable.
+        env.insert("RUSTC_BOOTSTRAP", "1".to_string());
+
+        if let Err(err) = run(&cargo_args, env) {
+            return Ok(TestResult::BuildFail(failure_reason(&err)));
+        }
+    }
+
+    Ok(TestResult::TestPass)
+}
+
+fn is_library(target: &Target) -> bool {
+    // Some examples and tests can be libraries (e.g. if they use `cdylib`).
+    target.crate_types.iter().any(|ty| ty != "bin")
+        && target
+            .kind
+            .iter()
+            .all(|k| !["example", "test", "bench"].contains(&k.as_str()))
 }

@@ -23,6 +23,7 @@ pub trait GitHub {
     fn list_teams(&self, org: &str) -> Fallible<HashMap<String, usize>>;
     fn team_members(&self, team: usize) -> Fallible<Vec<String>>;
     fn get_commit(&self, repo: &str, sha: &str) -> Fallible<Commit>;
+    fn get_pr_head_sha(&self, repo: &str, pr: i32) -> Fallible<String>;
 }
 
 #[derive(Clone)]
@@ -147,6 +148,15 @@ impl GitHub for GitHubApi {
             .json()?;
         Ok(commit)
     }
+
+    fn get_pr_head_sha(&self, repo: &str, pr: i32) -> Fallible<String> {
+        let pr: PullRequestData = self
+            .build_request(Method::GET, &format!("repos/{}/pulls/{}", repo, pr))
+            .send()?
+            .error_for_status()?
+            .json()?;
+        Ok(pr.head.sha)
+    }
 }
 
 #[derive(Deserialize)]
@@ -181,6 +191,16 @@ pub struct Issue {
 #[derive(Deserialize)]
 pub struct PullRequest {
     pub html_url: String,
+}
+
+#[derive(Deserialize)]
+pub struct PullRequestData {
+    pub head: PullRequestHead,
+}
+
+#[derive(Deserialize)]
+pub struct PullRequestHead {
+    pub sha: String,
 }
 
 #[derive(Deserialize)]

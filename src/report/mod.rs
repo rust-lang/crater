@@ -713,7 +713,7 @@ mod tests {
             name: "hello-rs".into(),
             sha: None,
         };
-        let gh = Crate::GitHub(repo.clone());
+        let gh = Crate::GitHub(repo);
 
         let index = Index::new(WORK_DIR.join("crates.io-index"));
         index.retrieve_or_update().unwrap();
@@ -745,7 +745,7 @@ mod tests {
             name: "hello-rs".into(),
             sha: None,
         };
-        let gh = Crate::GitHub(repo.clone());
+        let gh = Crate::GitHub(repo);
 
         assert_eq!(
             crate_to_url(&gh).unwrap(),
@@ -884,7 +884,7 @@ mod tests {
             name: "hello-rs".into(),
             sha: Some("f00".into()),
         };
-        let gh = Crate::GitHub(repo.clone());
+        let gh = Crate::GitHub(repo);
         let reg = Crate::Registry(RegistryCrate {
             name: "syn".into(),
             version: "1.0.0".into(),

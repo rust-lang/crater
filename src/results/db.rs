@@ -230,7 +230,7 @@ mod tests {
         WriteResults,
     };
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
-    use base64;
+
     use std::collections::BTreeSet;
 
     #[test]
@@ -434,7 +434,7 @@ mod tests {
 
         assert_eq!(
             results.load_log(&ex, &MAIN_TOOLCHAIN, &updated).unwrap(),
-            Some(EncodedLog::Plain("foo".as_bytes().to_vec()))
+            Some(EncodedLog::Plain(b"foo".to_vec()))
         );
         assert_eq!(
             results

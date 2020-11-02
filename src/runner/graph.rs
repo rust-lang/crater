@@ -62,11 +62,7 @@ pub(super) enum WalkResult {
 
 impl WalkResult {
     pub(super) fn is_finished(&self) -> bool {
-        if let WalkResult::Finished = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, WalkResult::Finished)
     }
 }
 

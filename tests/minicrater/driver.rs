@@ -59,13 +59,13 @@ trait Compare {
             let actual_file = ex_dir.join(expand_file_names(file, ".actual"));
             let expected_file = ex_dir.join(expand_file_names(file, ".expected"));
             // Load actual report
-            let raw_report =
-                ::std::fs::read(file_dir.join(file)).expect(&format!("failed to read {}", file));
+            let raw_report = ::std::fs::read(file_dir.join(file))
+                .unwrap_or_else(|_| panic!("failed to read {}", file));
             // Test report format
             let actual_report = self.format(raw_report);
 
             // Load the expected report
-            let expected_report = ::std::fs::read(&expected_file).unwrap_or(Vec::new());
+            let expected_report = ::std::fs::read(&expected_file).unwrap_or_default();
 
             // Write the actual JSON report
             ::std::fs::write(&actual_file, &actual_report)
@@ -92,7 +92,7 @@ trait Compare {
                 failed = true;
             }
         }
-        return failed;
+        failed
     }
 }
 

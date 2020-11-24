@@ -143,7 +143,8 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<B
         for (res, count) in ex.get_result_counts(&data.db)? {
             *result_counts.entry(res.name()).or_default() += count;
         }
-        let result_counts = result_counts.into_iter().collect::<Vec<_>>();
+        let mut result_counts = result_counts.into_iter().collect::<Vec<_>>();
+        result_counts.sort_by(|v1, v2| (v1.0).cmp(&v2.0));
 
         let (duration, estimated_end, average_job_duration) = if completed_jobs > 0
             && total_jobs > 0

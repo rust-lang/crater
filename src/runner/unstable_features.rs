@@ -53,7 +53,7 @@ fn parse_features(path: &Path) -> Fallible<Vec<String>> {
     let contents = ::std::fs::read_to_string(path)?;
     for (hash_idx, _) in contents.match_indices('#') {
         let contents = &contents[hash_idx + 1..];
-        let contents = eat_token(Some(contents), "!").or_else(|| Some(contents));
+        let contents = eat_token(Some(contents), "!").or(Some(contents));
         let contents = eat_token(contents, "[");
         let contents = eat_token(contents, "feature");
         let new_features = parse_list(contents, "(", ")");
@@ -72,13 +72,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
 }
 
 fn eat_token<'a>(s: Option<&'a str>, tok: &str) -> Option<&'a str> {
-    eat_whitespace(s).and_then(|s| {
-        if s.starts_with(tok) {
-            Some(&s[tok.len()..])
-        } else {
-            None
-        }
-    })
+    eat_whitespace(s).and_then(|s| s.strip_prefix(tok))
 }
 
 fn eat_whitespace(s: Option<&str>) -> Option<&str> {

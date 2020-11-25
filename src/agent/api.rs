@@ -2,7 +2,6 @@ use crate::agent::Capabilities;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
-use std::error::Error as _;
 use crate::results::TestResult;
 use crate::server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use crate::toolchain::Toolchain;
@@ -11,6 +10,7 @@ use http::{header::AUTHORIZATION, Method, StatusCode};
 use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
 use serde_json::json;
+use std::error::Error as _;
 
 #[derive(Debug, Fail)]
 pub enum AgentApiError {

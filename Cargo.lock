@@ -427,7 +427,7 @@ name = "crater"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",
- "base64 0.10.1",
+ "base64 0.13.0",
  "bytes 0.4.12",
  "cargo_metadata",
  "chrono",

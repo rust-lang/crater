@@ -12,7 +12,7 @@ impl DiskUsage {
         let fs = current_mount()?;
         Ok(Self {
             mount_point: fs.fs_mounted_on.clone(),
-            usage: (fs.total.as_usize() - fs.free.as_usize()) as f32 / fs.total.as_usize() as f32,
+            usage: (fs.total.as_u64() - fs.free.as_u64()) as f32 / fs.total.as_u64() as f32,
         })
     }
 

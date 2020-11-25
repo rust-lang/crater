@@ -119,7 +119,7 @@ fn write_report<W: ReportWriter>(
                     .entry(run.res.clone())
                     .or_insert_with(|| {
                         result_colors.push(run.res.color());
-                        result_names.push(run.res.name());
+                        result_names.push(run.res.short_name());
                         result_names.len() - 1
                     });
                 runs[pos] = Some(BuildTestResultHTML {

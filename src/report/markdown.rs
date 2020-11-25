@@ -40,7 +40,7 @@ fn write_crate(
         if !is_child {
             run.res.long_name()
         } else {
-            run.res.name()
+            run.res.short_name()
         }
     };
 

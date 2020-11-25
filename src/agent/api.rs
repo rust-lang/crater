@@ -2,6 +2,7 @@ use crate::agent::Capabilities;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
+use std::error::Error as _;
 use crate::results::TestResult;
 use crate::server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use crate::toolchain::Toolchain;
@@ -100,7 +101,7 @@ impl AgentApi {
                         let hyper_io = err
                             .get_ref()
                             .and_then(|inner| inner.downcast_ref::<::hyper::Error>())
-                            .and_then(|inner| inner.cause2())
+                            .and_then(|inner| inner.source())
                             .map(|inner| inner.is::<::std::io::Error>())
                             .unwrap_or(false);
                         reqwest_io || hyper_io

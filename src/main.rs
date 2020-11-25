@@ -26,7 +26,7 @@ fn main() {
     env.filter_module("crater", log::LevelFilter::Info);
     env.filter_module("rustwide", log::LevelFilter::Info);
     if let Ok(content) = std::env::var("RUST_LOG") {
-        env.parse(&content);
+        env.parse_filters(&content);
     }
     rustwide::logging::init_with(env.build());
 

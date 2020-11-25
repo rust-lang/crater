@@ -141,7 +141,7 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<B
         // all CompilerError and DependsOn failures are grouped together
         let mut result_counts = HashMap::new();
         for (res, count) in ex.get_result_counts(&data.db)? {
-            *result_counts.entry(res.name()).or_default() += count;
+            *result_counts.entry(res.short_name()).or_default() += count;
         }
         let mut result_counts = result_counts.into_iter().collect::<Vec<_>>();
         result_counts.sort_by(|v1, v2| (v1.0).cmp(&v2.0));

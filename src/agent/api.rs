@@ -10,6 +10,7 @@ use http::{header::AUTHORIZATION, Method, StatusCode};
 use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
 use serde_json::json;
+use std::error::Error as _;
 
 #[derive(Debug, Fail)]
 pub enum AgentApiError {
@@ -100,7 +101,7 @@ impl AgentApi {
                         let hyper_io = err
                             .get_ref()
                             .and_then(|inner| inner.downcast_ref::<::hyper::Error>())
-                            .and_then(|inner| inner.cause2())
+                            .and_then(|inner| inner.source())
                             .map(|inner| inner.is::<::std::io::Error>())
                             .unwrap_or(false);
                         reqwest_io || hyper_io

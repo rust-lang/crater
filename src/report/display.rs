@@ -3,12 +3,12 @@ use crate::report::Comparison;
 use crate::results::{BrokenReason, FailureReason, TestResult};
 
 pub trait ResultName {
-    fn name(&self) -> String;
+    fn short_name(&self) -> String;
     fn long_name(&self) -> String;
 }
 
 impl ResultName for FailureReason {
-    fn name(&self) -> String {
+    fn short_name(&self) -> String {
         match self {
             FailureReason::Unknown => "failed (unknown)".into(),
             FailureReason::Timeout => "timed out".into(),
@@ -25,13 +25,13 @@ impl ResultName for FailureReason {
             FailureReason::Unknown
             | FailureReason::Timeout
             | FailureReason::OOM
-            | FailureReason::ICE => self.name(),
+            | FailureReason::ICE => self.short_name(),
         }
     }
 }
 
 impl ResultName for BrokenReason {
-    fn name(&self) -> String {
+    fn short_name(&self) -> String {
         match self {
             BrokenReason::Unknown => "broken crate".into(),
             BrokenReason::CargoToml => "broken Cargo.toml".into(),
@@ -41,16 +41,16 @@ impl ResultName for BrokenReason {
     }
 
     fn long_name(&self) -> String {
-        self.name()
+        self.short_name()
     }
 }
 
 impl ResultName for TestResult {
-    fn name(&self) -> String {
+    fn short_name(&self) -> String {
         match self {
-            TestResult::BrokenCrate(reason) => reason.name(),
-            TestResult::BuildFail(reason) => format!("build {}", reason.name()),
-            TestResult::TestFail(reason) => format!("test {}", reason.name()),
+            TestResult::BrokenCrate(reason) => reason.short_name(),
+            TestResult::BuildFail(reason) => format!("build {}", reason.short_name()),
+            TestResult::TestFail(reason) => format!("test {}", reason.short_name()),
             TestResult::TestSkipped => "test skipped".into(),
             TestResult::TestPass => "test passed".into(),
             TestResult::Error => "error".into(),
@@ -66,7 +66,7 @@ impl ResultName for TestResult {
             TestResult::TestSkipped
             | TestResult::TestPass
             | TestResult::Error
-            | TestResult::Skipped => self.name(),
+            | TestResult::Skipped => self.short_name(),
         }
     }
 }

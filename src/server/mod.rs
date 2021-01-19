@@ -20,8 +20,8 @@ use crate::server::tokens::Tokens;
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
 use metrics::Metrics;
-use std::sync::{Arc, Mutex};
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 use warp::{self, Filter};
 
 lazy_static! {

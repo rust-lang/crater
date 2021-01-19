@@ -57,11 +57,12 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential \
     pkg-config \
     libssl-dev \
-    ca-certificates
+    ca-certificates \
+    tini
 
 RUN mkdir /workspace
 ENV CRATER_WORK_DIR=/workspace
 ENV CRATER_INSIDE_DOCKER=1
 
 COPY --from=build /source/target/release/crater /usr/local/bin/
-ENTRYPOINT ["crater"]
+ENTRYPOINT ["tini", "crater"]

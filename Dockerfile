@@ -64,5 +64,9 @@ RUN mkdir /workspace
 ENV CRATER_WORK_DIR=/workspace
 ENV CRATER_INSIDE_DOCKER=1
 
+RUN mkdir /crater
+COPY config.toml /crater/config.toml
+WORKDIR /crater
+
 COPY --from=build /source/target/release/crater /usr/local/bin/
 ENTRYPOINT ["tini", "crater"]

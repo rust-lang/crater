@@ -69,4 +69,4 @@ COPY config.toml /crater/config.toml
 WORKDIR /crater
 
 COPY --from=build /source/target/release/crater /usr/local/bin/
-ENTRYPOINT ["tini", "crater"]
+ENTRYPOINT ["tini", "--", "crater"]

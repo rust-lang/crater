@@ -23,6 +23,7 @@ use crater::toolchain::Toolchain;
 use failure::{bail, Error, Fallible};
 use rustwide::{cmd::SandboxImage, Workspace, WorkspaceBuilder};
 use std::collections::HashSet;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
@@ -265,7 +266,15 @@ pub enum Crater {
     },
 
     #[structopt(name = "server")]
-    Server,
+    Server {
+        #[structopt(
+            name = "bind",
+            long = "bind",
+            short = "b",
+            help = "The address and port to bind to."
+        )]
+        bind: Option<SocketAddr>,
+    },
 
     #[structopt(name = "agent")]
     Agent {
@@ -589,9 +598,9 @@ impl Crater {
                     bail!("missing experiment: {}", ex.0);
                 }
             }
-            Crater::Server => {
+            Crater::Server { bind } => {
                 let config = Config::load()?;
-                server::run(config)?;
+                server::run(config, bind.unwrap_or(([127, 0, 0, 1], 8000).into()))?;
             }
             Crater::Agent {
                 ref url,

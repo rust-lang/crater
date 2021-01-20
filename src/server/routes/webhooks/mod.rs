@@ -83,7 +83,7 @@ fn process_command(
         }
 
         let command = line[line.find(' ').unwrap()..].trim();
-        if command == "" {
+        if command.is_empty() {
             continue;
         }
 

@@ -600,7 +600,10 @@ impl Crater {
             }
             Crater::Server { bind } => {
                 let config = Config::load()?;
-                server::run(config, bind.unwrap_or(([127, 0, 0, 1], 8000).into()))?;
+                server::run(
+                    config,
+                    bind.unwrap_or_else(|| ([127, 0, 0, 1], 8000).into()),
+                )?;
             }
             Crater::Agent {
                 ref url,

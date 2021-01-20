@@ -242,6 +242,7 @@ impl Config {
 }
 
 #[cfg(test)]
+#[allow(clippy::trivial_regex)]
 impl Default for Config {
     fn default() -> Self {
         Config {

@@ -100,7 +100,6 @@ rustlearn = { skip-tests = true } # non-deterministic
 s_app_dir = { skip-tests = true } # flaky tests
 sacn = { skip-tests = true } # Tests just fail if RUST_TEST_THREADS > 1 -author
 sbrsk = { skip-tests = true } # flaky tests
-signatory-ring = { skip-tests = true } # flaky tests
 silk = { slow = true } # tests slow to run
 simd = { broken = true } # missing feature
 simple-munin-plugin = { skip-tests = true } # flaky test

@@ -76,7 +76,7 @@ pub fn get_client_for_bucket(bucket: &str) -> Fallible<Box<dyn S3>> {
         .sync()
         .context(S3Error::UnknownBucketRegion)?;
     let region = match response.location_constraint.as_ref() {
-        Some(region) if region == "" => Region::UsEast1,
+        Some(region) if region.is_empty() => Region::UsEast1,
         Some(region) => Region::from_str(region).context(S3Error::UnknownBucketRegion)?,
         None => return Err(S3Error::UnknownBucketRegion.into()),
     };

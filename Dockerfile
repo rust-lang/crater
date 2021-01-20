@@ -5,7 +5,7 @@
 #  Build image  #
 #################
 
-FROM ubuntu:bionic AS build
+FROM ubuntu:focal AS build
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     ca-certificates \
@@ -50,18 +50,23 @@ RUN find /source -name "*.rs" -exec touch {} \; && cargo build --release
 #  Output image  #
 ##################
 
-FROM ubuntu:bionic AS binary
+FROM ubuntu:focal AS binary
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     docker.io \
     build-essential \
     pkg-config \
     libssl-dev \
-    ca-certificates
+    ca-certificates \
+    tini
 
 RUN mkdir /workspace
 ENV CRATER_WORK_DIR=/workspace
 ENV CRATER_INSIDE_DOCKER=1
 
+RUN mkdir /crater
+COPY config.toml /crater/config.toml
+WORKDIR /crater
+
 COPY --from=build /source/target/release/crater /usr/local/bin/
-ENTRYPOINT ["crater"]
+ENTRYPOINT ["tini", "--", "crater"]

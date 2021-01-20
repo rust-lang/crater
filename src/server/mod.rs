@@ -20,6 +20,7 @@ use crate::server::tokens::Tokens;
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
 use metrics::Metrics;
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use warp::{self, Filter};
 
@@ -49,7 +50,7 @@ pub struct Data {
     pub metrics: Metrics,
 }
 
-pub fn run(config: Config) -> Fallible<()> {
+pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
     let db = Database::open()?;
     let tokens = tokens::Tokens::load()?;
     let github = GitHubApi::new(&tokens);
@@ -77,7 +78,7 @@ pub fn run(config: Config) -> Fallible<()> {
     data.reports_worker.spawn(data.clone());
     cronjobs::spawn(data.clone());
 
-    info!("running server...");
+    info!("running server on {}...", bind);
 
     let data = Arc::new(data);
 
@@ -100,7 +101,7 @@ pub fn run(config: Config) -> Fallible<()> {
             resp
         });
 
-    warp::serve(routes).run(([127, 0, 0, 1], 8000));
+    warp::serve(routes).run(bind);
 
     Ok(())
 }

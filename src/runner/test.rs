@@ -40,6 +40,9 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
                         PrepareError::MissingCargoToml => Some(BrokenReason::CargoToml),
                         PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
                         PrepareError::YankedDependencies => Some(BrokenReason::Yanked),
+                        PrepareError::MissingDependencies => {
+                            Some(BrokenReason::MissingDependencies)
+                        }
                         PrepareError::PrivateGitRepository => {
                             Some(BrokenReason::MissingGitRepository)
                         }

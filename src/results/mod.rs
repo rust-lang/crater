@@ -283,6 +283,7 @@ string_enum!(pub enum BrokenReason {
     Unknown => "unknown",
     CargoToml => "cargo-toml",
     Yanked => "yanked",
+    MissingDependencies => "missing-deps",
     MissingGitRepository => "missing-git-repository",
 });
 

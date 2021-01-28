@@ -37,6 +37,7 @@ impl ResultName for BrokenReason {
             BrokenReason::CargoToml => "broken Cargo.toml".into(),
             BrokenReason::Yanked => "deps yanked".into(),
             BrokenReason::MissingGitRepository => "missing repo".into(),
+            BrokenReason::MissingDependencies => "missing deps".into(),
         }
     }
 

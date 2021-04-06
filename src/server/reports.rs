@@ -7,8 +7,8 @@ use crate::server::Data;
 use crate::utils;
 use rusoto_core::request::HttpClient;
 use rusoto_s3::S3Client;
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread;
+use std::sync::{Arc, Mutex};
+use std::thread::{self, Thread};
 use std::time::Duration;
 
 // Automatically wake up the reports generator thread every 10 minutes to check for new jobs
@@ -32,7 +32,7 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
     Ok(res)
 }
 
-fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
+fn reports_thread(data: &Data) -> Fallible<()> {
     let timeout = Duration::from_secs(AUTOMATIC_THREAD_WAKEUP);
     let results = DatabaseDB::new(&data.db);
 
@@ -41,9 +41,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
             Some(ex) => ex,
             None => {
                 // This will sleep AUTOMATIC_THREAD_WAKEUP seconds *or* until a wake is received
-                if let Err(mpsc::RecvTimeoutError::Disconnected) = wakes.recv_timeout(timeout) {
-                    thread::sleep(timeout);
-                }
+                std::thread::park_timeout(timeout);
 
                 continue;
             }
@@ -128,7 +126,7 @@ fn reports_thread(data: &Data, wakes: &mpsc::Receiver<()>) -> Fallible<()> {
 }
 
 #[derive(Clone, Default)]
-pub struct ReportsWorker(Arc<Mutex<Option<mpsc::Sender<()>>>>);
+pub struct ReportsWorker(Arc<Mutex<Option<Thread>>>);
 
 impl ReportsWorker {
     pub fn new() -> Self {
@@ -136,35 +134,20 @@ impl ReportsWorker {
     }
 
     pub fn spawn(&self, data: Data) {
-        let waker = self.0.clone();
-        thread::spawn(move || {
-            // Set up a new waker channel
-            let (wake_send, wake_recv) = mpsc::channel();
-            {
-                let mut waker = waker.lock().unwrap();
-                *waker = Some(wake_send);
-            }
-
-            loop {
-                let result = reports_thread(&data.clone(), &wake_recv)
-                    .with_context(|_| "the reports generator thread crashed");
-                if let Err(e) = result {
-                    utils::report_failure(&e);
-                }
-
-                warn!("the reports generator thread will be respawned in one minute");
-                thread::sleep(Duration::from_secs(60));
+        let joiner = thread::spawn(move || loop {
+            let result = reports_thread(&data.clone())
+                .with_context(|_| "the reports generator thread crashed");
+            if let Err(e) = result {
+                utils::report_failure(&e);
             }
         });
+        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = Some(joiner.thread().clone());
     }
 
     pub fn wake(&self) {
-        // We don't really care if the wake fails: the reports generator thread wakes up on its own
-        // every few minutes, so this just speeds up the process
-        if let Some(waker) = self.0.lock().ok().as_ref().and_then(|opt| opt.as_ref()) {
-            if waker.send(()).is_err() {
-                warn!("can't wake the reports generator, will have to wait");
-            }
+        let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(thread) = &*guard {
+            thread.unpark();
         } else {
             warn!("no report generator to wake up!");
         }

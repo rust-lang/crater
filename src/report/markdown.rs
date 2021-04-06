@@ -132,7 +132,7 @@ fn render_markdown(context: &ResultsContext) -> Fallible<String> {
                         &mut rendered,
                         "* [{}]({}) (not covered in crater testing)",
                         krate,
-                        crate_to_url(&krate)?
+                        crate_to_url(&krate)
                     )?;
                     for krate in deps {
                         write_crate(&mut rendered, krate, *comparison, true)?;

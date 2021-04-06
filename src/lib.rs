@@ -1,9 +1,14 @@
 #![recursion_limit = "256"]
 #![allow(
     clippy::needless_pass_by_value,
+    clippy::wrong_self_convention,
     clippy::new_ret_no_self,
     clippy::too_many_arguments,
-    clippy::redundant_closure
+    clippy::redundant_closure,
+    clippy::unnecessary_wraps,
+    clippy::needless_question_mark,
+    clippy::vec_init_then_push,
+    clippy::upper_case_acronyms
 )]
 
 pub mod actions;

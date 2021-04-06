@@ -110,10 +110,14 @@ pub fn run_ex<DB: WriteResults + Sync>(
                 .spawn(move || worker.run())?;
             threads.push(join);
         }
-        let disk_watcher_thread = scope
-            .builder()
-            .name("disk-space-watcher".into())
-            .spawn(|| disk_watcher.run())?;
+        let disk_watcher_thread =
+            scope
+                .builder()
+                .name("disk-space-watcher".into())
+                .spawn(|| {
+                    disk_watcher.run();
+                    Ok(())
+                })?;
 
         let clean_exit = join_threads(threads.drain(..));
         disk_watcher.stop();

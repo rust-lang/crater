@@ -250,8 +250,8 @@ pub fn generate_report<DB: ReadResults>(
             );
 
             Ok(CrateResult {
-                name: crate_to_name(&krate)?,
-                url: crate_to_url(&krate)?,
+                name: crate_to_name(&krate),
+                url: crate_to_url(&krate),
                 status: get_crate_version_status(&index, &krate)
                     .unwrap_or(Some(CrateVersionStatus::MissingFromIndex)),
                 krate: krate.clone(),
@@ -384,8 +384,8 @@ fn gen_retry_list(res: &RawTestResults) -> String {
     out
 }
 
-fn crate_to_name(c: &Crate) -> Fallible<String> {
-    Ok(match *c {
+fn crate_to_name(c: &Crate) -> String {
+    match *c {
         Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
         Crate::GitHub(ref repo) => {
             if let Some(ref sha) = repo.sha {
@@ -407,11 +407,11 @@ fn crate_to_name(c: &Crate) -> Fallible<String> {
                 utf8_percent_encode(&repo.url, &REPORT_ENCODE_SET).to_string()
             }
         }
-    })
+    }
 }
 
-fn crate_to_url(c: &Crate) -> Fallible<String> {
-    Ok(match *c {
+fn crate_to_url(c: &Crate) -> String {
+    match *c {
         Crate::Registry(ref details) => format!(
             "https://crates.io/crates/{}/{}",
             details.name, details.version
@@ -430,7 +430,7 @@ fn crate_to_url(c: &Crate) -> Fallible<String> {
         ),
         Crate::Path(ref path) => utf8_percent_encode(path, &REPORT_ENCODE_SET).to_string(),
         Crate::Git(ref repo) => repo.url.clone(),
-    })
+    }
 }
 
 fn compare(
@@ -672,7 +672,7 @@ mod tests {
             name: "lazy_static".into(),
             version: "1.0".into(),
         });
-        assert_eq!(crate_to_name(&reg).unwrap(), "lazy_static-1.0".to_string());
+        assert_eq!(crate_to_name(&reg), "lazy_static-1.0".to_string());
 
         let repo = GitHubRepo {
             org: "brson".into(),
@@ -681,7 +681,7 @@ mod tests {
         };
         let gh = Crate::GitHub(repo);
 
-        assert_eq!(crate_to_name(&gh).unwrap(), "brson.hello-rs".to_string());
+        assert_eq!(crate_to_name(&gh), "brson.hello-rs".to_string());
 
         let repo = GitHubRepo {
             org: "brson".into(),
@@ -690,10 +690,7 @@ mod tests {
         };
         let gh = Crate::GitHub(repo);
 
-        assert_eq!(
-            crate_to_name(&gh).unwrap(),
-            "brson.hello-rs.f00".to_string()
-        );
+        assert_eq!(crate_to_name(&gh), "brson.hello-rs.f00".to_string());
     }
 
     #[test]
@@ -736,8 +733,8 @@ mod tests {
             version: "1.0".into(),
         });
         assert_eq!(
-            crate_to_url(&reg).unwrap(),
-            "https://crates.io/crates/lazy_static/1.0".to_string()
+            crate_to_url(&reg),
+            "https://crates.io/crates/lazy_static/1.0"
         );
 
         let repo = GitHubRepo {
@@ -747,10 +744,7 @@ mod tests {
         };
         let gh = Crate::GitHub(repo);
 
-        assert_eq!(
-            crate_to_url(&gh).unwrap(),
-            "https://github.com/brson/hello-rs".to_string()
-        );
+        assert_eq!(crate_to_url(&gh), "https://github.com/brson/hello-rs");
 
         let repo = GitHubRepo {
             org: "brson".into(),
@@ -759,8 +753,8 @@ mod tests {
         };
         let gh = Crate::GitHub(repo);
         assert_eq!(
-            crate_to_url(&gh).unwrap(),
-            "https://github.com/brson/hello-rs/tree/f00".to_string()
+            crate_to_url(&gh),
+            "https://github.com/brson/hello-rs/tree/f00"
         );
     }
 

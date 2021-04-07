@@ -171,24 +171,24 @@ impl<'a, DB: WriteResults + Sync> DiskSpaceWatcher<'a, DB> {
         self.stop_send.lock().unwrap().send(()).unwrap();
     }
 
-    pub(super) fn run(&self) -> Fallible<()> {
+    pub(super) fn run(&self) {
         loop {
-            self.check()?;
+            self.check();
             match self.stop_recv.lock().unwrap().recv_timeout(self.interval) {
-                Ok(()) => return Ok(()),
+                Ok(()) => return,
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => panic!("disconnected stop channel"),
             }
         }
     }
 
-    fn check(&self) -> Fallible<()> {
+    fn check(&self) {
         let usage = match crate::utils::disk_usage::DiskUsage::fetch() {
             Ok(usage) => usage,
             Err(err) => {
                 // TODO: `current_mount` fails sometimes on Windows with ERROR_DEVICE_NOT_READY.
                 warn!("Failed to check space remaining: {}", err);
-                return Ok(());
+                return;
             }
         };
 
@@ -198,6 +198,5 @@ impl<'a, DB: WriteResults + Sync> DiskSpaceWatcher<'a, DB> {
                 worker.schedule_target_dir_cleanup();
             }
         }
-        Ok(())
     }
 }

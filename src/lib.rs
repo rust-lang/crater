@@ -8,7 +8,8 @@
     clippy::unnecessary_wraps,
     clippy::needless_question_mark,
     clippy::vec_init_then_push,
-    clippy::upper_case_acronyms
+    clippy::upper_case_acronyms,
+    clippy::mutex_atomic
 )]
 
 pub mod actions;

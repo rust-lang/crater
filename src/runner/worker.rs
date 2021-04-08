@@ -7,10 +7,10 @@ use crate::runner::{OverrideResult, RunnerState};
 use crate::utils;
 use rustwide::{BuildDirectory, Workspace};
 use std::collections::HashMap;
+use std::sync::Condvar;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    mpsc::{self, RecvTimeoutError},
-    Arc, Mutex,
+    Mutex,
 };
 use std::thread;
 use std::time::Duration;
@@ -151,34 +151,38 @@ pub(super) struct DiskSpaceWatcher<'a, DB: WriteResults + Sync> {
     interval: Duration,
     threshold: f32,
     workers: &'a [Worker<'a, DB>],
-    stop_send: Arc<Mutex<mpsc::Sender<()>>>,
-    stop_recv: Arc<Mutex<mpsc::Receiver<()>>>,
+    should_stop: Mutex<bool>,
+    waiter: Condvar,
 }
 
 impl<'a, DB: WriteResults + Sync> DiskSpaceWatcher<'a, DB> {
     pub(super) fn new(interval: Duration, threshold: f32, workers: &'a [Worker<'a, DB>]) -> Self {
-        let (stop_send, stop_recv) = mpsc::channel();
         DiskSpaceWatcher {
             interval,
             threshold,
             workers,
-            stop_send: Arc::new(Mutex::new(stop_send)),
-            stop_recv: Arc::new(Mutex::new(stop_recv)),
+            should_stop: Mutex::new(false),
+            waiter: Condvar::new(),
         }
     }
 
     pub(super) fn stop(&self) {
-        self.stop_send.lock().unwrap().send(()).unwrap();
+        *self.should_stop.lock().unwrap() = true;
+        self.waiter.notify_all();
     }
 
     pub(super) fn run(&self) {
-        loop {
+        let mut should_stop = self.should_stop.lock().unwrap();
+        while !*should_stop {
             self.check();
-            match self.stop_recv.lock().unwrap().recv_timeout(self.interval) {
-                Ok(()) => return,
-                Err(RecvTimeoutError::Timeout) => {}
-                Err(RecvTimeoutError::Disconnected) => panic!("disconnected stop channel"),
-            }
+            // Wait for either the interval to pass or should_stop to get a
+            // write. We don't care if we timed out or not, we can double check
+            // the should_stop regardless.
+            should_stop = self
+                .waiter
+                .wait_timeout(should_stop, self.interval)
+                .unwrap()
+                .0;
         }
     }
 

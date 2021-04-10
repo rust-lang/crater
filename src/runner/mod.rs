@@ -16,8 +16,7 @@ use rustwide::logging::LogStorage;
 use rustwide::Workspace;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Mutex;
-use std::thread;
+use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
 const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(300);
@@ -63,6 +62,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     info!("computing the tasks graph...");
     let graph = Mutex::new(build_graph(ex, crates, config));
+    let parked_threads = Condvar::new();
 
     info!("preparing the execution...");
     for tc in &ex.toolchains {
@@ -74,9 +74,6 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     info!("running tasks in {} threads...", threads_count);
 
-    // An HashMap is used instead of an HashSet because Thread is not Eq+Hash
-    let parked_threads: Mutex<HashMap<thread::ThreadId, thread::Thread>> =
-        Mutex::new(HashMap::new());
     let state = RunnerState::new();
 
     let workers = (0..threads_count)

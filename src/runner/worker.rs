@@ -6,13 +6,11 @@ use crate::runner::graph::{TasksGraph, WalkResult};
 use crate::runner::{OverrideResult, RunnerState};
 use crate::utils;
 use rustwide::{BuildDirectory, Workspace};
-use std::collections::HashMap;
 use std::sync::Condvar;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Mutex,
 };
-use std::thread;
 use std::time::Duration;
 
 pub(super) struct Worker<'a, DB: WriteResults + Sync> {
@@ -24,7 +22,7 @@ pub(super) struct Worker<'a, DB: WriteResults + Sync> {
     graph: &'a Mutex<TasksGraph>,
     state: &'a RunnerState,
     db: &'a DB,
-    parked_threads: &'a Mutex<HashMap<thread::ThreadId, thread::Thread>>,
+    parked_threads: &'a Condvar,
     target_dir_cleanup: AtomicBool,
 }
 
@@ -37,7 +35,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         graph: &'a Mutex<TasksGraph>,
         state: &'a RunnerState,
         db: &'a DB,
-        parked_threads: &'a Mutex<HashMap<thread::ThreadId, thread::Thread>>,
+        parked_threads: &'a Condvar,
     ) -> Self {
         Worker {
             build_dir: Mutex::new(workspace.build_dir(&name)),
@@ -59,15 +57,13 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
 
     pub(super) fn run(&self) -> Fallible<()> {
         // This uses a `loop` instead of a `while let` to avoid locking the graph too much
+        let mut guard = self.graph.lock().unwrap();
         loop {
             self.maybe_cleanup_target_dir()?;
-            let walk_result = self
-                .graph
-                .lock()
-                .unwrap()
-                .next_task(self.ex, self.db, &self.name);
+            let walk_result = guard.next_task(self.ex, self.db, &self.name);
             match walk_result {
                 WalkResult::Task(id, task) => {
+                    drop(guard);
                     info!("running task: {:?}", task);
                     let res = task.run(
                         self.config,
@@ -77,6 +73,9 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                         self.db,
                         self.state,
                     );
+                    guard = self.graph.lock().unwrap();
+                    // Regardless of how this ends, they should get woken up.
+                    self.parked_threads.notify_all();
                     if let Err(e) = res {
                         error!("task failed, marking childs as failed too: {:?}", task);
                         utils::report_failure(&e);
@@ -94,7 +93,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                             }
                         }
 
-                        self.graph.lock().unwrap().mark_as_failed(
+                        guard.mark_as_failed(
                             id,
                             self.ex,
                             self.db,
@@ -105,28 +104,20 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                             &self.name,
                         )?;
                     } else {
-                        self.graph.lock().unwrap().mark_as_completed(id);
-                    }
-
-                    // Unpark all the threads
-                    let mut parked = self.parked_threads.lock().unwrap();
-                    for (_id, thread) in parked.drain() {
-                        thread.unpark();
+                        guard.mark_as_completed(id);
                     }
                 }
                 WalkResult::Blocked => {
-                    // Wait until another thread finished before looking for tasks again
-                    // If the thread spuriously wake up (parking does not guarantee no
-                    // spurious wakeups) it's not a big deal, it will just get parked again
-                    {
-                        let mut parked_threads = self.parked_threads.lock().unwrap();
-                        let current = thread::current();
-                        parked_threads.insert(current.id(), current);
-                    }
-                    thread::park();
+                    guard = self.parked_threads.wait(guard).unwrap();
                 }
                 WalkResult::NotBlocked => unreachable!("NotBlocked leaked from the run"),
-                WalkResult::Finished => break,
+                WalkResult::Finished => {
+                    // A blocked thread may be waiting on the root node, in
+                    // which case this is crucial to avoiding a deadlock.
+                    self.parked_threads.notify_all();
+                    drop(guard);
+                    break;
+                }
             }
         }
 

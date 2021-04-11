@@ -230,16 +230,24 @@ impl TasksGraph {
             self.mark_as_failed(child, ex, db, state, config, error, result, worker)?;
         }
 
-        match self.graph[node] {
+        // We need to mark_as_completed the node here (if it's a task),
+        // otherwise we'll later get stuck as the node is still considered
+        // running (but has actually failed).
+        let res = match self.graph[node] {
             Node::Task { ref task, .. } => {
                 log::debug!("marking task {:?} as failed", task);
-                task.mark_as_failed(ex, db, state, config, error, result)?
+                let res = task.mark_as_failed(ex, db, state, config, error, result);
+                if let Err(err) = &res {
+                    log::debug!("marking task {:?} as failed, failed: {:?}", task, err);
+                }
+                res
             }
             Node::CrateCompleted | Node::Root => return Ok(()),
-        }
+        };
 
         self.mark_as_completed(node);
-        Ok(())
+
+        res
     }
 
     pub(super) fn pending_crates_count(&self) -> usize {

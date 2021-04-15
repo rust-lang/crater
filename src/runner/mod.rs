@@ -64,6 +64,17 @@ pub fn run_ex<DB: WriteResults + Sync>(
     let graph = Mutex::new(build_graph(ex, crates, config));
     let parked_threads = Condvar::new();
 
+    info!("uninstalling toolchains...");
+    // Clean out all the toolchains currently installed. This minimizes the
+    // amount of disk space used by the base system, letting the task execution
+    // proceed slightly faster than it would otherwise.
+    for tc in workspace.installed_toolchains()? {
+        // But don't uninstall it if we're going to reinstall in a couple lines.
+        if !ex.toolchains.iter().any(|t| tc == t.source) {
+            tc.uninstall(workspace)?;
+        }
+    }
+
     info!("preparing the execution...");
     for tc in &ex.toolchains {
         tc.install(workspace)?;

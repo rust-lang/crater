@@ -12,6 +12,7 @@ use std::sync::{
     Mutex,
 };
 use std::time::Duration;
+use systemstat::{Platform, System};
 
 pub(super) struct Worker<'a, DB: WriteResults + Sync> {
     name: String,
@@ -55,9 +56,10 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         &self.name
     }
 
-    pub(super) fn run(&self) -> Fallible<()> {
+    pub(super) fn run(&self, threads_count: usize) -> Fallible<()> {
         // This uses a `loop` instead of a `while let` to avoid locking the graph too much
         let mut guard = self.graph.lock().unwrap();
+        let system = System::new();
         loop {
             self.maybe_cleanup_target_dir()?;
             let walk_result = guard.next_task(self.ex, self.db, &self.name);
@@ -65,6 +67,21 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                 WalkResult::Task(id, task) => {
                     drop(guard);
                     info!("running task: {:?}", task);
+
+                    // Wait for 15 seconds before running if the 1 minute load
+                    // average exceeds the thread count. This tries to back off
+                    // from spawning too many jobs on the server, hopefully
+                    // improving performance.
+                    loop {
+                        let avg = system.load_average()?;
+
+                        if avg.one > threads_count as f32 {
+                            std::thread::sleep(std::time::Duration::new(15, 0));
+                        } else {
+                            break;
+                        }
+                    }
+
                     let res = task.run(
                         self.config,
                         self.workspace,

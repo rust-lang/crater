@@ -112,15 +112,17 @@ pub fn run_ex<DB: WriteResults + Sync>(
         let mut threads = Vec::new();
 
         for worker in &workers {
-            let join = scope.builder().name(worker.name().into()).spawn(move || {
-                match worker.run(threads_count) {
-                    Ok(()) => Ok(()),
-                    Err(r) => {
-                        log::warn!("worker {} failed: {:?}", worker.name(), r);
-                        Err(r)
-                    }
-                }
-            })?;
+            let join =
+                scope
+                    .builder()
+                    .name(worker.name().into())
+                    .spawn(move || match worker.run() {
+                        Ok(()) => Ok(()),
+                        Err(r) => {
+                            log::warn!("worker {} failed: {:?}", worker.name(), r);
+                            Err(r)
+                        }
+                    })?;
             threads.push(join);
         }
         let disk_watcher_thread =

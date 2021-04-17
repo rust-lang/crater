@@ -23,15 +23,15 @@ jobs:
 
       - name: Check if the configuration is correct
         run: |
-          cargo run -- create-lists
-          cargo run -- check-config
+          cargo run --bin crater -- create-lists
+          cargo run --bin crater -- check-config
 
   test:
     name: Testing
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        channel: [stable, beta, nightly]
+        os: ubuntu-latest
+        channel: stable
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -49,7 +49,9 @@ jobs:
       - name: Run Crater tests
         shell: bash
         run: |
-          cargo run -- create-lists
+          cargo run --bin crater -- create-lists
+          cargo build --bin jobserver
+          cp target/debug/jobserver /usr/local/bin/jobserver-crater-fwd
           cargo test
 
   minicrater:
@@ -67,7 +69,9 @@ jobs:
       - name: Run minicrater
         shell: bash
         run: |
-          cargo run -- create-lists
+          cargo run --bin crater -- create-lists
+          cargo build --bin jobserver
+          cp target/debug/jobserver /usr/local/bin/jobserver-crater-fwd
           cargo test -- --ignored --nocapture --test-threads 1
         env:
           MINICRATER_FAST_WORKSPACE_INIT: 1
@@ -113,7 +117,7 @@ jobs:
         run: cat docker-images/crater.tar.gz | gunzip | docker load
 
       - name: Upload the Docker image to ECR
-        uses: Mark-Simulacrum/simpleinfra/github-actions/upload-docker-image@docker-fancy-tag
+        uses: rust-lang/simpleinfra/github-actions/upload-docker-image@master
         with:
           image: crater
           repository: crater

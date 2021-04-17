@@ -70,5 +70,5 @@ COPY config.toml /crater/config.toml
 WORKDIR /crater
 
 COPY --from=build /source/target/release/crater /usr/local/bin/
-COPY --from=build /source/target/release/jobserver /usr/local/bin/
+COPY --from=build /source/target/release/jobserver /usr/local/bin/jobserver-crater-fwd
 ENTRYPOINT ["tini", "--", "crater"]

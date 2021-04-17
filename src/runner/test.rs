@@ -8,10 +8,12 @@ use cargo_metadata::diagnostic::DiagnosticLevel;
 use cargo_metadata::{Message, Metadata, PackageId};
 use failure::Error;
 use remove_dir_all::remove_dir_all;
+use rustwide::cmd::Runnable;
 use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
 use rustwide::{Build, PrepareError};
 use std::collections::{BTreeSet, HashSet};
 use std::convert::TryFrom;
+use std::path::{Path, PathBuf};
 
 fn failure_reason(err: &Error) -> FailureReason {
     for cause in err.iter_chain() {
@@ -144,10 +146,19 @@ fn run_cargo<DB: WriteResults>(
             _ => actions.remove_line(),
         }
     };
+    let binary_cargo = match ctx.toolchain.cargo().name() {
+        rustwide::cmd::Binary::Global(path) => path,
+        rustwide::cmd::Binary::ManagedByRustwide(path) => {
+            PathBuf::from(format!("/opt/rustwide/cargo-home/bin/{}", path.display()))
+        }
+        _ => unimplemented!(),
+    };
 
+    let mut args = args.to_vec();
+    args.insert(0, binary_cargo.to_str().unwrap());
     let mut command = build_env
-        .cargo()
-        .args(args)
+        .cmd("/tmp/jobserver-from-file")
+        .args(&args)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env(rustflags_env, rustflags);
@@ -210,7 +221,18 @@ pub(super) fn run_test<DB: WriteResults>(
                 );
                 let sandbox = SandboxBuilder::new()
                     .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
-                    .enable_networking(false);
+                    .enable_networking(false)
+                    .mount(
+                        Path::new("/tmp/jobserver-from-file"),
+                        Path::new("/tmp/jobserver-from-file"),
+                        // This is just an executable, no need to write to it.
+                        rustwide::cmd::MountKind::ReadOnly,
+                    )
+                    .mount(
+                        &ctx.state.path,
+                        Path::new("/tmp/crater-runner-fifo"),
+                        rustwide::cmd::MountKind::ReadWrite,
+                    );
 
                 let krate = &ctx.krate.to_rustwide();
                 let mut build_dir = ctx.build_dir.lock().unwrap();

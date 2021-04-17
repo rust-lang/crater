@@ -15,7 +15,9 @@ use crossbeam_utils::thread::{scope, ScopedJoinHandle};
 use rustwide::logging::LogStorage;
 use rustwide::Workspace;
 use std::collections::HashMap;
-use std::path::Path;
+use std::fs::{File, OpenOptions};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
@@ -32,14 +34,50 @@ struct RunnerStateInner {
 
 struct RunnerState {
     inner: Mutex<RunnerStateInner>,
+
+    // Jobserver ends for all workerse used by this runner. Don't need to be
+    // protected by the mutex.
+    pub read: File,
+    pub write: File,
+    pub path: PathBuf,
 }
 
 impl RunnerState {
-    fn new() -> Self {
+    fn new(cpus: usize) -> Self {
+        let path_owned = std::env::temp_dir().join("crater-runner-fifo");
+        let _ = std::fs::remove_file(&path_owned);
+        let fifo = std::ffi::CString::new(path_owned.to_str().unwrap()).unwrap();
+        unsafe {
+            if libc::mkfifo(fifo.as_ptr(), 0o777) < 0 {
+                panic!("failed to make to fifo");
+            }
+        }
+
+        // We need threads here as otherwise opening the read end or the write
+        // end will block until the other end is opened.
+        let path = path_owned.clone();
+        let read_end =
+            std::thread::spawn(move || OpenOptions::new().read(true).open(path).unwrap());
+        let path = path_owned.clone();
+        let write_end =
+            std::thread::spawn(move || OpenOptions::new().write(true).open(path).unwrap());
+
+        let mut write = write_end.join().unwrap();
+
+        // Fill up the 'jobserver' with N tokens for each cpu we have.
+        for _ in 0..cpus {
+            write.write(&[b'|']).unwrap();
+        }
+
+        let read = read_end.join().unwrap();
+
         RunnerState {
             inner: Mutex::new(RunnerStateInner {
                 prepare_logs: HashMap::new(),
             }),
+            read,
+            write,
+            path: path_owned,
         }
     }
 
@@ -85,7 +123,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     info!("running tasks in {} threads...", threads_count);
 
-    let state = RunnerState::new();
+    let state = RunnerState::new(num_cpus::get());
 
     let workers = (0..threads_count)
         .map(|i| {
@@ -112,15 +150,17 @@ pub fn run_ex<DB: WriteResults + Sync>(
         let mut threads = Vec::new();
 
         for worker in &workers {
-            let join = scope.builder().name(worker.name().into()).spawn(move || {
-                match worker.run(threads_count) {
-                    Ok(()) => Ok(()),
-                    Err(r) => {
-                        log::warn!("worker {} failed: {:?}", worker.name(), r);
-                        Err(r)
-                    }
-                }
-            })?;
+            let join =
+                scope
+                    .builder()
+                    .name(worker.name().into())
+                    .spawn(move || match worker.run() {
+                        Ok(()) => Ok(()),
+                        Err(r) => {
+                            log::warn!("worker {} failed: {:?}", worker.name(), r);
+                            Err(r)
+                        }
+                    })?;
             threads.push(join);
         }
         let disk_watcher_thread =

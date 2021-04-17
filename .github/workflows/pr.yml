@@ -19,8 +19,8 @@ jobs:
 
       - name: Check if the configuration is correct
         run: |
-          cargo run -- create-lists
-          cargo run -- check-config
+          cargo run --bin crater -- create-lists
+          cargo run --bin crater -- check-config
 
   test:
     name: Linux testing
@@ -36,5 +36,7 @@ jobs:
 
       - name: Run Crater tests
         run: |
-          cargo run -- create-lists
+          cargo run --bin crater -- create-lists
+          cargo build --bin jobserver
+          cp target/debug/jobserver /usr/local/bin/jobserver-crater-fwd
           cargo test

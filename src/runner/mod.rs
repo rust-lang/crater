@@ -63,7 +63,7 @@ impl RunnerState {
         let path = file.clone();
         let read_end =
             std::thread::spawn(move || OpenOptions::new().read(true).open(path).unwrap());
-        let path = file.clone();
+        let path = file;
         let write_end =
             std::thread::spawn(move || OpenOptions::new().write(true).open(path).unwrap());
 

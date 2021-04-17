@@ -51,7 +51,7 @@ jobs:
         run: |
           cargo run --bin crater -- create-lists
           cargo build --bin jobserver
-          cp target/debug/jobserver /usr/local/bin/jobserver-crater-fwd
+          sudo cp target/debug/jobserver /usr/local/bin/jobserver-crater-fwd
           cargo test
 
   minicrater:
@@ -71,7 +71,7 @@ jobs:
         run: |
           cargo run --bin crater -- create-lists
           cargo build --bin jobserver
-          cp target/debug/jobserver /usr/local/bin/jobserver-crater-fwd
+          sudo cp target/debug/jobserver /usr/local/bin/jobserver-crater-fwd
           cargo test -- --ignored --nocapture --test-threads 1
         env:
           MINICRATER_FAST_WORKSPACE_INIT: 1

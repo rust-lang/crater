@@ -113,14 +113,15 @@ jobs:
         run: cat docker-images/crater.tar.gz | gunzip | docker load
 
       - name: Upload the Docker image to ECR
-        uses: rust-lang/simpleinfra/github-actions/upload-docker-image@master
+        uses: Mark-Simulacrum/simpleinfra/github-actions/upload-docker-image@docker-fancy-tag
         with:
           image: crater
           repository: crater
           region: us-west-1
+          tag: experiment
           aws_access_key_id: "${{ secrets.aws_access_key_id }}"
           aws_secret_access_key: "${{ secrets.aws_secret_access_key }}"
-        if: github.ref == 'refs/heads/auto'
+        if: github.ref == 'refs/heads/try'
 
 
   # These jobs doesn't actually test anything, but they're only used to tell

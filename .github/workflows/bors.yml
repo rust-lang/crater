@@ -30,8 +30,8 @@ jobs:
     name: Testing
     strategy:
       matrix:
-        os: ubuntu-latest
-        channel: stable
+        os: [ubuntu-latest]
+        channel: [stable]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2

@@ -157,7 +157,7 @@ fn run_cargo<DB: WriteResults>(
     let mut args = args.to_vec();
     args.insert(0, binary_cargo.to_str().unwrap());
     let mut command = build_env
-        .cmd("/tmp/jobserver-from-file")
+        .cmd("/usr/local/bin/jobserver-crater-fwd")
         .args(&args)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
@@ -223,8 +223,8 @@ pub(super) fn run_test<DB: WriteResults>(
                     .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
                     .enable_networking(false)
                     .mount(
-                        Path::new("/tmp/jobserver-from-file"),
-                        Path::new("/tmp/jobserver-from-file"),
+                        Path::new("/usr/local/bin/jobserver-crater-fwd"),
+                        Path::new("/usr/local/bin/jobserver-crater-fwd"),
                         // This is just an executable, no need to write to it.
                         rustwide::cmd::MountKind::ReadOnly,
                     )

@@ -30,6 +30,7 @@ WORKDIR /source
 COPY Cargo.lock Cargo.toml /source/
 RUN mkdir -p /source/src && \
     echo "fn main() {}" > /source/src/main.rs && \
+    echo "fn main() {}" > /source/src/bin/jobserver.rs && \
     echo "fn main() {}" > /source/build.rs
 
 RUN cargo fetch
@@ -69,4 +70,5 @@ COPY config.toml /crater/config.toml
 WORKDIR /crater
 
 COPY --from=build /source/target/release/crater /usr/local/bin/
+COPY --from=build /source/target/release/jobserver /usr/local/bin/
 ENTRYPOINT ["tini", "--", "crater"]

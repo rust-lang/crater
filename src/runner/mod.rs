@@ -66,7 +66,7 @@ impl RunnerState {
 
         // Fill up the 'jobserver' with N tokens for each cpu we have.
         for _ in 0..cpus {
-            write.write(&[b'|']).unwrap();
+            assert!(write.write(&[b'|']).unwrap() == 1);
         }
 
         let read = read_end.join().unwrap();

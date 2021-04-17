@@ -38,5 +38,5 @@ jobs:
         run: |
           cargo run --bin crater -- create-lists
           cargo build --bin jobserver
-          cp target/debug/jobserver /usr/local/bin/jobserver-crater-fwd
+          sudo cp target/debug/jobserver /usr/local/bin/jobserver-crater-fwd
           cargo test

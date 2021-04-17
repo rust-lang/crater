@@ -39,12 +39,12 @@ struct RunnerState {
     // protected by the mutex.
     pub read: File,
     pub write: File,
-    pub path: std::mem::ManuallyDrop<tempfile::TempDir>,
+    pub path: tempfile::TempDir,
 }
 
 impl RunnerState {
     fn new(cpus: usize) -> Self {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir_in(&*crate::dirs::WORK_DIR).unwrap();
         std::fs::copy(
             "/usr/local/bin/jobserver-crater-fwd",
             dir.path().join("jobserver-crater-fwd"),
@@ -82,7 +82,7 @@ impl RunnerState {
             }),
             read,
             write,
-            path: std::mem::ManuallyDrop::new(dir),
+            path: dir,
         }
     }
 

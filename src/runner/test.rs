@@ -161,7 +161,7 @@ fn run_cargo<DB: WriteResults>(
         .args(&args)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
-        .env("RUSTUP_TOOLCHAIN", ctx.toolchain.to_string())
+        .env("RUSTUP_TOOLCHAIN", ctx.toolchain.source.to_string())
         .env(rustflags_env, rustflags);
 
     if check_errors {

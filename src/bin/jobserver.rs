@@ -8,13 +8,13 @@ fn main() {
     let read_end = std::thread::spawn(|| {
         OpenOptions::new()
             .read(true)
-            .open("/tmp/crater-runner-fifo")
+            .open("/tmp/crater-runner-fifo/fifo")
             .unwrap()
     });
     let write_end = std::thread::spawn(|| {
         OpenOptions::new()
             .write(true)
-            .open("/tmp/crater-runner-fifo")
+            .open("/tmp/crater-runner-fifo/fifo")
             .unwrap()
     });
 

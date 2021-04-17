@@ -157,10 +157,11 @@ fn run_cargo<DB: WriteResults>(
     let mut args = args.to_vec();
     args.insert(0, binary_cargo.to_str().unwrap());
     let mut command = build_env
-        .cmd("/usr/local/bin/jobserver-crater-fwd")
+        .cmd("/tmp/crater-runner-fifo/jobserver-crater-fwd")
         .args(&args)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
+        .env("RUSTUP_TOOLCHAIN", ctx.toolchain.to_string())
         .env(rustflags_env, rustflags);
 
     if check_errors {
@@ -223,13 +224,7 @@ pub(super) fn run_test<DB: WriteResults>(
                     .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
                     .enable_networking(false)
                     .mount(
-                        Path::new("/usr/local/bin/jobserver-crater-fwd"),
-                        Path::new("/usr/local/bin/jobserver-crater-fwd"),
-                        // This is just an executable, no need to write to it.
-                        rustwide::cmd::MountKind::ReadOnly,
-                    )
-                    .mount(
-                        &ctx.state.path,
+                        &ctx.state.path.path(),
                         Path::new("/tmp/crater-runner-fifo"),
                         rustwide::cmd::MountKind::ReadWrite,
                     );

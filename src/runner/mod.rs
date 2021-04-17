@@ -17,7 +17,7 @@ use rustwide::Workspace;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
@@ -39,14 +39,19 @@ struct RunnerState {
     // protected by the mutex.
     pub read: File,
     pub write: File,
-    pub path: PathBuf,
+    pub path: std::mem::ManuallyDrop<tempfile::TempDir>,
 }
 
 impl RunnerState {
     fn new(cpus: usize) -> Self {
-        let path_owned = std::env::temp_dir().join("crater-runner-fifo");
-        let _ = std::fs::remove_file(&path_owned);
-        let fifo = std::ffi::CString::new(path_owned.to_str().unwrap()).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::copy(
+            "/usr/local/bin/jobserver-crater-fwd",
+            dir.path().join("jobserver-crater-fwd"),
+        )
+        .unwrap();
+        let file = dir.path().join("fifo");
+        let fifo = std::ffi::CString::new(file.to_str().unwrap()).unwrap();
         unsafe {
             if libc::mkfifo(fifo.as_ptr(), 0o777) < 0 {
                 panic!("failed to make to fifo");
@@ -55,10 +60,10 @@ impl RunnerState {
 
         // We need threads here as otherwise opening the read end or the write
         // end will block until the other end is opened.
-        let path = path_owned.clone();
+        let path = file.clone();
         let read_end =
             std::thread::spawn(move || OpenOptions::new().read(true).open(path).unwrap());
-        let path = path_owned.clone();
+        let path = file.clone();
         let write_end =
             std::thread::spawn(move || OpenOptions::new().write(true).open(path).unwrap());
 
@@ -77,7 +82,7 @@ impl RunnerState {
             }),
             read,
             write,
-            path: path_owned,
+            path: std::mem::ManuallyDrop::new(dir),
         }
     }
 

@@ -17,7 +17,7 @@ use rustwide::Workspace;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
@@ -39,18 +39,20 @@ struct RunnerState {
     // protected by the mutex.
     pub read: File,
     pub write: File,
-    pub path: tempfile::TempDir,
+    pub path: PathBuf,
 }
 
 impl RunnerState {
     fn new(cpus: usize) -> Self {
-        let dir = tempfile::tempdir_in(&*crate::dirs::WORK_DIR).unwrap();
+        let dir = crate::dirs::WORK_DIR.join("jobserver");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
         std::fs::copy(
             "/usr/local/bin/jobserver-crater-fwd",
-            dir.path().join("jobserver-crater-fwd"),
+            dir.join("jobserver-crater-fwd"),
         )
         .unwrap();
-        let file = dir.path().join("fifo");
+        let file = dir.join("fifo");
         let fifo = std::ffi::CString::new(file.to_str().unwrap()).unwrap();
         unsafe {
             if libc::mkfifo(fifo.as_ptr(), 0o777) < 0 {

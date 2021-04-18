@@ -224,7 +224,7 @@ pub(super) fn run_test<DB: WriteResults>(
                     .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
                     .enable_networking(false)
                     .mount(
-                        &ctx.state.path.path(),
+                        &ctx.state.path,
                         Path::new("/tmp/crater-runner-fifo"),
                         rustwide::cmd::MountKind::ReadWrite,
                     );

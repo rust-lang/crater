@@ -39,10 +39,11 @@ pub fn report_panic(e: &dyn Any) {
     }
 }
 
+#[track_caller]
 pub fn report_failure(err: &(impl HasBacktrace + AsFail)) {
     let backtrace = err.backtrace();
     let err = err.as_fail();
-    error!("{}", err);
+    error!("{} at {}", err, std::panic::Location::caller());
 
     for cause in err.iter_causes() {
         error!("caused by: {}", cause);

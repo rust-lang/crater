@@ -101,8 +101,6 @@ jobs:
     name: Upload the Docker images to ECR
     runs-on: ubuntu-latest
     needs:
-      - lint
-      - test
       - docker-build
 
     steps:
@@ -137,7 +135,7 @@ jobs:
     name: bors build finished
     if: success()
     runs-on: ubuntu-latest
-    needs: [docker-upload, minicrater]
+    needs: [docker-upload, minicrater, lint, test]
 
     steps:
       - name: Mark the job as successful

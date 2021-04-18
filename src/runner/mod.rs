@@ -15,6 +15,8 @@ use crossbeam_utils::thread::{scope, ScopedJoinHandle};
 use rustwide::logging::LogStorage;
 use rustwide::Workspace;
 use std::collections::HashMap;
+use std::fs::{File, OpenOptions};
+use std::io::Write;
 use std::path::Path;
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
@@ -32,14 +34,55 @@ struct RunnerStateInner {
 
 struct RunnerState {
     inner: Mutex<RunnerStateInner>,
+
+    // Jobserver ends for all workerse used by this runner. Don't need to be
+    // protected by the mutex.
+    pub read: File,
+    pub write: File,
+    pub path: tempfile::TempDir,
 }
 
 impl RunnerState {
-    fn new() -> Self {
+    fn new(cpus: usize) -> Self {
+        let dir = tempfile::tempdir_in(&*crate::dirs::WORK_DIR).unwrap();
+        std::fs::copy(
+            "/usr/local/bin/jobserver-crater-fwd",
+            dir.path().join("jobserver-crater-fwd"),
+        )
+        .unwrap();
+        let file = dir.path().join("fifo");
+        let fifo = std::ffi::CString::new(file.to_str().unwrap()).unwrap();
+        unsafe {
+            if libc::mkfifo(fifo.as_ptr(), 0o777) < 0 {
+                panic!("failed to make to fifo");
+            }
+        }
+
+        // We need threads here as otherwise opening the read end or the write
+        // end will block until the other end is opened.
+        let path = file.clone();
+        let read_end =
+            std::thread::spawn(move || OpenOptions::new().read(true).open(path).unwrap());
+        let path = file;
+        let write_end =
+            std::thread::spawn(move || OpenOptions::new().write(true).open(path).unwrap());
+
+        let mut write = write_end.join().unwrap();
+
+        // Fill up the 'jobserver' with N tokens for each cpu we have.
+        for _ in 0..cpus {
+            assert!(write.write(&[b'|']).unwrap() == 1);
+        }
+
+        let read = read_end.join().unwrap();
+
         RunnerState {
             inner: Mutex::new(RunnerStateInner {
                 prepare_logs: HashMap::new(),
             }),
+            read,
+            write,
+            path: dir,
         }
     }
 
@@ -85,7 +128,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     info!("running tasks in {} threads...", threads_count);
 
-    let state = RunnerState::new();
+    let state = RunnerState::new(num_cpus::get());
 
     let workers = (0..threads_count)
         .map(|i| {

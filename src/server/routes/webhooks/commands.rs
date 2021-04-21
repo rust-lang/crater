@@ -83,13 +83,24 @@ pub fn run(
                 format!("Automatically detected try build {}", build.merge_sha),
             );
             let pr_head = data.github.get_pr_head_sha(&repo.full_name, issue.number)?;
-            if pr_head != build.base_sha {
+            let mut merge_commit = data.github.get_commit(&repo.full_name, &build.merge_sha)?;
+            if merge_commit.parents.len() == 2 {
+                // The first parent is the rust-lang/rust commit, and the second
+                // parent (index 1) is the PR commit
+                let old_pr_head = merge_commit.parents.remove(1).sha;
+                if pr_head != old_pr_head {
+                    message = message.line(
+                        "warning",
+                        format!(
+                            "Try build based on commit {}, but latest commit is {}. Did you forget to make a new try build?",
+                            old_pr_head, pr_head
+                        ),
+                    );
+                }
+            } else {
                 message = message.line(
                     "warning",
-                    format!(
-                        "Try build based on commit {}, but latest commit is {}. Did you forget to make a new try build?",
-                        build.base_sha, pr_head
-                    ),
+                    format!("Unexpected parents for merge commit {}", build.merge_sha),
                 );
             }
         }

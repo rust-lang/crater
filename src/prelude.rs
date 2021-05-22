@@ -9,6 +9,7 @@ pub trait FailExt {
 }
 
 impl FailExt for dyn Fail {
+    #[allow(clippy::manual_map)]
     fn downcast_ctx<T: Fail>(&self) -> Option<&T> {
         if let Some(res) = self.downcast_ref::<T>() {
             Some(res)

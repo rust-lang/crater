@@ -77,6 +77,7 @@ fn eat_token<'a>(s: Option<&'a str>, tok: &str) -> Option<&'a str> {
 
 fn eat_whitespace(s: Option<&str>) -> Option<&str> {
     s.and_then(|s| {
+        #[allow(clippy::manual_map)]
         if let Some(i) = s.find(|c: char| !c.is_whitespace()) {
             Some(&s[i..])
         } else {

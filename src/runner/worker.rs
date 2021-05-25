@@ -140,14 +140,14 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
 
 pub(super) struct DiskSpaceWatcher<'a, DB: WriteResults + Sync> {
     interval: Duration,
-    threshold: f32,
+    threshold: u32,
     workers: &'a [Worker<'a, DB>],
     should_stop: Mutex<bool>,
     waiter: Condvar,
 }
 
 impl<'a, DB: WriteResults + Sync> DiskSpaceWatcher<'a, DB> {
-    pub(super) fn new(interval: Duration, threshold: f32, workers: &'a [Worker<'a, DB>]) -> Self {
+    pub(super) fn new(interval: Duration, threshold: u32, workers: &'a [Worker<'a, DB>]) -> Self {
         DiskSpaceWatcher {
             interval,
             threshold,
@@ -187,7 +187,7 @@ impl<'a, DB: WriteResults + Sync> DiskSpaceWatcher<'a, DB> {
             }
         };
 
-        if usage.is_threshold_reached(self.threshold) {
+        if !usage.has_gigabytes_left(self.threshold) {
             warn!("running the scheduled thread cleanup");
             for worker in self.workers {
                 worker.schedule_target_dir_cleanup();

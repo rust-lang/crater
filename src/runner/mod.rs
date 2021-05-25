@@ -20,7 +20,10 @@ use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
 const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(300);
-const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.85;
+// We expect 5 gigabytes of free space to be retained. Don't use a percentage as
+// we then leave more free space 'free' on larger disks, which doesn't make
+// sense: we want to purge as rarely as possible, and not leave slack space.
+const DISK_SPACE_WATCHER_THRESHOLD: u32 = 5;
 
 #[derive(Debug, Fail)]
 #[fail(display = "overridden task result to {}", _0)]

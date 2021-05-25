@@ -1,10 +1,11 @@
 use crate::prelude::*;
 use std::path::Path;
-use systemstat::{Filesystem, Platform, System};
+use systemstat::{ByteSize, Filesystem, Platform, System};
 
 pub(crate) struct DiskUsage {
     mount_point: String,
     usage: f32,
+    free: ByteSize,
 }
 
 impl DiskUsage {
@@ -13,7 +14,30 @@ impl DiskUsage {
         Ok(Self {
             mount_point: fs.fs_mounted_on.clone(),
             usage: (fs.total.as_u64() - fs.free.as_u64()) as f32 / fs.total.as_u64() as f32,
+            free: fs.free,
         })
+    }
+
+    pub(crate) fn has_gigabytes_left(&self, free_space: u32) -> bool {
+        let usage = (self.usage * 100.0) as u8;
+        if self.free < ByteSize::gb(free_space as u64) {
+            info!(
+                "{} disk usage at {}%: {} free",
+                self.mount_point,
+                usage,
+                self.free.to_string_as(false)
+            );
+            false
+        } else {
+            warn!(
+                "{} disk usage at {}%: {} free which is less than {} GB free",
+                self.mount_point,
+                usage,
+                self.free.to_string_as(false),
+                free_space,
+            );
+            true
+        }
     }
 
     pub(crate) fn is_threshold_reached(&self, threshold: f32) -> bool {

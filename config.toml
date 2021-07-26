@@ -97,6 +97,7 @@ read-process-memory = { skip-tests = true } # flaky tests
 restson = { skip-tests = true } # uses HTTP requests
 rspotify = { slow = true } # slow build
 rustlearn = { skip-tests = true } # non-deterministic
+rusty_v8 = { broken = true } # depends on network
 s_app_dir = { skip-tests = true } # flaky tests
 sacn = { skip-tests = true } # Tests just fail if RUST_TEST_THREADS > 1 -author
 sbrsk = { skip-tests = true } # flaky tests

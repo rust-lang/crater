@@ -70,7 +70,9 @@ pub fn run_ex<DB: WriteResults + Sync>(
     // proceed slightly faster than it would otherwise.
     for tc in workspace.installed_toolchains()? {
         // But don't uninstall it if we're going to reinstall in a couple lines.
-        if !ex.toolchains.iter().any(|t| tc == t.source) {
+        // And don't uninstall stable, since that is mainly used for
+        // installing tools.
+        if !tc.is_needed_by_rustwide() && !ex.toolchains.iter().any(|t| tc == t.source) {
             tc.uninstall(workspace)?;
         }
     }

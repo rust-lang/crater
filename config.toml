@@ -131,6 +131,7 @@ toql_derive = { skip-tests = true } # flaky test ("Sometimes failes becuse join 
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
+"davips/halg" = { skip = true }
 "fromheten/plato" = { skip-tests = true } # flaky tests
 "jafow/pals" = { skip-tests = true } # flaky tests
 "johnedmonds/chance" = { skip-tests = true } # flaky tests

@@ -38,7 +38,7 @@ fn process_webhook(
 
             crate::server::try_builds::detect(
                 &data.db,
-                &github_data.github,
+                &github_data.api,
                 &p.repository.full_name,
                 p.issue.number,
                 &p.comment.body,

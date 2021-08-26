@@ -120,7 +120,7 @@ impl ACL {
         };
 
         if let Some(github) = github {
-            acl.refresh_cache(&github.github)?;
+            acl.refresh_cache(&github.api)?;
         }
         Ok(acl)
     }

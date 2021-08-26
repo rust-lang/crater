@@ -67,7 +67,7 @@ impl Message {
             message.push_str(&format!("\n:{}: {}", line.emoji, line.content));
         }
 
-        github_data.github.post_comment(issue_url, &message)?;
+        github_data.api.post_comment(issue_url, &message)?;
 
         if let Some(label) = self.new_label {
             let label = match label {
@@ -78,20 +78,20 @@ impl Message {
             // Remove all the labels matching the provided regex
             // If the label is already present don't reapply it though
             let regex = &data.config.server.labels.remove;
-            let current_labels = github_data.github.list_labels(issue_url)?;
+            let current_labels = github_data.api.list_labels(issue_url)?;
             let mut label_already_present = false;
             for current_label in &current_labels {
                 if current_label.name == *label {
                     label_already_present = true;
                 } else if regex.is_match(&current_label.name) {
                     github_data
-                        .github
+                        .api
                         .remove_label(issue_url, &current_label.name)?;
                 }
             }
 
             if !label_already_present {
-                github_data.github.add_label(issue_url, label)?;
+                github_data.api.add_label(issue_url, label)?;
             }
         }
 

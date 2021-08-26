@@ -51,7 +51,7 @@ pub struct Data {
 #[derive(Clone)]
 pub struct GithubData {
     pub bot_username: String,
-    pub github: GitHubApi,
+    pub api: GitHubApi,
     pub tokens: BotTokens,
 }
 
@@ -67,7 +67,7 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
             let bot_username = github.username()?;
             info!("bot username: {}", bot_username);
             Fallible::Ok(GithubData {
-                github,
+                api: github,
                 bot_username,
                 tokens,
             })

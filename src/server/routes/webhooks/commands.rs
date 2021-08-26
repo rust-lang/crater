@@ -86,10 +86,10 @@ pub fn run(
                 format!("Automatically detected try build {}", build.merge_sha),
             );
             let pr_head = github_data
-                .github
+                .api
                 .get_pr_head_sha(&repo.full_name, issue.number)?;
             let mut merge_commit = github_data
-                .github
+                .api
                 .get_commit(&repo.full_name, &build.merge_sha)?;
             if merge_commit.parents.len() == 2 {
                 // The first parent is the rust-lang/rust commit, and the second
@@ -275,7 +275,7 @@ pub fn abort(
 }
 
 pub fn reload_acl(data: &Data, github_data: &GithubData, issue: &Issue) -> Fallible<()> {
-    data.acl.refresh_cache(&github_data.github)?;
+    data.acl.refresh_cache(&github_data.api)?;
 
     Message::new()
         .line("hammer_and_wrench", "List of authorized users reloaded!")

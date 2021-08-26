@@ -52,7 +52,8 @@ impl ReportsBucket {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Tokens {
-    pub bot: BotTokens,
+    #[serde(default)]
+    pub bot: Option<BotTokens>,
     pub reports_bucket: ReportsBucket,
     pub agents: HashMap<String, String>,
 }
@@ -61,10 +62,7 @@ pub struct Tokens {
 impl Default for Tokens {
     fn default() -> Self {
         Tokens {
-            bot: BotTokens {
-                webhooks_secret: String::new(),
-                api_token: String::new(),
-            },
+            bot: None,
             reports_bucket: ReportsBucket {
                 region: BucketRegion::S3 {
                     region: "us-west-1".to_string(),

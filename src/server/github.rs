@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::server::tokens::Tokens;
+use crate::server::tokens::BotTokens;
 use crate::utils;
 use http::header::AUTHORIZATION;
 use http::Method;
@@ -32,9 +32,9 @@ pub struct GitHubApi {
 }
 
 impl GitHubApi {
-    pub fn new(tokens: &Tokens) -> Self {
+    pub fn new(tokens: &BotTokens) -> Self {
         GitHubApi {
-            token: tokens.bot.api_token.clone(),
+            token: tokens.api_token.clone(),
         }
     }
 

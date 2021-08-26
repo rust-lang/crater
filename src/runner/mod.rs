@@ -176,7 +176,7 @@ where
 
 pub fn dump_dot(ex: &Experiment, crates: &[Crate], config: &Config, dest: &Path) -> Fallible<()> {
     info!("computing the tasks graph...");
-    let graph = build_graph(&ex, crates, config);
+    let graph = build_graph(ex, crates, config);
 
     info!("dumping the tasks graph...");
     ::std::fs::write(dest, format!("{:?}", graph.generate_dot()).as_bytes())?;

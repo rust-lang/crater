@@ -19,7 +19,7 @@ pub(crate) struct TryBuild {
 }
 
 fn base_commit(gh: &dyn GitHub, repo: &str, merge_sha: &str) -> Fallible<Option<String>> {
-    let mut commit = gh.get_commit(repo, &merge_sha)?;
+    let mut commit = gh.get_commit(repo, merge_sha)?;
     if commit.parents.len() != 2 {
         return Ok(None);
     }

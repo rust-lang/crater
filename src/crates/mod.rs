@@ -42,17 +42,17 @@ impl Crate {
             }
             Crate::Local(ref name) => format!("local/{}", name),
             Crate::Path(ref path) => {
-                format!("path/{}", utf8_percent_encode(&path, &NON_ALPHANUMERIC))
+                format!("path/{}", utf8_percent_encode(path, NON_ALPHANUMERIC))
             }
             Crate::Git(ref repo) => {
                 if let Some(ref sha) = repo.sha {
                     format!(
                         "git/{}/{}",
-                        utf8_percent_encode(&repo.url, &NON_ALPHANUMERIC),
+                        utf8_percent_encode(&repo.url, NON_ALPHANUMERIC),
                         sha
                     )
                 } else {
-                    format!("git/{}", utf8_percent_encode(&repo.url, &NON_ALPHANUMERIC),)
+                    format!("git/{}", utf8_percent_encode(&repo.url, NON_ALPHANUMERIC),)
                 }
             }
         }
@@ -137,17 +137,16 @@ impl fmt::Display for Crate {
                         format!("{}/{}", repo.org, repo.name)
                     },
                 Crate::Local(ref name) => format!("{} (local)", name),
-                Crate::Path(ref path) =>
-                    format!("{}", utf8_percent_encode(path, &NON_ALPHANUMERIC)),
+                Crate::Path(ref path) => format!("{}", utf8_percent_encode(path, NON_ALPHANUMERIC)),
                 Crate::Git(ref repo) =>
                     if let Some(ref sha) = repo.sha {
                         format!(
                             "{}/{}",
-                            utf8_percent_encode(&repo.url, &NON_ALPHANUMERIC),
+                            utf8_percent_encode(&repo.url, NON_ALPHANUMERIC),
                             sha
                         )
                     } else {
-                        utf8_percent_encode(&repo.url, &NON_ALPHANUMERIC).to_string()
+                        utf8_percent_encode(&repo.url, NON_ALPHANUMERIC).to_string()
                     },
             }
         )
@@ -282,11 +281,11 @@ mod tests {
         test_from_str! {
             "local/build-fail" => Crate::Local("build-fail".to_string()),
             "path/pathtofile" => Crate::Path("pathtofile".to_string()),
-            &format!("path/{}", utf8_percent_encode("path/with:stange?characters", &NON_ALPHANUMERIC)) => Crate::Path("path/with:stange?characters".to_string()),
+            &format!("path/{}", utf8_percent_encode("path/with:stange?characters", NON_ALPHANUMERIC)) => Crate::Path("path/with:stange?characters".to_string()),
             "gh/org/user" => Crate::GitHub(GitHubRepo{org: "org".to_string(), name: "user".to_string(), sha: None}),
             "gh/org/user/sha" => Crate::GitHub(GitHubRepo{org: "org".to_string(), name: "user".to_string(), sha: Some("sha".to_string())}),
             "git/url" => Crate::Git(GitRepo{url: "url".to_string(), sha: None}),
-            &format!("git/{}", utf8_percent_encode("url/with:stange?characters", &NON_ALPHANUMERIC)) => Crate::Git(GitRepo{url: "url/with:stange?characters".to_string(), sha: None}),
+            &format!("git/{}", utf8_percent_encode("url/with:stange?characters", NON_ALPHANUMERIC)) => Crate::Git(GitRepo{url: "url/with:stange?characters".to_string(), sha: None}),
             "git/url/sha" => Crate::Git(GitRepo{url: "url".to_string(), sha: Some("sha".to_string())}),
             "reg/name/version" => Crate::Registry(RegistryCrate{name: "name".to_string(), version: "version".to_string()}),
         }

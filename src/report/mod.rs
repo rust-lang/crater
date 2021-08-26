@@ -172,7 +172,7 @@ fn crate_to_path_fragment(
         }
         Crate::Path(ref krate_path) => {
             path.push("path");
-            path.push(dest.sanitize(&krate_path).into_owned());
+            path.push(dest.sanitize(krate_path).into_owned());
         }
         Crate::Git(ref repo) => {
             path.push("git");
@@ -227,12 +227,12 @@ pub fn generate_report<DB: ReadResults>(
             // Any errors here will turn into unknown results
             let crate_results = ex.toolchains.iter().map(|tc| -> Fallible<BuildTestResult> {
                 let res = db
-                    .load_test_result(ex, tc, &krate)?
+                    .load_test_result(ex, tc, krate)?
                     .ok_or_else(|| err_msg("no result"))?;
 
                 Ok(BuildTestResult {
                     res,
-                    log: crate_to_path_fragment(tc, &krate, SanitizationContext::Url)
+                    log: crate_to_path_fragment(tc, krate, SanitizationContext::Url)
                         .to_str()
                         .unwrap()
                         .replace(r"\", "/"), // Normalize paths in reports generated on Windows
@@ -244,15 +244,15 @@ pub fn generate_report<DB: ReadResults>(
             let crate1 = crate_results.pop().unwrap();
             let comp = compare(
                 config,
-                &krate,
+                krate,
                 crate1.as_ref().map(|b| &b.res),
                 crate2.as_ref().map(|b| &b.res),
             );
 
             Ok(CrateResult {
-                name: crate_to_name(&krate),
-                url: crate_to_url(&krate),
-                status: get_crate_version_status(&index, &krate)
+                name: crate_to_name(krate),
+                url: crate_to_url(krate),
+                status: get_crate_version_status(&index, krate)
                     .unwrap_or(Some(CrateVersionStatus::MissingFromIndex)),
                 krate: krate.clone(),
                 res: comp,

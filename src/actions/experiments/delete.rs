@@ -9,7 +9,7 @@ pub struct DeleteExperiment {
 
 impl Action for DeleteExperiment {
     fn apply(self, ctx: &ActionsCtx) -> Fallible<()> {
-        if !Experiment::exists(&ctx.db, &self.name)? {
+        if !Experiment::exists(ctx.db, &self.name)? {
             return Err(ExperimentError::NotFound(self.name).into());
         }
 

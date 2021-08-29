@@ -40,7 +40,7 @@ impl Metrics {
 
     pub fn record_completed_jobs(&self, agent: &str, experiment: &str, amount: i64) {
         self.crater_completed_jobs_total
-            .with_label_values(&[&agent, &experiment])
+            .with_label_values(&[agent, experiment])
             .inc_by(amount);
     }
 
@@ -68,7 +68,7 @@ impl Metrics {
 
             for agent in agents.iter() {
                 self.crater_completed_jobs_total
-                    .remove_label_values(&[agent, &experiment])?;
+                    .remove_label_values(&[agent, experiment])?;
             }
         }
 

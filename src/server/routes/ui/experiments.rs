@@ -78,7 +78,7 @@ pub fn endpoint_queue(data: Arc<Data>) -> Fallible<Response<Body>> {
             continue;
         }
 
-        let ex = ExperimentData::new(&data, &experiment)?;
+        let ex = ExperimentData::new(&data, experiment)?;
 
         match experiment.status {
             Status::Queued => queued.push(ex),

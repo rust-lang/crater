@@ -354,10 +354,10 @@ impl Experiment {
         if let Some(mut experiment) = ex {
             let new_ex = experiment.status != Status::Running;
             if new_ex {
-                experiment.set_status(&db, Status::Running)?;
+                experiment.set_status(db, Status::Running)?;
                 // If this experiment was not assigned to a specific agent make it distributed
                 experiment.set_assigned_to(
-                    &db,
+                    db,
                     experiment
                         .assigned_to
                         .clone()

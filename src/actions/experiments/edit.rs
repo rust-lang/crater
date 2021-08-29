@@ -35,7 +35,7 @@ impl EditExperiment {
 
 impl Action for EditExperiment {
     fn apply(mut self, ctx: &ActionsCtx) -> Fallible<()> {
-        let mut ex = match Experiment::get(&ctx.db, &self.name)? {
+        let mut ex = match Experiment::get(ctx.db, &self.name)? {
             Some(ex) => ex,
             None => return Err(ExperimentError::NotFound(self.name.clone()).into()),
         };
@@ -79,12 +79,10 @@ impl Action for EditExperiment {
             // This is also done if ignore_blacklist is changed to recalculate the skipped crates
             let new_crates = if let Some(crates) = self.crates {
                 Some(crate::crates::lists::get_crates(
-                    &crates,
-                    &ctx.db,
-                    &ctx.config,
+                    &crates, ctx.db, ctx.config,
                 )?)
             } else if self.ignore_blacklist.is_some() {
-                Some(ex.get_crates(&ctx.db)?)
+                Some(ex.get_crates(ctx.db)?)
             } else {
                 None
             };
@@ -237,12 +235,12 @@ mod tests {
         assert_eq!(ex.mode, Mode::CheckOnly);
         assert_eq!(ex.cap_lints, CapLints::Warn);
         assert_eq!(ex.priority, 10);
-        assert_eq!(ex.ignore_blacklist, true);
+        assert!(ex.ignore_blacklist);
         assert_eq!(ex.assigned_to, Some(Assignee::CLI));
         assert_eq!(ex.requirement, Some("windows".to_string()));
 
         assert_eq!(
-            ex.get_crates(&ctx.db).unwrap(),
+            ex.get_crates(ctx.db).unwrap(),
             crate::crates::lists::get_crates(&CrateSelect::Local, &db, &config).unwrap()
         );
     }
@@ -260,16 +258,13 @@ mod tests {
                     },
                 )
                 .unwrap();
-            crates
-                .iter()
-                .find(|c| {
-                    if let Crate::Local(name) = c {
-                        name == krate
-                    } else {
-                        panic!("there should be no non-local crates")
-                    }
-                })
-                .is_none()
+            !crates.iter().any(|c| {
+                if let Crate::Local(name) = c {
+                    name == krate
+                } else {
+                    panic!("there should be no non-local crates")
+                }
+            })
         }
 
         let db = Database::temp().unwrap();

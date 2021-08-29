@@ -191,7 +191,7 @@ pub(super) fn run_test<DB: WriteResults>(
             .state
             .lock()
             .prepare_logs
-            .get(&ctx.krate)
+            .get(ctx.krate)
             .map(|s| s.duplicate());
         ctx.db.record_result(
             ctx.experiment,
@@ -214,7 +214,7 @@ pub(super) fn run_test<DB: WriteResults>(
 
                 let krate = &ctx.krate.to_rustwide();
                 let mut build_dir = ctx.build_dir.lock().unwrap();
-                let mut build = build_dir.build(&ctx.toolchain, krate, sandbox);
+                let mut build = build_dir.build(ctx.toolchain, krate, sandbox);
 
                 for patch in ctx.toolchain.patches.iter() {
                     build = build.patch_with_git(&patch.name, &patch.repo, &patch.branch);

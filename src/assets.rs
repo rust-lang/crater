@@ -118,7 +118,7 @@ impl Asset {
 }
 
 pub fn load(name: &str) -> Fallible<&Asset> {
-    if let Some(ref asset) = ASSETS.get(name) {
+    if let Some(asset) = ASSETS.get(name) {
         Ok(asset)
     } else {
         bail!(

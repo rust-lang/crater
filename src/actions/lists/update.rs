@@ -22,17 +22,17 @@ impl Action for UpdateLists {
     fn apply(self, ctx: &ActionsCtx) -> Fallible<()> {
         if self.github {
             info!("updating GitHub repositories list");
-            GitHubList::default().update(&ctx.db)?;
+            GitHubList::default().update(ctx.db)?;
         }
 
         if self.registry {
             info!("updating crates.io crates list");
-            RegistryList.update(&ctx.db)?;
+            RegistryList.update(ctx.db)?;
         }
 
         if self.local {
             info!("updating local crates list");
-            LocalList::default().update(&ctx.db)?;
+            LocalList::default().update(ctx.db)?;
         }
 
         Ok(())

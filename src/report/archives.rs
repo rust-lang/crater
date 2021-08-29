@@ -142,7 +142,7 @@ mod tests {
             .record_result(
                 &ex,
                 &ex.toolchains[0],
-                &crate1,
+                crate1,
                 None,
                 &config,
                 EncodingType::Gzip,
@@ -156,7 +156,7 @@ mod tests {
             .record_result(
                 &ex,
                 &ex.toolchains[1],
-                &crate1,
+                crate1,
                 None,
                 &config,
                 EncodingType::Plain,
@@ -170,7 +170,7 @@ mod tests {
             .record_result(
                 &ex,
                 &ex.toolchains[0],
-                &crate2,
+                crate2,
                 None,
                 &config,
                 EncodingType::Gzip,
@@ -184,7 +184,7 @@ mod tests {
             .record_result(
                 &ex,
                 &ex.toolchains[1],
-                &crate2,
+                crate2,
                 None,
                 &config,
                 EncodingType::Plain,

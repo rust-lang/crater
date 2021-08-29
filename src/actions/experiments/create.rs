@@ -41,7 +41,7 @@ impl CreateExperiment {
 impl Action for CreateExperiment {
     fn apply(self, ctx: &ActionsCtx) -> Fallible<()> {
         // Ensure no duplicate experiments are created
-        if Experiment::exists(&ctx.db, &self.name)? {
+        if Experiment::exists(ctx.db, &self.name)? {
             return Err(ExperimentError::AlreadyExists(self.name).into());
         }
 
@@ -50,7 +50,7 @@ impl Action for CreateExperiment {
             return Err(ExperimentError::DuplicateToolchains.into());
         }
 
-        let crates = crate::crates::lists::get_crates(&self.crates, &ctx.db, &ctx.config)?;
+        let crates = crate::crates::lists::get_crates(&self.crates, ctx.db, ctx.config)?;
 
         ctx.db.transaction(|transaction| {
             transaction.execute(
@@ -142,7 +142,7 @@ mod tests {
         );
         assert_eq!(ex.mode, Mode::BuildAndTest);
         assert_eq!(
-            ex.get_crates(&ctx.db).unwrap(),
+            ex.get_crates(ctx.db).unwrap(),
             crate::crates::lists::get_crates(&CrateSelect::Local, &db, &config).unwrap()
         );
         assert_eq!(ex.cap_lints, CapLints::Forbid);
@@ -192,16 +192,13 @@ mod tests {
                     },
                 )
                 .unwrap();
-            crates
-                .iter()
-                .find(|c| {
-                    if let Crate::Local(name) = c {
-                        name == krate
-                    } else {
-                        panic!("there should be no non-local crates")
-                    }
-                })
-                .is_none()
+            !crates.iter().any(|c| {
+                if let Crate::Local(name) = c {
+                    name == krate
+                } else {
+                    panic!("there should be no non-local crates")
+                }
+            })
         }
 
         let db = Database::temp().unwrap();

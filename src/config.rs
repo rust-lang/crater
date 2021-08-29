@@ -168,7 +168,7 @@ impl Config {
     }
 
     fn check_for_dup_keys(buffer: &str) -> Fallible<()> {
-        if let Err(e) = ::toml::from_str::<::toml::Value>(&buffer) {
+        if let Err(e) = ::toml::from_str::<::toml::Value>(buffer) {
             error!("got error parsing the config-file: {}", e);
             Err(e.into())
         } else {
@@ -317,7 +317,7 @@ mod tests {
             "[local-crates]\n"
         );
 
-        let list: Config = ::toml::from_str(&config).unwrap();
+        let list: Config = ::toml::from_str(config).unwrap();
 
         assert!(list.should_skip(&Crate::Registry(RegistryCrate {
             name: "lazy_static".into(),

@@ -306,9 +306,9 @@ fn setup_run_name(db: &Database, issue: &Issue, name: Option<String>) -> Fallibl
     let name = if let Some(name) = name {
         name
     } else {
-        generate_new_experiment_name(&db, &issue)?
+        generate_new_experiment_name(db, issue)?
     };
-    store_experiment_name(&db, issue, &name)?;
+    store_experiment_name(db, issue, &name)?;
     Ok(name)
 }
 
@@ -318,7 +318,7 @@ fn setup_run_name(db: &Database, issue: &Issue, name: Option<String>) -> Fallibl
 fn generate_new_experiment_name(db: &Database, issue: &Issue) -> Fallible<String> {
     let mut name = format!("pr-{}", issue.number);
     let mut idx = 1u16;
-    while Experiment::exists(&db, &name)? {
+    while Experiment::exists(db, &name)? {
         name = format!("pr-{}-{}", issue.number, idx);
         idx = idx
             .checked_add(1)
@@ -342,7 +342,7 @@ mod tests {
     /// Simulate to the `run` command, and return experiment name
     fn dummy_run(db: &Database, issue: &github::Issue, name: Option<String>) -> Fallible<String> {
         let config = Config::default();
-        let ctx = ActionsCtx::new(&db, &config);
+        let ctx = ActionsCtx::new(db, &config);
         let name = setup_run_name(db, issue, name)?;
         actions::CreateExperiment::dummy(&name).apply(&ctx)?;
         Ok(name)
@@ -351,7 +351,7 @@ mod tests {
     /// Simulate to the `edit` command, and return experiment name
     fn dummy_edit(db: &Database, issue: &github::Issue, name: Option<String>) -> Fallible<String> {
         let config = Config::default();
-        let ctx = ActionsCtx::new(&db, &config);
+        let ctx = ActionsCtx::new(db, &config);
         let name = get_name(db, issue, name)?;
         actions::EditExperiment::dummy(&name).apply(&ctx)?;
         Ok(name)

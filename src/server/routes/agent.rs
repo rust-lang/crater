@@ -226,7 +226,7 @@ fn endpoint_error(
                     "sos",
                     "Can someone from the infra team check in on this? @rust-lang/infra",
                 )
-                .send(&github_issue.api_url, &data, &github_data)?;
+                .send(&github_issue.api_url, &data, github_data)?;
         }
     }
     Ok(ApiResponse::Success { result: true }.into_response()?)

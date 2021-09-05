@@ -16,7 +16,7 @@ use crate::prelude::*;
 use crate::server::agents::Agents;
 use crate::server::auth::ACL;
 use crate::server::github::{GitHub, GitHubApi};
-use crate::server::tokens::Tokens;
+use crate::server::tokens::{BotTokens, Tokens};
 use http::{self, header::HeaderValue, Response};
 use hyper::Body;
 use metrics::Metrics;
@@ -39,9 +39,7 @@ pub enum HttpError {
 
 #[derive(Clone)]
 pub struct Data {
-    pub bot_username: String,
     pub config: Config,
-    pub github: GitHubApi,
     pub tokens: Tokens,
     pub agents: Agents,
     pub db: Database,
@@ -50,21 +48,37 @@ pub struct Data {
     pub metrics: Metrics,
 }
 
+#[derive(Clone)]
+pub struct GithubData {
+    pub bot_username: String,
+    pub api: GitHubApi,
+    pub tokens: BotTokens,
+}
+
 pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
     let db = Database::open()?;
     let tokens = tokens::Tokens::load()?;
-    let github = GitHubApi::new(&tokens);
+    let github_data = tokens
+        .bot
+        .as_ref()
+        .cloned()
+        .map(|tokens| {
+            let github = GitHubApi::new(&tokens);
+            let bot_username = github.username()?;
+            info!("bot username: {}", bot_username);
+            Fallible::Ok(GithubData {
+                api: github,
+                bot_username,
+                tokens,
+            })
+        })
+        .transpose()?;
     let agents = Agents::new(db.clone(), &tokens)?;
-    let bot_username = github.username()?;
-    let acl = ACL::new(&config, &github)?;
+    let acl = ACL::new(&config, github_data.as_ref())?;
     let metrics = Metrics::new()?;
 
-    info!("bot username: {}", bot_username);
-
     let data = Data {
-        bot_username,
         config,
-        github,
         tokens,
         agents,
         db,
@@ -75,18 +89,26 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
 
     let mutex = Arc::new(Mutex::new(data.clone()));
 
-    data.reports_worker.spawn(data.clone());
+    data.reports_worker.spawn(data.clone(), github_data.clone());
     cronjobs::spawn(data.clone());
 
     info!("running server on {}...", bind);
 
     let data = Arc::new(data);
+    let github_data = github_data.map(Arc::new);
 
     let routes = warp::any()
         .and(
             warp::any()
-                .and(warp::path("webhooks").and(routes::webhooks::routes(data.clone())))
-                .or(warp::path("agent-api").and(routes::agent::routes(data.clone(), mutex)))
+                .and(
+                    warp::path("webhooks")
+                        .and(routes::webhooks::routes(data.clone(), github_data.clone())),
+                )
+                .or(warp::path("agent-api").and(routes::agent::routes(
+                    data.clone(),
+                    mutex,
+                    github_data,
+                )))
                 .unify()
                 .or(warp::path("metrics").and(routes::metrics::routes(data.clone())))
                 .unify()

@@ -5,7 +5,7 @@ use crate::prelude::*;
 use crate::server::github::{EventIssueComment, Issue, Repository};
 use crate::server::messages::Message;
 use crate::server::routes::webhooks::args::Command;
-use crate::server::Data;
+use crate::server::{Data, GithubData};
 use bytes::buf::Buf;
 use hmac::{Hmac, Mac};
 use http::{HeaderMap, Response, StatusCode};
@@ -20,8 +20,9 @@ fn process_webhook(
     signature: &str,
     event: &str,
     data: &Data,
+    github_data: &GithubData,
 ) -> Fallible<()> {
-    if !verify_signature(&data.tokens.bot.webhooks_secret, payload, signature) {
+    if !verify_signature(&github_data.tokens.webhooks_secret, payload, signature) {
         bail!("invalid signature for the webhook!");
     }
 
@@ -37,7 +38,7 @@ fn process_webhook(
 
             crate::server::try_builds::detect(
                 &data.db,
-                &data.github,
+                &github_data.api,
                 &p.repository.full_name,
                 p.issue.number,
                 &p.comment.body,
@@ -51,6 +52,7 @@ fn process_webhook(
                 &p.repository,
                 &p.issue,
                 data,
+                github_data,
             ) {
                 Message::new()
                     .line("rotating_light", format!("**Error:** {}", e))
@@ -58,7 +60,7 @@ fn process_webhook(
                         "sos",
                         "If you have any trouble with Crater please ping **`@rust-lang/infra`**!",
                     )
-                    .send(&p.issue.url, data)?;
+                    .send(&p.issue.url, data, github_data)?;
             }
         }
         e => bail!("invalid event received: {}", e),
@@ -75,8 +77,9 @@ fn process_command(
     repo: &Repository,
     issue: &Issue,
     data: &Data,
+    github_data: &GithubData,
 ) -> Fallible<()> {
-    let start = format!("@{} ", data.bot_username);
+    let start = format!("@{} ", github_data.bot_username);
     for line in body.lines() {
         if !line.starts_with(&start) {
             continue;
@@ -101,7 +104,7 @@ fn process_command(
                         crate::CRATER_REPO_URL,
                     ),
                 )
-                .send(&issue.url, data)?;
+                .send(&issue.url, data, github_data)?;
             return Ok(());
         }
 
@@ -112,35 +115,35 @@ fn process_command(
 
         match args {
             Command::Ping(_) => {
-                commands::ping(data, issue)?;
+                commands::ping(data, github_data, issue)?;
             }
 
             Command::Run(args) => {
-                commands::run(host, data, repo, issue, args)?;
+                commands::run(host, data, github_data, repo, issue, args)?;
             }
 
             Command::Check(args) => {
-                commands::check(host, data, repo, issue, args)?;
+                commands::check(host, data, github_data, repo, issue, args)?;
             }
 
             Command::Edit(args) => {
-                commands::edit(data, issue, args)?;
+                commands::edit(data, github_data, issue, args)?;
             }
 
             Command::RetryReport(args) => {
-                commands::retry_report(data, issue, args)?;
+                commands::retry_report(data, github_data, issue, args)?;
             }
 
             Command::Retry(args) => {
-                commands::retry(data, issue, args)?;
+                commands::retry(data, github_data, issue, args)?;
             }
 
             Command::Abort(args) => {
-                commands::abort(data, issue, args)?;
+                commands::abort(data, github_data, issue, args)?;
             }
 
             Command::ReloadACL(_) => {
-                commands::reload_acl(data, issue)?;
+                commands::reload_acl(data, github_data, issue)?;
             }
         }
 
@@ -187,7 +190,12 @@ fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
     mac.verify(&signature).is_ok()
 }
 
-fn receive_endpoint(data: Arc<Data>, headers: HeaderMap, body: FullBody) -> Fallible<()> {
+fn receive_endpoint(
+    data: Arc<Data>,
+    github_data: Arc<GithubData>,
+    headers: HeaderMap,
+    body: FullBody,
+) -> Fallible<()> {
     let signature = headers
         .get("X-Hub-Signature")
         .and_then(|h| h.to_str().ok())
@@ -201,32 +209,40 @@ fn receive_endpoint(data: Arc<Data>, headers: HeaderMap, body: FullBody) -> Fall
         .and_then(|h| h.to_str().ok())
         .ok_or_else(|| err_msg("missing header Host\n"))?;
 
-    process_webhook(body.bytes(), host, signature, event, &data)
+    process_webhook(body.bytes(), host, signature, event, &data, &github_data)
 }
 
 pub fn routes(
     data: Arc<Data>,
+    github_data: Option<Arc<GithubData>>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
     let data_filter = warp::any().map(move || data.clone());
+    let github_data_filter = warp::any().and_then(move || match github_data.clone() {
+        Some(github_data) => Ok(github_data),
+        None => Err(warp::reject::not_found()),
+    });
 
     warp::post2()
         .and(warp::path::end())
         .and(data_filter)
+        .and(github_data_filter)
         .and(warp::header::headers_cloned())
         .and(warp::body::concat())
-        .map(|data: Arc<Data>, headers: HeaderMap, body: FullBody| {
-            let mut resp: Response<Body>;
-            match receive_endpoint(data, headers, body) {
-                Ok(()) => resp = Response::new("OK\n".into()),
-                Err(err) => {
-                    error!("error while processing webhook");
-                    crate::utils::report_failure(&err);
+        .map(
+            |data: Arc<Data>, github_data: Arc<GithubData>, headers: HeaderMap, body: FullBody| {
+                let mut resp: Response<Body>;
+                match receive_endpoint(data, github_data, headers, body) {
+                    Ok(()) => resp = Response::new("OK\n".into()),
+                    Err(err) => {
+                        error!("error while processing webhook");
+                        crate::utils::report_failure(&err);
 
-                    resp = Response::new(format!("Error: {}\n", err).into());
-                    *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                        resp = Response::new(format!("Error: {}\n", err).into());
+                        *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                    }
                 }
-            }
 
-            resp
-        })
+                resp
+            },
+        )
 }

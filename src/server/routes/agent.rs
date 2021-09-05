@@ -5,7 +5,7 @@ use crate::results::{DatabaseDB, EncodingType, ProgressData};
 use crate::server::api_types::{AgentConfig, ApiResponse};
 use crate::server::auth::{auth_filter, AuthDetails, TokenType};
 use crate::server::messages::Message;
-use crate::server::{Data, HttpError};
+use crate::server::{Data, GithubData, HttpError};
 use failure::Compat;
 use http::{Response, StatusCode};
 use hyper::Body;
@@ -24,10 +24,12 @@ pub struct ExperimentData<T> {
 pub fn routes(
     data: Arc<Data>,
     mutex: Arc<Mutex<Data>>,
+    github_data: Option<Arc<GithubData>>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
     let data_cloned = data.clone();
     let data_filter = warp::any().map(move || data_cloned.clone());
     let mutex_filter = warp::any().map(move || mutex.clone());
+    let github_data_filter = warp::any().map(move || github_data.clone());
 
     let config = warp::post2()
         .and(warp::path("config"))
@@ -49,6 +51,7 @@ pub fn routes(
         .and(warp::path("next-experiment"))
         .and(warp::path::end())
         .and(mutex_filter.clone())
+        .and(github_data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_experiment);
 
@@ -72,6 +75,7 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(mutex_filter)
+        .and(github_data_filter)
         .and(auth_filter(data, TokenType::Agent))
         .map(endpoint_error);
 
@@ -112,6 +116,7 @@ fn endpoint_config(
 
 fn endpoint_next_experiment(
     mutex: Arc<Mutex<Data>>,
+    github_data: Option<Arc<GithubData>>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
     //we need to make sure that Experiment::next executes uninterrupted
@@ -119,13 +124,15 @@ fn endpoint_next_experiment(
     let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
     let result = if let Some((new, ex)) = next {
         if new {
-            if let Some(ref github_issue) = ex.github_issue {
-                Message::new()
-                    .line(
-                        "construction",
-                        format!("Experiment **`{}`** is now **running**", ex.name,),
-                    )
-                    .send(&github_issue.api_url, &data)?;
+            if let Some(github_data) = github_data.as_ref() {
+                if let Some(ref github_issue) = ex.github_issue {
+                    Message::new()
+                        .line(
+                            "construction",
+                            format!("Experiment **`{}`** is now **running**", ex.name,),
+                        )
+                        .send(&github_issue.api_url, &data, github_data)?;
+                }
             }
         }
 
@@ -190,6 +197,7 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<B
 fn endpoint_error(
     error: ExperimentData<HashMap<String, String>>,
     mutex: Arc<Mutex<Data>>,
+    github_data: Option<Arc<GithubData>>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
     let data = mutex.lock().unwrap();
@@ -199,25 +207,27 @@ fn endpoint_error(
     //also set status to failed
     ex.report_failure(&data.db, &Assignee::Agent(auth.name))?;
 
-    if let Some(ref github_issue) = ex.github_issue {
-        Message::new()
-            .line(
-                "rotating_light",
-                format!(
-                    "Experiment **`{}`** has encountered an error: {}",
-                    ex.name,
-                    error.data.get("error").unwrap_or(&String::from("no error")),
-                ),
-            )
-            .line(
-                "hammer_and_wrench",
-                "If the error is fixed use the `retry` command.",
-            )
-            .note(
-                "sos",
-                "Can someone from the infra team check in on this? @rust-lang/infra",
-            )
-            .send(&github_issue.api_url, &data)?;
+    if let Some(github_data) = github_data.as_ref() {
+        if let Some(ref github_issue) = ex.github_issue {
+            Message::new()
+                .line(
+                    "rotating_light",
+                    format!(
+                        "Experiment **`{}`** has encountered an error: {}",
+                        ex.name,
+                        error.data.get("error").unwrap_or(&String::from("no error")),
+                    ),
+                )
+                .line(
+                    "hammer_and_wrench",
+                    "If the error is fixed use the `retry` command.",
+                )
+                .note(
+                    "sos",
+                    "Can someone from the infra team check in on this? @rust-lang/infra",
+                )
+                .send(&github_issue.api_url, &data, github_data)?;
+        }
     }
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }

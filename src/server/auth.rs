@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::prelude::*;
 use crate::server::github::{GitHub, GitHubApi};
-use crate::server::{Data, HttpError};
+use crate::server::{Data, GithubData, HttpError};
 use http::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
 use regex::Regex;
 use rust_team_data::v1 as team_data;
@@ -98,7 +98,7 @@ pub struct ACL {
 }
 
 impl ACL {
-    pub fn new(config: &Config, github: &GitHubApi) -> Fallible<Self> {
+    pub fn new(config: &Config, github: Option<&GithubData>) -> Fallible<Self> {
         let mut users = Vec::new();
         let mut teams = Vec::new();
 
@@ -119,7 +119,9 @@ impl ACL {
             teams,
         };
 
-        acl.refresh_cache(github)?;
+        if let Some(github) = github {
+            acl.refresh_cache(&github.api)?;
+        }
         Ok(acl)
     }
 

@@ -3,7 +3,7 @@ use crate::prelude::*;
 use crate::report::{self, Comparison, TestResults};
 use crate::results::DatabaseDB;
 use crate::server::messages::{Label, Message};
-use crate::server::Data;
+use crate::server::{Data, GithubData};
 use crate::utils;
 use rusoto_core::request::HttpClient;
 use rusoto_s3::S3Client;
@@ -32,7 +32,7 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
     Ok(res)
 }
 
-fn reports_thread(data: &Data) -> Fallible<()> {
+fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()> {
     let timeout = Duration::from_secs(AUTOMATIC_THREAD_WAKEUP);
     let results = DatabaseDB::new(&data.db);
 
@@ -57,8 +57,9 @@ fn reports_thread(data: &Data) -> Fallible<()> {
                 error!("failed to generate the report of {}", name);
                 utils::report_failure(&err);
 
-                if let Some(ref github_issue) = ex.github_issue {
-                    Message::new()
+                if let Some(github_data) = github_data {
+                    if let Some(ref github_issue) = ex.github_issue {
+                        Message::new()
                         .line(
                             "rotating_light",
                             format!("Report generation of **`{}`** failed: {}", name, err),
@@ -71,7 +72,8 @@ fn reports_thread(data: &Data) -> Fallible<()> {
                             "sos",
                             "Can someone from the infra team check in on this? @rust-lang/infra",
                         )
-                        .send(&github_issue.api_url, data)?;
+                        .send(&github_issue.api_url, data, github_data)?;
+                    }
                 }
 
                 continue;
@@ -93,32 +95,34 @@ fn reports_thread(data: &Data) -> Fallible<()> {
                     res.info.get(&Comparison::Fixed).unwrap_or(&0),
                 );
 
-                if let Some(ref github_issue) = ex.github_issue {
-                    Message::new()
-                        .line("tada", format!("Experiment **`{}`** is completed!", name))
-                        .line(
-                            "bar_chart",
-                            format!(
-                                " {} regressed and {} fixed ({} total)",
-                                regressed,
-                                fixed,
-                                res.info.values().sum::<u32>(),
-                            ),
-                        )
-                        .line(
-                            "newspaper",
-                            format!("[Open the full report]({}).", report_url),
-                        )
-                        .note(
-                            "warning",
-                            format!(
-                                "If you notice any spurious failure [please add them to the \
+                if let Some(github_data) = github_data {
+                    if let Some(ref github_issue) = ex.github_issue {
+                        Message::new()
+                            .line("tada", format!("Experiment **`{}`** is completed!", name))
+                            .line(
+                                "bar_chart",
+                                format!(
+                                    " {} regressed and {} fixed ({} total)",
+                                    regressed,
+                                    fixed,
+                                    res.info.values().sum::<u32>(),
+                                ),
+                            )
+                            .line(
+                                "newspaper",
+                                format!("[Open the full report]({}).", report_url),
+                            )
+                            .note(
+                                "warning",
+                                format!(
+                                    "If you notice any spurious failure [please add them to the \
                                  blacklist]({}/blob/master/config.toml)!",
-                                crate::CRATER_REPO_URL,
-                            ),
-                        )
-                        .set_label(Label::ExperimentCompleted)
-                        .send(&github_issue.api_url, data)?;
+                                    crate::CRATER_REPO_URL,
+                                ),
+                            )
+                            .set_label(Label::ExperimentCompleted)
+                            .send(&github_issue.api_url, data, github_data)?;
+                    }
                 }
             }
         }
@@ -133,9 +137,9 @@ impl ReportsWorker {
         ReportsWorker(Arc::new(Mutex::new(None)))
     }
 
-    pub fn spawn(&self, data: Data) {
+    pub fn spawn(&self, data: Data, github_data: Option<GithubData>) {
         let joiner = thread::spawn(move || loop {
-            let result = reports_thread(&data.clone())
+            let result = reports_thread(&data.clone(), github_data.as_ref())
                 .with_context(|_| "the reports generator thread crashed");
             if let Err(e) = result {
                 utils::report_failure(&e);

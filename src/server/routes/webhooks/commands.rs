@@ -7,14 +7,14 @@ use crate::server::messages::{Label, Message};
 use crate::server::routes::webhooks::args::{
     AbortArgs, CheckArgs, EditArgs, RetryArgs, RetryReportArgs, RunArgs,
 };
-use crate::server::Data;
+use crate::server::{Data, GithubData};
 use crate::toolchain::Toolchain;
 use rustwide::Toolchain as RustwideToolchain;
 
-pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
+pub fn ping(data: &Data, github_data: &GithubData, issue: &Issue) -> Fallible<()> {
     Message::new()
         .line("ping_pong", "**Pong!**")
-        .send(&issue.url, data)?;
+        .send(&issue.url, data, github_data)?;
 
     Ok(())
 }
@@ -22,6 +22,7 @@ pub fn ping(data: &Data, issue: &Issue) -> Fallible<()> {
 pub fn check(
     host: &str,
     data: &Data,
+    github_data: &GithubData,
     repo: &Repository,
     issue: &Issue,
     args: CheckArgs,
@@ -29,6 +30,7 @@ pub fn check(
     run(
         host,
         data,
+        github_data,
         repo,
         issue,
         RunArgs {
@@ -49,6 +51,7 @@ pub fn check(
 pub fn run(
     host: &str,
     data: &Data,
+    github_data: &GithubData,
     repo: &Repository,
     issue: &Issue,
     args: RunArgs,
@@ -82,8 +85,12 @@ pub fn run(
                 "robot",
                 format!("Automatically detected try build {}", build.merge_sha),
             );
-            let pr_head = data.github.get_pr_head_sha(&repo.full_name, issue.number)?;
-            let mut merge_commit = data.github.get_commit(&repo.full_name, &build.merge_sha)?;
+            let pr_head = github_data
+                .api
+                .get_pr_head_sha(&repo.full_name, issue.number)?;
+            let mut merge_commit = github_data
+                .api
+                .get_commit(&repo.full_name, &build.merge_sha)?;
             if merge_commit.parents.len() == 2 {
                 // The first parent is the rust-lang/rust commit, and the second
                 // parent (index 1) is the PR commit
@@ -146,12 +153,12 @@ pub fn run(
                 "You can check out [the queue](https://{}) and [this experiment's details](https://{0}/ex/{1}).", host, name
             ),
         ).set_label(Label::ExperimentQueued)
-        .send(&issue.url, data)?;
+        .send(&issue.url, data,github_data)?;
 
     Ok(())
 }
 
-pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
+pub fn edit(data: &Data, github_data: &GithubData, issue: &Issue, args: EditArgs) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
     let crates = args
@@ -178,12 +185,17 @@ pub fn edit(data: &Data, issue: &Issue, args: EditArgs) -> Fallible<()> {
             "memo",
             format!("Configuration of the **`{}`** experiment changed.", name),
         )
-        .send(&issue.url, data)?;
+        .send(&issue.url, data, github_data)?;
 
     Ok(())
 }
 
-pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Fallible<()> {
+pub fn retry_report(
+    data: &Data,
+    github_data: &GithubData,
+    issue: &Issue,
+    args: RetryReportArgs,
+) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
     if let Some(mut experiment) = Experiment::get(&data.db, &name)? {
@@ -205,7 +217,7 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Fallib
                 format!("Generation of the report for **`{}`** queued again.", name),
             )
             .set_label(Label::ExperimentQueued)
-            .send(&issue.url, data)?;
+            .send(&issue.url, data, github_data)?;
 
         Ok(())
     } else {
@@ -213,7 +225,12 @@ pub fn retry_report(data: &Data, issue: &Issue, args: RetryReportArgs) -> Fallib
     }
 }
 
-pub fn retry(data: &Data, issue: &Issue, args: RetryArgs) -> Fallible<()> {
+pub fn retry(
+    data: &Data,
+    github_data: &GithubData,
+    issue: &Issue,
+    args: RetryArgs,
+) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
     if let Some(mut experiment) = Experiment::get(&data.db, &name)? {
@@ -230,7 +247,7 @@ pub fn retry(data: &Data, issue: &Issue, args: RetryArgs) -> Fallible<()> {
                 format!("Experiment **`{}`** queued again.", name),
             )
             .set_label(Label::ExperimentQueued)
-            .send(&issue.url, data)?;
+            .send(&issue.url, data, github_data)?;
 
         Ok(())
     } else {
@@ -238,7 +255,12 @@ pub fn retry(data: &Data, issue: &Issue, args: RetryArgs) -> Fallible<()> {
     }
 }
 
-pub fn abort(data: &Data, issue: &Issue, args: AbortArgs) -> Fallible<()> {
+pub fn abort(
+    data: &Data,
+    github_data: &GithubData,
+    issue: &Issue,
+    args: AbortArgs,
+) -> Fallible<()> {
     let name = get_name(&data.db, issue, args.name)?;
 
     actions::DeleteExperiment { name: name.clone() }
@@ -247,17 +269,17 @@ pub fn abort(data: &Data, issue: &Issue, args: AbortArgs) -> Fallible<()> {
     Message::new()
         .line("wastebasket", format!("Experiment **`{}`** deleted!", name))
         .set_label(Label::ExperimentCompleted)
-        .send(&issue.url, data)?;
+        .send(&issue.url, data, github_data)?;
 
     Ok(())
 }
 
-pub fn reload_acl(data: &Data, issue: &Issue) -> Fallible<()> {
-    data.acl.refresh_cache(&data.github)?;
+pub fn reload_acl(data: &Data, github_data: &GithubData, issue: &Issue) -> Fallible<()> {
+    data.acl.refresh_cache(&github_data.api)?;
 
     Message::new()
         .line("hammer_and_wrench", "List of authorized users reloaded!")
-        .send(&issue.url, data)?;
+        .send(&issue.url, data, github_data)?;
 
     Ok(())
 }

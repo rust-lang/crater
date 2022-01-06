@@ -235,7 +235,7 @@ pub fn generate_report<DB: ReadResults>(
                     log: crate_to_path_fragment(tc, krate, SanitizationContext::Url)
                         .to_str()
                         .unwrap()
-                        .replace(r"\", "/"), // Normalize paths in reports generated on Windows
+                        .replace('\'', "/"), // Normalize paths in reports generated on Windows
                 })
             });
             // Convert errors to Nones
@@ -290,7 +290,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
             let content = db
                 .load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
-                .with_context(|_| format!("failed to read log of {} on {}", krate, tc.to_string()));
+                .with_context(|_| format!("failed to read log of {} on {}", krate, tc));
             let content = match content {
                 Ok(c) => c,
                 Err(e) => {

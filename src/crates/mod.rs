@@ -94,7 +94,7 @@ impl TryFrom<&'_ PackageId> for Crate {
             [_, _, "path", path] => Ok(Crate::Path(path.to_string())),
             [_, _, "git", repo] => {
                 if repo.starts_with("https://github.com") {
-                    Ok(Crate::GitHub(repo.replace("#", "/").parse()?))
+                    Ok(Crate::GitHub(repo.replace('#', "/").parse()?))
                 } else {
                     let mut parts = repo.split('#').rev().collect::<Vec<_>>();
                     let url = parts.pop();

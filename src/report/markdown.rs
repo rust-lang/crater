@@ -66,7 +66,7 @@ fn write_crate(
     let prefix = if is_child { "  * " } else { "* " };
     let status_warning = krate
         .status
-        .map(|status| format!(" ({})", status.to_string()))
+        .map(|status| format!(" ({})", status))
         .unwrap_or_default();
 
     if let ReportConfig::Complete(toolchain) = comparison.report_config() {
@@ -82,7 +82,7 @@ fn write_crate(
             krate.name,
             status_warning,
             krate.url,
-            comparison.to_string(),
+            comparison,
             conj,
             runs[run],
             runs[1],
@@ -92,13 +92,7 @@ fn write_crate(
         writeln!(
             &mut rendered,
             "{}[{}{}]({}) {} [start]({}/log.txt) | [end]({}/log.txt)",
-            prefix,
-            krate.name,
-            status_warning,
-            krate.url,
-            comparison.to_string(),
-            runs[1],
-            runs[3]
+            prefix, krate.name, status_warning, krate.url, comparison, runs[1], runs[3]
         )?;
     };
 
@@ -112,7 +106,7 @@ fn render_markdown(context: &ResultsContext) -> Fallible<String> {
     writeln!(&mut rendered, "# Crater report for {}\n\n", context.ex.name)?;
 
     for (comparison, results) in context.categories.iter() {
-        writeln!(&mut rendered, "\n### {}", comparison.to_string())?;
+        writeln!(&mut rendered, "\n### {}", comparison)?;
         match results {
             ReportCratesMD::Plain(crates) => {
                 for krate in crates {

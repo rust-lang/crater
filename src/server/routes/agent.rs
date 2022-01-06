@@ -244,9 +244,7 @@ fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
 fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
     let error = if let Some(compat) = err.find_cause::<Compat<HttpError>>() {
         Some(*compat.get_ref())
-    } else if let StatusCode::NOT_FOUND = err.status() {
-        Some(HttpError::NotFound)
-    } else if let StatusCode::METHOD_NOT_ALLOWED = err.status() {
+    } else if let StatusCode::NOT_FOUND | StatusCode::METHOD_NOT_ALLOWED = err.status() {
         Some(HttpError::NotFound)
     } else {
         None

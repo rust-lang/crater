@@ -76,7 +76,7 @@ impl fmt::Debug for TaskStep {
 
         write!(f, "{}", name)?;
         if let Some(tc) = tc {
-            write!(f, " {}", tc.to_string())?;
+            write!(f, " {}", tc)?;
         }
         if quiet {
             write!(f, " (quiet)")?;

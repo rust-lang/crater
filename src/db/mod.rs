@@ -18,10 +18,7 @@ struct ConnectionCustomizer;
 
 impl CustomizeConnection<Connection, ::rusqlite::Error> for ConnectionCustomizer {
     fn on_acquire(&self, conn: &mut Connection) -> Result<(), ::rusqlite::Error> {
-        conn.execute(
-            "PRAGMA foreign_keys = ON;",
-            ::std::iter::empty::<&dyn ToSql>(),
-        )?;
+        conn.execute("PRAGMA foreign_keys = ON;", [])?;
         Ok(())
     }
 }
@@ -154,11 +151,10 @@ pub trait QueryUtils {
         &self,
         sql: &str,
         params: P,
-        func: impl FnMut(&Row) -> T,
+        func: impl FnMut(&Row) -> rusqlite::Result<T>,
     ) -> Fallible<Option<T>>
     where
-        P: IntoIterator,
-        P::Item: ToSql,
+        P: rusqlite::Params,
     {
         self.with_conn(|conn| {
             self.trace(sql, || {
@@ -174,10 +170,10 @@ pub trait QueryUtils {
         })
     }
 
-    fn query<T, F: FnMut(&Row) -> T>(
+    fn query<T, F: FnMut(&Row) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
-        params: &[&dyn ToSql],
+        params: impl rusqlite::Params,
         func: F,
     ) -> Fallible<Vec<T>> {
         self.with_conn(|conn| {

@@ -51,7 +51,7 @@ impl Capabilities {
         let caps = db.query(
             "SELECT capability FROM agent_capabilities WHERE agent_name = ?1",
             &[&agent],
-            |r| r.get("capability"),
+            |r| r.get::<_, String>(0),
         )?;
 
         Ok(caps.into_iter().collect())

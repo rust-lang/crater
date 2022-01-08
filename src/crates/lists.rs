@@ -49,14 +49,11 @@ pub(crate) trait List {
         let crates_results = db.query(
             "SELECT crate FROM crates WHERE list = ?1 ORDER BY rowid;",
             &[&Self::NAME],
-            |r| {
-                let raw: String = r.get("crate");
-                Ok(raw.parse()?)
-            },
+            |r| r.get::<_, String>(0),
         )?;
 
         // Turns Vec<Fallible<Crate>> into Fallible<Vec<Crate>>
-        crates_results.into_iter().collect()
+        crates_results.into_iter().map(|v| v.parse()).collect()
     }
 }
 

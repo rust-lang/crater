@@ -117,14 +117,14 @@ impl<'a> ReadResults for DatabaseDB<'a> {
              LIMIT 1;",
             &[&ex.name, &toolchain.to_string(), &krate.id()],
             |row| {
-                let log: Vec<u8> = row.get("log");
-                let encoding: String = row.get("encoding");
+                let log: Vec<u8> = row.get("log")?;
+                let encoding: String = row.get("encoding")?;
                 let encoding = encoding.parse().unwrap();
 
-                match encoding {
+                Ok(match encoding {
                     EncodingType::Plain => EncodedLog::Plain(log),
                     EncodingType::Gzip => EncodedLog::Gzip(log),
-                }
+                })
             },
         )
     }

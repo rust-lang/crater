@@ -991,12 +991,12 @@ mod tests {
             TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
-            (&gh_result.runs[0]).as_ref().unwrap().log.as_str(),
-            "stable/gh/brson.hello-rs"
+            Path::new((&gh_result.runs[0]).as_ref().unwrap().log.as_str()),
+            Path::new("stable/gh/brson.hello-rs")
         );
         assert_eq!(
-            (&gh_result.runs[1]).as_ref().unwrap().log.as_str(),
-            "beta/gh/brson.hello-rs"
+            Path::new((&gh_result.runs[1]).as_ref().unwrap().log.as_str()),
+            Path::new("beta/gh/brson.hello-rs")
         );
 
         assert_eq!(reg_result.name.as_str(), "syn-1.0.0");
@@ -1014,12 +1014,12 @@ mod tests {
             TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
-            (&reg_result.runs[0]).as_ref().unwrap().log.as_str(),
-            "stable/reg/syn-1.0.0"
+            Path::new((&reg_result.runs[0]).as_ref().unwrap().log.as_str()),
+            Path::new("stable/reg/syn-1.0.0")
         );
         assert_eq!(
-            (&reg_result.runs[1]).as_ref().unwrap().log.as_str(),
-            "beta/reg/syn-1.0.0"
+            Path::new((&reg_result.runs[1]).as_ref().unwrap().log.as_str()),
+            Path::new("beta/reg/syn-1.0.0")
         );
 
         assert_eq!(

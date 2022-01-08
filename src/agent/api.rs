@@ -6,8 +6,9 @@ use crate::results::TestResult;
 use crate::server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use crate::toolchain::Toolchain;
 use crate::utils;
-use http::{header::AUTHORIZATION, Method, StatusCode};
-use reqwest::RequestBuilder;
+use reqwest::blocking::RequestBuilder;
+use reqwest::header::AUTHORIZATION;
+use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use std::error::Error as _;
@@ -30,8 +31,8 @@ trait ResponseExt {
     fn to_api_response<T: DeserializeOwned>(self) -> Fallible<T>;
 }
 
-impl ResponseExt for ::reqwest::Response {
-    fn to_api_response<T: DeserializeOwned>(mut self) -> Fallible<T> {
+impl ResponseExt for ::reqwest::blocking::Response {
+    fn to_api_response<T: DeserializeOwned>(self) -> Fallible<T> {
         // 404 responses are not JSON, so avoid parsing them
         match self.status() {
             StatusCode::NOT_FOUND => return Err(AgentApiError::InvalidEndpoint.into()),
@@ -44,12 +45,10 @@ impl ResponseExt for ::reqwest::Response {
             _ => {}
         }
 
-        let result: ApiResponse<T> = self.json().with_context(|_| {
-            format!(
-                "failed to parse API response (status code {})",
-                self.status()
-            )
-        })?;
+        let status = self.status();
+        let result: ApiResponse<T> = self
+            .json()
+            .with_context(|_| format!("failed to parse API response (status code {})", status,))?;
         match result {
             ApiResponse::Success { result } => Ok(result),
             ApiResponse::InternalError { error } => {
@@ -95,11 +94,11 @@ impl AgentApi {
                         true
                     } else if let Some(err) = err.downcast_ref::<::reqwest::Error>() {
                         let reqwest_io = err
-                            .get_ref()
+                            .source()
                             .map(|inner| inner.is::<::std::io::Error>())
                             .unwrap_or(false);
                         let hyper_io = err
-                            .get_ref()
+                            .source()
                             .and_then(|inner| inner.downcast_ref::<::hyper::Error>())
                             .and_then(|inner| inner.source())
                             .map(|inner| inner.is::<::std::io::Error>())

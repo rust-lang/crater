@@ -11,7 +11,6 @@ use reqwest::header::AUTHORIZATION;
 use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json::json;
-use std::error::Error as _;
 
 #[derive(Debug, Fail)]
 pub enum AgentApiError {
@@ -93,17 +92,7 @@ impl AgentApi {
                     let retry = if let Some(AgentApiError::ServerUnavailable) = err.downcast_ref() {
                         true
                     } else if let Some(err) = err.downcast_ref::<::reqwest::Error>() {
-                        let reqwest_io = err
-                            .source()
-                            .map(|inner| inner.is::<::std::io::Error>())
-                            .unwrap_or(false);
-                        let hyper_io = err
-                            .source()
-                            .and_then(|inner| inner.downcast_ref::<::hyper::Error>())
-                            .and_then(|inner| inner.source())
-                            .map(|inner| inner.is::<::std::io::Error>())
-                            .unwrap_or(false);
-                        reqwest_io || hyper_io
+                        err.is_timeout() || err.is_connect()
                     } else {
                         false
                     };

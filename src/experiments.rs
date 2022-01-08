@@ -44,7 +44,8 @@ string_enum!(pub enum CapLints {
 
 const SMALL_RANDOM_COUNT: u32 = 20;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
 pub enum CrateSelect {
     Full,
     Demo,
@@ -54,6 +55,8 @@ pub enum CrateSelect {
     Random(u32),
     List(HashSet<String>),
 }
+
+from_into_string!(CrateSelect);
 
 impl FromStr for CrateSelect {
     type Err = failure::Error;
@@ -166,8 +169,6 @@ impl FromStr for DeferredCrateSelect {
         }
     }
 }
-
-impl_serde_from_parse!(CrateSelect, expecting = "A valid value of `CrateSelect`");
 
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[derive(Clone, Serialize, Deserialize)]

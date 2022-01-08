@@ -428,7 +428,6 @@ dependencies = [
  "env_logger",
  "failure",
  "flate2",
- "futures",
  "hmac 0.7.1",
  "http 0.1.21",
  "hyper 0.12.35",
@@ -438,7 +437,6 @@ dependencies = [
  "mime 0.3.16",
  "minifier",
  "num_cpus",
- "paste",
  "percent-encoding 2.1.0",
  "petgraph",
  "predicates",
@@ -466,7 +464,6 @@ dependencies = [
  "tar",
  "tempfile",
  "tera",
- "tokio 0.1.22",
  "toml 0.4.10",
  "url 1.7.2",
  "walkdir",
@@ -1979,25 +1976,6 @@ dependencies = [
  "redox_syscall",
  "smallvec 1.7.0",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "paste"
-version = "0.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45ca20c77d80be666aef2b45486da86238fabe33e38306bd3118fe4af33fa880"
-dependencies = [
- "paste-impl",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "paste-impl"
-version = "0.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d95a7db200b97ef370c8e6de0088252f7e0dfff7d047a28528e47456c0fc98b6"
-dependencies = [
- "proc-macro-hack",
 ]
 
 [[package]]

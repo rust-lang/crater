@@ -56,8 +56,29 @@ pub fn run_ex<DB: WriteResults + Sync>(
     threads_count: usize,
     config: &Config,
 ) -> Fallible<()> {
-    if !rustwide::cmd::docker_running(workspace) {
-        return Err(err_msg("docker is not running"));
+    // Attempt to spin indefinitely until docker is up. Ideally, we would
+    // decomission this agent until docker is up, instead of leaving the
+    // assigned crates to 'hang' until we get our act together. In practice, we
+    // expect workers to be around most of the time (just sometimes being
+    // restarted etc.) and so the assigned crates shouldn't hang for long.
+    //
+    // If we return an Err(...) from this function, then currently that is
+    // treated as a hard failure of the underlying experiment, but this error
+    // has nothing to do with the experiment, so shouldn't be reported as such.
+    //
+    // In the future we'll want to *alert* on this error so that a human can
+    // investigate, but the hope is that in practice docker is just being slow
+    // or similar and this will fix itself, which currently makes the most sense
+    // given low human resources. Additionally, it'll be indirectly alerted
+    // through the worker being "down" according to our progress metrics, since
+    // jobs won't be completed.
+    let mut i = 0;
+    while !rustwide::cmd::docker_running(workspace) {
+        log::error!(
+            "docker is not currently up, waiting for it to start (tried {} times)",
+            i
+        );
+        i += 1;
     }
 
     info!("computing the tasks graph...");

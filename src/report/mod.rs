@@ -235,7 +235,7 @@ pub fn generate_report<DB: ReadResults>(
                     log: crate_to_path_fragment(tc, krate, SanitizationContext::Url)
                         .to_str()
                         .unwrap()
-                        .replace(r"\", "/"), // Normalize paths in reports generated on Windows
+                        .replace('\'', "/"), // Normalize paths in reports generated on Windows
                 })
             });
             // Convert errors to Nones
@@ -290,7 +290,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
             let content = db
                 .load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
-                .with_context(|_| format!("failed to read log of {} on {}", krate, tc.to_string()));
+                .with_context(|_| format!("failed to read log of {} on {}", krate, tc));
             let content = match content {
                 Ok(c) => c,
                 Err(e) => {
@@ -991,12 +991,12 @@ mod tests {
             TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
-            (&gh_result.runs[0]).as_ref().unwrap().log.as_str(),
-            "stable/gh/brson.hello-rs"
+            Path::new((&gh_result.runs[0]).as_ref().unwrap().log.as_str()),
+            Path::new("stable/gh/brson.hello-rs")
         );
         assert_eq!(
-            (&gh_result.runs[1]).as_ref().unwrap().log.as_str(),
-            "beta/gh/brson.hello-rs"
+            Path::new((&gh_result.runs[1]).as_ref().unwrap().log.as_str()),
+            Path::new("beta/gh/brson.hello-rs")
         );
 
         assert_eq!(reg_result.name.as_str(), "syn-1.0.0");
@@ -1014,12 +1014,12 @@ mod tests {
             TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
-            (&reg_result.runs[0]).as_ref().unwrap().log.as_str(),
-            "stable/reg/syn-1.0.0"
+            Path::new((&reg_result.runs[0]).as_ref().unwrap().log.as_str()),
+            Path::new("stable/reg/syn-1.0.0")
         );
         assert_eq!(
-            (&reg_result.runs[1]).as_ref().unwrap().log.as_str(),
-            "beta/reg/syn-1.0.0"
+            Path::new((&reg_result.runs[1]).as_ref().unwrap().log.as_str()),
+            Path::new("beta/reg/syn-1.0.0")
         );
 
         assert_eq!(

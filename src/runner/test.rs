@@ -17,9 +17,9 @@ fn failure_reason(err: &Error) -> FailureReason {
     for cause in err.iter_chain() {
         if let Some(&CommandError::SandboxOOM) = cause.downcast_ctx() {
             return FailureReason::OOM;
-        } else if let Some(&CommandError::NoOutputFor(_)) = cause.downcast_ctx() {
-            return FailureReason::Timeout;
-        } else if let Some(&CommandError::Timeout(_)) = cause.downcast_ctx() {
+        } else if let Some(&CommandError::NoOutputFor(_) | &CommandError::Timeout(_)) =
+            cause.downcast_ctx()
+        {
             return FailureReason::Timeout;
         } else if let Some(reason) = cause.downcast_ctx::<FailureReason>() {
             return reason.clone();

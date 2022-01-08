@@ -30,7 +30,7 @@ impl CustomizeConnection<Connection, ::rusqlite::Error> for ConnectionCustomizer
 pub struct Database {
     pool: Pool<SqliteConnectionManager>,
     // The tempfile is stored here to drop it after all the connections are closed
-    tempfile: Option<Arc<NamedTempFile>>,
+    _tempfile: Option<Arc<NamedTempFile>>,
 }
 
 impl Database {
@@ -76,7 +76,7 @@ impl Database {
 
         Ok(Database {
             pool,
-            tempfile: tempfile.map(Arc::new),
+            _tempfile: tempfile.map(Arc::new),
         })
     }
 

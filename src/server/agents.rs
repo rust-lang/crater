@@ -86,12 +86,19 @@ impl Agents {
     fn synchronize(&self, tokens: &Tokens) -> Fallible<()> {
         self.db.transaction(|trans| {
             let mut real = tokens.agents.values().collect::<HashSet<&String>>();
-            for agent in &self.all()? {
-                if !real.remove(&agent.name) {
-                    trans.execute("DELETE FROM agents WHERE name = ?1;", &[&agent.name])?;
+            let current: Vec<String> = self
+                .db
+                .query("select name from agents;", [], |r| r.get(0))?;
+
+            // If the token is no longer configured, then drop this agent from
+            // our list.
+            for current_name in current {
+                if !real.remove(&current_name) {
+                    trans.execute("DELETE FROM agents WHERE name = ?1;", &[&current_name])?;
                 }
             }
 
+            // And any *new* agents need to be inserted.
             for missing in &real {
                 trans.execute(
                     "INSERT INTO agents (name) VALUES (?1);",

@@ -74,8 +74,10 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
         })
         .transpose()?;
     let agents = Agents::new(db.clone(), &tokens)?;
+    info!("loaded agents...");
     let acl = ACL::new(&config, github_data.as_ref())?;
     let metrics = Metrics::new()?;
+    info!("initialized metrics...");
 
     let data = Data {
         config,
@@ -90,6 +92,7 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
     let mutex = Arc::new(Mutex::new(data.clone()));
 
     data.reports_worker.spawn(data.clone(), github_data.clone());
+    info!("spawned reports worker...");
     cronjobs::spawn(data.clone());
 
     info!("running server on {}...", bind);

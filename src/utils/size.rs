@@ -2,7 +2,8 @@ use crate::prelude::*;
 use std::fmt;
 use std::str::FromStr;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
 pub enum Size {
     Bytes(usize),
     Kilobytes(usize),
@@ -10,6 +11,8 @@ pub enum Size {
     Gigabytes(usize),
     Terabytes(usize),
 }
+
+from_into_string!(Size);
 
 impl Size {
     pub(crate) fn to_bytes(&self) -> usize {
@@ -60,8 +63,6 @@ impl FromStr for Size {
         }
     }
 }
-
-impl_serde_from_parse!(Size, expecting = "a size");
 
 #[cfg(test)]
 mod tests {

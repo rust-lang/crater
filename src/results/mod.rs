@@ -115,7 +115,8 @@ macro_rules! test_result_enum {
         with_reason { $($with_reason_name:ident($reason:ident) => $with_reason_repr:expr,)* }
         without_reason { $($reasonless_name:ident => $reasonless_repr:expr,)* }
     }) => {
-        #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+        #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
+        #[serde(try_from = "String", into = "String")]
         pub enum $name {
             $($with_reason_name($reason),)*
             $($reasonless_name,)*
@@ -301,7 +302,7 @@ test_result_enum!(pub enum TestResult {
     }
 });
 
-impl_serde_from_parse!(TestResult, expecting = "a test result");
+from_into_string!(TestResult);
 
 #[cfg(test)]
 mod tests {

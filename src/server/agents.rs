@@ -105,16 +105,16 @@ impl Agents {
 
     pub fn all(&self) -> Fallible<Vec<Agent>> {
         self.db
-            .query("SELECT * FROM agents ORDER BY name;", &[], |row| {
-                Agent {
-                    name: row.get("name"),
-                    last_heartbeat: row.get("last_heartbeat"),
-                    git_revision: row.get("git_revision"),
+            .query("SELECT * FROM agents ORDER BY name;", [], |row| {
+                Ok(Agent {
+                    name: row.get("name")?,
+                    last_heartbeat: row.get("last_heartbeat")?,
+                    git_revision: row.get("git_revision")?,
 
                     // Lazy loaded after this
                     experiment: None,
                     capabilities: None,
-                }
+                })
             })?
             .into_iter()
             .map(|agent| {
@@ -129,15 +129,15 @@ impl Agents {
     fn get(&self, name: &str) -> Fallible<Option<Agent>> {
         self.db
             .get_row("SELECT * FROM agents WHERE name = ?1;", &[&name], |row| {
-                Agent {
-                    name: row.get("name"),
-                    last_heartbeat: row.get("last_heartbeat"),
-                    git_revision: row.get("git_revision"),
+                Ok(Agent {
+                    name: row.get("name")?,
+                    last_heartbeat: row.get("last_heartbeat")?,
+                    git_revision: row.get("git_revision")?,
 
                     // Lazy loaded after this
                     experiment: None,
                     capabilities: None,
-                }
+                })
             })?
             .map(|agent| agent.with_experiment(&self.db))
             .transpose()?

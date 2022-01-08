@@ -187,8 +187,8 @@ mod tests {
                     "SELECT crate FROM experiment_crates WHERE experiment = ?1 AND skipped = 0",
                     &[&ex],
                     |row| {
-                        let krate: String = row.get("crate");
-                        krate.parse().unwrap()
+                        let krate: String = row.get("crate")?;
+                        Ok(krate.parse().unwrap())
                     },
                 )
                 .unwrap();

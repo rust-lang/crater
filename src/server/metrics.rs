@@ -91,11 +91,8 @@ impl Metrics {
     }
 
     pub fn update_crates_lists(&self, db: &Database) -> Fallible<()> {
-        //&[] as &[u32] is just a hint to make the compiler happy
         let datetime: Option<DateTime<Utc>> =
-            db.get_row("SELECT MAX(loaded_at) FROM crates;", &[] as &[u32], |r| {
-                r.get(0)
-            })?;
+            db.get_row("SELECT MAX(loaded_at) FROM crates;", [], |r| r.get(0))?;
 
         if let Some(datetime) = datetime {
             self.crater_last_crates_update.set(datetime.timestamp());

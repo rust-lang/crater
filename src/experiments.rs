@@ -389,15 +389,15 @@ impl Experiment {
                     const AGENT_QUERY: &str = r#"
                         SELECT *
                         FROM   experiments ex
-                        WHERE  ( ex.status = "queued" 
+                        WHERE  ( ex.status = "queued"
                                 OR ( status = "running"
                                             AND ( SELECT COUNT (*)
                                                   FROM  experiment_crates ex_crates
                                                   WHERE ex_crates.experiment = ex.name
-                                                          AND ( status = "queued") 
-                                                          AND ( skipped = 0) 
+                                                          AND ( status = "queued")
+                                                          AND ( skipped = 0)
                                                   > 0 ) ) )
-                                AND ( ex.assigned_to = ?1 ) 
+                                AND ( ex.assigned_to = ?1 )
                                 AND ( ex.requirement IS NULL
                                     OR ex.requirement IN (  SELECT capability
                                                             FROM   agent_capabilities
@@ -418,13 +418,13 @@ impl Experiment {
                     const CLI_QUERY: &str = r#"
                         SELECT     *
                         FROM       experiments ex
-                        WHERE      ( ex.status = "queued" 
+                        WHERE      ( ex.status = "queued"
                                         OR ( status = "running"
                                             AND ( SELECT COUNT (*)
                                                   FROM  experiment_crates ex_crates
                                                   WHERE ex_crates.experiment = ex.name
-                                                          AND ( status = "queued") 
-                                                          AND ( skipped = 0) 
+                                                          AND ( status = "queued")
+                                                          AND ( skipped = 0)
                                                   > 0 ) ) )
                                    AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?1 )
                         ORDER BY   ex.assigned_to IS NULL,
@@ -445,10 +445,10 @@ impl Experiment {
                                             AND ( SELECT COUNT (*)
                                                   FROM  experiment_crates ex_crates
                                                   WHERE ex_crates.experiment = ex.name
-                                                          AND ( status = "queued") 
-                                                          AND ( skipped = 0) 
+                                                          AND ( status = "queued")
+                                                          AND ( skipped = 0)
                                                   > 0 ) ) )
-                        AND ( ex.assigned_to IS NULL ) 
+                        AND ( ex.assigned_to IS NULL )
                         AND ( ex.requirement IS NULL
                             OR ex.requirement IN (  SELECT capability
                                                     FROM   agent_capabilities
@@ -461,7 +461,7 @@ impl Experiment {
             (AGENT_UNASSIGNED_QUERY, vec![agent_name])
         };
 
-        if let Some(record) = db.get_row(query, params.as_slice(), |r| {
+        if let Some(record) = db.get_row(query, rusqlite::params_from_iter(params.iter()), |r| {
             ExperimentDBRecord::from_row(r)
         })? {
             Ok(Some(record.into_experiment()?))
@@ -488,7 +488,7 @@ impl Experiment {
         // Mark all the running crates from this agent as failed as well if the experiment failed
         db.execute(
             "
-            UPDATE experiment_crates 
+            UPDATE experiment_crates
             SET assigned_to = NULL, status = ?1 \
             WHERE experiment = ?2 AND status = ?3 \
             AND assigned_to = ?4
@@ -534,7 +534,7 @@ impl Experiment {
             // Queue again failed crates
             (Status::Failed, Status::Queued) => {
                 db.execute(
-                    "UPDATE experiment_crates 
+                    "UPDATE experiment_crates
                     SET status = ?1 \
                     WHERE experiment = ?2 AND status = ?3
                     ",
@@ -596,14 +596,17 @@ impl Experiment {
     }
 
     pub fn get_result_counts(&self, db: &Database) -> Fallible<Vec<(TestResult, u32)>> {
-        let results: Vec<Fallible<(TestResult, u32)>> = db.query(
+        let results: Vec<(String, u32)> = db.query(
             "SELECT result, COUNT(*) FROM results \
              WHERE experiment = ?1 GROUP BY result;",
             &[&self.name.as_str()],
-            |r| Ok((TestResult::from_str(&r.get::<_, String>(0))?, r.get(1))),
+            |r| Ok((r.get::<_, String>(0)?, r.get(1)?)),
         )?;
 
-        results.into_iter().collect()
+        results
+            .into_iter()
+            .map(|(result, count)| Ok((TestResult::from_str(&result)?, count)))
+            .collect()
     }
 
     pub fn progress(&self, db: &Database) -> Fallible<u8> {
@@ -620,12 +623,10 @@ impl Experiment {
         db.query(
             "SELECT crate FROM experiment_crates WHERE experiment = ?1;",
             &[&self.name],
-            |r| {
-                let value: String = r.get("crate");
-                Ok(value.parse()?)
-            },
+            |r| r.get(0),
         )?
         .into_iter()
+        .map(|c: String| c.parse())
         .collect::<Fallible<Vec<Crate>>>()
     }
 
@@ -654,7 +655,7 @@ impl Experiment {
                 .query(
                     "SELECT crate FROM experiment_crates WHERE experiment = ?1
                      AND status = ?2 AND skipped = 0 LIMIT ?3;",
-                    &[&self.name, &Status::Queued.to_string(), &limit],
+                    rusqlite::params![self.name, Status::Queued.to_string(), limit],
                     |r| r.get("crate"),
                 )?
                 .into_iter()
@@ -667,9 +668,9 @@ impl Experiment {
                 let params = [params_header, params].concat();
                 let update_query = &[
                     "
-                    UPDATE experiment_crates 
+                    UPDATE experiment_crates
                     SET assigned_to = ?1, status = \"running\" \
-                    WHERE experiment = ?2 
+                    WHERE experiment = ?2
                     AND crate IN ("
                         .to_string(),
                     "?,".repeat(params.len() - 3),
@@ -700,12 +701,10 @@ impl Experiment {
                 &Status::Running.to_string(),
                 &assigned_to.to_string(),
             ],
-            |r| {
-                let value: String = r.get("crate");
-                Ok(value.parse()?)
-            },
+            |r| r.get(0),
         )?
         .into_iter()
+        .map(|c: String| c.parse())
         .collect::<Fallible<Vec<Crate>>>()
     }
 }
@@ -731,26 +730,26 @@ struct ExperimentDBRecord {
 }
 
 impl ExperimentDBRecord {
-    fn from_row(row: &Row) -> Self {
-        ExperimentDBRecord {
-            name: row.get("name"),
-            mode: row.get("mode"),
-            cap_lints: row.get("cap_lints"),
-            toolchain_start: row.get("toolchain_start"),
-            toolchain_end: row.get("toolchain_end"),
-            priority: row.get("priority"),
-            created_at: row.get("created_at"),
-            started_at: row.get("started_at"),
-            completed_at: row.get("completed_at"),
-            status: row.get("status"),
-            github_issue: row.get("github_issue"),
-            github_issue_url: row.get("github_issue_url"),
-            github_issue_number: row.get("github_issue_number"),
-            assigned_to: row.get("assigned_to"),
-            report_url: row.get("report_url"),
-            ignore_blacklist: row.get("ignore_blacklist"),
-            requirement: row.get("requirement"),
-        }
+    fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(ExperimentDBRecord {
+            name: row.get("name")?,
+            mode: row.get("mode")?,
+            cap_lints: row.get("cap_lints")?,
+            toolchain_start: row.get("toolchain_start")?,
+            toolchain_end: row.get("toolchain_end")?,
+            priority: row.get("priority")?,
+            created_at: row.get("created_at")?,
+            started_at: row.get("started_at")?,
+            completed_at: row.get("completed_at")?,
+            status: row.get("status")?,
+            github_issue: row.get("github_issue")?,
+            github_issue_url: row.get("github_issue_url")?,
+            github_issue_number: row.get("github_issue_number")?,
+            assigned_to: row.get("assigned_to")?,
+            report_url: row.get("report_url")?,
+            ignore_blacklist: row.get("ignore_blacklist")?,
+            requirement: row.get("requirement")?,
+        })
     }
 
     fn into_experiment(self) -> Fallible<Experiment> {

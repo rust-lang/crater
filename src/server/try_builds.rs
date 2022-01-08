@@ -52,9 +52,11 @@ pub(crate) fn get_sha(db: &Database, repo: &str, pr: i32) -> Fallible<Option<Try
     db.get_row(
         "SELECT base_sha, merge_sha FROM try_builds WHERE repo = ?1 AND pr = ?2;",
         &[repo, &pr.to_string()],
-        |row| TryBuild {
-            base_sha: row.get("base_sha"),
-            merge_sha: row.get("merge_sha"),
+        |row| {
+            Ok(TryBuild {
+                base_sha: row.get("base_sha")?,
+                merge_sha: row.get("merge_sha")?,
+            })
         },
     )
 }

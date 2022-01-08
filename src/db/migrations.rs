@@ -3,10 +3,6 @@ use rand::{self, distributions::Alphanumeric, Rng};
 use rusqlite::{Connection, Transaction};
 use std::collections::HashSet;
 
-fn no_args() -> impl Iterator<Item = &'static str> {
-    ::std::iter::empty()
-}
-
 enum MigrationKind {
     SQL(&'static str),
     Code(Box<dyn Fn(&Transaction) -> ::rusqlite::Result<()>>),
@@ -145,40 +141,46 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                     .take(10)
                     .collect::<String>()
             );
-            t.create_scalar_function(&fn_name, 1, true, |ctx| {
-                let legacy = ctx.get::<String>(0)?;
+            t.create_scalar_function(
+                &fn_name,
+                1,
+                rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
+                    | rusqlite::functions::FunctionFlags::SQLITE_UTF8,
+                |ctx| {
+                    let legacy = ctx.get::<String>(0)?;
 
-                if let Ok(parsed) = serde_json::from_str(&legacy) {
-                    Ok(match parsed {
-                        LegacyToolchain::Dist(name) => name,
-                        LegacyToolchain::TryBuild { sha } => format!("try#{}", sha),
-                        LegacyToolchain::Master { sha } => format!("master#{}", sha),
-                    })
-                } else {
-                    Ok(legacy)
-                }
-            })?;
+                    if let Ok(parsed) = serde_json::from_str(&legacy) {
+                        Ok(match parsed {
+                            LegacyToolchain::Dist(name) => name,
+                            LegacyToolchain::TryBuild { sha } => format!("try#{}", sha),
+                            LegacyToolchain::Master { sha } => format!("master#{}", sha),
+                        })
+                    } else {
+                        Ok(legacy)
+                    }
+                },
+            )?;
 
-            t.execute("PRAGMA foreign_keys = OFF;", no_args())?;
+            t.execute("PRAGMA foreign_keys = OFF;", [])?;
             t.execute(
                 &format!(
                     "UPDATE experiments SET toolchain_start = {}(toolchain_start);",
                     fn_name
                 ),
-                no_args(),
+                [],
             )?;
             t.execute(
                 &format!(
                     "UPDATE experiments SET toolchain_end = {}(toolchain_end);",
                     fn_name
                 ),
-                no_args(),
+                [],
             )?;
             t.execute(
                 &format!("UPDATE results SET toolchain = {}(toolchain);", fn_name),
-                no_args(),
+                [],
             )?;
-            t.execute("PRAGMA foreign_keys = ON;", no_args())?;
+            t.execute("PRAGMA foreign_keys = ON;", [])?;
 
             Ok(())
         })),
@@ -334,30 +336,36 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                     .take(10)
                     .collect::<String>()
             );
-            t.create_scalar_function(&fn_name, 1, true, |ctx| {
-                let legacy = ctx.get::<String>(0)?;
+            t.create_scalar_function(
+                &fn_name,
+                1,
+                rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
+                    | rusqlite::functions::FunctionFlags::SQLITE_UTF8,
+                |ctx| {
+                    let legacy = ctx.get::<String>(0)?;
 
-                if let Ok(parsed) = serde_json::from_str::<Crate>(&legacy) {
-                    Ok(parsed.id())
-                } else {
-                    Ok(legacy)
-                }
-            })?;
+                    if let Ok(parsed) = serde_json::from_str::<Crate>(&legacy) {
+                        Ok(parsed.id())
+                    } else {
+                        Ok(legacy)
+                    }
+                },
+            )?;
 
-            t.execute("PRAGMA foreign_keys = OFF;", no_args())?;
+            t.execute("PRAGMA foreign_keys = OFF;", [])?;
             t.execute(
                 &format!("UPDATE experiment_crates SET crate = {}(crate);", fn_name),
-                no_args(),
+                [],
             )?;
             t.execute(
                 &format!("UPDATE results SET crate = {}(crate);", fn_name),
-                no_args(),
+                [],
             )?;
             t.execute(
                 &format!("UPDATE crates SET crate = {}(crate);", fn_name),
-                no_args(),
+                [],
             )?;
-            t.execute("PRAGMA foreign_keys = ON;", no_args())?;
+            t.execute("PRAGMA foreign_keys = ON;", [])?;
 
             Ok(())
         })),
@@ -368,19 +376,16 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
 
 pub fn execute(db: &mut Connection) -> Fallible<()> {
     // If the database version is 0, create the migrations table and bump it
-    let version: i32 = db.query_row("PRAGMA user_version;", no_args(), |r| r.get(0))?;
+    let version: i32 = db.query_row("PRAGMA user_version;", [], |r| r.get(0))?;
     if version == 0 {
-        db.execute(
-            "CREATE TABLE migrations (name TEXT PRIMARY KEY);",
-            no_args(),
-        )?;
-        db.execute("PRAGMA user_version = 1;", no_args())?;
+        db.execute("CREATE TABLE migrations (name TEXT PRIMARY KEY);", [])?;
+        db.execute("PRAGMA user_version = 1;", [])?;
     }
 
     let executed_migrations = {
         let mut prepared = db.prepare("SELECT name FROM migrations;")?;
         let mut result = HashSet::new();
-        for value in prepared.query_map(no_args(), |row| -> String { row.get("name") })? {
+        for value in prepared.query_map([], |row| row.get::<_, String>(0))? {
             result.insert(value?);
         }
 

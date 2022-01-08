@@ -1,10 +1,9 @@
 use crate::prelude::*;
 use crate::server::tokens::BotTokens;
 use crate::utils;
-use http::header::AUTHORIZATION;
-use http::Method;
-use http::StatusCode;
-use reqwest::RequestBuilder;
+use reqwest::blocking::RequestBuilder;
+use reqwest::header::AUTHORIZATION;
+use reqwest::{Method, StatusCode};
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -57,86 +56,92 @@ impl GitHub for GitHubApi {
     }
 
     fn post_comment(&self, issue_url: &str, body: &str) -> Fallible<()> {
-        let mut response = self
+        let response = self
             .build_request(Method::POST, &format!("{}/comments", issue_url))
             .json(&json!({
                 "body": body,
             }))
             .send()?;
 
-        if response.status() == StatusCode::CREATED {
+        let status = response.status();
+        if status == StatusCode::CREATED {
             Ok(())
         } else {
             let error: Error = response.json()?;
-            Err(GitHubError::RequestFailed(response.status(), error.message).into())
+            Err(GitHubError::RequestFailed(status, error.message).into())
         }
     }
 
     fn list_labels(&self, issue_url: &str) -> Fallible<Vec<Label>> {
-        let mut response = self
+        let response = self
             .build_request(Method::GET, &format!("{}/labels", issue_url))
             .send()?;
 
-        if response.status() == StatusCode::OK {
+        let status = response.status();
+        if status == StatusCode::OK {
             Ok(response.json()?)
         } else {
             let error: Error = response.json()?;
-            Err(GitHubError::RequestFailed(response.status(), error.message).into())
+            Err(GitHubError::RequestFailed(status, error.message).into())
         }
     }
 
     fn add_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
-        let mut response = self
+        let response = self
             .build_request(Method::POST, &format!("{}/labels", issue_url))
             .json(&json!([label]))
             .send()?;
 
-        if response.status() == StatusCode::OK {
+        let status = response.status();
+        if status == StatusCode::OK {
             Ok(())
         } else {
             let error: Error = response.json()?;
-            Err(GitHubError::RequestFailed(response.status(), error.message).into())
+            Err(GitHubError::RequestFailed(status, error.message).into())
         }
     }
 
     fn remove_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
-        let mut response = self
+        let response = self
             .build_request(Method::DELETE, &format!("{}/labels/{}", issue_url, label))
             .send()?;
 
-        if response.status() == StatusCode::OK {
+        let status = response.status();
+        if status == StatusCode::OK {
             Ok(())
         } else {
             let error: Error = response.json()?;
-            Err(GitHubError::RequestFailed(response.status(), error.message).into())
+            Err(GitHubError::RequestFailed(status, error.message).into())
         }
     }
 
     fn list_teams(&self, org: &str) -> Fallible<HashMap<String, usize>> {
-        let mut response = self
+        let response = self
             .build_request(Method::GET, &format!("orgs/{}/teams", org))
             .send()?;
 
-        if response.status() == StatusCode::OK {
+        let status = response.status();
+        if status == StatusCode::OK {
             let teams: Vec<Team> = response.json()?;
             Ok(teams.into_iter().map(|t| (t.slug, t.id)).collect())
         } else {
             let error: Error = response.json()?;
-            Err(GitHubError::RequestFailed(response.status(), error.message).into())
+            Err(GitHubError::RequestFailed(status, error.message).into())
         }
     }
 
     fn team_members(&self, team: usize) -> Fallible<Vec<String>> {
-        let mut response = self
+        let response = self
             .build_request(Method::GET, &format!("teams/{}/members", team))
             .send()?;
 
-        if response.status() == StatusCode::OK {
+        let status = response.status();
+        if status == StatusCode::OK {
             let users: Vec<User> = response.json()?;
             Ok(users.into_iter().map(|u| u.login).collect())
         } else {
             let error: Error = response.json()?;
-            Err(GitHubError::RequestFailed(response.status(), error.message).into())
+            Err(GitHubError::RequestFailed(status, error.message).into())
         }
     }
 

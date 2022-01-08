@@ -36,7 +36,7 @@ r2d2_sqlite = "0.19.0"
 rusqlite = { version = "0.26.0", features = ["chrono", "functions", "bundled"] }
 rand = "0.5"
 regex = "1.0"
-reqwest = "0.9"
+reqwest = { version = "0.11", features = ["blocking", "json"] }
 rusoto_core = "0.35.0"
 rusoto_credential = "0.14.0"
 rusoto_s3 = "0.35.0"

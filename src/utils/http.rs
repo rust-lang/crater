@@ -1,6 +1,7 @@
 use crate::prelude::*;
-use http::{header::USER_AGENT, Method, StatusCode};
-use reqwest::{Client, ClientBuilder, RedirectPolicy, RequestBuilder, Response};
+use reqwest::blocking::{Client, ClientBuilder, RequestBuilder, Response};
+use reqwest::redirect::Policy;
+use reqwest::{header::USER_AGENT, Method, StatusCode};
 
 const MAX_REDIRECTS: usize = 4;
 
@@ -17,7 +18,7 @@ lazy_static! {
 
 fn setup_sync_client() -> Client {
     ClientBuilder::new()
-        .redirect(RedirectPolicy::limited(MAX_REDIRECTS))
+        .redirect(Policy::limited(MAX_REDIRECTS))
         .build()
         .unwrap()
 }

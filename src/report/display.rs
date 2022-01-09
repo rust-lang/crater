@@ -12,6 +12,7 @@ impl ResultName for FailureReason {
         match self {
             FailureReason::Unknown => "failed (unknown)".into(),
             FailureReason::Timeout => "timed out".into(),
+            FailureReason::NetworkAccess => "network access".into(),
             FailureReason::OOM => "OOM".into(),
             FailureReason::ICE => "ICE".into(),
             FailureReason::CompilerError(_) => "compiler error".into(),
@@ -23,6 +24,7 @@ impl ResultName for FailureReason {
         match self {
             FailureReason::CompilerError(_) | FailureReason::DependsOn(_) => self.to_string(),
             FailureReason::Unknown
+            | FailureReason::NetworkAccess
             | FailureReason::Timeout
             | FailureReason::OOM
             | FailureReason::ICE => self.short_name(),

@@ -97,10 +97,15 @@ fn run_cargo<DB: WriteResults>(
     };
 
     let mut did_ice = false;
+    let mut did_network = false;
     let mut error_codes = BTreeSet::new();
     let mut deps = BTreeSet::new();
 
     let mut detect_error = |line: &str, actions: &mut ProcessLinesActions| {
+        if line.contains("urlopen error") && line.contains("Temporary failure in name resolution") {
+            did_network = true;
+        }
+
         // Avoid trying to deserialize non JSON output
         if !line.starts_with('{') {
             return;
@@ -169,6 +174,8 @@ fn run_cargo<DB: WriteResults>(
                 Err(e.context(FailureReason::DependsOn(deps)).into())
             } else if !error_codes.is_empty() {
                 Err(e.context(FailureReason::CompilerError(error_codes)).into())
+            } else if did_network {
+                Err(e.context(FailureReason::NetworkAccess).into())
             } else {
                 Err(e.into())
             }

@@ -198,6 +198,7 @@ pub enum FailureReason {
     OOM,
     Timeout,
     ICE,
+    NetworkAccess,
     CompilerError(BTreeSet<DiagnosticCode>),
     DependsOn(BTreeSet<Crate>),
 }
@@ -211,6 +212,7 @@ impl ::std::fmt::Display for FailureReason {
             FailureReason::OOM => write!(f, "oom"),
             FailureReason::Timeout => write!(f, "timeout"),
             FailureReason::ICE => write!(f, "ice"),
+            FailureReason::NetworkAccess => write!(f, "network-access"),
             FailureReason::CompilerError(codes) => write!(
                 f,
                 "compiler-error({})",
@@ -271,7 +273,7 @@ impl ::std::str::FromStr for FailureReason {
 impl FailureReason {
     pub(crate) fn is_spurious(&self) -> bool {
         match *self {
-            FailureReason::OOM | FailureReason::Timeout => true,
+            FailureReason::OOM | FailureReason::Timeout | FailureReason::NetworkAccess => true,
             FailureReason::CompilerError(_)
             | FailureReason::DependsOn(_)
             | FailureReason::Unknown

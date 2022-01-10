@@ -194,7 +194,13 @@ pub trait QueryUtils {
     fn trace<T, F: FnOnce() -> T>(&self, sql: &str, f: F) -> T {
         let start = Instant::now();
         let res = f();
-        trace!("sql query \"{}\" executed in {:?}", sql, start.elapsed());
+        let elapsed = start.elapsed();
+        // Log all queries that take at least 1/2 a second to execute.
+        if elapsed.as_millis() > 500 {
+            debug!("sql query \"{}\" executed in {:?}", sql, elapsed);
+        } else {
+            trace!("sql query \"{}\" executed in {:?}", sql, elapsed);
+        }
         res
     }
 }

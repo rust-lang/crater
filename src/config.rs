@@ -74,6 +74,7 @@ pub struct DemoCrates {
 #[serde(rename_all = "kebab-case")]
 pub struct SandboxConfig {
     pub memory_limit: Size,
+    pub cpu_limit: u16,
     pub build_log_max_size: Size,
     pub build_log_max_lines: usize,
 }
@@ -256,6 +257,7 @@ impl Default for Config {
             local_crates: HashMap::new(),
             sandbox: SandboxConfig {
                 memory_limit: Size::Gigabytes(2),
+                cpu_limit: 1,
                 build_log_max_size: Size::Megabytes(1),
                 build_log_max_lines: 1000,
             },
@@ -308,6 +310,7 @@ mod tests {
             "local-crates = []\n",
             "[sandbox]\n",
             "memory-limit = \"2G\"\n",
+            "cpu-limit = 1\n",
             "build-log-max-size = \"2M\"\n",
             "build-log-max-lines = 1000\n",
             "[crates]\n",

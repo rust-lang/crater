@@ -17,6 +17,7 @@ local-crates = []
 
 [sandbox]
 memory-limit = "1536M"
+cpu-limit = 1
 build-log-max-size = "2M"
 build-log-max-lines = 1000
 

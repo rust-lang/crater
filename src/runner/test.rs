@@ -89,6 +89,9 @@ fn run_cargo<DB: WriteResults>(
         rustflags.push(' ');
         rustflags.push_str(tc_rustflags);
     }
+    // Limit debuginfo in an effort to decrease linker peak memory usage, while retaining enough
+    // information to get useful backtraces.
+    rustflags.push_str(" -Cdebuginfo=1");
 
     let rustflags_env = if let Some(&"doc") = args.get(0) {
         "RUSTDOCFLAGS"
@@ -210,6 +213,7 @@ pub(super) fn run_test<DB: WriteResults>(
                 );
                 let sandbox = SandboxBuilder::new()
                     .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
+                    .cpu_limit(Some(f32::from(ctx.config.sandbox.cpu_limit)))
                     .enable_networking(false);
 
                 let krate = &ctx.krate.to_rustwide();
@@ -235,17 +239,31 @@ fn build<DB: WriteResults>(
     build_env: &Build,
     local_packages_id: &HashSet<PackageId>,
 ) -> Fallible<()> {
+    let cpus = ctx.config.sandbox.cpu_limit.to_string();
     run_cargo(
         ctx,
         build_env,
-        &["build", "--frozen", "--message-format=json"],
+        &[
+            "build",
+            "--frozen",
+            "--message-format=json",
+            "--jobs",
+            &cpus,
+        ],
         true,
         local_packages_id,
     )?;
     run_cargo(
         ctx,
         build_env,
-        &["test", "--frozen", "--no-run", "--message-format=json"],
+        &[
+            "test",
+            "--frozen",
+            "--no-run",
+            "--message-format=json",
+            "--jobs",
+            &cpus,
+        ],
         true,
         local_packages_id,
     )?;
@@ -253,10 +271,19 @@ fn build<DB: WriteResults>(
 }
 
 fn test<DB: WriteResults>(ctx: &TaskCtx<DB>, build_env: &Build) -> Fallible<()> {
+    let cpus = ctx.config.sandbox.cpu_limit.to_string();
     run_cargo(
         ctx,
         build_env,
-        &["test", "--frozen"],
+        &[
+            "test",
+            "--frozen",
+            "--jobs",
+            &cpus,
+            "--",
+            "--test-threads",
+            &cpus,
+        ],
         false,
         &HashSet::new(),
     )
@@ -299,6 +326,7 @@ pub(super) fn test_check_only<DB: WriteResults>(
     build_env: &Build,
     local_packages_id: &HashSet<PackageId>,
 ) -> Fallible<TestResult> {
+    let cpus = ctx.config.sandbox.cpu_limit.to_string();
     if let Err(err) = run_cargo(
         ctx,
         build_env,
@@ -308,6 +336,8 @@ pub(super) fn test_check_only<DB: WriteResults>(
             "--all",
             "--all-targets",
             "--message-format=json",
+            "--jobs",
+            &cpus,
         ],
         true,
         local_packages_id,
@@ -323,6 +353,7 @@ pub(super) fn test_clippy_only<DB: WriteResults>(
     build_env: &Build,
     local_packages_id: &HashSet<PackageId>,
 ) -> Fallible<TestResult> {
+    let cpus = ctx.config.sandbox.cpu_limit.to_string();
     if let Err(err) = run_cargo(
         ctx,
         build_env,
@@ -332,6 +363,8 @@ pub(super) fn test_clippy_only<DB: WriteResults>(
             "--all",
             "--all-targets",
             "--message-format=json",
+            "--jobs",
+            &cpus,
         ],
         true,
         local_packages_id,
@@ -347,6 +380,7 @@ pub(super) fn test_rustdoc<DB: WriteResults>(
     build_env: &Build,
     local_packages_id: &HashSet<PackageId>,
 ) -> Fallible<TestResult> {
+    let cpus = ctx.config.sandbox.cpu_limit.to_string();
     let res = run_cargo(
         ctx,
         build_env,
@@ -356,6 +390,8 @@ pub(super) fn test_rustdoc<DB: WriteResults>(
             "--no-deps",
             "--document-private-items",
             "--message-format=json",
+            "--jobs",
+            &cpus,
         ],
         true,
         local_packages_id,

@@ -27,7 +27,8 @@ local-crates = []
 
 [sandbox]
 # Maximum amount of RAM allowed during builds
-memory-limit = "1536M"  # 1.5G
+memory-limit = "4096M"  # 4G, 1G/cpu
+cpu-limit = 4
 # Restrictions on the amount of information stored in build logs
 build-log-max-size = "5M"
 build-log-max-lines = 10000

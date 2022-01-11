@@ -282,11 +282,11 @@ impl Experiment {
 
     pub fn run_by(db: &Database, assignee: &Assignee) -> Fallible<Option<Experiment>> {
         let record = db.get_row(
-            "SELECT * FROM experiments \
-             INNER JOIN experiment_crates ON experiment_crates.experiment \
-             = experiments.name WHERE experiment_crates.assigned_to = ?1 \
-             AND experiment_crates.status = ?2 AND experiments.status = ?2 \
-             AND experiment_crates.skipped = 0 LIMIT 1",
+            "select * from experiments where name in ( \
+                select experiment from experiment_crates \
+                    where status = ?2 and skipped = 0 and assigned_to = ?1 and \
+                    experiment in (select name from experiments where status = ?2)) \
+            limit 1",
             &[&assignee.to_string(), Status::Running.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;

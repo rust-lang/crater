@@ -163,11 +163,6 @@ fn endpoint_record_progress(
     let mut ex = Experiment::get(&data.db, &result.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
-    info!(
-        "received progress on experiment {} from agent {}",
-        ex.name, auth.name,
-    );
-
     data.metrics
         .record_completed_jobs(&auth.name, &ex.name, result.data.results.len() as i64);
 

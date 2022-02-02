@@ -31,7 +31,7 @@ struct ResultsContext<'a> {
 }
 
 fn write_crate(
-    mut rendered: &mut String,
+    rendered: &mut String,
     krate: &CrateResult,
     comparison: Comparison,
     is_child: bool,
@@ -76,7 +76,7 @@ fn write_crate(
         };
 
         writeln!(
-            &mut rendered,
+            rendered,
             "{}[{}{}]({}) {} {} **{}** [start]({}/log.txt) | [end]({}/log.txt)",
             prefix,
             krate.name,
@@ -90,7 +90,7 @@ fn write_crate(
         )?;
     } else {
         writeln!(
-            &mut rendered,
+            rendered,
             "{}[{}{}]({}) {} [start]({}/log.txt) | [end]({}/log.txt)",
             prefix, krate.name, status_warning, krate.url, comparison, runs[1], runs[3]
         )?;
@@ -103,10 +103,10 @@ fn render_markdown(context: &ResultsContext) -> Fallible<String> {
     let mut rendered = String::new();
 
     //add title
-    writeln!(&mut rendered, "# Crater report for {}\n\n", context.ex.name)?;
+    writeln!(rendered, "# Crater report for {}\n\n", context.ex.name)?;
 
     for (comparison, results) in context.categories.iter() {
-        writeln!(&mut rendered, "\n### {}", comparison)?;
+        writeln!(rendered, "\n### {}", comparison)?;
         match results {
             ReportCratesMD::Plain(crates) => {
                 for krate in crates {
@@ -123,7 +123,7 @@ fn render_markdown(context: &ResultsContext) -> Fallible<String> {
 
                 for (krate, deps) in orphans {
                     writeln!(
-                        &mut rendered,
+                        rendered,
                         "* [{}]({}) (not covered in crater testing)",
                         krate,
                         crate_to_url(krate)

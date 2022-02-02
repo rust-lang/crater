@@ -40,7 +40,7 @@ fn analyze_detailed(toolchain: usize, crates: Vec<CrateResult>) -> ReportCrates 
     let mut root = Vec::new();
     for krate in crates {
         if let BuildFail(FailureReason::DependsOn(ref deps)) =
-            (&krate.runs[toolchain]).as_ref().unwrap().res
+            krate.runs[toolchain].as_ref().unwrap().res
         {
             for dep in deps {
                 tree.entry(dep.clone())

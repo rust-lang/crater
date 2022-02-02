@@ -118,7 +118,7 @@ impl FromStr for Toolchain {
         for part in parts {
             if let Some(equal_idx) = part.find('=') {
                 let (flag, value_with_equal) = part.split_at(equal_idx);
-                let value = (&value_with_equal[1..]).to_string();
+                let value = value_with_equal[1..].to_string();
 
                 if value.is_empty() {
                     return Err(ToolchainParseError::InvalidFlag(flag.to_string()));

@@ -485,8 +485,9 @@ impl Experiment {
         }
     }
 
-    pub fn report_failure(&mut self, db: &Database, agent: &Assignee) -> Fallible<()> {
-        // Mark all the running crates from this agent as failed as well if the experiment failed
+    pub fn handle_failure(&mut self, db: &Database, agent: &Assignee) -> Fallible<()> {
+        // Mark all the running crates from this agent as queued (so that they
+        // run again)
         db.execute(
             "
             UPDATE experiment_crates
@@ -495,14 +496,13 @@ impl Experiment {
             AND assigned_to = ?4
             ",
             &[
-                &Status::Failed.to_string(),
+                &Status::Queued.to_string(),
                 &self.name,
                 &Status::Running.to_string(),
                 &agent.to_string(),
             ],
         )?;
-
-        self.set_status(db, Status::Failed)
+        Ok(())
     }
 
     pub fn set_status(&mut self, db: &Database, status: Status) -> Fallible<()> {
@@ -1063,6 +1063,8 @@ mod tests {
         assert_eq!(uncompleted_crates.len(), 0);
     }
 
+    // A failure is handled by re-queueing any running crates for a given agent,
+    // to be picked up by the next agent to ask for them.
     #[test]
     fn test_failed_experiment() {
         let db = Database::temp().unwrap();
@@ -1079,9 +1081,12 @@ mod tests {
             .get_uncompleted_crates(&db, &config, &agent1)
             .unwrap()
             .is_empty());
-        ex.report_failure(&db, &agent1).unwrap();
-        assert!(!Experiment::next(&db, &agent1).unwrap().is_some());
-        assert_eq!(ex.status, Status::Failed);
-        assert!(ex.get_running_crates(&db, &agent1).unwrap().is_empty());
+        ex.handle_failure(&db, &agent1).unwrap();
+        assert!(Experiment::next(&db, &agent1).unwrap().is_some());
+        assert_eq!(ex.status, Status::Running);
+        assert!(!ex
+            .get_uncompleted_crates(&db, &config, &agent1)
+            .unwrap()
+            .is_empty());
     }
 }

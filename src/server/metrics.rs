@@ -11,11 +11,13 @@ use prometheus::{
 
 const JOBS_METRIC: &str = "crater_completed_jobs_total";
 const AGENT_WORK_METRIC: &str = "crater_agent_supposed_to_work";
+const AGENT_FAILED: &str = "crater_agent_failure";
 const LAST_CRATES_UPDATE_METRIC: &str = "crater_last_crates_update";
 
 #[derive(Clone)]
 pub struct Metrics {
     crater_completed_jobs_total: IntCounterVec,
+    crater_agent_failure: IntCounterVec,
     crater_work_status: IntGaugeVec,
     crater_last_crates_update: IntGauge,
 }
@@ -25,6 +27,9 @@ impl Metrics {
         let jobs_opts = prometheus::opts!(JOBS_METRIC, "total completed jobs");
         let crater_completed_jobs_total =
             prometheus::register_int_counter_vec!(jobs_opts, &["agent", "experiment"])?;
+        let failure_opts = prometheus::opts!(AGENT_FAILED, "total completed jobs");
+        let crater_agent_failure =
+            prometheus::register_int_counter_vec!(failure_opts, &["agent", "experiment"])?;
         let agent_opts = prometheus::opts!(AGENT_WORK_METRIC, "is agent supposed to work");
         let crater_work_status = prometheus::register_int_gauge_vec!(agent_opts, &["agent"])?;
         let crates_update_opts =
@@ -33,9 +38,16 @@ impl Metrics {
 
         Ok(Metrics {
             crater_completed_jobs_total,
+            crater_agent_failure,
             crater_work_status,
             crater_last_crates_update,
         })
+    }
+
+    pub fn record_error(&self, agent: &str, experiment: &str) {
+        self.crater_agent_failure
+            .with_label_values(&[agent, experiment])
+            .inc_by(1);
     }
 
     pub fn record_completed_jobs(&self, agent: &str, experiment: &str, amount: i64) {

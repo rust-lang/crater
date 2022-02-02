@@ -75,7 +75,6 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(mutex_filter)
-        .and(github_data_filter)
         .and(auth_filter(data, TokenType::Agent))
         .map(endpoint_error);
 
@@ -197,38 +196,22 @@ fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<B
 fn endpoint_error(
     error: ExperimentData<HashMap<String, String>>,
     mutex: Arc<Mutex<Data>>,
-    github_data: Option<Arc<GithubData>>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
+    log::error!(
+        "agent {} failed while running {}: {:?}",
+        auth.name,
+        error.experiment_name,
+        error.data.get("error")
+    );
+
     let data = mutex.lock().unwrap();
     let mut ex = Experiment::get(&data.db, &error.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     //also set status to failed
-    ex.report_failure(&data.db, &Assignee::Agent(auth.name))?;
+    ex.handle_failure(&data.db, &Assignee::Agent(auth.name))?;
 
-    if let Some(github_data) = github_data.as_ref() {
-        if let Some(ref github_issue) = ex.github_issue {
-            Message::new()
-                .line(
-                    "rotating_light",
-                    format!(
-                        "Experiment **`{}`** has encountered an error: {}",
-                        ex.name,
-                        error.data.get("error").unwrap_or(&String::from("no error")),
-                    ),
-                )
-                .line(
-                    "hammer_and_wrench",
-                    "If the error is fixed use the `retry` command.",
-                )
-                .note(
-                    "sos",
-                    "Can someone from the infra team check in on this? @rust-lang/infra",
-                )
-                .send(&github_issue.api_url, &data, github_data)?;
-        }
-    }
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }
 

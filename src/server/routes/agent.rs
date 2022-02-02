@@ -209,7 +209,7 @@ fn endpoint_error(
     let mut ex = Experiment::get(&data.db, &error.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
-    //also set status to failed
+    data.metrics.record_error(&auth.name, &ex.name);
     ex.handle_failure(&data.db, &Assignee::Agent(auth.name))?;
 
     Ok(ApiResponse::Success { result: true }.into_response()?)

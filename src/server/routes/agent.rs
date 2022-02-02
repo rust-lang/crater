@@ -51,7 +51,7 @@ pub fn routes(
         .and(warp::path("next-experiment"))
         .and(warp::path::end())
         .and(mutex_filter.clone())
-        .and(github_data_filter.clone())
+        .and(github_data_filter)
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_experiment);
 

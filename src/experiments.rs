@@ -298,20 +298,31 @@ impl Experiment {
         }
     }
 
-    pub fn first_by_status(db: &Database, status: Status) -> Fallible<Option<Experiment>> {
-        let record = db.get_row(
-            "SELECT * FROM experiments \
-             WHERE status = ?1 \
-             ORDER BY priority DESC, created_at;",
-            &[&status.to_str()],
-            |r| ExperimentDBRecord::from_row(r),
-        )?;
-
-        if let Some(record) = record {
-            Ok(Some(record.into_experiment()?))
-        } else {
-            Ok(None)
+    // Returns the first experiment which has all results ready (and so can
+    // produce a complete report). However, the experiment should not be
+    // *completed* yet. Note that this may return an experiment which has had
+    // report generation already start.
+    pub fn ready_for_report(db: &Database) -> Fallible<Option<Experiment>> {
+        let unfinished = Self::unfinished(db)?;
+        for ex in unfinished {
+            if ex.status == Status::ReportFailed {
+                // Skip experiments whose report failed to generate. This avoids
+                // constantly retrying reports (and posting a message each time
+                // about the attempt); the retry-report command can override the
+                // failure state. In practice we rarely *fail* to generate
+                // reports in a clean way (instead OOMing or panicking, in which
+                // case it is fine to automatically retry the report, as we've
+                // not posted anything on GitHub -- it may be a problem from a
+                // performance perspective but no more than that).
+                continue;
+            }
+            let (completed, all) = ex.raw_progress(db)?;
+            if completed == all {
+                return Ok(Some(ex));
+            }
         }
+
+        Ok(None)
     }
 
     pub fn find_next(db: &Database, assignee: &Assignee) -> Fallible<Option<Experiment>> {

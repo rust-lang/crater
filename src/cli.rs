@@ -506,8 +506,6 @@ impl Crater {
                     );
                     workspace.purge_all_build_dirs()?;
                     res?;
-
-                    experiment.set_status(&db, Status::NeedsReport)?;
                 } else {
                     bail!("missing experiment {}", ex.0);
                 }
@@ -522,17 +520,17 @@ impl Crater {
                 let db = Database::open()?;
 
                 if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
-                    // Update the status
-                    match (experiment.status, force) {
-                        (Status::NeedsReport, _) | (Status::ReportFailed, _) | (_, true) => {
-                            experiment.set_status(&db, Status::GeneratingReport)?;
-                        }
-                        (other, false) => bail!(
-                            "can't generate the report of an experiment with status {} \
+                    let (completed, all) = experiment.raw_progress(&db)?;
+                    if !force && completed != all {
+                        bail!(
+                            "can't generate the report of an incomplete experiment: {}/{} results \
                              (use --force to override)",
-                            other
-                        ),
+                            completed,
+                            all,
+                        );
                     }
+
+                    experiment.set_status(&db, Status::GeneratingReport)?;
 
                     let result_db = DatabaseDB::new(&db);
                     let res = report::gen(
@@ -564,17 +562,17 @@ impl Crater {
                 let db = Database::open()?;
 
                 if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
-                    // Update the status
-                    match (experiment.status, force) {
-                        (Status::NeedsReport, _) | (Status::ReportFailed, _) | (_, true) => {
-                            experiment.set_status(&db, Status::GeneratingReport)?;
-                        }
-                        (other, false) => bail!(
-                            "can't publish the report of an experiment with status {} \
+                    let (completed, all) = experiment.raw_progress(&db)?;
+                    if !force && completed != all {
+                        bail!(
+                            "can't publish the report of an incomplete experiment: {}/{} results \
                              (use --force to override)",
-                            other
-                        ),
+                            completed,
+                            all,
+                        );
                     }
+
+                    experiment.set_status(&db, Status::GeneratingReport)?;
 
                     let result_db = DatabaseDB::new(&db);
                     let client = report::get_client_for_bucket(&s3_prefix.bucket)?;

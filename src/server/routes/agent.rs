@@ -1,5 +1,5 @@
 use crate::agent::Capabilities;
-use crate::experiments::{Assignee, Experiment, Status};
+use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
 use crate::results::{DatabaseDB, EncodingType, ProgressData};
 use crate::server::api_types::{AgentConfig, ApiResponse};
@@ -160,7 +160,7 @@ fn endpoint_record_progress(
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
     let data = mutex.lock().unwrap();
-    let mut ex = Experiment::get(&data.db, &result.experiment_name)?
+    let ex = Experiment::get(&data.db, &result.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     data.metrics
@@ -168,13 +168,6 @@ fn endpoint_record_progress(
 
     let db = DatabaseDB::new(&data.db);
     db.store(&ex, &result.data, EncodingType::Gzip)?;
-
-    let (completed, all) = ex.raw_progress(&data.db)?;
-    if completed == all {
-        ex.set_status(&data.db, Status::NeedsReport)?;
-        info!("experiment {} completed, marked as needs-report", ex.name);
-        data.reports_worker.wake(); // Ensure the reports worker is awake
-    }
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }

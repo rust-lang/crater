@@ -37,7 +37,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
     let results = DatabaseDB::new(&data.db);
 
     loop {
-        let mut ex = match Experiment::first_by_status(&data.db, Status::NeedsReport)? {
+        let mut ex = match Experiment::ready_for_report(&data.db)? {
             Some(ex) => ex,
             None => {
                 // This will sleep AUTOMATIC_THREAD_WAKEUP seconds *or* until a wake is received

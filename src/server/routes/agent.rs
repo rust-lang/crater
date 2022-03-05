@@ -59,7 +59,7 @@ pub fn routes(
         .and(warp::path("record-progress"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(mutex_filter.clone())
+        .and(data_filter.clone())
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_record_progress);
 
@@ -154,14 +154,22 @@ fn endpoint_next_experiment(
     Ok(ApiResponse::Success { result }.into_response()?)
 }
 
+// This endpoint does not use the mutex data wrapper to exclude running in
+// parallel with other endpoints, which may mean that we (for example) are
+// recording results for an abort'd experiment. This should generally be fine --
+// the database already has foreign_keys enabled and that should ensure
+// appropriate synchronization elsewhere. (If it doesn't, that's mostly a bug
+// elsewhere, not here).
+//
+// In practice it's pretty likely that we won't fully run in parallel anyway,
+// but this lets some of the work proceed without the lock being held, which is
+// generally positive.
 fn endpoint_record_progress(
     result: ExperimentData<ProgressData>,
-    mutex: Arc<Mutex<Data>>,
+    data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
     let start = std::time::Instant::now();
-    let data = mutex.lock().unwrap();
-    let lock_wait = start.elapsed();
     let ex = Experiment::get(&data.db, &result.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
@@ -176,10 +184,6 @@ fn endpoint_record_progress(
         .crater_endpoint_time
         .with_label_values(&["record_progress"])
         .observe(start.elapsed().as_secs_f64());
-    data.metrics
-        .crater_endpoint_time
-        .with_label_values(&["record_progress_lock"])
-        .observe(lock_wait.as_secs_f64());
     ret
 }
 

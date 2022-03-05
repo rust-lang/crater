@@ -168,7 +168,7 @@ fn endpoint_record_progress(
         .record_completed_jobs(&auth.name, &ex.name, result.data.results.len() as i64);
 
     let db = DatabaseDB::new(&data.db);
-    db.store(&ex, &result.data, EncodingType::Gzip)?;
+    db.store(&ex, &result.data, EncodingType::Plain)?;
 
     let ret = Ok(ApiResponse::Success { result: true }.into_response()?);
     data.metrics

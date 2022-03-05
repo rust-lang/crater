@@ -159,6 +159,7 @@ fn endpoint_record_progress(
     mutex: Arc<Mutex<Data>>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
+    let start = std::time::Instant::now();
     let data = mutex.lock().unwrap();
     let ex = Experiment::get(&data.db, &result.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
@@ -169,7 +170,12 @@ fn endpoint_record_progress(
     let db = DatabaseDB::new(&data.db);
     db.store(&ex, &result.data, EncodingType::Gzip)?;
 
-    Ok(ApiResponse::Success { result: true }.into_response()?)
+    let ret = Ok(ApiResponse::Success { result: true }.into_response()?);
+    data.metrics
+        .crater_endpoint_time
+        .with_label_values(&["record_progress"])
+        .observe(start.elapsed().as_secs_f64());
+    ret
 }
 
 fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {

@@ -5,7 +5,7 @@ use crate::server::agents::Agent;
 use chrono::{DateTime, Utc};
 use prometheus::proto::{Metric, MetricFamily};
 use prometheus::{
-    IntCounterVec, IntGauge, IntGaugeVec, __register_counter_vec, __register_gauge,
+    HistogramVec, IntCounterVec, IntGauge, IntGaugeVec, __register_counter_vec, __register_gauge,
     __register_gauge_vec,
 };
 
@@ -13,6 +13,7 @@ const JOBS_METRIC: &str = "crater_completed_jobs_total";
 const AGENT_WORK_METRIC: &str = "crater_agent_supposed_to_work";
 const AGENT_FAILED: &str = "crater_agent_failure";
 const LAST_CRATES_UPDATE_METRIC: &str = "crater_last_crates_update";
+const ENDPOINT_TIME: &str = "crater_endpoint_time_seconds";
 
 #[derive(Clone)]
 pub struct Metrics {
@@ -20,6 +21,7 @@ pub struct Metrics {
     crater_agent_failure: IntCounterVec,
     crater_work_status: IntGaugeVec,
     crater_last_crates_update: IntGauge,
+    pub crater_endpoint_time: HistogramVec,
 }
 
 impl Metrics {
@@ -35,12 +37,20 @@ impl Metrics {
         let crates_update_opts =
             prometheus::opts!(LAST_CRATES_UPDATE_METRIC, "last update of crates lists");
         let crater_last_crates_update = prometheus::register_int_gauge!(crates_update_opts)?;
+        let crater_endpoint_time = prometheus::register_histogram_vec!(
+            prometheus::HistogramOpts::new(ENDPOINT_TIME, "duration of endpoint requests")
+                // Exponential buckets, with 5ms as start and top bucket ending at
+                // approximately 5 seconds.
+                .buckets(prometheus::exponential_buckets(0.005, 1.5, 17).unwrap()),
+            &["endpoint"]
+        )?;
 
         Ok(Metrics {
             crater_completed_jobs_total,
             crater_agent_failure,
             crater_work_status,
             crater_last_crates_update,
+            crater_endpoint_time,
         })
     }
 

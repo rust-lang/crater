@@ -161,6 +161,7 @@ fn endpoint_record_progress(
 ) -> Fallible<Response<Body>> {
     let start = std::time::Instant::now();
     let data = mutex.lock().unwrap();
+    let lock_wait = start.elapsed();
     let ex = Experiment::get(&data.db, &result.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
@@ -175,6 +176,10 @@ fn endpoint_record_progress(
         .crater_endpoint_time
         .with_label_values(&["record_progress"])
         .observe(start.elapsed().as_secs_f64());
+    data.metrics
+        .crater_endpoint_time
+        .with_label_values(&["record_progress_lock"])
+        .observe(lock_wait.as_secs_f64());
     ret
 }
 

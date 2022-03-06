@@ -30,7 +30,12 @@ use std::fmt::{self, Debug};
 use std::sync::Arc;
 
 enum Node {
-    Task { task: Arc<Task>, running: bool },
+    // Running stores the worker that should be running this task, purely for
+    // printing.
+    Task {
+        task: Arc<Task>,
+        running: Option<String>,
+    },
     CrateCompleted,
     Root,
 }
@@ -38,9 +43,12 @@ enum Node {
 impl Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Node::Task { ref task, running } => {
-                if running {
-                    write!(f, "running: {:?}", task)?;
+            Node::Task {
+                ref task,
+                ref running,
+            } => {
+                if let Some(worker) = running {
+                    write!(f, "running on {}: {:?}", worker, task)?;
                 } else {
                     write!(f, "{:?}", task)?;
                 }
@@ -84,7 +92,7 @@ impl TasksGraph {
         self.add_node(
             Node::Task {
                 task: Arc::new(task),
-                running: false,
+                running: None,
             },
             deps,
         )
@@ -133,7 +141,7 @@ impl TasksGraph {
         let mut already_executed = false;
         if let Node::Task {
             ref task,
-            running: false,
+            running: None,
         } = self.graph[node]
         {
             if !task.needs_exec(ex, db) {
@@ -168,12 +176,14 @@ impl TasksGraph {
 
         let mut delete = false;
         let result = match self.graph[node] {
-            Node::Task { running: true, .. } => WalkResult::Blocked,
+            Node::Task {
+                running: Some(_), ..
+            } => WalkResult::Blocked,
             Node::Task {
                 ref task,
                 ref mut running,
             } => {
-                *running = true;
+                *running = Some(worker.to_owned());
                 WalkResult::Task(node, task.clone())
             }
             Node::CrateCompleted => {

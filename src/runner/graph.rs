@@ -223,6 +223,7 @@ impl TasksGraph {
             .graph
             .neighbors_directed(node, Direction::Incoming)
             .collect::<Vec<_>>();
+        let mut last_err = None;
         for child in children.drain(..) {
             // Don't recursively mark a child as failed if this is not the only parent of the child
             let parents = self
@@ -237,7 +238,14 @@ impl TasksGraph {
                 );
                 continue;
             }
-            self.mark_as_failed(child, ex, db, state, config, error, result, worker)?;
+            let res = self.mark_as_failed(child, ex, db, state, config, error, result, worker);
+            if let Err(err) = res {
+                // Regardless of whether this child failed, we still want to
+                // (try to) mark the other children as failed as well as the
+                // current node.
+                log::error!("Failure to mark child as failed; skipping: {:?}", err);
+                last_err = Some(err);
+            }
         }
 
         // We need to mark_as_completed the node here (if it's a task),
@@ -256,6 +264,14 @@ impl TasksGraph {
         };
 
         self.mark_as_completed(node);
+
+        // If we would have treated this as a successful mark_as_failed, then
+        // don't.
+        if res.is_ok() {
+            if let Some(err) = last_err {
+                return Err(err);
+            }
+        }
 
         res
     }

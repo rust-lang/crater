@@ -93,7 +93,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                             }
                         }
 
-                        guard.mark_as_failed(
+                        if let Err(e) = guard.mark_as_failed(
                             id,
                             self.ex,
                             self.db,
@@ -102,7 +102,13 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                             &e,
                             result,
                             &self.name,
-                        )?;
+                        ) {
+                            // We don't return an Err(...) from the loop here,
+                            // as this failure shouldn't bring down this worker
+                            // thread -- it can continue to do useful work.
+                            error!("Failed to mark node {:?} as failed", id);
+                            utils::report_failure(&e);
+                        }
                     } else {
                         guard.mark_as_completed(id);
                     }

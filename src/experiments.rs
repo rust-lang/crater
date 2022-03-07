@@ -317,7 +317,11 @@ impl Experiment {
                 continue;
             }
             let (completed, all) = ex.raw_progress(db)?;
-            if completed == all {
+            // FIXME: We often see more results than crates -- presumably, some
+            // crates are run more than once and marked more than once, but the
+            // details are not clear. For now, just assume that we're done if we
+            // have 'more than enough' results too.
+            if completed >= all {
                 return Ok(Some(ex));
             }
         }

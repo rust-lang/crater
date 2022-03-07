@@ -19,12 +19,6 @@ struct ConnectionCustomizer;
 impl CustomizeConnection<Connection, ::rusqlite::Error> for ConnectionCustomizer {
     fn on_acquire(&self, conn: &mut Connection) -> Result<(), ::rusqlite::Error> {
         conn.execute("PRAGMA foreign_keys = ON;", [])?;
-        // Increase cache size from ~2 MB (current default) to ~100 MB.
-        //
-        // This should help sqlite keep pages in memory rather than needing to
-        // seek and read. Those typically hit the OS cache, but syscalls are
-        // still somewhat expensive at these volumes.
-        conn.execute("PRAGMA cache_size = -100000;", [])?;
         Ok(())
     }
 }

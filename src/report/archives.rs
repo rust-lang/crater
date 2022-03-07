@@ -14,6 +14,89 @@ pub struct Archive {
     path: String,
 }
 
+fn write_all_archive<DB: ReadResults, W: ReportWriter>(
+    db: &DB,
+    ex: &Experiment,
+    crates: &[Crate],
+    dest: &W,
+    config: &Config,
+) -> Fallible<Archive> {
+    for i in 1..=RETRIES {
+        let mut all = TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()));
+        for krate in crates {
+            if config.should_skip(krate) {
+                continue;
+            }
+
+            let res1 = db.load_test_result(ex, &ex.toolchains[0], krate)?;
+            let res2 = db.load_test_result(ex, &ex.toolchains[1], krate)?;
+            let comparison = compare(config, krate, res1.as_ref(), res2.as_ref());
+
+            for tc in &ex.toolchains {
+                let log = db
+                    .load_log(ex, tc, krate)
+                    .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
+                    .with_context(|_| format!("failed to read log of {} on {}", krate, tc));
+
+                let log_bytes: EncodedLog = match log {
+                    Ok(l) => l,
+                    Err(e) => {
+                        crate::utils::report_failure(&e);
+                        continue;
+                    }
+                };
+
+                let log_bytes = log_bytes.to_plain()?;
+                let log_bytes = log_bytes.as_slice();
+
+                let path = format!(
+                    "{}/{}/{}.txt",
+                    comparison,
+                    krate.id(),
+                    tc.to_path_component(),
+                );
+
+                let mut header = TarHeader::new_gnu();
+                header.set_size(log_bytes.len() as u64);
+                header.set_mode(0o644);
+                header.set_cksum();
+
+                all.append_data(&mut header, &path, log_bytes)?;
+            }
+        }
+
+        let data = all.into_inner()?.finish()?;
+        let len = data.len();
+        match dest.write_bytes_once(
+            "logs-archives/all.tar.gz",
+            data,
+            &"application/gzip".parse().unwrap(),
+            EncodingType::Plain,
+        ) {
+            Ok(()) => break,
+            Err(e) => {
+                if i == RETRIES {
+                    return Err(e);
+                } else {
+                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    warn!(
+                        "retry ({}/{}) writing logs-archives/all.tar.gz ({} bytes)",
+                        i, RETRIES, len,
+                    );
+                    continue;
+                }
+            }
+        }
+    }
+
+    Ok(Archive {
+        name: "All the crates".to_string(),
+        path: "logs-archives/all.tar.gz".to_string(),
+    })
+}
+
+const RETRIES: usize = 4;
+
 pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
     db: &DB,
     ex: &Experiment,
@@ -22,8 +105,9 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
     config: &Config,
 ) -> Fallible<Vec<Archive>> {
     let mut archives = Vec::new();
-    let mut all = TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()));
     let mut by_comparison = IndexMap::new();
+
+    archives.push(write_all_archive(db, ex, crates, dest, config)?);
 
     for krate in crates {
         if config.should_skip(krate) {
@@ -63,7 +147,6 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
             header.set_mode(0o644);
             header.set_cksum();
 
-            all.append_data(&mut header, &path, log_bytes)?;
             by_comparison
                 .entry(comparison)
                 .or_insert_with(|| {
@@ -72,19 +155,6 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
                 .append_data(&mut header, &path, log_bytes)?;
         }
     }
-
-    let data = all.into_inner()?.finish()?;
-    dest.write_bytes(
-        "logs-archives/all.tar.gz",
-        data,
-        &"application/gzip".parse().unwrap(),
-        EncodingType::Plain,
-    )?;
-
-    archives.push(Archive {
-        name: "All the crates".to_string(),
-        path: "logs-archives/all.tar.gz".to_string(),
-    });
 
     for (comparison, archive) in by_comparison.drain(..) {
         let data = archive.into_inner()?.finish()?;

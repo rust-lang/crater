@@ -144,6 +144,40 @@ impl ReportWriter for S3Writer {
         }
     }
 
+    fn write_bytes_once<P: AsRef<Path>>(
+        &self,
+        path: P,
+        s: Vec<u8>,
+        mime: &Mime,
+        encoding_type: EncodingType,
+    ) -> Fallible<()> {
+        let req = PutObjectRequest {
+            acl: Some("public-read".into()),
+            body: Some(s.into()),
+            bucket: self.prefix.bucket.clone(),
+            key: self
+                .prefix
+                .prefix
+                .join(path.as_ref())
+                .to_string_lossy()
+                .into(),
+            content_type: Some(mime.to_string()),
+            content_encoding: match encoding_type {
+                EncodingType::Plain => None,
+                EncodingType::Gzip => Some("gzip".into()),
+            },
+            ..Default::default()
+        };
+        let r = self.client.put_object(req).sync();
+        if let Err(::rusoto_s3::PutObjectError::Unknown(ref resp)) = r {
+            error!("S3 request status: {}", resp.status);
+            error!("S3 request body: {}", String::from_utf8_lossy(&resp.body));
+            error!("S3 request headers: {:?}", resp.headers);
+        }
+        r.with_context(|_| format!("S3 failure to upload {:?}", path.as_ref()))?;
+        Ok(())
+    }
+
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()> {
         self.write_bytes(path, s.into_owned().into_bytes(), mime, EncodingType::Plain)
     }

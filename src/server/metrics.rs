@@ -41,7 +41,7 @@ impl Metrics {
             prometheus::HistogramOpts::new(ENDPOINT_TIME, "duration of endpoint requests")
                 // Exponential buckets, with 5ms as start and top bucket ending at
                 // approximately 5 seconds.
-                .buckets(prometheus::exponential_buckets(0.005, 1.5, 17).unwrap()),
+                .buckets(prometheus::exponential_buckets(0.05, 1.2, 25).unwrap()),
             &["endpoint"]
         )?;
 

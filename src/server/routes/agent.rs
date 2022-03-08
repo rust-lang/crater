@@ -39,14 +39,6 @@ pub fn routes(
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_config);
 
-    // Assume agents that do not POST their capabilities to `/config` are Linux agents.
-    let config_old = warp::get2()
-        .and(warp::path("config"))
-        .and(warp::path::end())
-        .and(data_filter.clone())
-        .and(auth_filter(data.clone(), TokenType::Agent))
-        .map(|data, auth| endpoint_config(Capabilities::new(&["linux"]), data, auth));
-
     let next_experiment = warp::get2()
         .and(warp::path("next-experiment"))
         .and(warp::path::end())
@@ -81,8 +73,6 @@ pub fn routes(
     warp::any()
         .and(
             config
-                .or(config_old)
-                .unify()
                 .or(next_experiment)
                 .unify()
                 .or(record_progress)

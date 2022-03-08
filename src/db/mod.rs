@@ -130,7 +130,7 @@ pub trait QueryUtils {
     fn execute(&self, sql: &str, params: &[&dyn ToSql]) -> Fallible<usize> {
         self.with_conn(|conn| {
             self.trace(sql, || {
-                let mut prepared = conn.prepare(sql)?;
+                let mut prepared = conn.prepare_cached(sql)?;
                 let changes = prepared.execute(params)?;
                 Ok(changes)
             })

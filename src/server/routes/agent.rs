@@ -6,11 +6,12 @@ use crate::server::api_types::{AgentConfig, ApiResponse};
 use crate::server::auth::{auth_filter, AuthDetails, TokenType};
 use crate::server::messages::Message;
 use crate::server::{Data, GithubData, HttpError};
+use crossbeam_channel::Sender;
 use failure::Compat;
 use http::{Response, StatusCode};
 use hyper::Body;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use warp::{self, Filter, Rejection};
 
 #[derive(Deserialize)]
@@ -144,6 +145,122 @@ fn endpoint_next_experiment(
     Ok(ApiResponse::Success { result }.into_response()?)
 }
 
+#[derive(Clone)]
+pub struct RecordProgressThread {
+    // String is the worker name
+    queue: Sender<(ExperimentData<ProgressData>, String)>,
+    in_flight_requests: Arc<(Mutex<usize>, Condvar)>,
+}
+
+impl RecordProgressThread {
+    pub fn new(
+        db: crate::db::Database,
+        metrics: crate::server::metrics::Metrics,
+    ) -> RecordProgressThread {
+        // 64 message queue, after which we start load shedding automatically.
+        let (tx, rx) = crossbeam_channel::bounded(64);
+        let in_flight_requests = Arc::new((Mutex::new(0), Condvar::new()));
+
+        let this = RecordProgressThread {
+            queue: tx,
+            in_flight_requests,
+        };
+        let ret = this.clone();
+        std::thread::spawn(move || loop {
+            // Panics should already be logged and otherwise there's not much we
+            // can/should do.
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let (result, worker_name) = rx.recv().unwrap();
+                this.block_until_idle();
+
+                let start = std::time::Instant::now();
+
+                if let Some(ex) = Experiment::get(&db, &result.experiment_name).unwrap() {
+                    metrics.record_completed_jobs(
+                        &worker_name,
+                        &ex.name,
+                        result.data.results.len() as i64,
+                    );
+
+                    let db = DatabaseDB::new(&db);
+                    if let Err(e) = db.store(&ex, &result.data, EncodingType::Plain) {
+                        // Failing to record a result is basically fine -- this
+                        // just means that we'll have to re-try this job.
+                        log::error!("Failed to store result into database: {:?}", e);
+                        crate::utils::report_failure(&e);
+                    }
+
+                    metrics
+                        .crater_endpoint_time
+                        .with_label_values(&["record_progress"])
+                        .observe(start.elapsed().as_secs_f64());
+                }
+            }));
+        });
+
+        ret
+    }
+
+    pub fn block_until_idle(&self) {
+        // Wait until there are zero in-flight requests.
+        //
+        // Note: We do **not** keep the lock here for the subsequent
+        // computation. That means that if we ever observe zero, then we're
+        // going to kick off the below computation; obviously requests may keep
+        // coming in -- we don't want to block those requests.
+        //
+        // The expectation that we will see zero here also implies that
+        // the server is *sometimes* idle (i.e., we are not constantly
+        // processing requests at 100% load). It's not clear that's 100%
+        // a valid assumption, but if we are at 100% load in terms of
+        // requests coming in, that's a problem in and of itself (since
+        // the majority of expected requests are record-progress, which
+        // should be *very* fast now that the work for them is async and
+        // offloaded to this thread).
+        //
+        // Ignore the mutex guard (see above).
+        drop(
+            self.in_flight_requests
+                .1
+                .wait_while(
+                    self.in_flight_requests
+                        .0
+                        .lock()
+                        .unwrap_or_else(|l| l.into_inner()),
+                    |g| *g != 0,
+                )
+                .unwrap_or_else(|g| g.into_inner()),
+        );
+    }
+
+    pub fn start_request(&self) -> RequestGuard {
+        *self
+            .in_flight_requests
+            .0
+            .lock()
+            .unwrap_or_else(|l| l.into_inner()) += 1;
+        RequestGuard {
+            thread: self.clone(),
+        }
+    }
+}
+
+pub struct RequestGuard {
+    thread: RecordProgressThread,
+}
+
+impl Drop for RequestGuard {
+    fn drop(&mut self) {
+        *self
+            .thread
+            .in_flight_requests
+            .0
+            .lock()
+            .unwrap_or_else(|l| l.into_inner()) -= 1;
+        self.thread.in_flight_requests.1.notify_one();
+    }
+}
+
 // This endpoint does not use the mutex data wrapper to exclude running in
 // parallel with other endpoints, which may mean that we (for example) are
 // recording results for an abort'd experiment. This should generally be fine --
@@ -159,22 +276,18 @@ fn endpoint_record_progress(
     data: Arc<Data>,
     auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let start = std::time::Instant::now();
-    let ex = Experiment::get(&data.db, &result.experiment_name)?
-        .ok_or_else(|| err_msg("no experiment run by this agent"))?;
-
-    data.metrics
-        .record_completed_jobs(&auth.name, &ex.name, result.data.results.len() as i64);
-
-    let db = DatabaseDB::new(&data.db);
-    db.store(&ex, &result.data, EncodingType::Plain)?;
-
-    let ret = Ok(ApiResponse::Success { result: true }.into_response()?);
-    data.metrics
-        .crater_endpoint_time
-        .with_label_values(&["record_progress"])
-        .observe(start.elapsed().as_secs_f64());
-    ret
+    match data
+        .record_progress_worker
+        .queue
+        .try_send((result, auth.name))
+    {
+        Ok(()) => Ok(ApiResponse::Success { result: true }.into_response()?),
+        Err(crossbeam_channel::TrySendError::Full(_)) => {
+            data.metrics.crater_bounced_record_progress.inc_by(1);
+            Ok(ApiResponse::<()>::SlowDown.into_response()?)
+        }
+        Err(crossbeam_channel::TrySendError::Disconnected(_)) => unreachable!(),
+    }
 }
 
 fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {

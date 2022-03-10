@@ -36,6 +36,7 @@ impl ResponseExt for ::reqwest::blocking::Response {
         match self.status() {
             StatusCode::NOT_FOUND => return Err(AgentApiError::InvalidEndpoint.into()),
             StatusCode::BAD_GATEWAY
+            | StatusCode::TOO_MANY_REQUESTS
             | StatusCode::SERVICE_UNAVAILABLE
             | StatusCode::GATEWAY_TIMEOUT => {
                 return Err(AgentApiError::ServerUnavailable.into());
@@ -50,6 +51,7 @@ impl ResponseExt for ::reqwest::blocking::Response {
             .with_context(|_| format!("failed to parse API response (status code {})", status,))?;
         match result {
             ApiResponse::Success { result } => Ok(result),
+            ApiResponse::SlowDown => Err(AgentApiError::ServerUnavailable.into()),
             ApiResponse::InternalError { error } => {
                 Err(AgentApiError::InternalServerError(error).into())
             }

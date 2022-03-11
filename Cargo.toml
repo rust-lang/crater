@@ -19,6 +19,7 @@ chrono = { version = "0.4", features = ["serde"] }
 chrono-humanize = "0.1.1"
 crates-index = "0.16.2"
 crossbeam-utils = "0.5"
+crossbeam-channel = "0.5"
 csv = "1.0.2"
 dotenv = "0.13"
 failure = "0.1.3"

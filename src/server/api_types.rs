@@ -20,6 +20,7 @@ pub struct AgentConfig {
 #[serde(tag = "status", rename_all = "kebab-case")]
 pub enum ApiResponse<T> {
     Success { result: T },
+    SlowDown,
     InternalError { error: String },
     Unauthorized,
     NotFound,
@@ -41,8 +42,9 @@ impl ApiResponse<()> {
 
 impl<T> ApiResponse<T> {
     fn status_code(&self) -> StatusCode {
-        match *self {
+        match self {
             ApiResponse::Success { .. } => StatusCode::OK,
+            ApiResponse::SlowDown => StatusCode::TOO_MANY_REQUESTS,
             ApiResponse::InternalError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             ApiResponse::Unauthorized => StatusCode::UNAUTHORIZED,
             ApiResponse::NotFound => StatusCode::NOT_FOUND,

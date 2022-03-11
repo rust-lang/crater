@@ -44,6 +44,7 @@ pub struct Data {
     pub agents: Agents,
     pub db: Database,
     pub reports_worker: reports::ReportsWorker,
+    pub record_progress_worker: routes::agent::RecordProgressThread,
     pub acl: ACL,
     pub metrics: Metrics,
 }
@@ -80,6 +81,10 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
     info!("initialized metrics...");
 
     let data = Data {
+        record_progress_worker: routes::agent::RecordProgressThread::new(
+            db.clone(),
+            metrics.clone(),
+        ),
         config,
         tokens,
         agents,
@@ -100,7 +105,9 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
     let data = Arc::new(data);
     let github_data = github_data.map(Arc::new);
 
+    let record_progress_worker = data.record_progress_worker.clone();
     let routes = warp::any()
+        .and(warp::any().map(move || record_progress_worker.clone().start_request()))
         .and(
             warp::any()
                 .and(
@@ -118,13 +125,15 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
                 .or(routes::ui::routes(data))
                 .unify(),
         )
-        .map(|mut resp: Response<Body>| {
-            resp.headers_mut().insert(
-                http::header::SERVER,
-                HeaderValue::from_static(&SERVER_HEADER),
-            );
-            resp
-        });
+        .map(
+            |_guard: routes::agent::RequestGuard, mut resp: Response<Body>| {
+                resp.headers_mut().insert(
+                    http::header::SERVER,
+                    HeaderValue::from_static(&SERVER_HEADER),
+                );
+                resp
+            },
+        );
 
     warp::serve(routes).run(bind);
 

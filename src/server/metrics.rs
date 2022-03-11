@@ -5,8 +5,8 @@ use crate::server::agents::Agent;
 use chrono::{DateTime, Utc};
 use prometheus::proto::{Metric, MetricFamily};
 use prometheus::{
-    HistogramVec, IntCounterVec, IntGauge, IntGaugeVec, __register_counter_vec, __register_gauge,
-    __register_gauge_vec,
+    HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec, __register_counter_vec,
+    __register_gauge, __register_gauge_vec, opts, register_counter, register_int_counter,
 };
 
 const JOBS_METRIC: &str = "crater_completed_jobs_total";
@@ -18,6 +18,7 @@ const ENDPOINT_TIME: &str = "crater_endpoint_time_seconds";
 #[derive(Clone)]
 pub struct Metrics {
     crater_completed_jobs_total: IntCounterVec,
+    pub crater_bounced_record_progress: IntCounter,
     crater_agent_failure: IntCounterVec,
     crater_work_status: IntGaugeVec,
     crater_last_crates_update: IntGauge,
@@ -29,6 +30,10 @@ impl Metrics {
         let jobs_opts = prometheus::opts!(JOBS_METRIC, "total completed jobs");
         let crater_completed_jobs_total =
             prometheus::register_int_counter_vec!(jobs_opts, &["agent", "experiment"])?;
+        let crater_bounced_record_progress = prometheus::register_int_counter!(
+            "crater_bounced_record_progress",
+            "hits with full record progress queue"
+        )?;
         let failure_opts = prometheus::opts!(AGENT_FAILED, "total completed jobs");
         let crater_agent_failure =
             prometheus::register_int_counter_vec!(failure_opts, &["agent", "experiment"])?;
@@ -47,6 +52,7 @@ impl Metrics {
 
         Ok(Metrics {
             crater_completed_jobs_total,
+            crater_bounced_record_progress,
             crater_agent_failure,
             crater_work_status,
             crater_last_crates_update,

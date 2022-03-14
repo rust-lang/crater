@@ -94,6 +94,7 @@ nss-sys = { skip-tests = true } # flaky test (sefaults)
 poolite = { skip-tests = true } # flaky test
 proxy_config = { skip-tests = true } # flaky tests
 read-process-memory = { skip-tests = true } # flaky tests
+region = { skip-tests = true } # flaky tests
 restson = { skip-tests = true } # uses HTTP requests
 rspotify = { slow = true } # slow build
 rustlearn = { skip-tests = true } # non-deterministic
@@ -133,10 +134,13 @@ toql_derive = { skip-tests = true } # flaky test ("Sometimes failes becuse join 
 # "org_name/repo_name" = { option = true }
 "clinuxrulz/sodium-rust-push-pull" = { skip-tests = true } # flaky test
 "euforia/rust-vivaldi" = { skip-tests = true } # flaky test
+"exclave/exclave" = { skip-tests = true } # flaky test
 "fromheten/plato" = { skip-tests = true } # flaky tests
 "jafow/pals" = { skip-tests = true } # flaky tests
 "johnedmonds/chance" = { skip-tests = true } # flaky tests
 "LukeMathWalker/tracing-bunyan-formatter" = { skip-tests = true } # flaky tests
+"nilsmartel/act" = { skip-tests = true } # flaky tests
+"nt-ca-aqe/kitchen-kata-async-rust" = { skip-tests = true } # flaky tests
 "simulacrumparty/casaubon" = { skip-tests = true } # flaky tests
 "sozu-proxy/sozu" = { skip-tests = true } # flaky tests
 "kellymclaughlin/rust-quickcheck-example" = { skip-tests = true } # flaky tests

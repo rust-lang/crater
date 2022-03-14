@@ -106,6 +106,7 @@ simd = { broken = true } # missing feature
 simple-munin-plugin = { skip-tests = true } # flaky test
 slotmap = { skip-tests = true } # flaky tests
 sodium-rust = { skip-tests = true } # flaky tests
+sodium-rust-push-pull = { skip-tests = true } # flaky test
 structopt = { broken = true } # missing feature
 sysconf = { skip-tests = true } # flaky test
 tasks-framework = { skip-tests = true } # flaky tests

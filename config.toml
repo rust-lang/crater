@@ -106,7 +106,6 @@ simd = { broken = true } # missing feature
 simple-munin-plugin = { skip-tests = true } # flaky test
 slotmap = { skip-tests = true } # flaky tests
 sodium-rust = { skip-tests = true } # flaky tests
-sodium-rust-push-pull = { skip-tests = true } # flaky test
 structopt = { broken = true } # missing feature
 sysconf = { skip-tests = true } # flaky test
 tasks-framework = { skip-tests = true } # flaky tests
@@ -132,9 +131,12 @@ toql_derive = { skip-tests = true } # flaky test ("Sometimes failes becuse join 
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
+"clinuxrulz/sodium-rust-push-pull" = { skip-tests = true } # flaky test
+"euforia/rust-vivaldi" = { skip-tests = true } # flaky test
 "fromheten/plato" = { skip-tests = true } # flaky tests
 "jafow/pals" = { skip-tests = true } # flaky tests
 "johnedmonds/chance" = { skip-tests = true } # flaky tests
+"LukeMathWalker/tracing-bunyan-formatter" = { skip-tests = true } # flaky tests
 "simulacrumparty/casaubon" = { skip-tests = true } # flaky tests
 "sozu-proxy/sozu" = { skip-tests = true } # flaky tests
 "kellymclaughlin/rust-quickcheck-example" = { skip-tests = true } # flaky tests

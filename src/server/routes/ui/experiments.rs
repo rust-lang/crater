@@ -4,7 +4,6 @@ use crate::report::ResultName;
 use crate::server::routes::ui::{render_template, LayoutContext};
 use crate::server::{Data, HttpError};
 use chrono::{Duration, SecondsFormat, Utc};
-use chrono_humanize::{Accuracy, HumanTime, Tense};
 use http::Response;
 use hyper::Body;
 use std::collections::HashMap;
@@ -134,6 +133,17 @@ struct ExperimentContext {
     layout: LayoutContext,
 }
 
+fn humanize(duration: Duration) -> String {
+    let duration = duration.to_std().expect("non-negative duration");
+    if duration.as_secs() < 60 {
+        format!("{:?}", duration)
+    } else if duration.as_secs() < 60 * 60 {
+        format!("{} minutes", duration.as_secs() / 60)
+    } else {
+        format!("{:.1} hours", duration.as_secs_f64() / 60.0 / 60.0)
+    }
+}
+
 pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<Body>> {
     if let Some(ex) = Experiment::get(&data.db, &name)? {
         let (completed_jobs, total_jobs) = ex.raw_progress(&data.db)?;
@@ -146,43 +156,31 @@ pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<B
         let mut result_counts = result_counts.into_iter().collect::<Vec<_>>();
         result_counts.sort_by(|v1, v2| (v1.0).cmp(&v2.0));
 
-        let (duration, estimated_end, average_job_duration) = if completed_jobs > 0
-            && total_jobs > 0
-        {
-            if let Some(started_at) = ex.started_at {
-                let res = if let Some(completed_at) = ex.completed_at {
-                    let total = completed_at.signed_duration_since(started_at);
-                    (Some(total), None, total / completed_jobs as i32)
-                } else {
-                    let total = Utc::now().signed_duration_since(started_at);
-                    let job_duration = total / completed_jobs as i32;
-                    (
-                        None,
-                        Some(job_duration * (total_jobs as i32 - completed_jobs as i32)),
-                        job_duration,
-                    )
-                };
+        let (duration, estimated_end, average_job_duration) =
+            if completed_jobs > 0 && total_jobs > 0 {
+                if let Some(started_at) = ex.started_at {
+                    let res = if let Some(completed_at) = ex.completed_at {
+                        let total = completed_at.signed_duration_since(started_at);
+                        (Some(total), None, total / completed_jobs as i32)
+                    } else {
+                        let total = Utc::now().signed_duration_since(started_at);
+                        let job_duration = total / completed_jobs as i32;
+                        (
+                            None,
+                            Some(job_duration * (total_jobs as i32 - completed_jobs as i32)),
+                            job_duration,
+                        )
+                    };
 
-                let job_duration = if res.2 < Duration::seconds(3) {
-                    let job_duration = res.2.to_std().expect("negative job time");
-                    format!("{:.2?}", job_duration)
-                } else {
-                    HumanTime::from(res.2).to_text_en(Accuracy::Precise, Tense::Present)
-                };
+                    let job_duration = humanize(res.2);
 
-                (
-                    res.0
-                        .map(|r| HumanTime::from(r).to_text_en(Accuracy::Rough, Tense::Present)),
-                    res.1
-                        .map(|r| HumanTime::from(r).to_text_en(Accuracy::Rough, Tense::Present)),
-                    Some(job_duration),
-                )
+                    (res.0.map(humanize), res.1.map(humanize), Some(job_duration))
+                } else {
+                    (None, None, None)
+                }
             } else {
                 (None, None, None)
-            }
-        } else {
-            (None, None, None)
-        };
+            };
 
         let experiment = ExperimentExt {
             common: ExperimentData::new(&data, &ex)?,

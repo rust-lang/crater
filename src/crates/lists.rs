@@ -88,7 +88,7 @@ pub(crate) fn get_crates(
             all_crates.append(&mut GitHubList::get(db)?);
             all_crates.append(&mut LocalList::get(db)?);
 
-            for krate in all_crates.drain(..) {
+            for krate in all_crates {
                 let add = match krate {
                     Crate::Registry(RegistryCrate { ref name, .. }) => demo_registry.remove(name),
                     Crate::GitHub(ref repo) => demo_github.remove(&repo.slug()),

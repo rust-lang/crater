@@ -155,11 +155,11 @@ impl TasksGraph {
 
         // Try to check for the dependencies of this node
         // The list is collected to make the borrowchecker happy
-        let mut neighbors = self.graph.neighbors(node).collect::<Vec<_>>();
+        let neighbors = self.graph.neighbors(node).collect::<Vec<_>>();
         log::trace!("{} | {:?}: neighbors: {:?}", worker, node, neighbors);
 
         let mut blocked = false;
-        for neighbor in neighbors.drain(..) {
+        for neighbor in neighbors {
             match self.walk_graph(neighbor, ex, db, worker) {
                 WalkResult::Task(id, task) => return WalkResult::Task(id, task),
                 WalkResult::Finished => return WalkResult::Finished,
@@ -219,12 +219,12 @@ impl TasksGraph {
         result: &TestResult,
         worker: &str,
     ) -> Fallible<()> {
-        let mut children = self
+        let children = self
             .graph
             .neighbors_directed(node, Direction::Incoming)
             .collect::<Vec<_>>();
         let mut last_err = None;
-        for child in children.drain(..) {
+        for child in children {
             // Don't recursively mark a child as failed if this is not the only parent of the child
             let parents = self
                 .graph

@@ -157,7 +157,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
                     Ok(())
                 })?;
 
-        let clean_exit = join_threads(threads.drain(..));
+        let clean_exit = join_threads(threads.into_iter());
         disk_watcher.stop();
         let disk_watcher_clean_exit = join_threads(std::iter::once(disk_watcher_thread));
 

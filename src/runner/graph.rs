@@ -137,22 +137,6 @@ impl TasksGraph {
             node,
             self.graph[node]
         );
-        // Ensure tasks are only executed if needed
-        let mut already_executed = false;
-        if let Node::Task {
-            ref task,
-            running: None,
-        } = self.graph[node]
-        {
-            if !task.needs_exec(ex, db) {
-                already_executed = true;
-            }
-        }
-        if already_executed {
-            self.mark_as_completed(node);
-            return WalkResult::NotBlocked;
-        }
-
         // Try to check for the dependencies of this node
         // The list is collected to make the borrowchecker happy
         let neighbors = self.graph.neighbors(node).collect::<Vec<_>>();

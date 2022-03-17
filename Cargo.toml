@@ -16,7 +16,6 @@ opt-level = 0
 base64 = "0.13.0"
 bytes = "0.4.9"
 chrono = { version = "0.4", features = ["serde"] }
-chrono-humanize = "0.1.1"
 crates-index = "0.16.2"
 crossbeam-utils = "0.5"
 crossbeam-channel = "0.5"

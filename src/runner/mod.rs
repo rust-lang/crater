@@ -1,4 +1,3 @@
-mod graph;
 mod tasks;
 mod test;
 mod unstable_features;
@@ -9,13 +8,12 @@ use crate::crates::Crate;
 use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
-use crate::runner::graph::build_graph;
 use crate::runner::worker::{DiskSpaceWatcher, Worker};
 use crossbeam_utils::thread::{scope, ScopedJoinHandle};
 use rustwide::logging::LogStorage;
 use rustwide::Workspace;
 use std::collections::HashMap;
-use std::sync::{Condvar, Mutex};
+use std::sync::Mutex;
 use std::time::Duration;
 
 const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(300);
@@ -80,10 +78,6 @@ pub fn run_ex<DB: WriteResults + Sync>(
         i += 1;
     }
 
-    info!("computing the tasks graph...");
-    let graph = Mutex::new(build_graph(ex, crates, config));
-    let parked_threads = Condvar::new();
-
     info!("uninstalling toolchains...");
     // Clean out all the toolchains currently installed. This minimizes the
     // amount of disk space used by the base system, letting the task execution
@@ -109,6 +103,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     let state = RunnerState::new();
 
+    let crates = Mutex::new(crates.to_vec());
     let workers = (0..threads_count)
         .map(|i| {
             Worker::new(
@@ -116,10 +111,9 @@ pub fn run_ex<DB: WriteResults + Sync>(
                 workspace,
                 ex,
                 config,
-                &graph,
+                &crates,
                 &state,
                 db,
-                &parked_threads,
             )
         })
         .collect::<Vec<_>>();
@@ -166,11 +160,6 @@ pub fn run_ex<DB: WriteResults + Sync>(
             bail!("some threads returned an error");
         }
     })?;
-
-    // Only the root node must be present
-    let mut g = graph.lock().unwrap();
-    assert!(g.next_task(ex, db, "master").is_finished());
-    assert_eq!(g.pending_crates_count(), 0);
 
     Ok(())
 }

@@ -1,8 +1,9 @@
 use crate::config::Config;
-use crate::experiments::Experiment;
+use crate::crates::Crate;
+use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
 use crate::results::{BrokenReason, TestResult, WriteResults};
-use crate::runner::graph::{TasksGraph, WalkResult};
+use crate::runner::tasks::{Task, TaskStep};
 use crate::runner::{OverrideResult, RunnerState};
 use crate::utils;
 use rustwide::{BuildDirectory, Workspace};
@@ -19,10 +20,9 @@ pub(super) struct Worker<'a, DB: WriteResults + Sync> {
     build_dir: Mutex<BuildDirectory>,
     ex: &'a Experiment,
     config: &'a Config,
-    graph: &'a Mutex<TasksGraph>,
+    crates: &'a Mutex<Vec<Crate>>,
     state: &'a RunnerState,
     db: &'a DB,
-    parked_threads: &'a Condvar,
     target_dir_cleanup: AtomicBool,
 }
 
@@ -32,10 +32,9 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         workspace: &'a Workspace,
         ex: &'a Experiment,
         config: &'a Config,
-        graph: &'a Mutex<TasksGraph>,
+        crates: &'a Mutex<Vec<Crate>>,
         state: &'a RunnerState,
         db: &'a DB,
-        parked_threads: &'a Condvar,
     ) -> Self {
         Worker {
             build_dir: Mutex::new(workspace.build_dir(&name)),
@@ -43,10 +42,9 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             workspace,
             ex,
             config,
-            graph,
+            crates,
             state,
             db,
-            parked_threads,
             target_dir_cleanup: AtomicBool::new(false),
         }
     }
@@ -55,79 +53,129 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         &self.name
     }
 
-    pub(super) fn run(&self) -> Fallible<()> {
-        // This uses a `loop` instead of a `while let` to avoid locking the graph too much
-        let mut guard = self.graph.lock().unwrap();
-        loop {
-            self.maybe_cleanup_target_dir()?;
-            let walk_result = guard.next_task(self.ex, self.db, &self.name);
-            match walk_result {
-                WalkResult::Task(id, task) => {
-                    drop(guard);
-                    info!("running task: {:?}", task);
-                    let res = task.run(
-                        self.config,
-                        self.workspace,
-                        &self.build_dir,
-                        self.ex,
-                        self.db,
-                        self.state,
-                    );
-                    guard = self.graph.lock().unwrap();
-                    // Regardless of how this ends, they should get woken up.
-                    self.parked_threads.notify_all();
-                    if let Err(e) = res {
-                        error!("task failed, marking childs as failed too: {:?}", task);
-                        utils::report_failure(&e);
+    fn run_task(&self, task: &Task) -> Result<(), (failure::Error, TestResult)> {
+        info!("running task: {:?}", task);
+        let res = task.run(
+            self.config,
+            self.workspace,
+            &self.build_dir,
+            self.ex,
+            self.db,
+            self.state,
+        );
+        if let Err(e) = res {
+            error!("task {:?} failed", task);
+            utils::report_failure(&e);
 
-                        let mut result = if self.config.is_broken(&task.krate) {
-                            &TestResult::BrokenCrate(BrokenReason::Unknown)
-                        } else {
-                            &TestResult::Error
-                        };
+            let mut result = if self.config.is_broken(&task.krate) {
+                TestResult::BrokenCrate(BrokenReason::Unknown)
+            } else {
+                TestResult::Error
+            };
 
-                        for err in e.iter_chain() {
-                            if let Some(&OverrideResult(ref res)) = err.downcast_ctx() {
-                                result = res;
-                                break;
-                            }
-                        }
-
-                        if let Err(e) = guard.mark_as_failed(
-                            id,
-                            self.ex,
-                            self.db,
-                            self.state,
-                            self.config,
-                            &e,
-                            result,
-                            &self.name,
-                        ) {
-                            // We don't return an Err(...) from the loop here,
-                            // as this failure shouldn't bring down this worker
-                            // thread -- it can continue to do useful work.
-                            error!("Failed to mark node {:?} as failed", id);
-                            utils::report_failure(&e);
-                        }
-                    } else {
-                        guard.mark_as_completed(id);
-                    }
-                }
-                WalkResult::Blocked => {
-                    guard = self.parked_threads.wait(guard).unwrap();
-                }
-                WalkResult::NotBlocked => unreachable!("NotBlocked leaked from the run"),
-                WalkResult::Finished => {
-                    // A blocked thread may be waiting on the root node, in
-                    // which case this is crucial to avoiding a deadlock.
-                    self.parked_threads.notify_all();
-                    drop(guard);
+            for err in e.iter_chain() {
+                if let Some(&OverrideResult(ref res)) = err.downcast_ctx() {
+                    result = res.clone();
                     break;
                 }
             }
+
+            return Err((e, result));
         }
 
         Ok(())
+    }
+
+    pub(super) fn run(&self) -> Fallible<()> {
+        loop {
+            let krate = if let Some(next) = self.crates.lock().unwrap().pop() {
+                next
+            } else {
+                // We're done if no more crates left.
+                return Ok(());
+            };
+
+            self.maybe_cleanup_target_dir()?;
+
+            info!("{} processing crate {}", self.name, krate);
+
+            let mut tasks = Vec::new();
+
+            if !self.ex.ignore_blacklist && self.config.should_skip(&krate) {
+                for tc in &self.ex.toolchains {
+                    tasks.push(Task {
+                        krate: krate.clone(),
+                        step: TaskStep::Skip { tc: tc.clone() },
+                    });
+                }
+            } else {
+                tasks.push(Task {
+                    krate: krate.clone(),
+                    step: TaskStep::Prepare,
+                });
+                let quiet = self.config.is_quiet(&krate);
+                for tc in &self.ex.toolchains {
+                    tasks.push(Task {
+                        krate: krate.clone(),
+                        step: match self.ex.mode {
+                            Mode::BuildOnly => TaskStep::BuildOnly {
+                                tc: tc.clone(),
+                                quiet,
+                            },
+                            Mode::BuildAndTest
+                                if !self.ex.ignore_blacklist
+                                    && self.config.should_skip_tests(&krate) =>
+                            {
+                                TaskStep::BuildOnly {
+                                    tc: tc.clone(),
+                                    quiet,
+                                }
+                            }
+                            Mode::BuildAndTest => TaskStep::BuildAndTest {
+                                tc: tc.clone(),
+                                quiet,
+                            },
+                            Mode::CheckOnly => TaskStep::CheckOnly {
+                                tc: tc.clone(),
+                                quiet,
+                            },
+                            Mode::Clippy => TaskStep::Clippy {
+                                tc: tc.clone(),
+                                quiet,
+                            },
+                            Mode::Rustdoc => TaskStep::Rustdoc {
+                                tc: tc.clone(),
+                                quiet,
+                            },
+                            Mode::UnstableFeatures => TaskStep::UnstableFeatures { tc: tc.clone() },
+                        },
+                    });
+                }
+                tasks.push(Task {
+                    krate: krate.clone(),
+                    step: TaskStep::Cleanup,
+                });
+            }
+
+            let mut result = Ok(());
+            for task in tasks {
+                if result.is_ok() {
+                    result = self.run_task(&task);
+                }
+                if let Err((err, test_result)) = &result {
+                    if let Err(e) = task.mark_as_failed(
+                        self.ex,
+                        self.db,
+                        self.state,
+                        self.config,
+                        err,
+                        test_result,
+                    ) {
+                        crate::utils::report_failure(&e);
+                    }
+                }
+            }
+        }
     }
 
     fn maybe_cleanup_target_dir(&self) -> Fallible<()> {

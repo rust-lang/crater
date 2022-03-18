@@ -25,7 +25,7 @@ use crate::runner::{
     tasks::{Task, TaskStep},
     RunnerState,
 };
-use petgraph::{dot::Dot, graph::NodeIndex, stable_graph::StableDiGraph, Direction};
+use petgraph::{graph::NodeIndex, stable_graph::StableDiGraph, Direction};
 use std::fmt::{self, Debug};
 use std::sync::Arc;
 
@@ -262,10 +262,6 @@ impl TasksGraph {
 
     pub(super) fn pending_crates_count(&self) -> usize {
         self.graph.neighbors(self.root).count()
-    }
-
-    pub(super) fn generate_dot<'a>(&'a self) -> Dot<&'a StableDiGraph<impl Debug, ()>> {
-        Dot::new(&self.graph)
     }
 }
 

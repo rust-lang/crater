@@ -15,7 +15,6 @@ use crossbeam_utils::thread::{scope, ScopedJoinHandle};
 use rustwide::logging::LogStorage;
 use rustwide::Workspace;
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
@@ -195,16 +194,4 @@ where
         }
     }
     clean_exit
-}
-
-pub fn dump_dot(ex: &Experiment, crates: &[Crate], config: &Config, dest: &Path) -> Fallible<()> {
-    info!("computing the tasks graph...");
-    let graph = build_graph(ex, crates, config);
-
-    info!("dumping the tasks graph...");
-    ::std::fs::write(dest, format!("{:?}", graph.generate_dot()).as_bytes())?;
-
-    info!("tasks graph available in {}", dest.to_string_lossy());
-
-    Ok(())
 }

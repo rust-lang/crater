@@ -307,17 +307,6 @@ pub enum Crater {
     },
 
     #[structopt(
-        name = "dump-tasks-graph",
-        about = "dump the internal tasks graph in .dot format"
-    )]
-    DumpTasksGraph {
-        #[structopt(name = "dest", parse(from_os_str))]
-        dest: PathBuf,
-        #[structopt(name = "experiment", long = "ex", default_value = "default")]
-        ex: Ex,
-    },
-
-    #[structopt(
         name = "check-config",
         about = "check if the config.toml file is valid"
     )]
@@ -627,16 +616,6 @@ impl Crater {
                     &self
                         .workspace(docker_env.as_ref().map(|s| s.as_str()), fast_workspace_init)?,
                 )?;
-            }
-            Crater::DumpTasksGraph { ref dest, ref ex } => {
-                let config = Config::load()?;
-                let db = Database::open()?;
-
-                if let Some(experiment) = Experiment::get(&db, &ex.0)? {
-                    runner::dump_dot(&experiment, &experiment.get_crates(&db)?, &config, dest)?;
-                } else {
-                    bail!("missing experiment: {}", ex.0);
-                }
             }
             Crater::CheckConfig { ref filename } => {
                 if let Err(ref e) = Config::check(filename) {

@@ -97,28 +97,6 @@ impl fmt::Debug for Task {
 }
 
 impl Task {
-    pub(super) fn needs_exec<DB: WriteResults>(&self, ex: &Experiment, db: &DB) -> bool {
-        // If an error happens while checking if the task should be executed, the error is ignored
-        // and the function returns true.
-        match self.step {
-            TaskStep::Cleanup => true,
-            // The prepare step should always be executed.
-            // It will not be executed if all the dependent tasks are already executed, since the
-            // runner will not reach the prepare task in that case.
-            TaskStep::Prepare => true,
-            // Build tasks should only be executed if there are no results for them
-            TaskStep::Skip { ref tc }
-            | TaskStep::BuildAndTest { ref tc, .. }
-            | TaskStep::BuildOnly { ref tc, .. }
-            | TaskStep::CheckOnly { ref tc, .. }
-            | TaskStep::Clippy { ref tc, .. }
-            | TaskStep::Rustdoc { ref tc, .. }
-            | TaskStep::UnstableFeatures { ref tc } => {
-                db.get_result(ex, tc, &self.krate).unwrap_or(None).is_none()
-            }
-        }
-    }
-
     pub(super) fn mark_as_failed<DB: WriteResults>(
         &self,
         ex: &Experiment,

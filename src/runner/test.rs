@@ -105,6 +105,12 @@ fn run_cargo<DB: WriteResults>(
         if line.contains("urlopen error") && line.contains("Temporary failure in name resolution") {
             did_network = true;
         }
+        if line.contains("Address already in use") {
+            did_network = true;
+        }
+        if line.contains("code: 111") && line.contains("Connection refused") {
+            did_network = true;
+        }
 
         // Avoid trying to deserialize non JSON output
         if !line.starts_with('{') {

@@ -28,7 +28,6 @@ hyper = "0.12.8"
 lazy_static = "1.0"
 mime = "0.3.1"
 minifier = { version = "0.0.20", features = ["html"] }
-petgraph = "0.4.11"
 r2d2 = "0.8.2"
 r2d2_sqlite = "0.19.0"
 rusqlite = { version = "0.26.0", features = ["chrono", "functions", "bundled"] }

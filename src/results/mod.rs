@@ -256,15 +256,16 @@ impl ::std::str::FromStr for FailureReason {
                     }
                     Ok(FailureReason::DependsOn(krates))
                 }
-                _ => bail!("unexpected value"),
+                _ => bail!("unexpected prefix: {}", prefix),
             }
         } else {
             match s {
+                "network-access" => Ok(FailureReason::NetworkAccess),
                 "unknown" => Ok(FailureReason::Unknown),
                 "oom" => Ok(FailureReason::OOM),
                 "timeout" => Ok(FailureReason::Timeout),
                 "ice" => Ok(FailureReason::ICE),
-                _ => bail!("unexpected value"),
+                _ => bail!("unexpected value: {}", s),
             }
         }
     }

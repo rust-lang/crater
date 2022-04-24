@@ -84,6 +84,11 @@ fn run_cargo<DB: WriteResults>(
     check_errors: bool,
     local_packages_id: &HashSet<PackageId>,
 ) -> Fallible<()> {
+    let mut args = args.to_vec();
+    if let Some(ref tc_cargoflags) = ctx.toolchain.cargoflags {
+        args.extend(tc_cargoflags.split(' '));
+    }
+
     let mut rustflags = format!("--cap-lints={}", ctx.experiment.cap_lints.to_str());
     if let Some(ref tc_rustflags) = ctx.toolchain.rustflags {
         rustflags.push(' ');
@@ -158,7 +163,7 @@ fn run_cargo<DB: WriteResults>(
 
     let mut command = build_env
         .cargo()
-        .args(args)
+        .args(&args)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env(rustflags_env, rustflags);

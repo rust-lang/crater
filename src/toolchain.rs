@@ -10,6 +10,7 @@ lazy_static! {
     pub(crate) static ref MAIN_TOOLCHAIN: Toolchain = Toolchain {
         source: RustwideToolchain::dist("stable"),
         rustflags: None,
+        cargoflags: None,
         ci_try: false,
         patches: Vec::new(),
     };
@@ -18,6 +19,7 @@ lazy_static! {
     pub(crate) static ref TEST_TOOLCHAIN: Toolchain = Toolchain {
         source: RustwideToolchain::dist("beta"),
         rustflags: None,
+        cargoflags: None,
         ci_try: false,
         patches: Vec::new(),
     };
@@ -27,6 +29,7 @@ lazy_static! {
 pub struct Toolchain {
     pub source: RustwideToolchain,
     pub rustflags: Option<String>,
+    pub cargoflags: Option<String>,
     pub ci_try: bool,
     pub patches: Vec<CratePatch>,
 }
@@ -63,6 +66,10 @@ impl fmt::Display for Toolchain {
 
         if let Some(ref flag) = self.rustflags {
             write!(f, "+rustflags={}", flag)?;
+        }
+
+        if let Some(ref flag) = self.cargoflags {
+            write!(f, "+cargoflags={}", flag)?;
         }
 
         for patch in self.patches.iter() {
@@ -114,6 +121,7 @@ impl FromStr for Toolchain {
         };
 
         let mut rustflags = None;
+        let mut cargoflags = None;
         let mut patches: Vec<CratePatch> = vec![];
         for part in parts {
             if let Some(equal_idx) = part.find('=') {
@@ -126,6 +134,7 @@ impl FromStr for Toolchain {
 
                 match flag {
                     "rustflags" => rustflags = Some(value),
+                    "cargoflags" => cargoflags = Some(value),
                     "patch" => patches.push(value.parse()?),
                     unknown => return Err(ToolchainParseError::InvalidFlag(unknown.to_string())),
                 }
@@ -137,6 +146,7 @@ impl FromStr for Toolchain {
         Ok(Toolchain {
             source,
             rustflags,
+            cargoflags,
             ci_try,
             patches,
         })
@@ -189,14 +199,25 @@ mod tests {
                     test_from_str!($str => Toolchain {
                         source: $source,
                         rustflags: None,
+                        cargoflags: None,
                         ci_try: $ci_try,
                         patches: Vec::new(),
                     });
 
-                    // Test parsing with flags
+                    // Test parsing with rustflags
                     test_from_str!(concat!($str, "+rustflags=foo bar") => Toolchain {
                         source: $source,
                         rustflags: Some("foo bar".to_string()),
+                        cargoflags: None,
+                        ci_try: $ci_try,
+                        patches: Vec::new(),
+                    });
+
+                    // Test parsing with cargoflags
+                    test_from_str!(concat!($str, "+cargoflags=foo bar") => Toolchain {
+                        source: $source,
+                        rustflags: None,
+                        cargoflags: Some("foo bar".to_string()),
                         ci_try: $ci_try,
                         patches: Vec::new(),
                     });
@@ -205,6 +226,7 @@ mod tests {
                     test_from_str!(concat!($str, "+patch=example=https://git.example.com/some/repo=master") => Toolchain {
                         source: $source,
                         rustflags: None,
+                        cargoflags: None,
                         ci_try: $ci_try,
                         patches: vec![CratePatch {
                             name: "example".to_string(),
@@ -217,6 +239,7 @@ mod tests {
                     test_from_str!(concat!($str, "+rustflags=foo bar+patch=example=https://git.example.com/some/repo=master") => Toolchain {
                         source: $source,
                         rustflags: Some("foo bar".to_string()),
+                        cargoflags: None,
                         ci_try: $ci_try,
                         patches: vec![CratePatch {
                             name: "example".to_string(),

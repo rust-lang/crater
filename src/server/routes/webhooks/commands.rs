@@ -72,12 +72,14 @@ pub fn run(
             detected_start = Some(Toolchain {
                 source: RustwideToolchain::ci(&build.base_sha, false),
                 rustflags: None,
+                cargoflags: None,
                 ci_try: false,
                 patches: Vec::new(),
             });
             detected_end = Some(Toolchain {
                 source: RustwideToolchain::ci(&build.merge_sha, false),
                 rustflags: None,
+                cargoflags: None,
                 ci_try: true,
                 patches: Vec::new(),
             });

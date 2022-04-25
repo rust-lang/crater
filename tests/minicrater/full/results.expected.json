@@ -128,6 +128,24 @@
     },
     {
       "krate": {
+        "Local": "docs-rs-features"
+      },
+      "name": "docs-rs-features (local)",
+      "res": "test-pass",
+      "runs": [
+        {
+          "log": "stable/local/docs-rs-features",
+          "res": "test-pass"
+        },
+        {
+          "log": "beta/local/docs-rs-features",
+          "res": "test-pass"
+        }
+      ],
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/docs-rs-features"
+    },
+    {
+      "krate": {
         "Local": "error-code"
       },
       "name": "error-code (local)",

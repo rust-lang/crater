@@ -165,7 +165,7 @@
       "Single": "#db3026"
     }
   },
-  "crates_count": 16,
+  "crates_count": 17,
   "full": false,
   "info": {
     "broken": 2,
@@ -174,7 +174,7 @@
     "regressed": 4,
     "skipped": 1,
     "test-fail": 1,
-    "test-pass": 4
+    "test-pass": 5
   },
   "nav": [
     {

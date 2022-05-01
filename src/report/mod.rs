@@ -29,7 +29,7 @@ mod markdown;
 mod s3;
 
 pub use self::display::{Color, ResultColor, ResultName};
-pub use self::s3::{get_client_for_bucket, S3Prefix, S3Writer};
+pub use self::s3::{S3Prefix, S3Writer};
 pub use analyzer::TestResults;
 
 pub(crate) const REPORT_ENCODE_SET: AsciiSet = percent_encoding::CONTROLS

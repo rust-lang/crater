@@ -2,9 +2,7 @@ use crate::prelude::*;
 use crate::report::ReportWriter;
 use crate::results::EncodingType;
 use mime::Mime;
-use rusoto_core::request::HttpClient;
-use rusoto_core::{DefaultCredentialsProvider, Region};
-use rusoto_s3::{GetBucketLocationRequest, PutObjectRequest, S3Client, S3};
+use rusoto_s3::{PutObjectRequest, S3Client, S3};
 use std::borrow::Cow;
 use std::fmt::{self, Display};
 use std::io;
@@ -18,8 +16,6 @@ use url::{Host, Url};
 pub enum S3Error {
     #[fail(display = "bad S3 url: {}", _0)]
     BadUrl(String),
-    #[fail(display = "unknown bucket region")]
-    UnknownBucketRegion,
 }
 
 #[derive(Debug, Clone)]
@@ -60,34 +56,13 @@ impl FromStr for S3Prefix {
 
 pub struct S3Writer {
     prefix: S3Prefix,
-    client: Box<dyn S3>,
-}
-
-pub fn get_client_for_bucket(bucket: &str) -> Fallible<Box<dyn S3>> {
-    let make_client = |region| -> Fallible<S3Client> {
-        let credentials = DefaultCredentialsProvider::new().unwrap();
-        Ok(S3Client::new_with(HttpClient::new()?, credentials, region))
-    };
-    let client = make_client(Region::UsEast1)?;
-    let response = client
-        .get_bucket_location(GetBucketLocationRequest {
-            bucket: bucket.into(),
-        })
-        .sync()
-        .context(S3Error::UnknownBucketRegion)?;
-    let region = match response.location_constraint.as_ref() {
-        Some(region) if region.is_empty() => Region::UsEast1,
-        Some(region) => Region::from_str(region).context(S3Error::UnknownBucketRegion)?,
-        None => return Err(S3Error::UnknownBucketRegion.into()),
-    };
-
-    Ok(Box::new(make_client(region)?))
+    client: S3Client,
 }
 
 const S3RETRIES: u64 = 4;
 
 impl S3Writer {
-    pub fn create(client: Box<dyn S3>, prefix: S3Prefix) -> Fallible<S3Writer> {
+    pub fn create(client: S3Client, prefix: S3Prefix) -> Fallible<S3Writer> {
         Ok(S3Writer { prefix, client })
     }
 }
@@ -119,7 +94,12 @@ impl ReportWriter for S3Writer {
                 },
                 ..Default::default()
             };
-            match self.client.put_object(req).sync() {
+            let (tx, rx) = std::sync::mpsc::sync_channel(0);
+            let client = self.client.clone();
+            tokio::task::spawn(async move {
+                tx.send(client.put_object(req).await).unwrap();
+            });
+            match rx.recv() {
                 Err(_) if retry < S3RETRIES => {
                     retry += 1;
                     thread::sleep(Duration::from_secs(2 * retry));
@@ -131,15 +111,10 @@ impl ReportWriter for S3Writer {
                     );
                     continue;
                 }
-                r => {
-                    if let Err(::rusoto_s3::PutObjectError::Unknown(ref resp)) = r {
-                        error!("S3 request status: {}", resp.status);
-                        error!("S3 request body: {}", String::from_utf8_lossy(&resp.body));
-                        error!("S3 request headers: {:?}", resp.headers);
-                    }
-                    r.with_context(|_| format!("S3 failure to upload {:?}", path.as_ref()))?;
-                    return Ok(());
+                Err(e) => {
+                    failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
                 }
+                Ok(_) => return Ok(()),
             }
         }
     }
@@ -168,14 +143,17 @@ impl ReportWriter for S3Writer {
             },
             ..Default::default()
         };
-        let r = self.client.put_object(req).sync();
-        if let Err(::rusoto_s3::PutObjectError::Unknown(ref resp)) = r {
-            error!("S3 request status: {}", resp.status);
-            error!("S3 request body: {}", String::from_utf8_lossy(&resp.body));
-            error!("S3 request headers: {:?}", resp.headers);
+        let (tx, rx) = std::sync::mpsc::sync_channel(0);
+        let client = self.client.clone();
+        tokio::task::spawn(async move {
+            tx.send(client.put_object(req).await).unwrap();
+        });
+        match rx.recv() {
+            Err(e) => {
+                failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+            }
+            Ok(_) => Ok(()),
         }
-        r.with_context(|_| format!("S3 failure to upload {:?}", path.as_ref()))?;
-        Ok(())
     }
 
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()> {

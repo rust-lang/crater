@@ -248,23 +248,6 @@ pub enum Crater {
         output_templates: bool,
     },
 
-    #[structopt(name = "publish-report", about = "publish the experiment report to S3")]
-    PublishReport {
-        #[structopt(
-            name = "experiment",
-            long = "ex",
-            default_value = "default",
-            help = "The experiment to publish a report for."
-        )]
-        ex: Ex,
-        #[structopt(name = "S3 URI", help = "The S3 URI to put the report at.")]
-        s3_prefix: report::S3Prefix,
-        #[structopt(name = "force", long = "force")]
-        force: bool,
-        #[structopt(name = "output-templates", long = "output-templates")]
-        output_templates: bool,
-    },
-
     #[structopt(name = "server")]
     Server {
         #[structopt(
@@ -527,50 +510,6 @@ impl Crater {
                         &experiment,
                         &experiment.get_crates(&db)?,
                         &report::FileWriter::create(dest.0.clone())?,
-                        &config,
-                        output_templates,
-                    );
-
-                    if let Err(err) = res {
-                        experiment.set_status(&db, Status::ReportFailed)?;
-                        return Err(err);
-                    } else {
-                        experiment.set_status(&db, Status::Completed)?;
-                    }
-                } else {
-                    bail!("missing experiment: {}", ex.0);
-                }
-            }
-            Crater::PublishReport {
-                ref ex,
-                ref s3_prefix,
-                force,
-                output_templates,
-            } => {
-                let config = Config::load()?;
-                let db = Database::open()?;
-
-                if let Some(mut experiment) = Experiment::get(&db, &ex.0)? {
-                    let (completed, all) = experiment.raw_progress(&db)?;
-                    if !force && completed != all {
-                        bail!(
-                            "can't publish the report of an incomplete experiment: {}/{} results \
-                             (use --force to override)",
-                            completed,
-                            all,
-                        );
-                    }
-
-                    experiment.set_status(&db, Status::GeneratingReport)?;
-
-                    let result_db = DatabaseDB::new(&db);
-                    let client = report::get_client_for_bucket(&s3_prefix.bucket)?;
-
-                    let res = report::gen(
-                        &result_db,
-                        &experiment,
-                        &experiment.get_crates(&db)?,
-                        &report::S3Writer::create(client, s3_prefix.clone())?,
                         &config,
                         output_templates,
                     );

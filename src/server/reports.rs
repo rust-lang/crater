@@ -21,7 +21,7 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
         data.tokens.reports_bucket.region.to_region()?,
     );
     let dest = format!("s3://{}/{}", data.tokens.reports_bucket.bucket, &ex.name);
-    let writer = report::S3Writer::create(Box::new(client), dest.parse()?)?;
+    let writer = report::S3Writer::create(client, dest.parse()?)?;
 
     let crates = ex.get_crates(&data.db)?;
     let res = report::gen(results, ex, &crates, &writer, &data.config, false)?;

@@ -5,7 +5,6 @@ use mime::Mime;
 use rusoto_s3::{PutObjectRequest, S3Client, S3};
 use std::borrow::Cow;
 use std::fmt::{self, Display};
-use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::thread;
@@ -158,12 +157,6 @@ impl ReportWriter for S3Writer {
 
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()> {
         self.write_bytes(path, s.into_owned().into_bytes(), mime, EncodingType::Plain)
-    }
-
-    fn copy<P: AsRef<Path>, R: io::Read>(&self, r: &mut R, path: P, mime: &Mime) -> Fallible<()> {
-        let mut bytes = Vec::new();
-        io::copy(r, &mut bytes)?;
-        self.write_bytes(path, bytes, mime, EncodingType::Plain)
     }
 }
 

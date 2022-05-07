@@ -54,9 +54,7 @@ impl<'a> DatabaseDB<'a> {
         // size anyway. In the future we might expand this to other tables, but
         // for now that wouldn't really add enough value to be worth it.
         self.db.execute(
-            "delete from results where experiment in \
-            (select name from experiments where status = 'completed') \
-            limit 100",
+            "delete from results where experiment in (select name from experiments where status = 'completed') limit 100",
             &[],
         )?;
         Ok(())

@@ -53,8 +53,16 @@ impl<'a> DatabaseDB<'a> {
         // tables as this is just simpler and the results dominate the storage
         // size anyway. In the future we might expand this to other tables, but
         // for now that wouldn't really add enough value to be worth it.
+        //
+        // The query here would be simpler if rusqlite came with delete .. limit
+        // support compiled in, but that's not likely to happen (see
+        // https://github.com/rusqlite/rusqlite/issues/1111).
         self.db.execute(
-            "delete from results where experiment in (select name from experiments where status = 'completed') limit 100",
+            "delete from results where rowid in (
+                select rowid from results where \
+                    experiment in (select name from experiments where status = 'completed') \
+                    limit 100
+                )",
             &[],
         )?;
         Ok(())

@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::server::github::GitHub;
 use crate::server::{Data, GithubData};
+use std::fmt::Write;
 
 pub enum Label {
     ExperimentQueued,
@@ -61,10 +62,10 @@ impl Message {
 
         let mut message = String::new();
         for line in self.lines {
-            message.push_str(&format!(":{}: {}\n", line.emoji, line.content));
+            writeln!(&mut message, ":{}: {}", line.emoji, line.content).unwrap();
         }
         for line in self.notes {
-            message.push_str(&format!("\n:{}: {}", line.emoji, line.content));
+            write!(&mut message, "\n:{}: {}", line.emoji, line.content).unwrap();
         }
 
         github_data.api.post_comment(issue_url, &message)?;

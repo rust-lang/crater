@@ -190,6 +190,13 @@ impl RecordProgressThread {
                         crate::utils::report_failure(&e);
                     }
 
+                    if let Err(e) = db.clear_stale_records() {
+                        // Not a hard failure. We can continue even if we failed
+                        // to clear records from already completed runs...
+                        log::error!("Failed to clear stale records: {:?}", e);
+                        crate::utils::report_failure(&e);
+                    }
+
                     metrics
                         .crater_endpoint_time
                         .with_label_values(&["record_progress"])

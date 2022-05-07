@@ -33,6 +33,35 @@ impl<'a> DatabaseDB<'a> {
         DatabaseDB { db }
     }
 
+    pub fn clear_stale_records(&self) -> Fallible<()> {
+        // We limit ourselves to a small number of records at a time. This means this query
+        // needs to run tends of thousands of times to purge records from a
+        // single crater run, but it also means that each individual execution
+        // is quite fast. That lets us run it often, without blocking other I/O
+        // on the database for long.
+        //
+        // Currently this is run as we add new results into the database, which
+        // does add some overhead to progress collection, but also gives us a
+        // natural point to run this housekeeping.
+        //
+        // In practice so long as the limit here is >1 that also means we're
+        // definitely going to keep up and not have more than (approximately)
+        // one crater run in storage at any time, as old ones get purged
+        // quite quickly after they finish.
+        //
+        // We also only purge from results here rather than cleaning up other
+        // tables as this is just simpler and the results dominate the storage
+        // size anyway. In the future we might expand this to other tables, but
+        // for now that wouldn't really add enough value to be worth it.
+        self.db.execute(
+            "delete from results where experiment in \
+            (select name from experiments where status = 'completed') \
+            limit 100;",
+            &[],
+        )?;
+        Ok(())
+    }
+
     pub fn store(
         &self,
         ex: &Experiment,

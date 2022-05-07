@@ -17,8 +17,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt::{self, Display};
-use std::fs::{self, File};
-use std::io::{self, Read};
+use std::fs;
 use std::path::{Path, PathBuf};
 
 mod analyzer;
@@ -264,7 +263,7 @@ pub fn generate_report<DB: ReadResults>(
     Ok(RawTestResults { crates: res })
 }
 
-const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
+const PROGRESS_FRACTION: usize = 50; // write progress every ~1/N crates
 
 fn write_logs<DB: ReadResults, W: ReportWriter>(
     db: &DB,
@@ -524,7 +523,6 @@ pub trait ReportWriter {
         encoding_type: EncodingType,
     ) -> Fallible<()>;
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()>;
-    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Fallible<()>;
 }
 
 pub struct FileWriter(PathBuf);
@@ -568,12 +566,6 @@ impl ReportWriter for FileWriter {
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Fallible<()> {
         self.create_prefix(path.as_ref())?;
         fs::write(&self.0.join(path.as_ref()), s.as_ref().as_bytes())?;
-        Ok(())
-    }
-
-    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, _: &Mime) -> Fallible<()> {
-        self.create_prefix(path.as_ref())?;
-        io::copy(r, &mut File::create(self.0.join(path.as_ref()))?)?;
         Ok(())
     }
 }
@@ -634,16 +626,6 @@ impl ReportWriter for DummyWriter {
             (path.as_ref().to_path_buf(), mime.clone()),
             s.bytes().collect(),
         );
-        Ok(())
-    }
-
-    fn copy<P: AsRef<Path>, R: Read>(&self, r: &mut R, path: P, mime: &Mime) -> Fallible<()> {
-        let mut buffer = Vec::new();
-        r.read_to_end(&mut buffer)?;
-
-        self.results
-            .borrow_mut()
-            .insert((path.as_ref().to_path_buf(), mime.clone()), buffer);
         Ok(())
     }
 }

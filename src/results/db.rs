@@ -56,7 +56,7 @@ impl<'a> DatabaseDB<'a> {
         self.db.execute(
             "delete from results where experiment in \
             (select name from experiments where status = 'completed') \
-            limit 100;",
+            limit 100",
             &[],
         )?;
         Ok(())

@@ -263,7 +263,7 @@ pub fn generate_report<DB: ReadResults>(
     Ok(RawTestResults { crates: res })
 }
 
-const PROGRESS_FRACTION: usize = 10; // write progress every ~1/N crates
+const PROGRESS_FRACTION: usize = 50; // write progress every ~1/N crates
 
 fn write_logs<DB: ReadResults, W: ReportWriter>(
     db: &DB,

@@ -106,18 +106,6 @@
                         {% endif %}
                     </table>
                 </div>
-                {% if experiment.result_counts | length > 0 %}
-                <div class="card">
-                    <table class="details">
-                {% for result_count in experiment.result_counts %}
-                    <tr>
-                        <th>{{ result_count.0 }} jobs:</th>
-                        <td>{{ result_count.1}}</td>
-                    </tr>
-                {% endfor %}
-                    </table>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>

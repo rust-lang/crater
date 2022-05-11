@@ -56,13 +56,18 @@ impl FromStr for S3Prefix {
 pub struct S3Writer {
     prefix: S3Prefix,
     client: S3Client,
+    runtime: tokio::runtime::Runtime,
 }
 
 const S3RETRIES: u64 = 4;
 
 impl S3Writer {
     pub fn create(client: S3Client, prefix: S3Prefix) -> Fallible<S3Writer> {
-        Ok(S3Writer { prefix, client })
+        Ok(S3Writer {
+            prefix,
+            client,
+            runtime: tokio::runtime::Runtime::new()?,
+        })
     }
 }
 
@@ -93,12 +98,7 @@ impl ReportWriter for S3Writer {
                 },
                 ..Default::default()
             };
-            let (tx, rx) = std::sync::mpsc::sync_channel(0);
-            let client = self.client.clone();
-            tokio::task::spawn(async move {
-                tx.send(client.put_object(req).await).unwrap();
-            });
-            match rx.recv() {
+            match self.runtime.block_on(self.client.put_object(req)) {
                 Err(_) if retry < S3RETRIES => {
                     retry += 1;
                     thread::sleep(Duration::from_secs(2 * retry));
@@ -142,12 +142,7 @@ impl ReportWriter for S3Writer {
             },
             ..Default::default()
         };
-        let (tx, rx) = std::sync::mpsc::sync_channel(0);
-        let client = self.client.clone();
-        tokio::task::spawn(async move {
-            tx.send(client.put_object(req).await).unwrap();
-        });
-        match rx.recv() {
+        match self.runtime.block_on(self.client.put_object(req)) {
             Err(e) => {
                 failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
             }

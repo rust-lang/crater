@@ -131,7 +131,7 @@ impl AgentApi {
                 return Ok((experiment, crates));
             }
 
-            ::std::thread::sleep(::std::time::Duration::from_secs(RETRY_AFTER));
+            ::std::thread::sleep(::std::time::Duration::from_secs(120));
         })
     }
 

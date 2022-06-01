@@ -64,7 +64,7 @@ string_enum!(pub enum EncodingType {
     Gzip => "gzip",
 });
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum EncodedLog {
     Plain(Vec<u8>),
     Gzip(Vec<u8>),

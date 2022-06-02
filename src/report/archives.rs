@@ -109,7 +109,7 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
 
         let data = all.into_inner()?.finish()?;
         let len = data.len();
-        match dest.write_bytes_once(
+        match dest.write_bytes(
             "logs-archives/all.tar.gz",
             data,
             &"application/gzip".parse().unwrap(),

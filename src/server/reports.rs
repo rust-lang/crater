@@ -5,23 +5,36 @@ use crate::results::DatabaseDB;
 use crate::server::messages::{Label, Message};
 use crate::server::{Data, GithubData};
 use crate::utils;
-use rusoto_core::request::HttpClient;
-use rusoto_s3::S3Client;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, Thread};
 use std::time::Duration;
+
+use super::tokens::BucketRegion;
 
 // Automatically wake up the reports generator thread every 10 minutes to check for new jobs
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
 
 fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallible<TestResults> {
-    let client = S3Client::new_with(
-        HttpClient::new()?,
-        data.tokens.reports_bucket.to_aws_credentials(),
-        data.tokens.reports_bucket.region.to_region()?,
-    );
-    let dest = format!("s3://{}/{}", data.tokens.reports_bucket.bucket, &ex.name);
-    let writer = report::S3Writer::create(client, dest.parse()?)?;
+    let mut config = aws_types::SdkConfig::builder();
+    match &data.tokens.reports_bucket.region {
+        BucketRegion::S3 { region } => {
+            config.set_region(Some(aws_types::region::Region::new(region.to_owned())));
+        }
+        BucketRegion::Custom { url } => {
+            config.set_region(Some(aws_types::region::Region::from_static("us-east-1")));
+            config.set_endpoint_resolver(Some(Arc::new(aws_sdk_s3::Endpoint::immutable(
+                url.parse()?,
+            ))));
+        }
+    }
+    config.set_credentials_provider(Some(data.tokens.reports_bucket.to_aws_credentials()));
+    let config = config.build();
+    let client = aws_sdk_s3::Client::new(&config);
+    let writer = report::S3Writer::create(
+        client,
+        data.tokens.reports_bucket.bucket.clone(),
+        ex.name.clone(),
+    )?;
 
     let crates = ex.get_crates(&data.db)?;
     let res = report::gen(results, ex, &crates, &writer, &data.config, false)?;

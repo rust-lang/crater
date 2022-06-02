@@ -511,17 +511,6 @@ pub trait ReportWriter {
         mime: &Mime,
         encoding_type: EncodingType,
     ) -> Fallible<()>;
-    // This doesn't retry writing -- lets the caller handle failures.
-    //
-    // This is done to avoid copying the bytes buffer, since rusoto at least
-    // currently requires ownership.
-    fn write_bytes_once<P: AsRef<Path>>(
-        &self,
-        path: P,
-        b: Vec<u8>,
-        mime: &Mime,
-        encoding_type: EncodingType,
-    ) -> Fallible<()>;
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()>;
 }
 
@@ -551,16 +540,6 @@ impl ReportWriter for FileWriter {
         self.create_prefix(path.as_ref())?;
         fs::write(&self.0.join(path.as_ref()), &b)?;
         Ok(())
-    }
-
-    fn write_bytes_once<P: AsRef<Path>>(
-        &self,
-        path: P,
-        b: Vec<u8>,
-        mime: &Mime,
-        encoding: EncodingType,
-    ) -> Fallible<()> {
-        self.write_bytes(path, b, mime, encoding)
     }
 
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Fallible<()> {
@@ -596,19 +575,6 @@ impl DummyWriter {
 #[cfg(test)]
 impl ReportWriter for DummyWriter {
     fn write_bytes<P: AsRef<Path>>(
-        &self,
-        path: P,
-        b: Vec<u8>,
-        mime: &Mime,
-        _: EncodingType,
-    ) -> Fallible<()> {
-        self.results
-            .borrow_mut()
-            .insert((path.as_ref().to_path_buf(), mime.clone()), b);
-        Ok(())
-    }
-
-    fn write_bytes_once<P: AsRef<Path>>(
         &self,
         path: P,
         b: Vec<u8>,

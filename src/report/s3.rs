@@ -1,14 +1,12 @@
 use crate::prelude::*;
 use crate::report::ReportWriter;
 use crate::results::EncodingType;
+use aws_sdk_s3::Client as S3Client;
 use mime::Mime;
-use rusoto_s3::{PutObjectRequest, S3Client, S3};
 use std::borrow::Cow;
 use std::fmt::{self, Display};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::thread;
-use std::time::Duration;
 use url::{Host, Url};
 
 #[derive(Debug, Fail)]
@@ -54,16 +52,16 @@ impl FromStr for S3Prefix {
 }
 
 pub struct S3Writer {
-    prefix: S3Prefix,
+    bucket: String,
+    prefix: String,
     client: S3Client,
     runtime: tokio::runtime::Runtime,
 }
 
-const S3RETRIES: u64 = 4;
-
 impl S3Writer {
-    pub fn create(client: S3Client, prefix: S3Prefix) -> Fallible<S3Writer> {
+    pub fn create(client: S3Client, bucket: String, prefix: String) -> Fallible<S3Writer> {
         Ok(S3Writer {
+            bucket,
             prefix,
             client,
             runtime: tokio::runtime::Runtime::new()?,
@@ -79,74 +77,29 @@ impl ReportWriter for S3Writer {
         mime: &Mime,
         encoding_type: EncodingType,
     ) -> Fallible<()> {
-        let mut retry = 0;
-        loop {
-            let req = PutObjectRequest {
-                acl: Some("public-read".into()),
-                body: Some(s.clone().into()),
-                bucket: self.prefix.bucket.clone(),
-                key: self
-                    .prefix
-                    .prefix
-                    .join(path.as_ref())
-                    .to_string_lossy()
-                    .into(),
-                content_type: Some(mime.to_string()),
-                content_encoding: match encoding_type {
-                    EncodingType::Plain => None,
-                    EncodingType::Gzip => Some("gzip".into()),
-                },
-                ..Default::default()
-            };
-            match self.runtime.block_on(self.client.put_object(req)) {
-                Err(_) if retry < S3RETRIES => {
-                    retry += 1;
-                    thread::sleep(Duration::from_secs(2 * retry));
-                    warn!(
-                        "retry ({}/{}) S3 put to {:?}",
-                        retry,
-                        S3RETRIES,
-                        path.as_ref()
-                    );
-                    continue;
-                }
-                Err(e) => {
-                    failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
-                }
-                Ok(_) => return Ok(()),
+        let mut request = self
+            .client
+            .put_object()
+            .body(aws_smithy_http::byte_stream::ByteStream::from(s))
+            .acl(aws_sdk_s3::model::ObjectCannedAcl::PublicRead)
+            .key(format!(
+                "{}/{}",
+                self.prefix,
+                path.as_ref().to_str().unwrap()
+            ))
+            .content_type(mime.to_string())
+            .bucket(self.bucket.clone());
+        match encoding_type {
+            EncodingType::Plain => {}
+            EncodingType::Gzip => {
+                request = request.content_encoding("gzip");
             }
         }
-    }
-
-    fn write_bytes_once<P: AsRef<Path>>(
-        &self,
-        path: P,
-        s: Vec<u8>,
-        mime: &Mime,
-        encoding_type: EncodingType,
-    ) -> Fallible<()> {
-        let req = PutObjectRequest {
-            acl: Some("public-read".into()),
-            body: Some(s.into()),
-            bucket: self.prefix.bucket.clone(),
-            key: self
-                .prefix
-                .prefix
-                .join(path.as_ref())
-                .to_string_lossy()
-                .into(),
-            content_type: Some(mime.to_string()),
-            content_encoding: match encoding_type {
-                EncodingType::Plain => None,
-                EncodingType::Gzip => Some("gzip".into()),
-            },
-            ..Default::default()
-        };
-        match self.runtime.block_on(self.client.put_object(req)) {
+        match self.runtime.block_on(request.send()) {
+            Ok(_) => Ok(()),
             Err(e) => {
                 failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
             }
-            Ok(_) => Ok(()),
         }
     }
 

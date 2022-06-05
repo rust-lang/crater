@@ -131,6 +131,10 @@ impl AgentApi {
                 return Ok((experiment, crates));
             }
 
+            // If we're just waiting for an experiment, we should be considered
+            // healthy.
+            crate::agent::set_healthy();
+
             ::std::thread::sleep(::std::time::Duration::from_secs(120));
         })
     }

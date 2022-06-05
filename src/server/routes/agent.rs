@@ -323,7 +323,7 @@ fn endpoint_error(
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     data.metrics.record_error(&auth.name, &ex.name);
-    ex.handle_failure(&data.db, &Assignee::Agent(auth.name))?;
+    ex.clear_agent_progress(&data.db, &auth.name)?;
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }

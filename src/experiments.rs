@@ -500,7 +500,7 @@ impl Experiment {
         }
     }
 
-    pub fn handle_failure(&mut self, db: &Database, agent: &Assignee) -> Fallible<()> {
+    pub fn clear_agent_progress(&mut self, db: &Database, agent: &str) -> Fallible<()> {
         // Mark all the running crates from this agent as queued (so that they
         // run again)
         db.execute(
@@ -514,7 +514,7 @@ impl Experiment {
                 &Status::Queued.to_string(),
                 &self.name,
                 &Status::Running.to_string(),
-                &agent.to_string(),
+                &Assignee::Agent(agent.to_string()).to_string(),
             ],
         )?;
         Ok(())
@@ -1096,7 +1096,7 @@ mod tests {
             .get_uncompleted_crates(&db, &config, &agent1)
             .unwrap()
             .is_empty());
-        ex.handle_failure(&db, &agent1).unwrap();
+        ex.clear_agent_progress(&db, "agent-1").unwrap();
         assert!(Experiment::next(&db, &agent1).unwrap().is_some());
         assert_eq!(ex.status, Status::Running);
         assert!(!ex

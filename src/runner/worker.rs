@@ -55,6 +55,10 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
 
     fn run_task(&self, task: &Task) -> Result<(), (failure::Error, TestResult)> {
         info!("running task: {:?}", task);
+
+        // If we're running a task, we call ourselves healthy.
+        crate::agent::set_healthy();
+
         let res = task.run(
             self.config,
             self.workspace,

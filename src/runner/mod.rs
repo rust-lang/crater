@@ -78,6 +78,8 @@ pub fn run_ex<DB: WriteResults + Sync>(
         i += 1;
     }
 
+    crate::agent::set_healthy();
+
     info!("uninstalling toolchains...");
     // Clean out all the toolchains currently installed. This minimizes the
     // amount of disk space used by the base system, letting the task execution

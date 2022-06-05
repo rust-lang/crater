@@ -15,8 +15,9 @@ use rustwide::Workspace;
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
 use std::ops;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 // Purge all the caches if the disk is more than 50% full.
 const PURGE_CACHES_THRESHOLD: f32 = 0.5;
@@ -95,6 +96,42 @@ impl Agent {
     }
 }
 
+static HEALTH_CHECK: AtomicBool = AtomicBool::new(false);
+
+// Should be called at least once every 5 minutes, otherwise instance is
+// replaced.
+pub fn set_healthy() {
+    HEALTH_CHECK.store(true, Ordering::SeqCst);
+}
+
+fn health_thread() {
+    std::thread::spawn(move || {
+        let mut last_check = Instant::now();
+
+        let listener = std::net::TcpListener::bind("0.0.0.0:4343").unwrap();
+        loop {
+            // Accept a connection...
+            drop(listener.accept());
+
+            // Then check whether we should still be healthy. If not, we simply
+            // drop the listening socket by breaking out of the loop, meaning
+            // that we'll stop responding as healthy to future connects.
+            //
+            // A build has a maximum timeout of 15 minutes in rustwide, so we
+            // currently expect checkpoints at least that often. It likely makes
+            // sense for us to be more eager, but ultimately crater runtimes are
+            // long enough that 15 minutes on one builder hopefully won't matter
+            // too much.
+            if last_check.elapsed() > Duration::from_secs(15 * 60) {
+                last_check = Instant::now();
+                if !HEALTH_CHECK.swap(false, Ordering::SeqCst) {
+                    break;
+                }
+            }
+        }
+    });
+}
+
 fn run_heartbeat(url: &str, token: &str) {
     let api = AgentApi::new(url, token);
 
@@ -149,6 +186,7 @@ pub fn run(
     let db = results::ResultsUploader::new(&agent.api);
 
     run_heartbeat(url, token);
+    health_thread();
 
     let mut past_experiment = None;
     loop {

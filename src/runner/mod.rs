@@ -126,7 +126,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
         &workers,
     );
 
-    scope(|scope| -> Fallible<()> {
+    let r = scope(|scope| -> Fallible<()> {
         let mut threads = Vec::new();
 
         for worker in &workers {
@@ -134,11 +134,13 @@ pub fn run_ex<DB: WriteResults + Sync>(
                 scope
                     .builder()
                     .name(worker.name().into())
-                    .spawn(move || match worker.run() {
-                        Ok(()) => Ok(()),
-                        Err(r) => {
-                            log::warn!("worker {} failed: {:?}", worker.name(), r);
-                            Err(r)
+                    .spawn(move |_| -> Fallible<()> {
+                        match worker.run() {
+                            Ok(()) => Ok(()),
+                            Err(r) => {
+                                log::warn!("worker {} failed: {:?}", worker.name(), r);
+                                Err(r)
+                            }
                         }
                     })?;
             threads.push(join);
@@ -147,7 +149,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
             scope
                 .builder()
                 .name("disk-space-watcher".into())
-                .spawn(|| {
+                .spawn(|_| {
                     disk_watcher.run();
                     Ok(())
                 })?;
@@ -161,9 +163,12 @@ pub fn run_ex<DB: WriteResults + Sync>(
         } else {
             bail!("some threads returned an error");
         }
-    })?;
+    });
 
-    Ok(())
+    match r {
+        Ok(r) => r,
+        Err(panic) => std::panic::resume_unwind(panic),
+    }
 }
 
 fn join_threads<'a, I>(iter: I) -> bool

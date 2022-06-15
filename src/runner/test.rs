@@ -99,7 +99,7 @@ fn run_cargo<DB: WriteResults>(
         rustflags.push_str(tc_rustflags);
     }
 
-    let rustflags_env = if let Some(&"doc") = args.get(0) {
+    let rustflags_env = if let Some(&"doc") = args.first() {
         "RUSTDOCFLAGS"
     } else {
         "RUSTFLAGS"

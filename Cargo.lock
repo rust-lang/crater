@@ -550,7 +550,7 @@ dependencies = [
  "chrono",
  "crates-index",
  "crossbeam-channel",
- "crossbeam-utils 0.5.0",
+ "crossbeam-utils 0.8.3",
  "csv",
  "ctrlc",
  "difference",
@@ -695,12 +695,6 @@ dependencies = [
  "crossbeam-utils 0.7.2",
  "maybe-uninit",
 ]
-
-[[package]]
-name = "crossbeam-utils"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "677d453a17e8bd2b913fa38e8b9cf04bcdbb5be790aa294f2389661d72036015"
 
 [[package]]
 name = "crossbeam-utils"

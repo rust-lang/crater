@@ -278,8 +278,7 @@ mod tests {
         let (_new, ex) = Experiment::next(&db, &Assignee::Agent("agent".to_string()))
             .unwrap()
             .unwrap();
-        ex.get_uncompleted_crates(&db, &config, &Assignee::Agent("agent".to_string()))
-            .unwrap();
+        ex.get_uncompleted_crates(&db, &config).unwrap();
 
         // After an experiment is assigned to the agent, the agent is working
         let agent = agents.get("agent").unwrap().unwrap();

@@ -236,10 +236,6 @@ pub fn retry(
     let name = get_name(&data.db, issue, args.name)?;
 
     if let Some(mut experiment) = Experiment::get(&data.db, &name)? {
-        if experiment.status != Status::Failed {
-            bail!("Experiment **`{}`** didn't fail!", name);
-        }
-
         experiment.set_status(&data.db, Status::Queued)?;
         data.reports_worker.wake();
 

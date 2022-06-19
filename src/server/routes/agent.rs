@@ -149,16 +149,17 @@ fn endpoint_next_crate(
     data: Arc<Data>,
     _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    let result = if let Some(ex) = Experiment::get(&data.db, &experiment)? {
-        let mut crates = ex.get_uncompleted_crates(&data.db, Some(1))?;
-        if crates.is_empty() {
-            None
+    let result: Option<crate::crates::Crate> =
+        if let Some(ex) = Experiment::get(&data.db, &experiment)? {
+            let mut crates = ex.get_uncompleted_crates(&data.db, Some(1))?;
+            if crates.is_empty() {
+                None
+            } else {
+                Some(crates.remove(0))
+            }
         } else {
-            Some(crates.remove(0))
-        }
-    } else {
-        None
-    };
+            None
+        };
 
     Ok(ApiResponse::Success { result }.into_response()?)
 }

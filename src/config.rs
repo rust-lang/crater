@@ -43,7 +43,6 @@ fn default_false() -> bool {
 pub struct ServerConfig {
     pub bot_acl: BotACL,
     pub labels: ServerLabels,
-    pub distributed: ChunkConfig,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -76,12 +75,6 @@ pub struct SandboxConfig {
     pub memory_limit: Size,
     pub build_log_max_size: Size,
     pub build_log_max_lines: usize,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct ChunkConfig {
-    pub chunk_size: i32,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -136,10 +129,6 @@ impl Config {
 
     pub fn demo_crates(&self) -> &DemoCrates {
         &self.demo_crates
-    }
-
-    pub fn chunk_size(&self) -> i32 {
-        self.server.distributed.chunk_size
     }
 
     pub fn check(file: &Option<String>) -> Fallible<()> {
@@ -269,7 +258,6 @@ impl Default for Config {
                     experiment_queued: "".into(),
                     experiment_completed: "".into(),
                 },
-                distributed: ChunkConfig { chunk_size: 1 },
             },
         }
     }
@@ -300,8 +288,6 @@ mod tests {
             "remove = \"\"\n",
             "experiment-queued = \"\"\n",
             "experiment-completed = \"\"\n",
-            "[server.distributed]\n",
-            "chunk-size = 32\n",
             "[demo-crates]\n",
             "crates = []\n",
             "github-repos = []\n",
@@ -338,7 +324,5 @@ mod tests {
             name: "cargo".into(),
             sha: None,
         })));
-
-        assert_eq!(list.chunk_size(), 32);
     }
 }

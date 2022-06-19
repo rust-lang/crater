@@ -140,11 +140,14 @@ impl AgentApi {
     }
 
     pub fn next_crate(&self, ex: &str) -> Fallible<Option<Crate>> {
-        self.retry(|this| loop {
-            this.build_request(Method::POST, "next-crate")
+        self.retry(|this| {
+            let resp: Option<Crate> = this
+                .build_request(Method::POST, "next-crate")
                 .json(&json!(ex))
                 .send()?
-                .to_api_response()?
+                .to_api_response()?;
+
+            Ok(resp)
         })
     }
 

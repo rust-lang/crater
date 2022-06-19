@@ -1,4 +1,3 @@
-use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
@@ -19,11 +18,11 @@ pub(super) struct Worker<'a, DB: WriteResults + Sync> {
     workspace: &'a Workspace,
     build_dir: Mutex<BuildDirectory>,
     ex: &'a Experiment,
-    config: &'a Config,
-    crates: &'a Mutex<Vec<Crate>>,
+    config: &'a crate::config::Config,
     state: &'a RunnerState,
     db: &'a DB,
     target_dir_cleanup: AtomicBool,
+    next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
 }
 
 impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
@@ -31,10 +30,10 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         name: String,
         workspace: &'a Workspace,
         ex: &'a Experiment,
-        config: &'a Config,
-        crates: &'a Mutex<Vec<Crate>>,
+        config: &'a crate::config::Config,
         state: &'a RunnerState,
         db: &'a DB,
+        next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
     ) -> Self {
         Worker {
             build_dir: Mutex::new(workspace.build_dir(&name)),
@@ -42,7 +41,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             workspace,
             ex,
             config,
-            crates,
+            next_crate,
             state,
             db,
             target_dir_cleanup: AtomicBool::new(false),
@@ -92,7 +91,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
 
     pub(super) fn run(&self) -> Fallible<()> {
         loop {
-            let krate = if let Some(next) = self.crates.lock().unwrap().pop() {
+            let krate = if let Some(next) = (self.next_crate)()? {
                 next
             } else {
                 // We're done if no more crates left.

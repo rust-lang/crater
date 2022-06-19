@@ -245,7 +245,7 @@ mod tests {
         .apply(&ctx)
         .unwrap();
         let ex = Experiment::next(&db, &assignee).unwrap().unwrap().1;
-        ex.get_uncompleted_crates(&db, &config).unwrap();
+        ex.get_uncompleted_crates(&db, None).unwrap();
         METRICS.update_agent_status(&db, &agent_list_ref).unwrap();
 
         // There are no experiments in the queue but agent1 is still executing the

@@ -48,10 +48,10 @@ impl RunnerState {
 pub fn run_ex<DB: WriteResults + Sync>(
     ex: &Experiment,
     workspace: &Workspace,
-    crates: &[Crate],
     db: &DB,
     threads_count: usize,
     config: &Config,
+    next_crate: &(dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
 ) -> Fallible<()> {
     // Attempt to spin indefinitely until docker is up. Ideally, we would
     // decomission this agent until docker is up, instead of leaving the
@@ -105,7 +105,6 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     let state = RunnerState::new();
 
-    let crates = Mutex::new(crates.to_vec());
     let workers = (0..threads_count)
         .map(|i| {
             Worker::new(
@@ -113,9 +112,9 @@ pub fn run_ex<DB: WriteResults + Sync>(
                 workspace,
                 ex,
                 config,
-                &crates,
                 &state,
                 db,
+                next_crate,
             )
         })
         .collect::<Vec<_>>();

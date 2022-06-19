@@ -40,13 +40,21 @@ pub fn routes(
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_config);
 
-    let next_experiment = warp::get2()
+    let next_experiment = warp::post2()
         .and(warp::path("next-experiment"))
         .and(warp::path::end())
         .and(mutex_filter.clone())
         .and(github_data_filter)
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_experiment);
+
+    let next_crate = warp::post2()
+        .and(warp::path("next-crate"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(data_filter.clone())
+        .and(auth_filter(data.clone(), TokenType::Agent))
+        .map(endpoint_next_crate);
 
     let record_progress = warp::post2()
         .and(warp::path("record-progress"))
@@ -75,6 +83,8 @@ pub fn routes(
         .and(
             config
                 .or(next_experiment)
+                .unify()
+                .or(next_crate)
                 .unify()
                 .or(record_progress)
                 .unify()
@@ -126,10 +136,26 @@ fn endpoint_next_experiment(
             }
         }
 
-        Some((
-            ex.clone(),
-            ex.get_uncompleted_crates(&data.db, &data.config)?,
-        ))
+        Some(ex)
+    } else {
+        None
+    };
+
+    Ok(ApiResponse::Success { result }.into_response()?)
+}
+
+fn endpoint_next_crate(
+    experiment: String,
+    data: Arc<Data>,
+    _auth: AuthDetails,
+) -> Fallible<Response<Body>> {
+    let result = if let Some(ex) = Experiment::get(&data.db, &experiment)? {
+        let mut crates = ex.get_uncompleted_crates(&data.db, Some(1))?;
+        if crates.is_empty() {
+            None
+        } else {
+            Some(crates.remove(0))
+        }
     } else {
         None
     };

@@ -471,7 +471,7 @@ impl Crater {
                     let res = runner::run_ex(
                         &experiment,
                         &workspace,
-                        &experiment.get_uncompleted_crates(&db, &config, &Assignee::CLI)?,
+                        &experiment.get_uncompleted_crates(&db, &config)?,
                         &result_db,
                         threads,
                         &config,

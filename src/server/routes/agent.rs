@@ -111,7 +111,7 @@ fn endpoint_next_experiment(
 ) -> Fallible<Response<Body>> {
     //we need to make sure that Experiment::next executes uninterrupted
     let data = mutex.lock().unwrap();
-    let next = Experiment::next(&data.db, &Assignee::Agent(auth.name.clone()))?;
+    let next = Experiment::next(&data.db, &Assignee::Agent(auth.name))?;
     let result = if let Some((new, ex)) = next {
         if new {
             if let Some(github_data) = github_data.as_ref() {
@@ -126,18 +126,10 @@ fn endpoint_next_experiment(
             }
         }
 
-        let running_crates =
-            ex.get_running_crates(&data.db, &Assignee::Agent(auth.name.clone()))?;
-
-        //if the agent crashed (i.e. there are already running crates) return those crates
-        if !running_crates.is_empty() {
-            Some((ex, running_crates))
-        } else {
-            Some((
-                ex.clone(),
-                ex.get_uncompleted_crates(&data.db, &data.config, &Assignee::Agent(auth.name))?,
-            ))
-        }
+        Some((
+            ex.clone(),
+            ex.get_uncompleted_crates(&data.db, &data.config)?,
+        ))
     } else {
         None
     };
@@ -319,11 +311,10 @@ fn endpoint_error(
     );
 
     let data = mutex.lock().unwrap();
-    let mut ex = Experiment::get(&data.db, &error.experiment_name)?
+    let ex = Experiment::get(&data.db, &error.experiment_name)?
         .ok_or_else(|| err_msg("no experiment run by this agent"))?;
 
     data.metrics.record_error(&auth.name, &ex.name);
-    ex.clear_agent_progress(&data.db, &auth.name)?;
 
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }

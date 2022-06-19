@@ -20,7 +20,6 @@ string_enum!(pub enum Status {
     Queued => "queued",
     Running => "running",
     NeedsReport => "needs-report",
-    Failed => "failed",
     GeneratingReport => "generating-report",
     ReportFailed => "report-failed",
     Completed => "completed",
@@ -282,10 +281,9 @@ impl Experiment {
 
     pub fn run_by(db: &Database, assignee: &Assignee) -> Fallible<Option<Experiment>> {
         let record = db.get_row(
-            "select * from experiments where name in ( \
-                select experiment from experiment_crates \
-                    where status = ?2 and skipped = 0 and assigned_to = ?1 and \
-                    experiment in (select name from experiments where status = ?2)) \
+            "select * from experiments where name = (
+                select latest_work_for from agents where ('agent:' || agents.name) = ?1
+            ) and status = ?2 \
             limit 1",
             &[&assignee.to_string(), Status::Running.to_str()],
             |r| ExperimentDBRecord::from_row(r),
@@ -357,7 +355,7 @@ impl Experiment {
     }
 
     pub fn next(db: &Database, assignee: &Assignee) -> Fallible<Option<(bool, Experiment)>> {
-        Self::find_next(db, assignee).and_then(|ex| Self::assign_experiment(db, ex))
+        Self::find_next(db, assignee).and_then(|ex| Self::assign_experiment(db, ex, assignee))
     }
     pub fn has_next(db: &Database, assignee: &Assignee) -> Fallible<bool> {
         Ok(Self::find_next(db, assignee)?.is_some())
@@ -366,8 +364,16 @@ impl Experiment {
     fn assign_experiment(
         db: &Database,
         ex: Option<Experiment>,
+        agent: &Assignee,
     ) -> Fallible<Option<(bool, Experiment)>> {
         if let Some(mut experiment) = ex {
+            if let Assignee::Agent(name) = agent {
+                db.execute(
+                    "update agents set latest_work_for = ?2 where agents.name = ?1;",
+                    rusqlite::params![&name, &experiment.name],
+                )?;
+            }
+
             let new_ex = experiment.status != Status::Running;
             if new_ex {
                 experiment.set_status(db, Status::Running)?;
@@ -405,19 +411,12 @@ impl Experiment {
                     const AGENT_QUERY: &str = r#"
                         SELECT *
                         FROM   experiments ex
-                        WHERE  ( ex.status = "queued"
-                                OR ( status = "running"
-                                            AND ( SELECT COUNT (*)
-                                                  FROM  experiment_crates ex_crates
-                                                  WHERE ex_crates.experiment = ex.name
-                                                          AND ( status = "queued")
-                                                          AND ( skipped = 0)
-                                                  > 0 ) ) )
-                                AND ( ex.assigned_to = ?1 )
-                                AND ( ex.requirement IS NULL
-                                    OR ex.requirement IN (  SELECT capability
-                                                            FROM   agent_capabilities
-                                                            WHERE  agent_name = ?2) )
+                        WHERE (ex.status = "queued" OR status = "running")
+                               AND ( ex.assigned_to = ?1 )
+                               AND ( ex.requirement IS NULL
+                               OR ex.requirement IN (SELECT capability
+                                                     FROM   agent_capabilities
+                                                     WHERE  agent_name = ?2) )
                         ORDER  BY ex.priority DESC,
                                   ex.created_at
                         LIMIT  1;
@@ -434,15 +433,8 @@ impl Experiment {
                     const CLI_QUERY: &str = r#"
                         SELECT     *
                         FROM       experiments ex
-                        WHERE      ( ex.status = "queued"
-                                        OR ( status = "running"
-                                            AND ( SELECT COUNT (*)
-                                                  FROM  experiment_crates ex_crates
-                                                  WHERE ex_crates.experiment = ex.name
-                                                          AND ( status = "queued")
-                                                          AND ( skipped = 0)
-                                                  > 0 ) ) )
-                                   AND ( ex.assigned_to IS NULL OR ex.assigned_to = ?1 )
+                        WHERE      (ex.status = "queued" OR status = "running")
+                                   AND (ex.assigned_to IS NULL OR ex.assigned_to = ?1)
                         ORDER BY   ex.assigned_to IS NULL,
                                    ex.priority DESC,
                                    ex.created_at
@@ -456,14 +448,7 @@ impl Experiment {
             const AGENT_UNASSIGNED_QUERY: &str = r#"
                 SELECT *
                 FROM   experiments ex
-                WHERE  ( ex.status = "queued"
-                        OR ( status = "running"
-                                            AND ( SELECT COUNT (*)
-                                                  FROM  experiment_crates ex_crates
-                                                  WHERE ex_crates.experiment = ex.name
-                                                          AND ( status = "queued")
-                                                          AND ( skipped = 0)
-                                                  > 0 ) ) )
+                WHERE  (ex.status = "queued" OR status = "running")
                         AND ( ex.assigned_to IS NULL )
                         AND ( ex.requirement IS NULL
                             OR ex.requirement IN (  SELECT capability
@@ -500,26 +485,6 @@ impl Experiment {
         }
     }
 
-    pub fn clear_agent_progress(&mut self, db: &Database, agent: &str) -> Fallible<()> {
-        // Mark all the running crates from this agent as queued (so that they
-        // run again)
-        db.execute(
-            "
-            UPDATE experiment_crates
-            SET assigned_to = NULL, status = ?1 \
-            WHERE experiment = ?2 AND status = ?3 \
-            AND assigned_to = ?4
-            ",
-            &[
-                &Status::Queued.to_string(),
-                &self.name,
-                &Status::Running.to_string(),
-                &Assignee::Agent(agent.to_string()).to_string(),
-            ],
-        )?;
-        Ok(())
-    }
-
     pub fn set_status(&mut self, db: &Database, status: Status) -> Fallible<()> {
         db.execute(
             "UPDATE experiments SET status = ?1 WHERE name = ?2;",
@@ -538,28 +503,12 @@ impl Experiment {
                 self.started_at = Some(now);
             }
             // Check if the old status was "running" and there is no completed date
-            (Status::Running, new_status)
-                if self.completed_at.is_none() && new_status != Status::Failed =>
-            {
+            (Status::Running, _) if self.completed_at.is_none() => {
                 db.execute(
                     "UPDATE experiments SET completed_at = ?1 WHERE name = ?2;",
                     &[&now, &self.name.as_str()],
                 )?;
                 self.completed_at = Some(now);
-            }
-            // Queue again failed crates
-            (Status::Failed, Status::Queued) => {
-                db.execute(
-                    "UPDATE experiment_crates
-                    SET status = ?1 \
-                    WHERE experiment = ?2 AND status = ?3
-                    ",
-                    &[
-                        &Status::Queued.to_string(),
-                        &self.name,
-                        &Status::Failed.to_string(),
-                    ],
-                )?;
             }
             _ => (),
         }
@@ -655,41 +604,46 @@ impl Experiment {
         }
     }
 
-    pub fn get_uncompleted_crates(
-        &self,
-        db: &Database,
-        config: &Config,
-        assigned_to: &Assignee,
-    ) -> Fallible<Vec<Crate>> {
+    pub fn get_uncompleted_crates(&self, db: &Database, config: &Config) -> Fallible<Vec<Crate>> {
         let limit = self.crate_list_size(config);
-        let assigned_to = assigned_to.to_string();
+
+        #[cfg(not(test))]
+        const RUN_TIMEOUT: u32 = 20;
+        #[cfg(test)]
+        const RUN_TIMEOUT: u32 = 1;
 
         db.transaction(|transaction| {
             //get the first 'limit' queued crates from the experiment crates list
             let mut params: Vec<&dyn rusqlite::types::ToSql> = Vec::new();
             let crates = transaction
                 .query(
-                    "SELECT crate FROM experiment_crates WHERE experiment = ?1
-                     AND status = ?2 AND skipped = 0 LIMIT ?3;",
-                    rusqlite::params![self.name, Status::Queued.to_string(), limit],
+                    &format!(
+                        "SELECT crate FROM experiment_crates WHERE experiment = ?1
+                            AND skipped = 0
+                            AND status = 'queued'
+                            AND (started_at is null or started_at <= datetime('now', '-{} minutes'))
+                        LIMIT ?2;",
+                        RUN_TIMEOUT
+                    ),
+                    rusqlite::params![self.name, limit],
                     |r| r.get("crate"),
                 )?
                 .into_iter()
                 .collect::<Vec<String>>();
 
             crates.iter().for_each(|krate| params.push(krate));
-            let params_header: &[&dyn rusqlite::types::ToSql] = &[&assigned_to, &self.name];
+            let params_header: &[&dyn rusqlite::types::ToSql] = &[&self.name];
             //SQLite cannot handle queries with more than 999 variables
             for params in params.chunks(SQL_VARIABLE_LIMIT) {
                 let params = [params_header, params].concat();
                 let update_query = &[
                     "
                     UPDATE experiment_crates
-                    SET assigned_to = ?1, status = \"running\" \
-                    WHERE experiment = ?2
+                    SET started_at = datetime('now')
+                    WHERE experiment = ?1
                     AND crate IN ("
                         .to_string(),
-                    "?,".repeat(params.len() - 3),
+                    "?,".repeat(params.len() - 2),
                     "?)".to_string(),
                 ]
                 .join("");
@@ -702,26 +656,6 @@ impl Experiment {
                 .map(|krate| Ok(krate.parse()?))
                 .collect::<Fallible<Vec<Crate>>>()
         })
-    }
-
-    pub fn get_running_crates(
-        &self,
-        db: &Database,
-        assigned_to: &Assignee,
-    ) -> Fallible<Vec<Crate>> {
-        db.query(
-            "SELECT crate FROM experiment_crates WHERE experiment = ?1 \
-             AND status = ?2 AND assigned_to = ?3",
-            &[
-                &self.name,
-                &Status::Running.to_string(),
-                &assigned_to.to_string(),
-            ],
-            |r| r.get(0),
-        )?
-        .into_iter()
-        .map(|c: String| c.parse())
-        .collect::<Fallible<Vec<Crate>>>()
     }
 }
 
@@ -1065,16 +999,12 @@ mod tests {
         // Create a dummy experiment
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
-        let crates = ex
-            .get_uncompleted_crates(&db, &config, &Assignee::CLI)
-            .unwrap();
+        let crates = ex.get_uncompleted_crates(&db, &config).unwrap();
         // Assert the whole list is returned
         assert_eq!(crates.len(), ex.get_crates(&db).unwrap().len());
 
         // Test already completed crates does not show up again
-        let uncompleted_crates = ex
-            .get_uncompleted_crates(&db, &config, &Assignee::CLI)
-            .unwrap();
+        let uncompleted_crates = ex.get_uncompleted_crates(&db, &config).unwrap();
         assert_eq!(uncompleted_crates.len(), 0);
     }
 
@@ -1091,17 +1021,11 @@ mod tests {
 
         // Create a dummy experiment
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
-        let mut ex = Experiment::next(&db, &agent1).unwrap().unwrap().1;
-        assert!(!ex
-            .get_uncompleted_crates(&db, &config, &agent1)
-            .unwrap()
-            .is_empty());
-        ex.clear_agent_progress(&db, "agent-1").unwrap();
+        let ex = Experiment::next(&db, &agent1).unwrap().unwrap().1;
+        assert!(!ex.get_uncompleted_crates(&db, &config).unwrap().is_empty());
         assert!(Experiment::next(&db, &agent1).unwrap().is_some());
+        std::thread::sleep(std::time::Duration::from_secs(80)); // need to wait for at least 60 seconds for timeout to fire
         assert_eq!(ex.status, Status::Running);
-        assert!(!ex
-            .get_uncompleted_crates(&db, &config, &agent1)
-            .unwrap()
-            .is_empty());
+        assert!(!ex.get_uncompleted_crates(&db, &config).unwrap().is_empty());
     }
 }

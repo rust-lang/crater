@@ -371,6 +371,15 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         })),
     ));
 
+    migrations.push((
+        "create_experiment_time_column",
+        MigrationKind::SQL("alter table experiment_crates add column started_at text;"),
+    ));
+    migrations.push((
+        "create_agent_assignment",
+        MigrationKind::SQL("alter table agents add column latest_work_for text;"),
+    ));
+
     migrations
 }
 

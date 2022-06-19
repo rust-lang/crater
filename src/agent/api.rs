@@ -96,7 +96,10 @@ impl AgentApi {
                     } else if let Some(err) = err.downcast_ref::<::reqwest::Error>() {
                         err.is_timeout() || err.is_connect()
                     } else {
-                        false
+                        // We retry these errors. Ideally it's something the
+                        // server would handle, but that's (unfortunately) hard
+                        // in practice.
+                        format!("{:?}", err).contains("database is locked")
                     };
 
                     if retry {

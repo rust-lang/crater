@@ -468,13 +468,16 @@ impl Crater {
                     let workspace = self
                         .workspace(docker_env.as_ref().map(|s| s.as_str()), fast_workspace_init)?;
                     workspace.purge_all_build_dirs()?;
+
+                    let crates =
+                        std::sync::Mutex::new(experiment.get_uncompleted_crates(&db, None)?);
                     let res = runner::run_ex(
                         &experiment,
                         &workspace,
-                        &experiment.get_uncompleted_crates(&db, &config)?,
                         &result_db,
                         threads,
                         &config,
+                        &|| Ok(crates.lock().unwrap().pop()),
                     );
                     workspace.purge_all_build_dirs()?;
                     res?;

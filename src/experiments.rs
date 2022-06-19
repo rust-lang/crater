@@ -1,4 +1,3 @@
-use crate::config::Config;
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::prelude::*;
@@ -13,7 +12,6 @@ use std::str::FromStr;
 use url::Url;
 
 //sqlite limit is ignored if the expression evaluates to a negative value
-static FULL_LIST: i32 = -1;
 static SQL_VARIABLE_LIMIT: usize = 500;
 
 string_enum!(pub enum Status {
@@ -595,18 +593,12 @@ impl Experiment {
         .collect::<Fallible<Vec<Crate>>>()
     }
 
-    fn crate_list_size(&self, config: &Config) -> i32 {
-        match self.assigned_to {
-            //if experiment is distributed return chunk
-            Some(Assignee::Distributed) => config.chunk_size(),
-            //if experiment is assigned to specific agent return all the crates
-            _ => FULL_LIST,
-        }
-    }
-
-    pub fn get_uncompleted_crates(&self, db: &Database, config: &Config) -> Fallible<Vec<Crate>> {
-        let limit = self.crate_list_size(config);
-
+    pub fn get_uncompleted_crates(
+        &self,
+        db: &Database,
+        limit: Option<u32>,
+    ) -> Fallible<Vec<Crate>> {
+        let limit = limit.map(|l| l as i32).unwrap_or(-1);
         #[cfg(not(test))]
         const RUN_TIMEOUT: u32 = 20;
         #[cfg(test)]
@@ -999,12 +991,12 @@ mod tests {
         // Create a dummy experiment
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
-        let crates = ex.get_uncompleted_crates(&db, &config).unwrap();
+        let crates = ex.get_uncompleted_crates(&db, None).unwrap();
         // Assert the whole list is returned
         assert_eq!(crates.len(), ex.get_crates(&db).unwrap().len());
 
         // Test already completed crates does not show up again
-        let uncompleted_crates = ex.get_uncompleted_crates(&db, &config).unwrap();
+        let uncompleted_crates = ex.get_uncompleted_crates(&db, None).unwrap();
         assert_eq!(uncompleted_crates.len(), 0);
     }
 
@@ -1022,10 +1014,10 @@ mod tests {
         // Create a dummy experiment
         CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
         let ex = Experiment::next(&db, &agent1).unwrap().unwrap().1;
-        assert!(!ex.get_uncompleted_crates(&db, &config).unwrap().is_empty());
+        assert!(!ex.get_uncompleted_crates(&db, None).unwrap().is_empty());
         assert!(Experiment::next(&db, &agent1).unwrap().is_some());
         std::thread::sleep(std::time::Duration::from_secs(80)); // need to wait for at least 60 seconds for timeout to fire
         assert_eq!(ex.status, Status::Running);
-        assert!(!ex.get_uncompleted_crates(&db, &config).unwrap().is_empty());
+        assert!(!ex.get_uncompleted_crates(&db, None).unwrap().is_empty());
     }
 }

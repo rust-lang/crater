@@ -12,11 +12,6 @@ remove = "^S-"
 experiment-queued = "S-waiting-on-crater"
 experiment-completed = "S-waiting-on-review"
 
-[server.distributed]
-# Number of crates in each chunk when running distributed experiments
-# A negative value selects all the available crates
-chunk-size = 1024
-
 # This section contains the list of tested crates when defining an experiment
 # with `--crate-select demo`.
 

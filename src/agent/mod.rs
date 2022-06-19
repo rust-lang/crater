@@ -69,9 +69,9 @@ impl FromIterator<String> for Capabilities {
     }
 }
 
-struct Agent {
+pub struct Agent {
     api: AgentApi,
-    config: Config,
+    pub config: Config,
 }
 
 impl Agent {
@@ -90,9 +90,13 @@ impl Agent {
         })
     }
 
-    fn experiment(&self) -> Fallible<(Experiment, Vec<Crate>)> {
+    fn experiment(&self) -> Fallible<Experiment> {
         info!("asking the server for a new experiment...");
         Ok(self.api.next_experiment()?)
+    }
+
+    pub fn next_crate(&self, ex: &str) -> Fallible<Option<Crate>> {
+        self.api.next_crate(ex)
     }
 }
 
@@ -150,7 +154,7 @@ fn run_experiment(
     threads_count: usize,
     past_experiment: &mut Option<String>,
 ) -> Result<(), (Option<Experiment>, Error)> {
-    let (ex, crates) = agent.experiment().map_err(|e| (None, e))?;
+    let ex = agent.experiment().map_err(|e| (None, e))?;
 
     if Some(&ex.name) != past_experiment.as_ref() {
         debug!("purging build directories...");
@@ -170,8 +174,10 @@ fn run_experiment(
         }
     }
 
-    crate::runner::run_ex(&ex, workspace, &crates, db, threads_count, &agent.config)
-        .map_err(|err| (Some(ex), err))?;
+    crate::runner::run_ex(&ex, workspace, db, threads_count, &agent.config, &|| {
+        agent.next_crate(&ex.name)
+    })
+    .map_err(|err| (Some(ex), err))?;
     Ok(())
 }
 

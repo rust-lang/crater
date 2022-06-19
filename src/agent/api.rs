@@ -120,15 +120,15 @@ impl AgentApi {
         })
     }
 
-    pub fn next_experiment(&self) -> Fallible<(Experiment, Vec<Crate>)> {
+    pub fn next_experiment(&self) -> Fallible<Experiment> {
         self.retry(|this| loop {
             let resp: Option<_> = this
-                .build_request(Method::GET, "next-experiment")
+                .build_request(Method::POST, "next-experiment")
                 .send()?
                 .to_api_response()?;
 
-            if let Some((experiment, crates)) = resp {
-                return Ok((experiment, crates));
+            if let Some(experiment) = resp {
+                return Ok(experiment);
             }
 
             // If we're just waiting for an experiment, we should be considered
@@ -136,6 +136,15 @@ impl AgentApi {
             crate::agent::set_healthy();
 
             ::std::thread::sleep(::std::time::Duration::from_secs(120));
+        })
+    }
+
+    pub fn next_crate(&self, ex: &str) -> Fallible<Option<Crate>> {
+        self.retry(|this| loop {
+            this.build_request(Method::POST, "next-crate")
+                .json(&json!(ex))
+                .send()?
+                .to_api_response()?
         })
     }
 

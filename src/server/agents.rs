@@ -28,11 +28,6 @@ pub struct Agent {
 impl Agent {
     fn with_experiment(mut self, db: &Database) -> Fallible<Self> {
         self.experiment = Experiment::run_by(db, &Assignee::Agent(self.name.clone()))?;
-        eprintln!(
-            "{} has experiment {:?}",
-            self.name,
-            self.experiment.as_ref().map(|e| &e.name)
-        );
         Ok(self)
     }
 
@@ -287,8 +282,6 @@ mod tests {
 
         // After an experiment is assigned to the agent, the agent is working
         let agent = agents.get("agent").unwrap().unwrap();
-        dbg!(agent.status());
-        std::thread::sleep(std::time::Duration::from_secs(100000));
         assert_eq!(agent.status(), AgentStatus::Working);
     }
 

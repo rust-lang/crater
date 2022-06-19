@@ -58,7 +58,6 @@ impl Database {
     #[cfg(test)]
     pub fn temp() -> Fallible<Self> {
         let tempfile = NamedTempFile::new()?;
-        dbg!(&tempfile.path());
         Database::new(
             SqliteConnectionManager::file(tempfile.path()),
             Some(tempfile),

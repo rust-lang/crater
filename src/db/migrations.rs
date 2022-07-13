@@ -5,6 +5,7 @@ use std::collections::HashSet;
 
 enum MigrationKind {
     SQL(&'static str),
+    #[allow(clippy::type_complexity)]
     Code(Box<dyn Fn(&Transaction) -> ::rusqlite::Result<()>>),
 }
 

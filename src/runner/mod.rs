@@ -16,8 +16,8 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::Duration;
 
-const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(300);
-const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.85;
+const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(30);
+const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.80;
 
 #[derive(Debug, Fail)]
 #[fail(display = "overridden task result to {}", _0)]

@@ -99,11 +99,11 @@ fn run_cargo<DB: WriteResults>(
         rustflags.push_str(tc_rustflags);
     }
 
-    let rustflags_env = if let Some(&"doc") = args.first() {
-        "RUSTDOCFLAGS"
-    } else {
-        "RUSTFLAGS"
-    };
+    let mut rustdocflags = format!("--cap-lints={}", ctx.experiment.cap_lints.to_str());
+    if let Some(ref tc_rustdocflags) = ctx.toolchain.rustdocflags {
+        rustdocflags.push(' ');
+        rustdocflags.push_str(tc_rustdocflags);
+    }
 
     let mut did_ice = false;
     let mut did_network = false;
@@ -170,7 +170,8 @@ fn run_cargo<DB: WriteResults>(
         .args(&args)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
-        .env(rustflags_env, rustflags);
+        .env("RUSTFLAGS", rustflags)
+        .env("RUSTDOCFLAGS", rustdocflags);
     for (var, data) in env {
         command = command.env(var, data);
     }

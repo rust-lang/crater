@@ -184,7 +184,40 @@ impl Task {
                         .insert(self.krate.clone(), storage.clone());
                     logging::capture(&storage, || {
                         let rustwide_crate = self.krate.to_rustwide();
-                        detect_broken(rustwide_crate.fetch(workspace))?;
+                        for attempt in 1..=15 {
+                            match detect_broken(rustwide_crate.fetch(workspace)) {
+                                Ok(()) => {}
+                                Err(e) => {
+                                    if storage.to_string().contains("No space left on device") {
+                                        if attempt == 15 {
+                                            // If we've failed 15 times, then
+                                            // just give up. It's been at least
+                                            // 45 seconds, which is enough that
+                                            // our disk space check should
+                                            // have run at least once in this
+                                            // time. If that's not helped, then
+                                            // maybe this git repository *is*
+                                            // actually too big.
+                                            //
+                                            // Ideally we'd have some kind of
+                                            // per-worker counter and if we hit
+                                            // this too often we'd replace the
+                                            // machine, but it's not very clear
+                                            // what "too often" means here.
+                                            return Err(e);
+                                        } else {
+                                            log::warn!(
+                                                "Retrying crate fetch in 3 seconds (attempt {})",
+                                                attempt
+                                            );
+                                            std::thread::sleep(std::time::Duration::from_secs(3));
+                                        }
+                                    } else {
+                                        return Err(e);
+                                    }
+                                }
+                            }
+                        }
 
                         if let Crate::GitHub(repo) = &self.krate {
                             if let Some(sha) = rustwide_crate.git_commit(workspace) {

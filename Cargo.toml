@@ -65,6 +65,7 @@ indexmap = "1.4.0"
 tokio = "1.18"
 aws-types = { version = "0.46", features = ["hardcoded-credentials"] }
 aws-smithy-http = "0.46"
+aws-smithy-async = "0.46"
 aws-sdk-s3 = "0.16"
 
 [dev-dependencies]

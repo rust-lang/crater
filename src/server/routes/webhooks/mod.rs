@@ -185,9 +185,9 @@ fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
     }
 
     // Verify the HMAC signature
-    let mut mac = HmacSha1::new_varkey(secret.as_bytes()).unwrap();
-    mac.input(payload);
-    mac.verify(&signature).is_ok()
+    let mut mac = HmacSha1::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(payload);
+    mac.verify_slice(&signature).is_ok()
 }
 
 fn receive_endpoint(

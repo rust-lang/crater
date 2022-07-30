@@ -122,8 +122,8 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
                 } else {
                     std::thread::sleep(std::time::Duration::from_secs(2));
                     warn!(
-                        "retry ({}/{}) writing logs-archives/all.tar.gz ({} bytes)",
-                        i, RETRIES, len,
+                        "retry ({}/{}) writing logs-archives/all.tar.gz ({} bytes) (error: {:?})",
+                        i, RETRIES, len, e,
                     );
                     continue;
                 }

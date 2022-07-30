@@ -15,8 +15,12 @@ impl List for RegistryList {
         let mut counts = HashMap::new();
 
         fs::create_dir_all(&*WORK_DIR)?;
-        let index = Index::new(WORK_DIR.join("crates.io-index"));
-        index.retrieve_or_update().to_failure()?;
+        let mut index = Index::with_path(
+            WORK_DIR.join("crates.io-index"),
+            "https://github.com/rust-lang/crates.io-index",
+        )
+        .to_failure()?;
+        index.update().to_failure()?;
 
         for krate in index.crates() {
             // The versions() method returns the list of published versions starting from the

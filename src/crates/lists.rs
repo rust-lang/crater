@@ -5,7 +5,7 @@ use crate::db::{Database, QueryUtils};
 use crate::experiments::CrateSelect;
 use crate::prelude::*;
 use chrono::Utc;
-use rand::{thread_rng, Rng};
+use rand::{seq::SliceRandom, thread_rng};
 use std::collections::HashSet;
 
 pub(crate) use crate::crates::sources::{
@@ -141,7 +141,7 @@ pub(crate) fn get_crates(
             crates.append(&mut GitHubList::get(db)?);
 
             let mut rng = thread_rng();
-            rng.shuffle(&mut crates);
+            crates.shuffle(&mut rng);
             crates.truncate(*n as usize);
         }
         CrateSelect::Top(n) => {

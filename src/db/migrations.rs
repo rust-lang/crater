@@ -1,5 +1,8 @@
 use crate::prelude::*;
-use rand::{self, distributions::Alphanumeric, Rng};
+use rand::{
+    self,
+    distributions::{Alphanumeric, DistString},
+};
 use rusqlite::{Connection, Transaction};
 use std::collections::HashSet;
 
@@ -137,10 +140,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
 
             let fn_name = format!(
                 "crater_migration__{}",
-                rand::thread_rng()
-                    .sample_iter(&Alphanumeric)
-                    .take(10)
-                    .collect::<String>()
+                Alphanumeric.sample_string(&mut rand::thread_rng(), 10)
             );
             t.create_scalar_function(
                 &fn_name,
@@ -332,10 +332,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
 
             let fn_name = format!(
                 "crater_migration__{}",
-                rand::thread_rng()
-                    .sample_iter(&Alphanumeric)
-                    .take(10)
-                    .collect::<String>()
+                Alphanumeric.sample_string(&mut rand::thread_rng(), 10)
             );
             t.create_scalar_function(
                 &fn_name,

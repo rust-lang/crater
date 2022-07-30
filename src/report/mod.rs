@@ -217,7 +217,11 @@ pub fn generate_report<DB: ReadResults>(
     crates: &[Crate],
 ) -> Fallible<RawTestResults> {
     let mut crates = crates.to_vec();
-    let index = Index::new(WORK_DIR.join("crates.io-index"));
+    let index = Index::with_path(
+        WORK_DIR.join("crates.io-index"),
+        "https://github.com/rust-lang/crates.io-index",
+    )
+    .to_failure()?;
     //crate ids are unique so unstable sort is equivalent to stable sort but is generally faster
     crates.sort_unstable_by_key(|a| a.id());
     let res = crates
@@ -694,8 +698,12 @@ mod tests {
         };
         let gh = Crate::GitHub(repo);
 
-        let index = Index::new(WORK_DIR.join("crates.io-index"));
-        index.retrieve_or_update().unwrap();
+        let mut index = Index::with_path(
+            WORK_DIR.join("crates.io-index"),
+            "https://github.com/rust-lang/crates.io-index",
+        )
+        .unwrap();
+        index.update().unwrap();
 
         assert_eq!(
             get_crate_version_status(&index, &reg).unwrap().unwrap(),

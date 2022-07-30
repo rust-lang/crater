@@ -46,7 +46,11 @@ impl FromStr for S3Prefix {
 
         Ok(S3Prefix {
             bucket,
-            prefix: parsed.path()[1..].into(),
+            prefix: parsed
+                .path()
+                .get(1..)
+                .map(PathBuf::from)
+                .unwrap_or_default(),
         })
     }
 }

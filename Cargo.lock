@@ -572,6 +572,7 @@ dependencies = [
  "aws-types",
  "base64 0.13.0",
  "bytes 0.4.12",
+ "bytes 1.2.1",
  "cargo_metadata",
  "chrono",
  "crates-index",

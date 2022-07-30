@@ -81,28 +81,105 @@ impl ReportWriter for S3Writer {
         mime: &Mime,
         encoding_type: EncodingType,
     ) -> Fallible<()> {
-        let mut request = self
-            .client
-            .put_object()
-            .body(aws_smithy_http::byte_stream::ByteStream::from(s))
-            .acl(aws_sdk_s3::model::ObjectCannedAcl::PublicRead)
-            .key(format!(
-                "{}/{}",
-                self.prefix,
-                path.as_ref().to_str().unwrap()
-            ))
-            .content_type(mime.to_string())
-            .bucket(self.bucket.clone());
-        match encoding_type {
-            EncodingType::Plain => {}
-            EncodingType::Gzip => {
-                request = request.content_encoding("gzip");
+        // At least 50 MB, then use a multipart upload...
+        if s.len() >= 50 * 1024 * 1024 {
+            let mut request = self
+                .client
+                .create_multipart_upload()
+                .acl(aws_sdk_s3::model::ObjectCannedAcl::PublicRead)
+                .key(format!(
+                    "{}/{}",
+                    self.prefix,
+                    path.as_ref().to_str().unwrap()
+                ))
+                .content_type(mime.to_string())
+                .bucket(self.bucket.clone());
+            match encoding_type {
+                EncodingType::Plain => {}
+                EncodingType::Gzip => {
+                    request = request.content_encoding("gzip");
+                }
             }
-        }
-        match self.runtime.block_on(request.send()) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+            let upload = match self.runtime.block_on(request.send()) {
+                Ok(u) => u,
+                Err(e) => {
+                    failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+                }
+            };
+
+            let chunk_size = 20 * 1024 * 1024;
+            let bytes = bytes_1::Bytes::from(s);
+            let mut part = 1;
+            let mut start = 0;
+            let mut parts = aws_sdk_s3::model::CompletedMultipartUpload::builder();
+            while start < bytes.len() {
+                let chunk = bytes.slice(start..std::cmp::min(start + chunk_size, bytes.len()));
+
+                let request = self
+                    .client
+                    .upload_part()
+                    .part_number(part)
+                    .body(chunk.into())
+                    .upload_id(upload.upload_id().unwrap())
+                    .key(upload.key().unwrap())
+                    .bucket(self.bucket.clone());
+                match self.runtime.block_on(request.send()) {
+                    Ok(p) => {
+                        parts = parts.parts(
+                            aws_sdk_s3::model::CompletedPart::builder()
+                                .e_tag(p.e_tag.clone().unwrap())
+                                .part_number(part)
+                                .build(),
+                        )
+                    }
+                    Err(e) => {
+                        failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+                    }
+                };
+
+                start += chunk_size;
+                part += 1;
+            }
+
+            let request = self
+                .client
+                .complete_multipart_upload()
+                .multipart_upload(parts.build())
+                .upload_id(upload.upload_id().unwrap())
+                .key(upload.key().unwrap())
+                .bucket(self.bucket.clone());
+            match self.runtime.block_on(request.send()) {
+                Ok(_) => (),
+                Err(e) => {
+                    failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+                }
+            };
+
+            Ok(())
+        } else {
+            let mut request = self
+                .client
+                .put_object()
+                .body(aws_smithy_http::byte_stream::ByteStream::from(s))
+                .acl(aws_sdk_s3::model::ObjectCannedAcl::PublicRead)
+                .key(format!(
+                    "{}/{}",
+                    self.prefix,
+                    path.as_ref().to_str().unwrap()
+                ))
+                .content_type(mime.to_string())
+                .bucket(self.bucket.clone());
+            match encoding_type {
+                EncodingType::Plain => {}
+                EncodingType::Gzip => {
+                    request = request.content_encoding("gzip");
+                }
+            }
+            match self.runtime.block_on(request.send()) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+                }
             }
         }
     }

@@ -15,6 +15,7 @@ opt-level = 0
 [dependencies]
 base64 = "0.13.0"
 bytes = "0.4.9"
+bytes_1 = { version = "1", package = "bytes" }
 chrono = { version = "0.4", features = ["serde"] }
 crates-index = "0.18"
 crossbeam-utils = "0.8"

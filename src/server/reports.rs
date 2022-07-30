@@ -28,6 +28,11 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
         }
     }
     config.set_credentials_provider(Some(data.tokens.reports_bucket.to_aws_credentials()));
+    // https://github.com/awslabs/aws-sdk-rust/issues/586 -- without this, the
+    // SDK will just completely not retry requests.
+    config.set_sleep_impl(Some(Arc::new(
+        aws_smithy_async::rt::sleep::TokioSleep::new(),
+    )));
     let config = config.build();
     let client = aws_sdk_s3::Client::new(&config);
     let writer = report::S3Writer::create(

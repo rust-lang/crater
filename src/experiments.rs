@@ -463,7 +463,18 @@ impl Experiment {
         if let Some(record) = db.get_row(query, rusqlite::params_from_iter(params.iter()), |r| {
             ExperimentDBRecord::from_row(r)
         })? {
-            Ok(Some(record.into_experiment()?))
+            let ex = record.into_experiment()?;
+            let (completed, all) = ex.raw_progress(db)?;
+            // FIXME: in this case, ideally we'd start running the next
+            // experiment. In practice, this only happens with artifically short
+            // experiments (i.e., those that take less time to run than we take
+            // to generate a report), which is pretty rare. So this fix is
+            // enough to make sure we're not constantly feeding a finished
+            // experiment to our agents.
+            if completed >= all {
+                return Ok(None);
+            }
+            Ok(Some(ex))
         } else {
             Ok(None)
         }

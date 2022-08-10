@@ -186,7 +186,7 @@ impl Task {
                         let rustwide_crate = self.krate.to_rustwide();
                         for attempt in 1..=15 {
                             match detect_broken(rustwide_crate.fetch(workspace)) {
-                                Ok(()) => {}
+                                Ok(()) => break,
                                 Err(e) => {
                                     if storage.to_string().contains("No space left on device") {
                                         if attempt == 15 {

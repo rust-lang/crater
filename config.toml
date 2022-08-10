@@ -49,6 +49,7 @@ actix = { skip-tests = true } # flaky test
 ai = { skip-tests = true } # may fail due to randomness
 alumina = { skip = true } # flaky build
 atlas-coverage-core = { skip-tests = true } # flaky tests
+bitrust = { skip = true } # buggy build script
 caesarlib = { skip-tests = true } # flaky test
 cc = { skip-tests = true } # flaky test
 chef_api = { skip-tests = true } # flaky tests
@@ -73,6 +74,7 @@ idx = { skip-tests = true } # depends on filesystem
 image-stream = { skip-tests = true } # depends on network
 ipc-channel = { slow = true } # tests slow to run
 jemalloc-ctl = { skip-tests = true } # flaky tests
+ledger-transport-zemu = { skip = true } # buggy build script
 libfuzzy-sys = { skip = true } # flaky build
 loadconf = { skip-tests = true } # flaky test
 loaded_dice = { skip-tests = true } # may fail due to randomness

@@ -195,12 +195,6 @@ impl RecordProgressThread {
                 let start = std::time::Instant::now();
 
                 if let Some(ex) = Experiment::get(&db, &result.experiment_name).unwrap() {
-                    metrics.record_completed_jobs(
-                        &worker_name,
-                        &ex.name,
-                        result.data.results.len() as i64,
-                    );
-
                     let db = DatabaseDB::new(&db);
                     if let Err(e) = db.store(&ex, &result.data, EncodingType::Plain) {
                         // Failing to record a result is basically fine -- this
@@ -208,6 +202,12 @@ impl RecordProgressThread {
                         log::error!("Failed to store result into database: {:?}", e);
                         crate::utils::report_failure(&e);
                     }
+
+                    metrics.record_completed_jobs(
+                        &worker_name,
+                        &ex.name,
+                        result.data.results.len() as i64,
+                    );
 
                     if let Err(e) = db.clear_stale_records() {
                         // Not a hard failure. We can continue even if we failed

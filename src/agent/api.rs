@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::agent::Capabilities;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
@@ -62,8 +64,6 @@ impl ResponseExt for ::reqwest::blocking::Response {
     }
 }
 
-const RETRY_AFTER: u64 = 5;
-
 pub struct AgentApi {
     url: String,
     token: String,
@@ -88,6 +88,7 @@ impl AgentApi {
     }
 
     fn retry<T, F: Fn(&Self) -> Fallible<T>>(&self, f: F) -> Fallible<T> {
+        let mut retry_interval = 16u64;
         loop {
             match f(self) {
                 Ok(res) => return Ok(res),
@@ -104,10 +105,19 @@ impl AgentApi {
                     };
 
                     if retry {
-                        warn!("connection to the server failed. retrying in a few seconds...");
-                        ::std::thread::sleep(::std::time::Duration::from_millis(
-                            rand::thread_rng().gen_range(0..(RETRY_AFTER * 1000)),
-                        ));
+                        let sleep_for = Duration::from_millis(
+                            rand::thread_rng().gen_range(500..(retry_interval * 1000)),
+                        );
+                        warn!(
+                            "connection to the server failed. retrying in {:?}...",
+                            sleep_for
+                        );
+                        ::std::thread::sleep(sleep_for);
+                        retry_interval *= 2;
+                        if retry_interval >= 8 * 60 {
+                            retry_interval = 8 * 60;
+                        }
+
                         continue;
                     }
 
@@ -141,7 +151,7 @@ impl AgentApi {
             // healthy.
             crate::agent::set_healthy();
 
-            ::std::thread::sleep(::std::time::Duration::from_secs(120));
+            ::std::thread::sleep(Duration::from_secs(120));
         })
     }
 

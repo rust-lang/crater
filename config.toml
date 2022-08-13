@@ -51,6 +51,7 @@ alumina = { skip = true } # flaky build
 atlas-coverage-core = { skip-tests = true } # flaky tests
 bitrust = { skip = true } # buggy build script
 caesarlib = { skip-tests = true } # flaky test
+catboost2-sys = { skip = true } # requires rustfmt
 cc = { skip-tests = true } # flaky test
 chef_api = { skip-tests = true } # flaky tests
 ci_info = { skip-tests = true } # flaky tests

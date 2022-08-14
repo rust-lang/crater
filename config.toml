@@ -126,6 +126,10 @@ test-patience = { skip-tests = true } # flaky test (timing)
 timekeeper = { skip-tests = true } # flaky test (timing)
 tokio-proto = { skip-tests = true } # flaky test (concurrency)
 toql_derive = { skip-tests = true } # flaky test ("Sometimes failes becuse join order different")
+niftygate-asset = { skip = true } # cfg for stable/nightly, but not beta
+futuredsp = { skip = true } # cfg for stable/nightly, but not beta
+buildstructor = { skip-tests = true } # compiler error checks in tests
+crokey = { skip-tests = true } # compiler error checks in tests
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
@@ -143,5 +147,20 @@ toql_derive = { skip-tests = true } # flaky test ("Sometimes failes becuse join 
 "kellymclaughlin/rust-quickcheck-example" = { skip-tests = true } # flaky tests
 "otaviopace/minigrep" = { skip-tests = true } # flaky tests
 "wischli/rpaillier" = { skip-tests = true } # flaky tests
+"AntonChernev/suffix-tree-search" = { skip-tests = true } # flaky tests
+"0xpr03/yayd" = { skip-tests = true } # network in tests
+"APTy/icmp" = { skip-tests = true } # network in tests
+"GothAck/rs-async-debug" = { skip-tests = true } # compiler error checks in tests
+"hank-der-hafenarbeiter/imperative-rs" = { skip-tests = true } # compiler error checks in tests
+"Sanchos01/weather" = { skip-tests = true } # network in tests
+"appaquet/extsort-rs" = { skip-tests = true } # flaky tests
+"ardeaf/redelete" = { skip-tests = true } # network in tests
+"baoziv587/LoxLang" = { skip-tests = true } # flaky tests
+"ciusji/eureka" = { skip-tests = true } # flaky tests
+"cpard/cuckoo" = { skip-tests = true } # flaky tests (random)
+"fedormatantsev/rust-components-prototype" = { skip-tests = true } # flaky tests
+"naomijub/genetic-labyrinth" = { skip-tests = true } # flaky tests
+"sachaarbonel/trie.rs" = { skip-tests = true } # flaky tests
+"vspecky/neat-rs" = { skip-tests = true } # flaky tests
 
 [local-crates]

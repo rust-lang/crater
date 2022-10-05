@@ -153,6 +153,8 @@ following flags:
   by the experiment mode, e.g. `+cargoflags=-Zavoid-dev-deps`
 * `+patch={crate_name}={git_repo_url}={branch}`: patches all crates built by
   this toolchain to resolve the given crate from the given git repository and branch.
+* `+target={target_name}`: installs the specified target and passes `--target {target-name}`
+  to Cargo when building, e.g. `+target=i686-unknown-linux-musl`.
 
 ## Commands reference
 

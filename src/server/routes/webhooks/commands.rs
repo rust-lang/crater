@@ -71,6 +71,7 @@ pub fn run(
         {
             detected_start = Some(Toolchain {
                 source: RustwideToolchain::ci(&build.base_sha, false),
+                target: None,
                 rustflags: None,
                 rustdocflags: None,
                 cargoflags: None,
@@ -79,6 +80,7 @@ pub fn run(
             });
             detected_end = Some(Toolchain {
                 source: RustwideToolchain::ci(&build.merge_sha, false),
+                target: None,
                 rustflags: None,
                 rustdocflags: None,
                 cargoflags: None,

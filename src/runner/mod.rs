@@ -99,6 +99,9 @@ pub fn run_ex<DB: WriteResults + Sync>(
         if ex.mode == Mode::Clippy {
             tc.add_component(workspace, "clippy")?;
         }
+        if let Some(requested_target) = &tc.target {
+            tc.add_target(workspace, requested_target)?;
+        }
     }
 
     info!("running tasks in {} threads...", threads_count);

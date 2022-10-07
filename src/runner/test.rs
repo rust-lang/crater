@@ -89,6 +89,9 @@ fn run_cargo<DB: WriteResults>(
     let local_packages_id: HashSet<_> = local_packages.iter().map(|p| &p.id).collect();
 
     let mut args = args.to_vec();
+    if let Some(ref target) = ctx.toolchain.target {
+        args.extend(["--target", target]);
+    }
     if let Some(ref tc_cargoflags) = ctx.toolchain.cargoflags {
         args.extend(tc_cargoflags.split(' '));
     }

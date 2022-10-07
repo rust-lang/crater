@@ -50,7 +50,7 @@ fn main() {
             "command failed"
         }
     );
-    process::exit(if success { 0 } else { 1 });
+    process::exit(i32::from(!success));
 }
 
 fn main_() -> Fallible<()> {

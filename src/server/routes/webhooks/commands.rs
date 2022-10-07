@@ -71,6 +71,7 @@ pub fn run(
         {
             detected_start = Some(Toolchain {
                 source: RustwideToolchain::ci(&build.base_sha, false),
+                target: None,
                 rustflags: None,
                 rustdocflags: None,
                 cargoflags: None,
@@ -79,6 +80,7 @@ pub fn run(
             });
             detected_end = Some(Toolchain {
                 source: RustwideToolchain::ci(&build.merge_sha, false),
+                target: None,
                 rustflags: None,
                 rustdocflags: None,
                 cargoflags: None,
@@ -309,7 +311,7 @@ fn store_experiment_name(db: &Database, issue: &Issue, name: &str) -> Fallible<(
 fn default_experiment_name(db: &Database, issue: &Issue) -> Fallible<Option<String>> {
     let name = db.get_row(
         "SELECT experiment FROM saved_names WHERE issue = ?1",
-        &[&issue.number],
+        [&issue.number],
         |r| r.get(0),
     )?;
 

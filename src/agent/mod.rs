@@ -51,7 +51,7 @@ impl Capabilities {
     pub fn for_agent(db: &Database, agent: &str) -> Fallible<Self> {
         let caps = db.query(
             "SELECT capability FROM agent_capabilities WHERE agent_name = ?1",
-            &[&agent],
+            [&agent],
             |r| r.get::<_, String>(0),
         )?;
 
@@ -153,7 +153,7 @@ fn run_experiment(
     db: &ResultsUploader,
     threads_count: usize,
     past_experiment: &mut Option<String>,
-) -> Result<(), (Option<Experiment>, Error)> {
+) -> Result<(), (Option<Box<Experiment>>, Error)> {
     let ex = agent.experiment().map_err(|e| (None, e))?;
 
     if Some(&ex.name) != past_experiment.as_ref() {
@@ -177,7 +177,7 @@ fn run_experiment(
     crate::runner::run_ex(&ex, workspace, db, threads_count, &agent.config, &|| {
         agent.next_crate(&ex.name)
     })
-    .map_err(|err| (Some(ex), err))?;
+    .map_err(|err| (Some(Box::new(ex)), err))?;
     Ok(())
 }
 

@@ -9,6 +9,7 @@ lazy_static! {
     /// This toolchain is used during internal tests, and must be different than TEST_TOOLCHAIN
     pub(crate) static ref MAIN_TOOLCHAIN: Toolchain = Toolchain {
         source: RustwideToolchain::dist("stable"),
+        target: None,
         rustflags: None,
         rustdocflags: None,
         cargoflags: None,
@@ -19,6 +20,7 @@ lazy_static! {
     /// This toolchain is used during internal tests, and must be different than MAIN_TOOLCHAIN
     pub(crate) static ref TEST_TOOLCHAIN: Toolchain = Toolchain {
         source: RustwideToolchain::dist("beta"),
+        target: None,
         rustflags: None,
         rustdocflags: None,
         cargoflags: None,
@@ -30,6 +32,7 @@ lazy_static! {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Toolchain {
     pub source: RustwideToolchain,
+    pub target: Option<String>,
     pub rustflags: Option<String>,
     pub rustdocflags: Option<String>,
     pub cargoflags: Option<String>,
@@ -65,6 +68,10 @@ impl fmt::Display for Toolchain {
             }
         } else {
             panic!("unsupported rustwide toolchain");
+        }
+
+        if let Some(ref target) = self.target {
+            write!(f, "+target={}", target)?;
         }
 
         if let Some(ref flag) = self.rustflags {
@@ -131,6 +138,7 @@ impl FromStr for Toolchain {
         let mut rustdocflags = None;
         let mut cargoflags = None;
         let mut patches: Vec<CratePatch> = vec![];
+        let mut target = None;
         for part in parts {
             if let Some(equal_idx) = part.find('=') {
                 let (flag, value_with_equal) = part.split_at(equal_idx);
@@ -145,6 +153,7 @@ impl FromStr for Toolchain {
                     "rustdocflags" => rustdocflags = Some(value),
                     "cargoflags" => cargoflags = Some(value),
                     "patch" => patches.push(value.parse()?),
+                    "target" => target = Some(value),
                     unknown => return Err(ToolchainParseError::InvalidFlag(unknown.to_string())),
                 }
             } else {
@@ -154,6 +163,7 @@ impl FromStr for Toolchain {
 
         Ok(Toolchain {
             source,
+            target,
             rustflags,
             rustdocflags,
             cargoflags,
@@ -208,6 +218,18 @@ mod tests {
                     // Test parsing without flags
                     test_from_str!($str => Toolchain {
                         source: $source,
+                        target: None,
+                        rustflags: None,
+                        rustdocflags: None,
+                        cargoflags: None,
+                        ci_try: $ci_try,
+                        patches: Vec::new(),
+                    });
+
+                    // Test parsing with target
+                    test_from_str!(concat!($str, "+target=x86_64-unknown-linux-gnu") => Toolchain {
+                        source: $source,
+                        target: Some("x86_64-unknown-linux-gnu".to_string()),
                         rustflags: None,
                         rustdocflags: None,
                         cargoflags: None,
@@ -218,6 +240,7 @@ mod tests {
                     // Test parsing with rustflags
                     test_from_str!(concat!($str, "+rustflags=foo bar") => Toolchain {
                         source: $source,
+                        target: None,
                         rustflags: Some("foo bar".to_string()),
                         rustdocflags: None,
                         cargoflags: None,
@@ -228,6 +251,7 @@ mod tests {
                     // Test parsing with rustdocflags
                     test_from_str!(concat!($str, "+rustdocflags=-Zunstable-options -wjson") => Toolchain {
                         source: $source,
+                        target: None,
                         rustflags: None,
                         rustdocflags: Some("-Zunstable-options -wjson".to_string()),
                         cargoflags: None,
@@ -238,6 +262,7 @@ mod tests {
                     // Test parsing with cargoflags
                     test_from_str!(concat!($str, "+cargoflags=foo bar") => Toolchain {
                         source: $source,
+                        target: None,
                         rustflags: None,
                         rustdocflags: None,
                         cargoflags: Some("foo bar".to_string()),
@@ -248,6 +273,7 @@ mod tests {
                     // Test parsing with patches
                     test_from_str!(concat!($str, "+patch=example=https://git.example.com/some/repo=master") => Toolchain {
                         source: $source,
+                        target: None,
                         rustflags: None,
                         rustdocflags: None,
                         cargoflags: None,
@@ -262,6 +288,7 @@ mod tests {
                     // Test parsing with patches & rustflags
                     test_from_str!(concat!($str, "+rustflags=foo bar+patch=example=https://git.example.com/some/repo=master") => Toolchain {
                         source: $source,
+                        target: None,
                         rustflags: Some("foo bar".to_string()),
                         rustdocflags: None,
                         cargoflags: None,
@@ -319,6 +346,7 @@ mod tests {
         assert!(Toolchain::from_str("stable+rustdocflags").is_err());
         assert!(Toolchain::from_str("stable+rustdocflags=").is_err());
         assert!(Toolchain::from_str("stable+donotusethisflag=ever").is_err());
-        assert!(Toolchain::from_str("stable+patch=").is_err())
+        assert!(Toolchain::from_str("stable+patch=").is_err());
+        assert!(Toolchain::from_str("try#1234+target=").is_err());
     }
 }

@@ -150,7 +150,7 @@ impl<'a> ReadResults for DatabaseDB<'a> {
             "SELECT log, encoding FROM results \
              WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
              LIMIT 1;",
-            &[&ex.name, &toolchain.to_string(), &krate.id()],
+            [&ex.name, &toolchain.to_string(), &krate.id()],
             |row| {
                 let log: Vec<u8> = row.get("log")?;
                 let encoding: String = row.get("encoding")?;
@@ -176,7 +176,7 @@ impl<'a> ReadResults for DatabaseDB<'a> {
                 "SELECT result FROM results \
                  WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
                  LIMIT 1;",
-                &[&ex.name, &toolchain.to_string(), &krate.id()],
+                [&ex.name, &toolchain.to_string(), &krate.id()],
                 |row| row.get("result"),
             )?
             .pop();

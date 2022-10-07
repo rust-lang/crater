@@ -48,7 +48,7 @@ pub(crate) trait List {
     fn get(db: &Database) -> Fallible<Vec<Crate>> {
         let crates_results = db.query(
             "SELECT crate FROM crates WHERE list = ?1 ORDER BY rowid;",
-            &[&Self::NAME],
+            [&Self::NAME],
             |r| r.get::<_, String>(0),
         )?;
 

@@ -268,7 +268,7 @@ impl Experiment {
     pub fn unfinished(db: &Database) -> Fallible<Vec<Experiment>> {
         let records = db.query(
             "SELECT * FROM experiments WHERE status != ?1 ORDER BY priority DESC, created_at;",
-            &[&Status::Completed.to_str()],
+            [&Status::Completed.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
         records
@@ -283,7 +283,7 @@ impl Experiment {
                 select latest_work_for from agents where ('agent:' || agents.name) = ?1
             ) and status = ?2 \
             limit 1",
-            &[&assignee.to_string(), Status::Running.to_str()],
+            [&assignee.to_string(), Status::Running.to_str()],
             |r| ExperimentDBRecord::from_row(r),
         )?;
 
@@ -483,7 +483,7 @@ impl Experiment {
     pub fn get(db: &Database, name: &str) -> Fallible<Option<Experiment>> {
         let record = db.get_row(
             "SELECT * FROM experiments WHERE name = ?1;",
-            &[&name],
+            [&name],
             |r| ExperimentDBRecord::from_row(r),
         )?;
 
@@ -552,7 +552,7 @@ impl Experiment {
         let results_len: u32 = db
             .get_row(
                 "SELECT COUNT(*) AS count FROM results WHERE experiment = ?1;",
-                &[&self.name.as_str()],
+                [&self.name.as_str()],
                 |r| r.get("count"),
             )?
             .unwrap();
@@ -561,7 +561,7 @@ impl Experiment {
             .get_row(
                 "SELECT COUNT(*) AS count FROM experiment_crates \
                  WHERE experiment = ?1 AND skipped = 0;",
-                &[&self.name.as_str()],
+                [&self.name.as_str()],
                 |r| r.get("count"),
             )?
             .unwrap();
@@ -573,7 +573,7 @@ impl Experiment {
         let results: Vec<(String, u32)> = db.query(
             "SELECT result, COUNT(*) FROM results \
              WHERE experiment = ?1 GROUP BY result;",
-            &[&self.name.as_str()],
+            [&self.name.as_str()],
             |r| Ok((r.get::<_, String>(0)?, r.get(1)?)),
         )?;
 
@@ -596,7 +596,7 @@ impl Experiment {
     pub fn get_crates(&self, db: &Database) -> Fallible<Vec<Crate>> {
         db.query(
             "SELECT crate FROM experiment_crates WHERE experiment = ?1;",
-            &[&self.name],
+            [&self.name],
             |r| r.get(0),
         )?
         .into_iter()

@@ -408,7 +408,7 @@ pub fn execute(db: &mut Connection) -> Fallible<()> {
             }
             .with_context(|_| format!("error running migration: {}", name))?;
 
-            t.execute("INSERT INTO migrations (name) VALUES (?1)", &[&name])?;
+            t.execute("INSERT INTO migrations (name) VALUES (?1)", [&name])?;
             t.commit()?;
 
             info!("executed migration: {}", name);

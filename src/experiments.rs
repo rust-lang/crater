@@ -481,11 +481,9 @@ impl Experiment {
     }
 
     pub fn get(db: &Database, name: &str) -> Fallible<Option<Experiment>> {
-        let record = db.get_row(
-            "SELECT * FROM experiments WHERE name = ?1;",
-            [&name],
-            |r| ExperimentDBRecord::from_row(r),
-        )?;
+        let record = db.get_row("SELECT * FROM experiments WHERE name = ?1;", [&name], |r| {
+            ExperimentDBRecord::from_row(r)
+        })?;
 
         if let Some(record) = record {
             Ok(Some(record.into_experiment()?))

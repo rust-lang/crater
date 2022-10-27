@@ -163,7 +163,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
     for (comparison, archive) in by_comparison.drain(..) {
         let data = archive.into_inner()?.finish()?;
         dest.write_bytes(
-            &format!("logs-archives/{}.tar.gz", comparison),
+            format!("logs-archives/{}.tar.gz", comparison),
             data,
             &"application/gzip".parse().unwrap(),
             EncodingType::Plain,

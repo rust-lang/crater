@@ -386,7 +386,7 @@ pub(super) fn test_rustdoc<DB: WriteResults>(
 
         // Make sure to remove the built documentation
         // There is no point in storing it after the build is done
-        remove_dir_all(&build_env.host_target_dir().join("doc"))?;
+        remove_dir_all(build_env.host_target_dir().join("doc"))?;
 
         res
     };

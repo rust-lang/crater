@@ -251,7 +251,7 @@ mod tests {
             let crates: Vec<Crate> = db
                 .query(
                     "SELECT crate FROM experiment_crates WHERE experiment = ?1 AND skipped = 0",
-                    &[&ex],
+                    [&ex],
                     |row| {
                         let krate: String = row.get("crate")?;
                         Ok(krate.parse().unwrap())

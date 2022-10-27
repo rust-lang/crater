@@ -542,13 +542,13 @@ impl ReportWriter for FileWriter {
         _: EncodingType,
     ) -> Fallible<()> {
         self.create_prefix(path.as_ref())?;
-        fs::write(&self.0.join(path.as_ref()), &b)?;
+        fs::write(self.0.join(path.as_ref()), b)?;
         Ok(())
     }
 
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Fallible<()> {
         self.create_prefix(path.as_ref())?;
-        fs::write(&self.0.join(path.as_ref()), s.as_ref().as_bytes())?;
+        fs::write(self.0.join(path.as_ref()), s.as_ref().as_bytes())?;
         Ok(())
     }
 }
@@ -973,19 +973,19 @@ mod tests {
         );
         assert_eq!(gh_result.res, Comparison::Regressed);
         assert_eq!(
-            (&gh_result.runs[0]).as_ref().unwrap().res,
+            gh_result.runs[0].as_ref().unwrap().res,
             TestResult::TestPass
         );
         assert_eq!(
-            (&gh_result.runs[1]).as_ref().unwrap().res,
+            gh_result.runs[1].as_ref().unwrap().res,
             TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
-            Path::new((&gh_result.runs[0]).as_ref().unwrap().log.as_str()),
+            Path::new(gh_result.runs[0].as_ref().unwrap().log.as_str()),
             Path::new("stable/gh/brson.hello-rs")
         );
         assert_eq!(
-            Path::new((&gh_result.runs[1]).as_ref().unwrap().log.as_str()),
+            Path::new(gh_result.runs[1].as_ref().unwrap().log.as_str()),
             Path::new("beta/gh/brson.hello-rs")
         );
 
@@ -996,19 +996,19 @@ mod tests {
         );
         assert_eq!(reg_result.res, Comparison::Regressed);
         assert_eq!(
-            (&reg_result.runs[0]).as_ref().unwrap().res,
+            reg_result.runs[0].as_ref().unwrap().res,
             TestResult::TestPass
         );
         assert_eq!(
-            (&reg_result.runs[1]).as_ref().unwrap().res,
+            reg_result.runs[1].as_ref().unwrap().res,
             TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
-            Path::new((&reg_result.runs[0]).as_ref().unwrap().log.as_str()),
+            Path::new(reg_result.runs[0].as_ref().unwrap().log.as_str()),
             Path::new("stable/reg/syn-1.0.0")
         );
         assert_eq!(
-            Path::new((&reg_result.runs[1]).as_ref().unwrap().log.as_str()),
+            Path::new(reg_result.runs[1].as_ref().unwrap().log.as_str()),
             Path::new("beta/reg/syn-1.0.0")
         );
 

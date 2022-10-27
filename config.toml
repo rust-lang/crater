@@ -149,6 +149,11 @@ crokey = { skip-tests = true } # compiler error checks in tests
 "wischli/rpaillier" = { skip-tests = true } # flaky tests
 "AntonChernev/suffix-tree-search" = { skip-tests = true } # flaky tests
 "0xpr03/yayd" = { skip-tests = true } # network in tests
+"gclark916/vulkano_examples" = { skip = true } # spurious proc macro error
+"gclark916/vulkano_tri1" = { skip = true } # spurious proc macro error
+"Ayrx/binja-rs-hello-world" = { skip = true } # shared directory messed up by first build
+"Ninja3047/load-symbols" = { skip = true } # shared directory messed up by first build
+"etke/bff" = { skip = true } # shared directory messed up by first build
 "APTy/icmp" = { skip-tests = true } # network in tests
 "GothAck/rs-async-debug" = { skip-tests = true } # compiler error checks in tests
 "hank-der-hafenarbeiter/imperative-rs" = { skip-tests = true } # compiler error checks in tests

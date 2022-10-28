@@ -60,7 +60,7 @@ trait Compare {
             let expected_file = ex_dir.join(expand_file_names(file, ".expected"));
             // Load actual report
             let raw_report = ::std::fs::read(file_dir.join(file))
-                .unwrap_or_else(|_| panic!("failed to read {}", file));
+                .unwrap_or_else(|_| panic!("failed to read {file}"));
             // Test report format
             let actual_report = self.format(raw_report);
 

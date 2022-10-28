@@ -21,7 +21,7 @@ pub fn routes(
                 error!("error while processing metrics");
                 crate::utils::report_failure(&err);
 
-                let mut resp = Response::new(format!("Error: {}\n", err).into());
+                let mut resp = Response::new(format!("Error: {err}\n").into());
                 *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
                 resp
             }

@@ -39,7 +39,7 @@ impl GitHubApi {
 
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
         let url = if !url.starts_with("https://") {
-            format!("https://api.github.com/{}", url)
+            format!("https://api.github.com/{url}")
         } else {
             url.to_string()
         };
@@ -57,7 +57,7 @@ impl GitHub for GitHubApi {
 
     fn post_comment(&self, issue_url: &str, body: &str) -> Fallible<()> {
         let response = self
-            .build_request(Method::POST, &format!("{}/comments", issue_url))
+            .build_request(Method::POST, &format!("{issue_url}/comments"))
             .json(&json!({
                 "body": body,
             }))
@@ -74,7 +74,7 @@ impl GitHub for GitHubApi {
 
     fn list_labels(&self, issue_url: &str) -> Fallible<Vec<Label>> {
         let response = self
-            .build_request(Method::GET, &format!("{}/labels", issue_url))
+            .build_request(Method::GET, &format!("{issue_url}/labels"))
             .send()?;
 
         let status = response.status();
@@ -88,7 +88,7 @@ impl GitHub for GitHubApi {
 
     fn add_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
         let response = self
-            .build_request(Method::POST, &format!("{}/labels", issue_url))
+            .build_request(Method::POST, &format!("{issue_url}/labels"))
             .json(&json!([label]))
             .send()?;
 
@@ -103,7 +103,7 @@ impl GitHub for GitHubApi {
 
     fn remove_label(&self, issue_url: &str, label: &str) -> Fallible<()> {
         let response = self
-            .build_request(Method::DELETE, &format!("{}/labels/{}", issue_url, label))
+            .build_request(Method::DELETE, &format!("{issue_url}/labels/{label}"))
             .send()?;
 
         let status = response.status();
@@ -117,7 +117,7 @@ impl GitHub for GitHubApi {
 
     fn list_teams(&self, org: &str) -> Fallible<HashMap<String, usize>> {
         let response = self
-            .build_request(Method::GET, &format!("orgs/{}/teams", org))
+            .build_request(Method::GET, &format!("orgs/{org}/teams"))
             .send()?;
 
         let status = response.status();
@@ -132,7 +132,7 @@ impl GitHub for GitHubApi {
 
     fn team_members(&self, team: usize) -> Fallible<Vec<String>> {
         let response = self
-            .build_request(Method::GET, &format!("teams/{}/members", team))
+            .build_request(Method::GET, &format!("teams/{team}/members"))
             .send()?;
 
         let status = response.status();
@@ -147,7 +147,7 @@ impl GitHub for GitHubApi {
 
     fn get_commit(&self, repo: &str, sha: &str) -> Fallible<Commit> {
         let commit = self
-            .build_request(Method::GET, &format!("repos/{}/commits/{}", repo, sha))
+            .build_request(Method::GET, &format!("repos/{repo}/commits/{sha}"))
             .send()?
             .error_for_status()?
             .json()?;
@@ -156,7 +156,7 @@ impl GitHub for GitHubApi {
 
     fn get_pr_head_sha(&self, repo: &str, pr: i32) -> Fallible<String> {
         let pr: PullRequestData = self
-            .build_request(Method::GET, &format!("repos/{}/pulls/{}", repo, pr))
+            .build_request(Method::GET, &format!("repos/{repo}/pulls/{pr}"))
             .send()?
             .error_for_status()?
             .json()?;

@@ -57,7 +57,7 @@ impl Action for EditExperiment {
                     }
 
                     let changes = t.execute(
-                        &format!("UPDATE experiments SET {} = ?1 WHERE name = ?2;", col),
+                        &format!("UPDATE experiments SET {col} = ?1 WHERE name = ?2;"),
                         &[&ex.toolchains[i].to_string(), &self.name],
                     )?;
                     assert_eq!(changes, 1);

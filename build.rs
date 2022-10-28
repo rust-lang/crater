@@ -15,9 +15,9 @@ fn get_git_sha() -> Option<String> {
         let symbolic = cmd(&["git", "rev-parse", "--symbolic", "HEAD"]).unwrap();
         let symbolic_full = cmd(&["git", "rev-parse", "--symbolic-full-name", "HEAD"]).unwrap();
 
-        println!("cargo:rerun-if-changed=.git/{}", symbolic);
+        println!("cargo:rerun-if-changed=.git/{symbolic}");
         if symbolic != symbolic_full {
-            println!("cargo:rerun-if-changed=.git/{}", symbolic_full);
+            println!("cargo:rerun-if-changed=.git/{symbolic_full}");
         }
 
         Some(sha)
@@ -31,5 +31,5 @@ fn main() {
     let sha = format!("{:?}", get_git_sha());
 
     let output = std::env::var("OUT_DIR").unwrap();
-    ::std::fs::write(format!("{}/sha", output), sha.as_bytes()).unwrap();
+    ::std::fs::write(format!("{output}/sha"), sha.as_bytes()).unwrap();
 }

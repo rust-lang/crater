@@ -60,7 +60,7 @@ pub fn run(
 
     let mut message = Message::new().line(
         "ok_hand",
-        format!("Experiment **`{}`** created and queued.", name),
+        format!("Experiment **`{name}`** created and queued."),
     );
 
     // Autodetect toolchains only if none of them was specified
@@ -156,7 +156,7 @@ pub fn run(
         .line(
             "mag",
             format!(
-                "You can check out [the queue](https://{}) and [this experiment's details](https://{0}/ex/{1}).", host, name
+                "You can check out [the queue](https://{host}) and [this experiment's details](https://{host}/ex/{name})."
             ),
         ).set_label(Label::ExperimentQueued)
         .send(&issue.url, data,github_data)?;
@@ -189,7 +189,7 @@ pub fn edit(data: &Data, github_data: &GithubData, issue: &Issue, args: EditArgs
     Message::new()
         .line(
             "memo",
-            format!("Configuration of the **`{}`** experiment changed.", name),
+            format!("Configuration of the **`{name}`** experiment changed."),
         )
         .send(&issue.url, data, github_data)?;
 
@@ -220,7 +220,7 @@ pub fn retry_report(
         Message::new()
             .line(
                 "hammer_and_wrench",
-                format!("Generation of the report for **`{}`** queued again.", name),
+                format!("Generation of the report for **`{name}`** queued again."),
             )
             .set_label(Label::ExperimentQueued)
             .send(&issue.url, data, github_data)?;
@@ -246,7 +246,7 @@ pub fn retry(
         Message::new()
             .line(
                 "hammer_and_wrench",
-                format!("Experiment **`{}`** queued again.", name),
+                format!("Experiment **`{name}`** queued again."),
             )
             .set_label(Label::ExperimentQueued)
             .send(&issue.url, data, github_data)?;
@@ -269,7 +269,7 @@ pub fn abort(
         .apply(&ActionsCtx::new(&data.db, &data.config))?;
 
     Message::new()
-        .line("wastebasket", format!("Experiment **`{}`** deleted!", name))
+        .line("wastebasket", format!("Experiment **`{name}`** deleted!"))
         .set_label(Label::ExperimentCompleted)
         .send(&issue.url, data, github_data)?;
 
@@ -343,7 +343,7 @@ fn generate_new_experiment_name(db: &Database, issue: &Issue) -> Fallible<String
     let mut name = format!("pr-{}", issue.number);
     let mut idx = 1u16;
     while Experiment::exists(db, &name)? {
-        name = format!("pr-{}-{}", issue.number, idx);
+        name = format!("pr-{}-{idx}", issue.number);
         idx = idx
             .checked_add(1)
             .ok_or_else(|| err_msg("too many similarly-named pull requests"))?;

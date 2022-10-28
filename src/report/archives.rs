@@ -50,7 +50,7 @@ fn iterate<'a, DB: ReadResults + 'a>(
                     let log = db
                         .load_log(ex, tc, krate)
                         .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
-                        .with_context(|_| format!("failed to read log of {} on {}", krate, tc));
+                        .with_context(|_| format!("failed to read log of {krate} on {tc}"));
 
                     let log_bytes: EncodedLog = match log {
                         Ok(l) => l,
@@ -163,15 +163,15 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
     for (comparison, archive) in by_comparison.drain(..) {
         let data = archive.into_inner()?.finish()?;
         dest.write_bytes(
-            format!("logs-archives/{}.tar.gz", comparison),
+            format!("logs-archives/{comparison}.tar.gz"),
             data,
             &"application/gzip".parse().unwrap(),
             EncodingType::Plain,
         )?;
 
         archives.push(Archive {
-            name: format!("{} crates", comparison),
-            path: format!("logs-archives/{}.tar.gz", comparison),
+            name: format!("{comparison} crates"),
+            path: format!("logs-archives/{comparison}.tar.gz"),
         });
     }
 

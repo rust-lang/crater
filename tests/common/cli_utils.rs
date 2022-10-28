@@ -25,6 +25,6 @@ pub(crate) trait CommandCraterExt {
 
 impl CommandCraterExt for Command {
     fn crater() -> Self {
-        Command::new(bin_path().join(format!("{}{}", CRATER_BIN_NAME, EXE_SUFFIX)))
+        Command::new(bin_path().join(format!("{CRATER_BIN_NAME}{EXE_SUFFIX}")))
     }
 }

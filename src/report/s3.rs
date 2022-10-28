@@ -229,7 +229,7 @@ mod tests {
             "s3://bucket:80",
             "s3://bucket/path/prefix?query#fragment",
         ] {
-            assert!(S3Prefix::from_str(bad).is_err(), "valid bad url: {}", bad);
+            assert!(S3Prefix::from_str(bad).is_err(), "valid bad url: {bad}");
         }
     }
 }

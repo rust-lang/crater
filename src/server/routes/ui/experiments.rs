@@ -129,7 +129,7 @@ struct ExperimentContext {
 fn humanize(duration: Duration) -> String {
     let duration = duration.to_std().expect("non-negative duration");
     if duration.as_secs() < 60 {
-        format!("{:?}", duration)
+        format!("{duration:?}")
     } else if duration.as_secs() < 60 * 60 {
         format!("{} minutes", duration.as_secs() / 60)
     } else {

@@ -293,7 +293,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
             let content = db
                 .load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
-                .with_context(|_| format!("failed to read log of {} on {}", krate, tc));
+                .with_context(|_| format!("failed to read log of {krate} on {tc}"));
             let content = match content {
                 Ok(c) => c,
                 Err(e) => {
@@ -392,12 +392,12 @@ fn crate_to_name(c: &Crate) -> String {
         Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
         Crate::GitHub(ref repo) => {
             if let Some(ref sha) = repo.sha {
-                format!("{}.{}.{}", repo.org, repo.name, sha)
+                format!("{}.{}.{sha}", repo.org, repo.name)
             } else {
                 format!("{}.{}", repo.org, repo.name)
             }
         }
-        Crate::Local(ref name) => format!("{} (local)", name),
+        Crate::Local(ref name) => format!("{name} (local)"),
         Crate::Path(ref path) => utf8_percent_encode(path, &REPORT_ENCODE_SET).to_string(),
         Crate::Git(ref repo) => {
             if let Some(ref sha) = repo.sha {
@@ -421,7 +421,7 @@ fn crate_to_url(c: &Crate) -> String {
         ),
         Crate::GitHub(ref repo) => {
             if let Some(ref sha) = repo.sha {
-                format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)
+                format!("https://github.com/{}/{}/tree/{sha}", repo.org, repo.name)
             } else {
                 format!("https://github.com/{}/{}", repo.org, repo.name)
             }
@@ -499,7 +499,7 @@ fn compare(
             | (TestPass, TestSkipped)
             | (TestSkipped, TestFail(_))
             | (TestSkipped, TestPass) => {
-                panic!("can't compare {} and {}", res1, res2);
+                panic!("can't compare {res1} and {res2}");
             }
         },
         _ if config.should_skip(krate) => Comparison::Skipped,

@@ -66,7 +66,7 @@ fn write_crate(
     let prefix = if is_child { "  * " } else { "* " };
     let status_warning = krate
         .status
-        .map(|status| format!(" ({})", status))
+        .map(|status| format!(" ({status})"))
         .unwrap_or_default();
 
     if let ReportConfig::Complete(toolchain) = comparison.report_config() {
@@ -106,7 +106,7 @@ fn render_markdown(context: &ResultsContext) -> Fallible<String> {
     writeln!(rendered, "# Crater report for {}\n\n", context.ex.name)?;
 
     for (comparison, results) in context.categories.iter() {
-        writeln!(rendered, "\n### {}", comparison)?;
+        writeln!(rendered, "\n### {comparison}")?;
         match results {
             ReportCratesMD::Plain(crates) => {
                 for krate in crates {

@@ -35,12 +35,12 @@ impl Crate {
             Crate::Registry(ref details) => format!("reg/{}/{}", details.name, details.version),
             Crate::GitHub(ref repo) => {
                 if let Some(ref sha) = repo.sha {
-                    format!("gh/{}/{}/{}", repo.org, repo.name, sha)
+                    format!("gh/{}/{}/{sha}", repo.org, repo.name)
                 } else {
                     format!("gh/{}/{}", repo.org, repo.name)
                 }
             }
-            Crate::Local(ref name) => format!("local/{}", name),
+            Crate::Local(ref name) => format!("local/{name}"),
             Crate::Path(ref path) => {
                 format!("path/{}", utf8_percent_encode(path, NON_ALPHANUMERIC))
             }
@@ -132,11 +132,11 @@ impl fmt::Display for Crate {
                 Crate::Registry(ref krate) => format!("{}-{}", krate.name, krate.version),
                 Crate::GitHub(ref repo) =>
                     if let Some(ref sha) = repo.sha {
-                        format!("{}/{}/{}", repo.org, repo.name, sha)
+                        format!("{}/{}/{sha}", repo.org, repo.name)
                     } else {
                         format!("{}/{}", repo.org, repo.name)
                     },
-                Crate::Local(ref name) => format!("{} (local)", name),
+                Crate::Local(ref name) => format!("{name} (local)"),
                 Crate::Path(ref path) => format!("{}", utf8_percent_encode(path, NON_ALPHANUMERIC)),
                 Crate::Git(ref repo) =>
                     if let Some(ref sha) = repo.sha {

@@ -111,7 +111,7 @@ pub fn run_ex<DB: WriteResults + Sync>(
     let workers = (0..threads_count)
         .map(|i| {
             Worker::new(
-                format!("worker-{}", i),
+                format!("worker-{i}"),
                 workspace,
                 ex,
                 config,

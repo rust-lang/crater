@@ -71,23 +71,23 @@ impl fmt::Display for Toolchain {
         }
 
         if let Some(ref target) = self.target {
-            write!(f, "+target={}", target)?;
+            write!(f, "+target={target}")?;
         }
 
         if let Some(ref flag) = self.rustflags {
-            write!(f, "+rustflags={}", flag)?;
+            write!(f, "+rustflags={flag}")?;
         }
 
         if let Some(ref flag) = self.rustdocflags {
-            write!(f, "+rustdocflags={}", flag)?;
+            write!(f, "+rustdocflags={flag}")?;
         }
 
         if let Some(ref flag) = self.cargoflags {
-            write!(f, "+cargoflags={}", flag)?;
+            write!(f, "+cargoflags={flag}")?;
         }
 
         for patch in self.patches.iter() {
-            write!(f, "+patch={}", patch)?;
+            write!(f, "+patch={patch}")?;
         }
 
         Ok(())

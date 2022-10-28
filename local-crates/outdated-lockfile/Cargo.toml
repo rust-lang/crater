@@ -1,7 +1,6 @@
 [package]
 name = "outdated-lockfile"
 version = "0.1.0"
-authors = ["Pietro Albini <pietro@pietroalbini.org>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]

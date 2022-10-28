@@ -171,6 +171,8 @@ impl MinicraterRun {
             .minicrater_exec();
 
         // Execute the experiment
+        #[allow(clippy::needless_borrow)]
+        // https://github.com/rust-lang/rust-clippy/issues/9739
         Command::crater()
             .args([
                 "run-graph",

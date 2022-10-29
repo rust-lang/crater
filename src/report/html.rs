@@ -123,7 +123,7 @@ fn write_report<W: ReportWriter>(
                         result_names.len() - 1
                     });
                 runs[pos] = Some(BuildTestResultHTML {
-                    res: *idx as usize,
+                    res: *idx,
                     log: run.log.clone(),
                 });
             }

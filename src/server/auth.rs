@@ -168,7 +168,7 @@ impl ACL {
         let members = github.team_members(
             *orgs[org]
                 .get(team)
-                .ok_or_else(|| err_msg(format!("team {}/{} doesn't exist", org, team)))?,
+                .ok_or_else(|| err_msg(format!("team {org}/{team} doesn't exist")))?,
         )?;
         for member in &members {
             new_cache.insert(member.clone());
@@ -206,11 +206,11 @@ mod tests {
     fn test_git_revision() {
         for sha in &["0000000", "0000000000000000000000000000000000000000"] {
             assert_eq!(
-                git_revision(&format!("crater/{}", sha)),
+                git_revision(&format!("crater/{sha}")),
                 Some(sha.to_string())
             );
             assert_eq!(
-                git_revision(&format!("crater/{} (foo bar!)", sha)),
+                git_revision(&format!("crater/{sha} (foo bar!)")),
                 Some(sha.to_string())
             );
         }

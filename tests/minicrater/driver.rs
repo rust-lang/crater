@@ -60,7 +60,7 @@ trait Compare {
             let expected_file = ex_dir.join(expand_file_names(file, ".expected"));
             // Load actual report
             let raw_report = ::std::fs::read(file_dir.join(file))
-                .unwrap_or_else(|_| panic!("failed to read {}", file));
+                .unwrap_or_else(|_| panic!("failed to read {file}"));
             // Test report format
             let actual_report = self.format(raw_report);
 
@@ -153,7 +153,7 @@ impl MinicraterRun {
 
         // Create local list in the temp work dir
         Command::crater()
-            .args(&["create-lists", "local"])
+            .args(["create-lists", "local"])
             .env("CRATER_CONFIG", &config_file)
             .minicrater_exec();
 
@@ -171,8 +171,10 @@ impl MinicraterRun {
             .minicrater_exec();
 
         // Execute the experiment
+        #[allow(clippy::needless_borrow)]
+        // https://github.com/rust-lang/rust-clippy/issues/9739
         Command::crater()
-            .args(&[
+            .args([
                 "run-graph",
                 &ex_arg,
                 "--threads",
@@ -189,7 +191,7 @@ impl MinicraterRun {
         let mut failed = false;
 
         Command::crater()
-            .args(&["gen-report", &ex_arg])
+            .args(["gen-report", &ex_arg])
             .env("CRATER_CONFIG", &config_file)
             .arg(report_dir.path())
             .arg("--output-templates")
@@ -201,7 +203,7 @@ impl MinicraterRun {
 
         // Delete the experiment
         Command::crater()
-            .args(&["delete-ex", &ex_arg])
+            .args(["delete-ex", &ex_arg])
             .env("CRATER_CONFIG", &config_file)
             .minicrater_exec();
 

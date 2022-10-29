@@ -1,8 +1,7 @@
 [package]
 name = "faulty-deps"
 version = "0.1.0"
-authors = ["Giacomo Pasini <g.pasini98@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 error_code = {git = "https://github.com/rust-lang/crater", rev = "c3f462bdab37a93c24b2b172b90564749e892cbc"}

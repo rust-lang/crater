@@ -97,9 +97,9 @@ impl fmt::Display for CrateSelect {
             CrateSelect::Full => write!(f, "full"),
             CrateSelect::Demo => write!(f, "demo"),
             CrateSelect::Dummy => write!(f, "dummy"),
-            CrateSelect::Top(n) => write!(f, "top-{}", n),
+            CrateSelect::Top(n) => write!(f, "top-{n}"),
             CrateSelect::Local => write!(f, "local"),
-            CrateSelect::Random(n) => write!(f, "random-{}", n),
+            CrateSelect::Random(n) => write!(f, "random-{n}"),
             CrateSelect::List(list) => {
                 let mut first = true;
                 write!(f, "list:")?;
@@ -109,7 +109,7 @@ impl fmt::Display for CrateSelect {
                         write!(f, ",")?;
                     }
 
-                    write!(f, "{}", krate)?;
+                    write!(f, "{krate}")?;
                     first = false;
                 }
 
@@ -178,7 +178,7 @@ pub enum Assignee {
 impl fmt::Display for Assignee {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Assignee::Agent(ref name) => write!(f, "agent:{}", name),
+            Assignee::Agent(ref name) => write!(f, "agent:{name}"),
             Assignee::Distributed => write!(f, "distributed"),
             Assignee::CLI => write!(f, "cli"),
         }

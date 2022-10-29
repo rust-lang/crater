@@ -55,7 +55,7 @@ fn process_webhook(
                 github_data,
             ) {
                 Message::new()
-                    .line("rotating_light", format!("**Error:** {}", e))
+                    .line("rotating_light", format!("**Error:** {e}"))
                     .note(
                         "sos",
                         "If you have any trouble with Crater please ping **`@rust-lang/infra`**!",
@@ -237,7 +237,7 @@ pub fn routes(
                         error!("error while processing webhook");
                         crate::utils::report_failure(&err);
 
-                        resp = Response::new(format!("Error: {}\n", err).into());
+                        resp = Response::new(format!("Error: {err}\n").into());
                         *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
                     }
                 }

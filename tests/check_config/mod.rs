@@ -6,7 +6,7 @@ use std::process::Command;
 #[test]
 fn test_good_config() {
     Command::crater()
-        .args(&["check-config", "tests/check_config/good.toml"])
+        .args(["check-config", "tests/check_config/good.toml"])
         .assert()
         .success();
 }
@@ -14,7 +14,7 @@ fn test_good_config() {
 #[test]
 fn test_bad_config_duplicate_crate() {
     Command::crater()
-        .args(&[
+        .args([
             "check-config",
             "tests/check_config/bad-duplicate-crate.toml",
         ])
@@ -27,7 +27,7 @@ fn test_bad_config_duplicate_crate() {
 #[test]
 fn test_bad_config_duplicate_repo() {
     Command::crater()
-        .args(&["check-config", "tests/check_config/bad-duplicate-repo.toml"])
+        .args(["check-config", "tests/check_config/bad-duplicate-repo.toml"])
         .assert()
         .failure()
         .code(1)
@@ -39,7 +39,7 @@ fn test_bad_config_duplicate_repo() {
 #[test]
 fn test_bad_config_missing_crate() {
     Command::crater()
-        .args(&["check-config", "tests/check_config/bad-missing-crate.toml"])
+        .args(["check-config", "tests/check_config/bad-missing-crate.toml"])
         .assert()
         .failure()
         .code(1)
@@ -49,7 +49,7 @@ fn test_bad_config_missing_crate() {
 #[test]
 fn test_bad_config_missing_repo() {
     Command::crater()
-        .args(&["check-config", "tests/check_config/bad-missing-repo.toml"])
+        .args(["check-config", "tests/check_config/bad-missing-repo.toml"])
         .assert()
         .failure()
         .code(1)

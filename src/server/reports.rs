@@ -80,7 +80,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                         Message::new()
                         .line(
                             "rotating_light",
-                            format!("Report generation of **`{}`** failed: {}", name, err),
+                            format!("Report generation of **`{name}`** failed: {err}"),
                         )
                         .line(
                             "hammer_and_wrench",
@@ -102,7 +102,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                     .reports_bucket
                     .public_url
                     .replace("{bucket}", &data.tokens.reports_bucket.bucket);
-                let report_url = format!("{}/{}/index.html", base_url, name);
+                let report_url = format!("{base_url}/{name}/index.html");
 
                 ex.set_status(&data.db, Status::Completed)?;
                 ex.set_report_url(&data.db, &report_url)?;
@@ -116,7 +116,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                 if let Some(github_data) = github_data {
                     if let Some(ref github_issue) = ex.github_issue {
                         Message::new()
-                            .line("tada", format!("Experiment **`{}`** is completed!", name))
+                            .line("tada", format!("Experiment **`{name}`** is completed!"))
                             .line(
                                 "bar_chart",
                                 format!(
@@ -128,7 +128,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                             )
                             .line(
                                 "newspaper",
-                                format!("[Open the full report]({}).", report_url),
+                                format!("[Open the full report]({report_url})."),
                             )
                             .note(
                                 "warning",

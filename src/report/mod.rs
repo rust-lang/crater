@@ -293,7 +293,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
             let content = db
                 .load_log(ex, tc, krate)
                 .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
-                .with_context(|_| format!("failed to read log of {} on {}", krate, tc));
+                .with_context(|_| format!("failed to read log of {krate} on {tc}"));
             let content = match content {
                 Ok(c) => c,
                 Err(e) => {
@@ -392,12 +392,12 @@ fn crate_to_name(c: &Crate) -> String {
         Crate::Registry(ref details) => format!("{}-{}", details.name, details.version),
         Crate::GitHub(ref repo) => {
             if let Some(ref sha) = repo.sha {
-                format!("{}.{}.{}", repo.org, repo.name, sha)
+                format!("{}.{}.{sha}", repo.org, repo.name)
             } else {
                 format!("{}.{}", repo.org, repo.name)
             }
         }
-        Crate::Local(ref name) => format!("{} (local)", name),
+        Crate::Local(ref name) => format!("{name} (local)"),
         Crate::Path(ref path) => utf8_percent_encode(path, &REPORT_ENCODE_SET).to_string(),
         Crate::Git(ref repo) => {
             if let Some(ref sha) = repo.sha {
@@ -421,7 +421,7 @@ fn crate_to_url(c: &Crate) -> String {
         ),
         Crate::GitHub(ref repo) => {
             if let Some(ref sha) = repo.sha {
-                format!("https://github.com/{}/{}/tree/{}", repo.org, repo.name, sha)
+                format!("https://github.com/{}/{}/tree/{sha}", repo.org, repo.name)
             } else {
                 format!("https://github.com/{}/{}", repo.org, repo.name)
             }
@@ -499,7 +499,7 @@ fn compare(
             | (TestPass, TestSkipped)
             | (TestSkipped, TestFail(_))
             | (TestSkipped, TestPass) => {
-                panic!("can't compare {} and {}", res1, res2);
+                panic!("can't compare {res1} and {res2}");
             }
         },
         _ if config.should_skip(krate) => Comparison::Skipped,
@@ -542,13 +542,13 @@ impl ReportWriter for FileWriter {
         _: EncodingType,
     ) -> Fallible<()> {
         self.create_prefix(path.as_ref())?;
-        fs::write(&self.0.join(path.as_ref()), &b)?;
+        fs::write(self.0.join(path.as_ref()), b)?;
         Ok(())
     }
 
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, _: &Mime) -> Fallible<()> {
         self.create_prefix(path.as_ref())?;
-        fs::write(&self.0.join(path.as_ref()), s.as_ref().as_bytes())?;
+        fs::write(self.0.join(path.as_ref()), s.as_ref().as_bytes())?;
         Ok(())
     }
 }
@@ -973,19 +973,19 @@ mod tests {
         );
         assert_eq!(gh_result.res, Comparison::Regressed);
         assert_eq!(
-            (&gh_result.runs[0]).as_ref().unwrap().res,
+            gh_result.runs[0].as_ref().unwrap().res,
             TestResult::TestPass
         );
         assert_eq!(
-            (&gh_result.runs[1]).as_ref().unwrap().res,
+            gh_result.runs[1].as_ref().unwrap().res,
             TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
-            Path::new((&gh_result.runs[0]).as_ref().unwrap().log.as_str()),
+            Path::new(gh_result.runs[0].as_ref().unwrap().log.as_str()),
             Path::new("stable/gh/brson.hello-rs")
         );
         assert_eq!(
-            Path::new((&gh_result.runs[1]).as_ref().unwrap().log.as_str()),
+            Path::new(gh_result.runs[1].as_ref().unwrap().log.as_str()),
             Path::new("beta/gh/brson.hello-rs")
         );
 
@@ -996,19 +996,19 @@ mod tests {
         );
         assert_eq!(reg_result.res, Comparison::Regressed);
         assert_eq!(
-            (&reg_result.runs[0]).as_ref().unwrap().res,
+            reg_result.runs[0].as_ref().unwrap().res,
             TestResult::TestPass
         );
         assert_eq!(
-            (&reg_result.runs[1]).as_ref().unwrap().res,
+            reg_result.runs[1].as_ref().unwrap().res,
             TestResult::BuildFail(FailureReason::Unknown)
         );
         assert_eq!(
-            Path::new((&reg_result.runs[0]).as_ref().unwrap().log.as_str()),
+            Path::new(reg_result.runs[0].as_ref().unwrap().log.as_str()),
             Path::new("stable/reg/syn-1.0.0")
         );
         assert_eq!(
-            Path::new((&reg_result.runs[1]).as_ref().unwrap().log.as_str()),
+            Path::new(reg_result.runs[1].as_ref().unwrap().log.as_str()),
             Path::new("beta/reg/syn-1.0.0")
         );
 

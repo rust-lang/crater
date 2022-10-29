@@ -57,7 +57,7 @@ impl Action for EditExperiment {
                     }
 
                     let changes = t.execute(
-                        &format!("UPDATE experiments SET {} = ?1 WHERE name = ?2;", col),
+                        &format!("UPDATE experiments SET {col} = ?1 WHERE name = ?2;"),
                         &[&ex.toolchains[i].to_string(), &self.name],
                     )?;
                     assert_eq!(changes, 1);
@@ -251,7 +251,7 @@ mod tests {
             let crates: Vec<Crate> = db
                 .query(
                     "SELECT crate FROM experiment_crates WHERE experiment = ?1 AND skipped = 0",
-                    &[&ex],
+                    [&ex],
                     |row| {
                         let krate: String = row.get("crate")?;
                         Ok(krate.parse().unwrap())

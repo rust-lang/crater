@@ -51,7 +51,7 @@ impl ResponseExt for ::reqwest::blocking::Response {
         let status = self.status();
         let result: ApiResponse<T> = self
             .json()
-            .with_context(|_| format!("failed to parse API response (status code {})", status,))?;
+            .with_context(|_| format!("failed to parse API response (status code {status})",))?;
         match result {
             ApiResponse::Success { result } => Ok(result),
             ApiResponse::SlowDown => Err(AgentApiError::ServerUnavailable.into()),
@@ -78,7 +78,7 @@ impl AgentApi {
     }
 
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
-        utils::http::prepare_sync(method, &format!("{}/agent-api/{}", self.url, url)).header(
+        utils::http::prepare_sync(method, &format!("{}/agent-api/{url}", self.url)).header(
             AUTHORIZATION,
             (CraterToken {
                 token: self.token.clone(),
@@ -101,7 +101,7 @@ impl AgentApi {
                         // We retry these errors. Ideally it's something the
                         // server would handle, but that's (unfortunately) hard
                         // in practice.
-                        format!("{:?}", err).contains("database is locked")
+                        format!("{err:?}").contains("database is locked")
                     };
 
                     if retry {

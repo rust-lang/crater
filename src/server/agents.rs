@@ -135,7 +135,7 @@ impl Agents {
     #[cfg(test)]
     fn get(&self, name: &str) -> Fallible<Option<Agent>> {
         self.db
-            .get_row("SELECT * FROM agents WHERE name = ?1;", &[&name], |row| {
+            .get_row("SELECT * FROM agents WHERE name = ?1;", [&name], |row| {
                 Ok(Agent {
                     name: row.get("name")?,
                     last_heartbeat: row.get("last_heartbeat")?,

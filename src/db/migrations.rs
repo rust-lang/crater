@@ -153,8 +153,8 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                     if let Ok(parsed) = serde_json::from_str(&legacy) {
                         Ok(match parsed {
                             LegacyToolchain::Dist(name) => name,
-                            LegacyToolchain::TryBuild { sha } => format!("try#{}", sha),
-                            LegacyToolchain::Master { sha } => format!("master#{}", sha),
+                            LegacyToolchain::TryBuild { sha } => format!("try#{sha}"),
+                            LegacyToolchain::Master { sha } => format!("master#{sha}"),
                         })
                     } else {
                         Ok(legacy)
@@ -178,7 +178,7 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
                 [],
             )?;
             t.execute(
-                &format!("UPDATE results SET toolchain = {}(toolchain);", fn_name),
+                &format!("UPDATE results SET toolchain = {fn_name}(toolchain);"),
                 [],
             )?;
             t.execute("PRAGMA foreign_keys = ON;", [])?;
@@ -352,17 +352,11 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
 
             t.execute("PRAGMA foreign_keys = OFF;", [])?;
             t.execute(
-                &format!("UPDATE experiment_crates SET crate = {}(crate);", fn_name),
+                &format!("UPDATE experiment_crates SET crate = {fn_name}(crate);"),
                 [],
             )?;
-            t.execute(
-                &format!("UPDATE results SET crate = {}(crate);", fn_name),
-                [],
-            )?;
-            t.execute(
-                &format!("UPDATE crates SET crate = {}(crate);", fn_name),
-                [],
-            )?;
+            t.execute(&format!("UPDATE results SET crate = {fn_name}(crate);"), [])?;
+            t.execute(&format!("UPDATE crates SET crate = {fn_name}(crate);"), [])?;
             t.execute("PRAGMA foreign_keys = ON;", [])?;
 
             Ok(())
@@ -406,7 +400,7 @@ pub fn execute(db: &mut Connection) -> Fallible<()> {
                 MigrationKind::SQL(sql) => t.execute_batch(sql),
                 MigrationKind::Code(code) => code(&t),
             }
-            .with_context(|_| format!("error running migration: {}", name))?;
+            .with_context(|_| format!("error running migration: {name}"))?;
 
             t.execute("INSERT INTO migrations (name) VALUES (?1)", [&name])?;
             t.commit()?;

@@ -74,9 +74,9 @@ impl fmt::Debug for TaskStep {
             TaskStep::UnstableFeatures { ref tc } => ("find unstable features on", false, Some(tc)),
         };
 
-        write!(f, "{}", name)?;
+        write!(f, "{name}")?;
         if let Some(tc) = tc {
-            write!(f, " {}", tc)?;
+            write!(f, " {tc}")?;
         }
         if quiet {
             write!(f, " (quiet)")?;

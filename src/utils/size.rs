@@ -29,11 +29,11 @@ impl Size {
 impl fmt::Display for Size {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Size::Bytes(count) => write!(f, "{}", count),
-            Size::Kilobytes(count) => write!(f, "{}K", count),
-            Size::Megabytes(count) => write!(f, "{}M", count),
-            Size::Gigabytes(count) => write!(f, "{}G", count),
-            Size::Terabytes(count) => write!(f, "{}T", count),
+            Size::Bytes(count) => write!(f, "{count}"),
+            Size::Kilobytes(count) => write!(f, "{count}K"),
+            Size::Megabytes(count) => write!(f, "{count}M"),
+            Size::Gigabytes(count) => write!(f, "{count}G"),
+            Size::Terabytes(count) => write!(f, "{count}T"),
         }
     }
 }

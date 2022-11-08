@@ -92,7 +92,7 @@
   ],
   "result_names": [
     "test passed",
-    "build OOM",
+    "build build script failure",
     "test OOM"
   ]
 }

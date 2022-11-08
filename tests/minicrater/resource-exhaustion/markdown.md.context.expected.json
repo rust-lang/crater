@@ -13,7 +13,7 @@
             "runs": [
               {
                 "log": "stable/local/memory-hungry",
-                "res": "build-fail:oom"
+                "res": "build-fail:build-script"
               },
               {
                 "log": "beta/local/memory-hungry",

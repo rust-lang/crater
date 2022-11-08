@@ -118,8 +118,25 @@
       "fixed",
       {
         "RootResults": {
-          "count": 1,
+          "count": 2,
           "results": {
+            "build build script failure": [
+              {
+                "name": "network-access (local)",
+                "res": "fixed",
+                "runs": [
+                  {
+                    "log": "stable/local/network-access",
+                    "res": 6
+                  },
+                  {
+                    "log": "beta/local/network-access",
+                    "res": 7
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
+              }
+            ],
             "build failed (unknown)": [
               {
                 "name": "beta-fixed (local)",
@@ -135,21 +152,6 @@
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-fixed"
-              },
-              {
-                "name": "network-access (local)",
-                "res": "fixed",
-                "runs": [
-                  {
-                    "log": "stable/local/network-access",
-                    "res": 2
-                  },
-                  {
-                    "log": "beta/local/network-access",
-                    "res": 6
-                  }
-                ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
               }
             ]
           }
@@ -165,11 +167,11 @@
       "Single": "#db3026"
     }
   },
-  "crates_count": 17,
+  "crates_count": 18,
   "full": false,
   "info": {
     "broken": 2,
-    "build-fail": 2,
+    "build-fail": 3,
     "fixed": 2,
     "regressed": 4,
     "skipped": 1,
@@ -213,6 +215,9 @@
       "Single": "#db3026"
     },
     {
+      "Single": "#db3026"
+    },
+    {
       "Single": "#65461e"
     }
   ],
@@ -223,6 +228,7 @@
     "build compiler error",
     "build compiler error",
     "build ICE",
+    "build build script failure",
     "test failed (unknown)"
   ]
 }

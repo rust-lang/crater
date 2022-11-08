@@ -140,7 +140,7 @@
                 "runs": [
                   {
                     "log": "stable/local/network-access",
-                    "res": "build-fail:unknown"
+                    "res": "build-fail:build-script"
                   },
                   {
                     "log": "beta/local/network-access",
@@ -156,11 +156,11 @@
       }
     ]
   ],
-  "crates_count": 17,
+  "crates_count": 18,
   "full": false,
   "info": {
     "broken": 2,
-    "build-fail": 2,
+    "build-fail": 3,
     "fixed": 2,
     "regressed": 4,
     "skipped": 1,

@@ -168,5 +168,6 @@ crokey = { skip-tests = true } # compiler error checks in tests
 "naomijub/genetic-labyrinth" = { skip-tests = true } # flaky tests
 "sachaarbonel/trie.rs" = { skip-tests = true } # flaky tests
 "vspecky/neat-rs" = { skip-tests = true } # flaky tests
+"mistrpopo/MandelbrotAnimation" = { skip-tests = true } # second build seems to always fail
 
 [local-crates]

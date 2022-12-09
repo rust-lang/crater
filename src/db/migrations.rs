@@ -164,17 +164,11 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
 
             t.execute("PRAGMA foreign_keys = OFF;", [])?;
             t.execute(
-                &format!(
-                    "UPDATE experiments SET toolchain_start = {}(toolchain_start);",
-                    fn_name
-                ),
+                &format!("UPDATE experiments SET toolchain_start = {fn_name}(toolchain_start);",),
                 [],
             )?;
             t.execute(
-                &format!(
-                    "UPDATE experiments SET toolchain_end = {}(toolchain_end);",
-                    fn_name
-                ),
+                &format!("UPDATE experiments SET toolchain_end = {fn_name}(toolchain_end);",),
                 [],
             )?;
             t.execute(

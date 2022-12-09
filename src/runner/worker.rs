@@ -77,7 +77,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             };
 
             for err in e.iter_chain() {
-                if let Some(&OverrideResult(ref res)) = err.downcast_ctx() {
+                if let Some(OverrideResult(res)) = err.downcast_ctx() {
                     result = res.clone();
                     break;
                 }

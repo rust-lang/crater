@@ -135,7 +135,7 @@ impl ACL {
         }
 
         let mut orgs = HashMap::new();
-        for &(ref org, ref team) in &self.teams {
+        for (org, team) in &self.teams {
             if let Err(err) = self.load_team(github, &mut new_cache, &mut orgs, org, team) {
                 warn!(
                     "failed to authorize members of {}/{} to use the bot",

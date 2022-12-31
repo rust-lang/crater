@@ -142,7 +142,11 @@ impl MinicraterRun {
         let ex_dir = PathBuf::from("tests").join("minicrater").join(self.ex);
         let config_file = ex_dir.join("config.toml");
 
-        let threads_count = if self.multithread { num_cpus::get() } else { 1 };
+        let threads_count = if self.multithread {
+            std::thread::available_parallelism().map_or(1, |r| r.get())
+        } else {
+            1
+        };
 
         let report_dir = tempfile::tempdir().expect("failed to create report dir");
         let ex_arg = format!(

@@ -67,5 +67,4 @@ aws-sdk-s3 = "0.22"
 [dev-dependencies]
 assert_cmd = "2.0.4"
 difference = "2.0.0"
-num_cpus = "1.8.0"
-predicates = "1.0.0"
+predicates = "2.0.0"

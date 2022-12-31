@@ -188,7 +188,7 @@ fn get_crate_version_status(index: &Index, krate: &Crate) -> Fallible<Option<Cra
             .crate_(&krate.name)
             .ok_or_else(|| err_msg(format!("no crate found in index {:?}", &krate)))?;
 
-        let outdated = index_krate.latest_version().version() != krate.version;
+        let outdated = index_krate.most_recent_version().version() != krate.version;
 
         for version in index_krate.versions().iter().rev() {
             // Check if the tested version is yanked

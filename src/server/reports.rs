@@ -22,9 +22,7 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
         }
         BucketRegion::Custom { url } => {
             config.set_region(Some(aws_types::region::Region::from_static("us-east-1")));
-            config.set_endpoint_resolver(Some(Arc::new(aws_sdk_s3::Endpoint::immutable(
-                url.parse()?,
-            ))));
+            config.set_endpoint_resolver(Some(Arc::new(aws_sdk_s3::Endpoint::immutable(url)?)));
         }
     }
     config.set_credentials_provider(Some(data.tokens.reports_bucket.to_aws_credentials()));

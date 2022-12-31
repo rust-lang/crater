@@ -680,7 +680,7 @@ dependencies = [
  "flate2",
  "hmac",
  "http 0.1.21",
- "hyper 0.12.36",
+ "hyper 0.14.23",
  "indexmap",
  "lazy_static",
  "log 0.4.17",

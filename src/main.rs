@@ -4,11 +4,11 @@
 use log::info;
 mod cli;
 
+use clap::Parser;
 use crater::utils;
 use failure::Fallible;
 use std::panic;
 use std::process;
-use structopt::StructOpt;
 
 fn main() {
     // Ignore errors loading `.env` file.
@@ -54,5 +54,5 @@ fn main() {
 }
 
 fn main_() -> Fallible<()> {
-    cli::Crater::from_args().run()
+    cli::Crater::parse().run()
 }

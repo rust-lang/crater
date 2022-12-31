@@ -9,6 +9,7 @@
 //! application state employs ownership techniques to ensure that
 //! parallel access is consistent and race-free.
 
+use clap::Parser;
 use crater::actions::{self, Action, ActionsCtx};
 use crater::agent::{self, Capabilities};
 use crater::config::Config;
@@ -27,7 +28,6 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
-use structopt::clap::AppSettings;
 
 // An experiment name
 #[derive(Debug, Clone)]
@@ -75,48 +75,33 @@ fn default_capabilities_for_target() -> Capabilities {
     Capabilities::new(caps)
 }
 
-#[derive(structopt_derive::StructOpt)]
+#[derive(Parser)]
 #[allow(clippy::large_enum_variant)]
-#[structopt(
-    name = "crater",
-    about = "Kaboom!",
-    raw(
-        setting = "AppSettings::VersionlessSubcommands",
-        setting = "AppSettings::DeriveDisplayOrder",
-        setting = "AppSettings::SubcommandRequiredElseHelp"
-    )
-)]
+#[clap(name = "crater", about = "Kaboom!")]
 pub enum Crater {
-    #[structopt(
+    #[clap(
         name = "prepare-local",
         about = "acquire toolchains, build containers, build crate lists"
     )]
     PrepareLocal,
 
-    #[structopt(name = "create-lists", about = "create all the lists of crates")]
+    #[clap(name = "create-lists", about = "create all the lists of crates")]
     CreateLists {
-        #[structopt(name = "lists")]
+        #[clap(name = "lists")]
         lists: Vec<String>,
     },
 
-    #[structopt(name = "define-ex", about = "define an experiment")]
+    #[clap(name = "define-ex", about = "define an experiment")]
     DefineEx {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        #[clap(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
-        #[structopt(name = "tc-1")]
+        #[clap(name = "tc-1")]
         tc1: Toolchain,
-        #[structopt(name = "tc-2")]
+        #[clap(name = "tc-2")]
         tc2: Toolchain,
-        #[structopt(
-            name = "mode",
-            long = "mode",
-            raw(
-                default_value = "Mode::BuildAndTest.to_str()",
-                possible_values = "Mode::possible_values()"
-            )
-        )]
+        #[clap(name = "mode", long = "mode", default_value_t = Mode::BuildAndTest)]
         mode: Mode,
-        #[structopt(
+        #[clap(
             name = "crate-select",
             long = "crate-select",
             help = "The set of crates on which the experiment will run.",
@@ -124,43 +109,36 @@ pub enum Crater {
                          This can be one of (full, demo, random-{d}, top-{d}, local) \
                          where {d} is a positive integer, or \"list:\" followed \
                          by a comma-separated list of crates.",
-            raw(default_value = "\"demo\"",)
+            default_value = "\"demo\""
         )]
         crates: DeferredCrateSelect,
-        #[structopt(
+        #[clap(
             name = "level",
             long = "cap-lints",
-            raw(
-                default_value = "CapLints::Forbid.to_str()",
-                possible_values = "CapLints::possible_values()"
-            )
+            default_value_t = CapLints::Forbid
         )]
         cap_lints: CapLints,
-        #[structopt(name = "priority", long = "priority", short = "p", default_value = "0")]
+        #[clap(name = "priority", long = "priority", short = 'p', default_value = "0")]
         priority: i32,
-        #[structopt(name = "ignore-blacklist", long = "ignore-blacklist")]
+        #[clap(name = "ignore-blacklist", long = "ignore-blacklist")]
         ignore_blacklist: bool,
-        #[structopt(name = "assign", long = "assign")]
+        #[clap(name = "assign", long = "assign")]
         assign: Option<Assignee>,
-        #[structopt(name = "requirement", long = "requirement")]
+        #[clap(name = "requirement", long = "requirement")]
         requirement: Option<String>,
     },
 
-    #[structopt(name = "edit", about = "edit an experiment configuration")]
+    #[clap(name = "edit", about = "edit an experiment configuration")]
     Edit {
-        #[structopt(name = "name")]
+        #[clap(name = "name")]
         name: String,
-        #[structopt(name = "toolchain-start", long = "start")]
+        #[clap(name = "toolchain-start", long = "start")]
         tc1: Option<Toolchain>,
-        #[structopt(name = "toolchain-end", long = "end")]
+        #[clap(name = "toolchain-end", long = "end")]
         tc2: Option<Toolchain>,
-        #[structopt(
-            name = "mode",
-            long = "mode",
-            raw(possible_values = "Mode::possible_values()")
-        )]
+        #[clap(name = "mode", long = "mode")]
         mode: Option<Mode>,
-        #[structopt(
+        #[clap(
             name = "crates",
             long = "crates",
             help = "The set of crates on which the experiment will run.",
@@ -170,118 +148,113 @@ pub enum Crater {
                          by a comma-separated list of crates."
         )]
         crates: Option<DeferredCrateSelect>,
-        #[structopt(
-            name = "cap-lints",
-            long = "cap-lints",
-            raw(possible_values = "CapLints::possible_values()")
-        )]
+        #[clap(name = "cap-lints", long = "cap-lints")]
         cap_lints: Option<CapLints>,
-        #[structopt(name = "priority", long = "priority", short = "p")]
+        #[clap(name = "priority", long = "priority", short = 'p')]
         priority: Option<i32>,
-        #[structopt(
+        #[clap(
             name = "ignore-blacklist",
             long = "ignore-blacklist",
             conflicts_with = "no-ignore-blacklist"
         )]
         ignore_blacklist: bool,
-        #[structopt(
+        #[clap(
             name = "no-ignore-blacklist",
             long = "no-ignore-blacklist",
             conflicts_with = "ignore-blacklist"
         )]
         no_ignore_blacklist: bool,
-        #[structopt(name = "assign", long = "assign")]
+        #[clap(name = "assign", long = "assign")]
         assign: Option<Assignee>,
-        #[structopt(name = "requirement", long = "requirement")]
+        #[clap(name = "requirement", long = "requirement")]
         requirement: Option<String>,
     },
 
-    #[structopt(name = "delete-ex", about = "delete shared data for experiment")]
+    #[clap(name = "delete-ex", about = "delete shared data for experiment")]
     DeleteEx {
-        #[structopt(long = "ex", default_value = "default")]
+        #[clap(long = "ex", default_value = "default")]
         ex: Ex,
     },
 
-    #[structopt(
+    #[clap(
         name = "delete-all-results",
         about = "delete all results for an experiment"
     )]
     DeleteAllResults {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        #[clap(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
     },
 
-    #[structopt(
+    #[clap(
         name = "delete-result",
         about = "delete results for a crate from an experiment"
     )]
     DeleteResult {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        #[clap(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
-        #[structopt(name = "toolchain", long = "toolchain", short = "t")]
+        #[clap(name = "toolchain", long = "toolchain", short = 't')]
         tc: Option<Toolchain>,
-        #[structopt(name = "crate")]
+        #[clap(name = "crate")]
         krate: Crate,
     },
 
-    #[structopt(name = "run-graph", about = "run a parallelized experiment")]
+    #[clap(name = "run-graph", about = "run a parallelized experiment")]
     RunGraph {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        #[clap(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
-        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
+        #[clap(name = "threads", short = 't', long = "threads", default_value = "1")]
         threads: usize,
-        #[structopt(name = "docker-env", long = "docker-env")]
+        #[clap(name = "docker-env", long = "docker-env")]
         docker_env: Option<String>,
-        #[structopt(name = "fast-workspace-init", long = "fast-workspace-init")]
+        #[clap(name = "fast-workspace-init", long = "fast-workspace-init")]
         fast_workspace_init: bool,
     },
 
-    #[structopt(name = "gen-report", about = "generate the experiment report")]
+    #[clap(name = "gen-report", about = "generate the experiment report")]
     GenReport {
-        #[structopt(name = "experiment", long = "ex", default_value = "default")]
+        #[clap(name = "experiment", long = "ex", default_value = "default")]
         ex: Ex,
-        #[structopt(name = "destination")]
+        #[clap(name = "destination")]
         dest: Dest,
-        #[structopt(name = "force", long = "force")]
+        #[clap(name = "force", long = "force")]
         force: bool,
-        #[structopt(name = "output-templates", long = "output-templates")]
+        #[clap(name = "output-templates", long = "output-templates")]
         output_templates: bool,
     },
 
-    #[structopt(name = "server")]
+    #[clap(name = "server")]
     Server {
-        #[structopt(
+        #[clap(
             name = "bind",
             long = "bind",
-            short = "b",
+            short = 'b',
             help = "The address and port to bind to."
         )]
         bind: Option<SocketAddr>,
     },
 
-    #[structopt(name = "agent")]
+    #[clap(name = "agent")]
     Agent {
-        #[structopt(name = "url")]
+        #[clap(name = "url")]
         url: String,
-        #[structopt(name = "token")]
+        #[clap(name = "token")]
         token: String,
-        #[structopt(name = "threads", short = "t", long = "threads", default_value = "1")]
+        #[clap(name = "threads", short = 't', long = "threads", default_value = "1")]
         threads: usize,
-        #[structopt(name = "docker-env", long = "docker-env")]
+        #[clap(name = "docker-env", long = "docker-env")]
         docker_env: Option<String>,
-        #[structopt(name = "fast-workspace-init", long = "fast-workspace-init")]
+        #[clap(name = "fast-workspace-init", long = "fast-workspace-init")]
         fast_workspace_init: bool,
-        #[structopt(
+        #[clap(
             name = "capabilities",
             help = "Registers additional capabilities for this agent.",
             long_help = "Registers additional capabilities for this agent.\n\n \
                          These will be appended to the defaults for this platform, unless those \
                          have been disabled via `--no-default-capabilities`.",
-            long,
-            raw(use_delimiter = "true")
+            long
         )]
         capabilities: Vec<String>,
-        #[structopt(
+        #[clap(
             name = "no-default-capabilities",
             long,
             help = "Disables the default capabilities for this platform."
@@ -289,12 +262,12 @@ pub enum Crater {
         no_default_capabilities: bool,
     },
 
-    #[structopt(
+    #[clap(
         name = "check-config",
         about = "check if the config.toml file is valid"
     )]
     CheckConfig {
-        #[structopt(name = "file")]
+        #[clap(name = "file")]
         filename: Option<String>,
     },
 }

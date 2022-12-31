@@ -185,14 +185,14 @@ impl fmt::Display for Assignee {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum AssigneeParseError {
-    #[fail(display = "the assignee is empty")]
+    #[error("the assignee is empty")]
     Empty,
-    #[fail(display = "unexpected assignee payload")]
+    #[error("unexpected assignee payload")]
     UnexpectedPayload,
-    #[fail(display = "invalid assignee kind: {}", _0)]
+    #[error("invalid assignee kind: {0}")]
     InvalidKind(String),
 }
 

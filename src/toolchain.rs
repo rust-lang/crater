@@ -94,13 +94,13 @@ impl fmt::Display for Toolchain {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum ToolchainParseError {
-    #[fail(display = "empty toolchain name")]
+    #[error("empty toolchain name")]
     EmptyName,
-    #[fail(display = "invalid toolchain source name: {}", _0)]
+    #[error("invalid toolchain source name: {0}")]
     InvalidSourceName(String),
-    #[fail(display = "invalid toolchain flag: {}", _0)]
+    #[error("invalid toolchain flag: {0}")]
     InvalidFlag(String),
 }
 

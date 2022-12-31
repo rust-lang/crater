@@ -105,8 +105,7 @@ pub fn run(
                     message = message.line(
                         "warning",
                         format!(
-                            "Try build based on commit {}, but latest commit is {}. Did you forget to make a new try build?",
-                            old_pr_head, pr_head
+                            "Try build based on commit {old_pr_head}, but latest commit is {pr_head}. Did you forget to make a new try build?",
                         ),
                     );
                 }

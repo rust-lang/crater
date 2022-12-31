@@ -622,9 +622,8 @@ impl Experiment {
                         "SELECT crate FROM experiment_crates WHERE experiment = ?1
                             AND skipped = 0
                             AND status = 'queued'
-                            AND (started_at is null or started_at <= datetime('now', '-{} minutes'))
+                            AND (started_at is null or started_at <= datetime('now', '-{RUN_TIMEOUT} minutes'))
                         LIMIT ?2;",
-                        RUN_TIMEOUT
                     ),
                     rusqlite::params![self.name, limit],
                     |r| r.get("crate"),

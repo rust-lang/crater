@@ -108,7 +108,7 @@ impl ReportWriter for S3Writer {
             };
 
             let chunk_size = 20 * 1024 * 1024;
-            let bytes = bytes_1::Bytes::from(s);
+            let bytes = bytes::Bytes::from(s);
             let mut part = 1;
             let mut start = 0;
             let mut parts = aws_sdk_s3::model::CompletedMultipartUpload::builder();

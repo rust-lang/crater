@@ -29,25 +29,25 @@ pub fn routes(
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
     let data_filter = warp::any().map(move || data.clone());
 
-    let queue = warp::get2()
+    let queue = warp::get()
         .and(warp::path::end())
         .and(data_filter.clone())
         .map(experiments::endpoint_queue);
 
-    let experiment = warp::get2()
+    let experiment = warp::get()
         .and(warp::path("ex"))
         .and(warp::path::param())
         .and(warp::path::end())
         .and(data_filter.clone())
         .map(experiments::endpoint_experiment);
 
-    let agents = warp::get2()
+    let agents = warp::get()
         .and(warp::path("agents"))
         .and(warp::path::end())
         .and(data_filter)
         .map(agents::endpoint_list);
 
-    let assets = warp::get2()
+    let assets = warp::get()
         .and(warp::path("assets"))
         .and(warp::path::param())
         .and(warp::path::end())
@@ -144,18 +144,19 @@ fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
     }
 }
 
-fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
-    match err.status() {
-        StatusCode::NOT_FOUND | StatusCode::METHOD_NOT_ALLOWED => match error_404() {
-            Ok(resp) => Ok(resp),
+async fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
+    if err.is_not_found() {
+        match error_404() {
+            Ok(resp) => return Ok(resp),
             Err(err) => {
                 error!("failed to render 404 page!");
                 crate::utils::report_failure(&err);
-                Ok(error_500())
+                return Ok(error_500());
             }
-        },
-        _ => Err(err),
+        }
     }
+
+    Err(err)
 }
 
 fn render_template<C: Serialize>(name: &str, context: &C) -> Fallible<Response<Body>> {

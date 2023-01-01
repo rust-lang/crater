@@ -12,7 +12,7 @@ pub fn routes(
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
     let data_filter = warp::any().map(move || data.clone());
 
-    warp::get2()
+    warp::get()
         .and(warp::path::end())
         .and(data_filter)
         .map(|data| match endpoint_metrics(data) {

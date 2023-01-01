@@ -82,9 +82,12 @@ pub fn auth_filter(
     token_type: TokenType,
 ) -> impl Filter<Extract = (AuthDetails,), Error = Rejection> + Clone {
     warp::header::headers_cloned().and_then(move |headers| {
-        match check_auth(&data, &headers, token_type) {
-            Some(details) => Ok(details),
-            None => Err(warp::reject::custom(HttpError::Forbidden.compat())),
+        let data = data.clone();
+        async move {
+            match check_auth(&data, &headers, token_type) {
+                Some(details) => Ok(details),
+                None => Err(warp::reject::custom(HttpError::Forbidden)),
+            }
         }
     })
 }

@@ -8,7 +8,7 @@ use crate::server::messages::Message;
 use crate::server::{Data, GithubData, HttpError};
 use crossbeam_channel::Sender;
 use failure::Compat;
-use http::{Response, StatusCode};
+use http::Response;
 use hyper::Body;
 use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex};
@@ -32,7 +32,7 @@ pub fn routes(
     let mutex_filter = warp::any().map(move || mutex.clone());
     let github_data_filter = warp::any().map(move || github_data.clone());
 
-    let config = warp::post2()
+    let config = warp::post()
         .and(warp::path("config"))
         .and(warp::path::end())
         .and(warp::body::json())
@@ -40,7 +40,7 @@ pub fn routes(
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_config);
 
-    let next_experiment = warp::post2()
+    let next_experiment = warp::post()
         .and(warp::path("next-experiment"))
         .and(warp::path::end())
         .and(mutex_filter.clone())
@@ -48,7 +48,7 @@ pub fn routes(
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_experiment);
 
-    let next_crate = warp::post2()
+    let next_crate = warp::post()
         .and(warp::path("next-crate"))
         .and(warp::path::end())
         .and(warp::body::json())
@@ -56,7 +56,7 @@ pub fn routes(
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_next_crate);
 
-    let record_progress = warp::post2()
+    let record_progress = warp::post()
         .and(warp::path("record-progress"))
         .and(warp::path::end())
         .and(warp::body::json())
@@ -64,14 +64,14 @@ pub fn routes(
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_record_progress);
 
-    let heartbeat = warp::post2()
+    let heartbeat = warp::post()
         .and(warp::path("heartbeat"))
         .and(warp::path::end())
         .and(data_filter)
         .and(auth_filter(data.clone(), TokenType::Agent))
         .map(endpoint_heartbeat);
 
-    let error = warp::post2()
+    let error = warp::post()
         .and(warp::path("error"))
         .and(warp::path::end())
         .and(warp::body::json())
@@ -355,10 +355,10 @@ fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
     }
 }
 
-fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
-    let error = if let Some(compat) = err.find_cause::<Compat<HttpError>>() {
+async fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
+    let error = if let Some(compat) = err.find::<Compat<HttpError>>() {
         Some(*compat.get_ref())
-    } else if let StatusCode::NOT_FOUND | StatusCode::METHOD_NOT_ALLOWED = err.status() {
+    } else if err.is_not_found() {
         Some(HttpError::NotFound)
     } else {
         None

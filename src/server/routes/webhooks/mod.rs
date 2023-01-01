@@ -6,13 +6,13 @@ use crate::server::github::{EventIssueComment, Issue, Repository};
 use crate::server::messages::Message;
 use crate::server::routes::webhooks::args::Command;
 use crate::server::{Data, GithubData};
-use bytes::buf::Buf;
+use bytes::Bytes;
 use hmac::{Hmac, Mac};
 use http::{HeaderMap, Response, StatusCode};
 use hyper::Body;
 use std::str::FromStr;
 use std::sync::Arc;
-use warp::{self, filters::body::FullBody, Filter, Rejection};
+use warp::{self, Filter, Rejection};
 
 fn process_webhook(
     payload: &[u8],
@@ -194,7 +194,7 @@ fn receive_endpoint(
     data: Arc<Data>,
     github_data: Arc<GithubData>,
     headers: HeaderMap,
-    body: FullBody,
+    body: Bytes,
 ) -> Fallible<()> {
     let signature = headers
         .get("X-Hub-Signature")
@@ -209,7 +209,7 @@ fn receive_endpoint(
         .and_then(|h| h.to_str().ok())
         .ok_or_else(|| err_msg("missing header Host\n"))?;
 
-    process_webhook(body.bytes(), host, signature, event, &data, &github_data)
+    process_webhook(&body[..], host, signature, event, &data, &github_data)
 }
 
 pub fn routes(
@@ -217,19 +217,24 @@ pub fn routes(
     github_data: Option<Arc<GithubData>>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
     let data_filter = warp::any().map(move || data.clone());
-    let github_data_filter = warp::any().and_then(move || match github_data.clone() {
-        Some(github_data) => Ok(github_data),
-        None => Err(warp::reject::not_found()),
+    let github_data_filter = warp::any().and_then(move || {
+        let g = github_data.clone();
+        async move {
+            match g {
+                Some(github_data) => Ok(github_data),
+                None => Err(warp::reject::not_found()),
+            }
+        }
     });
 
-    warp::post2()
+    warp::post()
         .and(warp::path::end())
         .and(data_filter)
         .and(github_data_filter)
         .and(warp::header::headers_cloned())
-        .and(warp::body::concat())
+        .and(warp::body::bytes())
         .map(
-            |data: Arc<Data>, github_data: Arc<GithubData>, headers: HeaderMap, body: FullBody| {
+            |data: Arc<Data>, github_data: Arc<GithubData>, headers: HeaderMap, body: Bytes| {
                 let mut resp: Response<Body>;
                 match receive_endpoint(data, github_data, headers, body) {
                     Ok(()) => resp = Response::new("OK\n".into()),

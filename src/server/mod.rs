@@ -37,6 +37,8 @@ pub enum HttpError {
     Forbidden,
 }
 
+impl warp::reject::Reject for HttpError {}
+
 #[derive(Clone)]
 pub struct Data {
     pub config: Config,
@@ -135,7 +137,12 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
             },
         );
 
-    warp::serve(routes).run(bind);
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    rt.block_on(async move {
+        warp::serve(routes).run(bind).await;
+    });
 
     Ok(())
 }

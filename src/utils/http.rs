@@ -5,8 +5,8 @@ use reqwest::{header::USER_AGENT, Method, StatusCode};
 
 const MAX_REDIRECTS: usize = 4;
 
-#[derive(Debug, Fail)]
-#[fail(display = "request to {} returned status code {}", url, status)]
+#[derive(Debug, thiserror::Error)]
+#[error("request to {url} returned status code {status}")]
 pub struct InvalidStatusCode {
     url: String,
     status: StatusCode,

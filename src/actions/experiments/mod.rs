@@ -6,15 +6,15 @@ pub use self::create::CreateExperiment;
 pub use self::delete::DeleteExperiment;
 pub use self::edit::EditExperiment;
 
-#[derive(Debug, failure::Fail)]
+#[derive(Debug, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum ExperimentError {
-    #[fail(display = "experiment '{}' not found", _0)]
+    #[error("experiment '{0}' not found")]
     NotFound(String),
-    #[fail(display = "experiment '{}' already exists", _0)]
+    #[error("experiment '{0}' already exists")]
     AlreadyExists(String),
-    #[fail(display = "duplicate toolchains provided")]
+    #[error("duplicate toolchains provided")]
     DuplicateToolchains,
-    #[fail(display = "it's only possible to edit queued experiments")]
+    #[error("it's only possible to edit queued experiments")]
     CanOnlyEditQueuedExperiments,
 }

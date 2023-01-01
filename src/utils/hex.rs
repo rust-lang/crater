@@ -1,11 +1,11 @@
 use crate::prelude::*;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) enum HexError {
-    #[fail(display = "invalid char in hex: {}", _0)]
+    #[error("invalid char in hex: {0}")]
     InvalidChar(char),
-    #[fail(display = "invalid hex length")]
+    #[error("invalid hex length")]
     InvalidLength,
 }
 

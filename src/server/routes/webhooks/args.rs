@@ -2,16 +2,16 @@ use crate::experiments::{Assignee, CapLints, DeferredCrateSelect, Mode};
 use crate::toolchain::Toolchain;
 use failure::{self, Fallible};
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum CommandParseError {
-    #[fail(display = "missing command")]
+    #[error("missing command")]
     MissingCommand,
-    #[fail(display = "invalid argument: {}", _0)]
+    #[error("invalid argument: {0}")]
     InvalidArgument(String),
-    #[fail(display = "duplicate key: {}", _0)]
+    #[error("duplicate key: {0}")]
     DuplicateKey(String),
-    #[fail(display = "unknown key: {}", _0)]
+    #[error("unknown key: {0}")]
     UnknownKey(String),
 }
 

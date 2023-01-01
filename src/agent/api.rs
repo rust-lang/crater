@@ -15,17 +15,17 @@ use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json::json;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum AgentApiError {
-    #[fail(display = "invalid API endpoint called")]
+    #[error("invalid API endpoint called")]
     InvalidEndpoint,
-    #[fail(display = "Crater server unavailable")]
+    #[error("Crater server unavailable")]
     ServerUnavailable,
-    #[fail(display = "payload sent to the server too large")]
+    #[error("payload sent to the server too large")]
     PayloadTooLarge,
-    #[fail(display = "invalid authorization token")]
+    #[error("invalid authorization token")]
     InvalidAuthorizationToken,
-    #[fail(display = "internal server error: {}", _0)]
+    #[error("internal server error: {0}")]
     InternalServerError(String),
 }
 

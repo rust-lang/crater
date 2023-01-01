@@ -17,8 +17,8 @@ fn default_config_file() -> PathBuf {
         .into()
 }
 
-#[derive(Debug, Fail)]
-#[fail(display = "the configuration file has errors")]
+#[derive(Debug, thiserror::Error)]
+#[error("the configuration file has errors")]
 pub struct BadConfig;
 
 #[derive(Clone, Serialize, Deserialize)]

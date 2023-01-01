@@ -7,9 +7,9 @@ use reqwest::{Method, StatusCode};
 use serde_json::json;
 use std::collections::HashMap;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum GitHubError {
-    #[fail(display = "request to GitHub API failed with status {}: {}", _0, _1)]
+    #[error("request to GitHub API failed with status {0}: {1}")]
     RequestFailed(StatusCode, String),
 }
 

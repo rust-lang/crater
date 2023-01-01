@@ -156,11 +156,11 @@ macro_rules! test_result_enum {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum TestResultParseError {
-    #[fail(display = "unknown test result: {}", _0)]
+    #[error("unknown test result: {0}")]
     UnknownResult(String),
-    #[fail(display = "unexpected failure reason")]
+    #[error("unexpected failure reason")]
     UnexpectedFailureReason,
 }
 

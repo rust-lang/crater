@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum SplitQuotedError {
-    #[fail(display = "unbalanced quotes")]
+    #[error("unbalanced quotes")]
     UnbalancedQuotes,
 }
 

@@ -29,11 +29,11 @@ lazy_static! {
         format!("crater/{}", crate::GIT_REVISION.unwrap_or("unknown"));
 }
 
-#[derive(Debug, Fail, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq, Copy, Clone)]
 pub enum HttpError {
-    #[fail(display = "not found")]
+    #[error("not found")]
     NotFound,
-    #[fail(display = "forbidden")]
+    #[error("forbidden")]
     Forbidden,
 }
 

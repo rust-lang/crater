@@ -9,9 +9,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use url::{Host, Url};
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum S3Error {
-    #[fail(display = "bad S3 url: {}", _0)]
+    #[error("bad S3 url: {0}")]
     BadUrl(String),
 }
 

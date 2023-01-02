@@ -6,6 +6,7 @@ use crate::runner::tasks::{Task, TaskStep};
 use crate::runner::{OverrideResult, RunnerState};
 use crate::utils;
 use rustwide::{BuildDirectory, Workspace};
+use std::collections::HashMap;
 use std::sync::Condvar;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -16,7 +17,7 @@ use std::time::Duration;
 pub(super) struct Worker<'a, DB: WriteResults + Sync> {
     name: String,
     workspace: &'a Workspace,
-    build_dir: Mutex<BuildDirectory>,
+    build_dir: HashMap<&'a crate::toolchain::Toolchain, Mutex<BuildDirectory>>,
     ex: &'a Experiment,
     config: &'a crate::config::Config,
     state: &'a RunnerState,
@@ -35,8 +36,17 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         db: &'a DB,
         next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
     ) -> Self {
+        let mut build_dir = HashMap::new();
+        build_dir.insert(
+            &ex.toolchains[0],
+            Mutex::new(workspace.build_dir(&format!("{name}-tc1"))),
+        );
+        build_dir.insert(
+            &ex.toolchains[1],
+            Mutex::new(workspace.build_dir(&format!("{name}-tc2"))),
+        );
         Worker {
-            build_dir: Mutex::new(workspace.build_dir(&name)),
+            build_dir,
             name,
             workspace,
             ex,
@@ -186,7 +196,9 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             return Ok(());
         }
         info!("purging target dir for {}", self.name);
-        self.build_dir.lock().unwrap().purge()?;
+        for dir in self.build_dir.values() {
+            dir.lock().unwrap().purge()?;
+        }
         Ok(())
     }
 

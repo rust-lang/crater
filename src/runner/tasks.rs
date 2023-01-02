@@ -8,6 +8,7 @@ use crate::runner::{test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use rustwide::{Build, BuildDirectory, Workspace};
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use rustwide::logging::{self, LogStorage};
@@ -143,126 +144,133 @@ impl Task {
         &'s self,
         config: &'ctx Config,
         workspace: &Workspace,
-        build_dir: &'ctx Mutex<BuildDirectory>,
+        build_dir: &'ctx HashMap<&'ctx crate::toolchain::Toolchain, Mutex<BuildDirectory>>,
         ex: &'ctx Experiment,
         db: &'ctx DB,
         state: &'ctx RunnerState,
     ) -> Fallible<()> {
-        let (action, test, toolchain, quiet): (_, fn(&TaskCtx<_>, &Build, &_) -> _, _, _) =
-            match self.step {
-                TaskStep::BuildAndTest { ref tc, quiet } => {
-                    ("testing", test::test_build_and_test, tc, quiet)
-                }
-                TaskStep::BuildOnly { ref tc, quiet } => {
-                    ("building", test::test_build_only, tc, quiet)
-                }
-                TaskStep::CheckOnly { ref tc, quiet } => {
-                    ("checking", test::test_check_only, tc, quiet)
-                }
-                TaskStep::Clippy { ref tc, quiet } => {
-                    ("linting", test::test_clippy_only, tc, quiet)
-                }
-                TaskStep::Rustdoc { ref tc, quiet } => {
-                    ("documenting", test::test_rustdoc, tc, quiet)
-                }
-                TaskStep::UnstableFeatures { ref tc } => (
-                    "checking unstable",
-                    crate::runner::unstable_features::find_unstable_features,
-                    tc,
-                    false,
-                ),
-                TaskStep::Cleanup => {
-                    // Remove stored logs
-                    state.lock().prepare_logs.remove(&self.krate);
-                    return Ok(());
-                }
-                TaskStep::Prepare => {
-                    let storage = LogStorage::from(config);
-                    state
-                        .lock()
-                        .prepare_logs
-                        .insert(self.krate.clone(), storage.clone());
-                    logging::capture(&storage, || {
-                        let rustwide_crate = self.krate.to_rustwide();
-                        for attempt in 1..=15 {
-                            match detect_broken(rustwide_crate.fetch(workspace)) {
-                                Ok(()) => break,
-                                Err(e) => {
-                                    if storage.to_string().contains("No space left on device") {
-                                        if attempt == 15 {
-                                            // If we've failed 15 times, then
-                                            // just give up. It's been at least
-                                            // 45 seconds, which is enough that
-                                            // our disk space check should
-                                            // have run at least once in this
-                                            // time. If that's not helped, then
-                                            // maybe this git repository *is*
-                                            // actually too big.
-                                            //
-                                            // Ideally we'd have some kind of
-                                            // per-worker counter and if we hit
-                                            // this too often we'd replace the
-                                            // machine, but it's not very clear
-                                            // what "too often" means here.
-                                            return Err(e);
-                                        } else {
-                                            log::warn!(
-                                                "Retrying crate fetch in 3 seconds (attempt {})",
-                                                attempt
-                                            );
-                                            std::thread::sleep(std::time::Duration::from_secs(3));
-                                        }
-                                    } else {
+        let (build_dir, action, test, toolchain, quiet): (
+            _,
+            _,
+            fn(&TaskCtx<_>, &Build, &_) -> _,
+            _,
+            _,
+        ) = match self.step {
+            TaskStep::BuildAndTest { ref tc, quiet } => (
+                &build_dir[tc],
+                "testing",
+                test::test_build_and_test,
+                tc,
+                quiet,
+            ),
+            TaskStep::BuildOnly { ref tc, quiet } => {
+                (&build_dir[tc], "building", test::test_build_only, tc, quiet)
+            }
+            TaskStep::CheckOnly { ref tc, quiet } => {
+                (&build_dir[tc], "checking", test::test_check_only, tc, quiet)
+            }
+            TaskStep::Clippy { ref tc, quiet } => {
+                (&build_dir[tc], "linting", test::test_clippy_only, tc, quiet)
+            }
+            TaskStep::Rustdoc { ref tc, quiet } => {
+                (&build_dir[tc], "documenting", test::test_rustdoc, tc, quiet)
+            }
+            TaskStep::UnstableFeatures { ref tc } => (
+                &build_dir[tc],
+                "checking unstable",
+                crate::runner::unstable_features::find_unstable_features,
+                tc,
+                false,
+            ),
+            TaskStep::Cleanup => {
+                // Remove stored logs
+                state.lock().prepare_logs.remove(&self.krate);
+                return Ok(());
+            }
+            TaskStep::Prepare => {
+                let storage = LogStorage::from(config);
+                state
+                    .lock()
+                    .prepare_logs
+                    .insert(self.krate.clone(), storage.clone());
+                logging::capture(&storage, || {
+                    let rustwide_crate = self.krate.to_rustwide();
+                    for attempt in 1..=15 {
+                        match detect_broken(rustwide_crate.fetch(workspace)) {
+                            Ok(()) => break,
+                            Err(e) => {
+                                if storage.to_string().contains("No space left on device") {
+                                    if attempt == 15 {
+                                        // If we've failed 15 times, then
+                                        // just give up. It's been at least
+                                        // 45 seconds, which is enough that
+                                        // our disk space check should
+                                        // have run at least once in this
+                                        // time. If that's not helped, then
+                                        // maybe this git repository *is*
+                                        // actually too big.
+                                        //
+                                        // Ideally we'd have some kind of
+                                        // per-worker counter and if we hit
+                                        // this too often we'd replace the
+                                        // machine, but it's not very clear
+                                        // what "too often" means here.
                                         return Err(e);
+                                    } else {
+                                        log::warn!(
+                                            "Retrying crate fetch in 3 seconds (attempt {})",
+                                            attempt
+                                        );
+                                        std::thread::sleep(std::time::Duration::from_secs(3));
                                     }
+                                } else {
+                                    return Err(e);
                                 }
                             }
                         }
+                    }
 
-                        if let Crate::GitHub(repo) = &self.krate {
-                            if let Some(sha) = rustwide_crate.git_commit(workspace) {
-                                let updated = GitHubRepo {
-                                    sha: Some(sha),
-                                    ..repo.clone()
-                                };
-                                db.update_crate_version(
-                                    ex,
-                                    &Crate::GitHub(repo.clone()),
-                                    &Crate::GitHub(updated),
-                                )
-                                .with_context(|_| {
-                                    format!(
-                                        "failed to record the sha of GitHub repo {}",
-                                        repo.slug()
-                                    )
-                                })?;
-                            } else {
-                                bail!("unable to capture sha for {}", repo.slug());
-                            }
+                    if let Crate::GitHub(repo) = &self.krate {
+                        if let Some(sha) = rustwide_crate.git_commit(workspace) {
+                            let updated = GitHubRepo {
+                                sha: Some(sha),
+                                ..repo.clone()
+                            };
+                            db.update_crate_version(
+                                ex,
+                                &Crate::GitHub(repo.clone()),
+                                &Crate::GitHub(updated),
+                            )
+                            .with_context(|_| {
+                                format!("failed to record the sha of GitHub repo {}", repo.slug())
+                            })?;
+                        } else {
+                            bail!("unable to capture sha for {}", repo.slug());
                         }
-                        Ok(())
-                    })?;
-                    return Ok(());
-                }
-                TaskStep::Skip { ref tc } => {
-                    // If a skipped crate is somehow sent to the agent (for example, when a crate was
-                    // added to the experiment and *then* blacklisted) report the crate as skipped
-                    // instead of silently ignoring it.
-                    db.record_result(
-                        ex,
-                        tc,
-                        &self.krate,
-                        None,
-                        config,
-                        EncodingType::Plain,
-                        || {
-                            warn!("crate skipped");
-                            Ok(TestResult::Skipped)
-                        },
-                    )?;
-                    return Ok(());
-                }
-            };
+                    }
+                    Ok(())
+                })?;
+                return Ok(());
+            }
+            TaskStep::Skip { ref tc } => {
+                // If a skipped crate is somehow sent to the agent (for example, when a crate was
+                // added to the experiment and *then* blacklisted) report the crate as skipped
+                // instead of silently ignoring it.
+                db.record_result(
+                    ex,
+                    tc,
+                    &self.krate,
+                    None,
+                    config,
+                    EncodingType::Plain,
+                    || {
+                        warn!("crate skipped");
+                        Ok(TestResult::Skipped)
+                    },
+                )?;
+                return Ok(());
+            }
+        };
 
         let ctx = TaskCtx::new(
             build_dir,

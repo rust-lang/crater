@@ -9,11 +9,11 @@ use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
 use crate::runner::worker::{DiskSpaceWatcher, Worker};
-use crossbeam_utils::thread::{scope, ScopedJoinHandle};
 use rustwide::logging::LogStorage;
 use rustwide::Workspace;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::thread::scope;
 use std::time::Duration;
 
 const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(30);
@@ -107,7 +107,6 @@ pub fn run_ex<DB: WriteResults + Sync>(
     info!("running tasks in {} threads...", threads_count);
 
     let state = RunnerState::new();
-
     let workers = (0..threads_count)
         .map(|i| {
             Worker::new(
@@ -128,15 +127,19 @@ pub fn run_ex<DB: WriteResults + Sync>(
         &workers,
     );
 
-    let r = scope(|scope| -> Fallible<()> {
-        let mut threads = Vec::new();
+    scope(|scope1| {
+        std::thread::Builder::new()
+            .name("disk-space-watcher".into())
+            .spawn_scoped(scope1, || {
+                disk_watcher.run();
+            })
+            .unwrap();
 
-        for worker in &workers {
-            let join =
-                scope
-                    .builder()
+        scope(|scope| {
+            for worker in &workers {
+                std::thread::Builder::new()
                     .name(worker.name().into())
-                    .spawn(move |_| -> Fallible<()> {
+                    .spawn_scoped(scope, move || -> Fallible<()> {
                         match worker.run() {
                             Ok(()) => Ok(()),
                             Err(r) => {
@@ -144,52 +147,13 @@ pub fn run_ex<DB: WriteResults + Sync>(
                                 Err(r)
                             }
                         }
-                    })?;
-            threads.push(join);
-        }
-        let disk_watcher_thread =
-            scope
-                .builder()
-                .name("disk-space-watcher".into())
-                .spawn(|_| {
-                    disk_watcher.run();
-                    Ok(())
-                })?;
+                    })
+                    .unwrap();
+            }
+        });
 
-        let clean_exit = join_threads(threads.into_iter());
         disk_watcher.stop();
-        let disk_watcher_clean_exit = join_threads(std::iter::once(disk_watcher_thread));
-
-        if clean_exit && disk_watcher_clean_exit {
-            Ok(())
-        } else {
-            bail!("some threads returned an error");
-        }
     });
 
-    match r {
-        Ok(r) => r,
-        Err(panic) => std::panic::resume_unwind(panic),
-    }
-}
-
-fn join_threads<'a, I>(iter: I) -> bool
-where
-    I: Iterator<Item = ScopedJoinHandle<'a, Fallible<()>>>,
-{
-    let mut clean_exit = true;
-    for thread in iter {
-        match thread.join() {
-            Ok(Ok(())) => {}
-            Ok(Err(err)) => {
-                crate::utils::report_failure(&err);
-                clean_exit = false;
-            }
-            Err(panic) => {
-                crate::utils::report_panic(&panic);
-                clean_exit = false;
-            }
-        }
-    }
-    clean_exit
+    Ok(())
 }

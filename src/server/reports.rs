@@ -1,3 +1,5 @@
+use aws_sdk_s3::config::retry::RetryConfig;
+
 use crate::experiments::{Experiment, Status};
 use crate::prelude::*;
 use crate::report::{self, Comparison, TestResults};
@@ -31,6 +33,7 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
     config.set_sleep_impl(Some(Arc::new(
         aws_smithy_async::rt::sleep::TokioSleep::new(),
     )));
+    config.set_retry_config(Some(RetryConfig::standard()));
     let config = config.build();
     let client = aws_sdk_s3::Client::new(&config);
     let writer = report::S3Writer::create(

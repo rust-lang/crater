@@ -38,6 +38,7 @@
                         {{ name }} ({{ crates.Plain|length }})
                     </div>
                     <div class="crates hidden" id="crt-{{ name }}">
+                        {{ macros::crate_header() }}
                         {% for crate in crates.Plain %}
                             {{ macros::crate_div(crate=crate) }}
                         {% endfor %}
@@ -56,6 +57,7 @@
                                     </div>
                                 </div>
                                 <div class="crates" id="{{ name }}-tr{{ loop.index }}">
+                                    {{ macros::crate_header() }}
                                     {% for crate in subcrates %}
                                         {{ macros::crate_div(crate=crate) }}
                                     {% endfor %}
@@ -77,6 +79,7 @@
                                     </div>
                                 </div>
                                 <div class="crates" id="{{ name }}-rt{{ loop.index }}">
+                                    {{ macros::crate_header() }}
                                     {% for crate in subcrates %}
                                         {{ macros::crate_div(crate=crate) }}
                                     {% endfor %}

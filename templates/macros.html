@@ -20,6 +20,14 @@
     UTC
 {% endmacro %}
 
+{% macro crate_header() %}
+    <div class="crate">
+        <span class="title">Crate</span>
+        <span class="run">Previous run</span>
+        <span class="run">Current run</span>
+    </div>
+{% endmacro %}
+
 {% macro crate_div(crate) %}
     <div class="crate">
         <a href="{{ crate.url|safe }}" target="_blank" rel="noopener">

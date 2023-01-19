@@ -175,7 +175,7 @@ div.category div.crate:last-child {
     padding-bottom: 0;
 }
 
-div.category div.crate > a {
+div.category div.crate > a, div.category div.crate > span.title {
     flex: 1;
     text-decoration: none;
 }

@@ -173,7 +173,40 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             let mut result = Ok(());
             for task in tasks {
                 if result.is_ok() {
-                    result = self.run_task(&task);
+                    let max_attempts = 5;
+                    for run in 1..=max_attempts {
+                        result = self.run_task(&task);
+
+                        // We retry task failing on the second toolchain (i.e., regressions). In
+                        // the future we might expand this list further but for now this helps
+                        // prevent spurious test failures and such.
+                        //
+                        // For now we make no distinction between build failures and test failures
+                        // here, but that may change if this proves too slow.
+                        let mut should_retry = false;
+                        if result.is_err() && self.ex.toolchains.len() == 2 {
+                            let toolchain = match &task.step {
+                                TaskStep::Prepare | TaskStep::Cleanup => None,
+                                TaskStep::Skip { tc }
+                                | TaskStep::BuildAndTest { tc, .. }
+                                | TaskStep::BuildOnly { tc, .. }
+                                | TaskStep::CheckOnly { tc, .. }
+                                | TaskStep::Clippy { tc, .. }
+                                | TaskStep::Rustdoc { tc, .. }
+                                | TaskStep::UnstableFeatures { tc } => Some(tc),
+                            };
+                            if let Some(toolchain) = toolchain {
+                                if toolchain == self.ex.toolchains.last().unwrap() {
+                                    should_retry = true;
+                                }
+                            }
+                        }
+                        if !should_retry {
+                            break;
+                        }
+
+                        log::info!("Retrying task {:?} [{run}/{max_attempts}]", task);
+                    }
                 }
                 if let Err((err, test_result)) = &result {
                     if let Err(e) = task.mark_as_failed(

@@ -16,6 +16,7 @@ impl ResultName for FailureReason {
             FailureReason::OOM => "OOM".into(),
             FailureReason::ICE => "ICE".into(),
             FailureReason::CompilerError(_) => "compiler error".into(),
+            FailureReason::BuildScript => "build script failure".into(),
             FailureReason::DependsOn(_) => "faulty deps".into(),
         }
     }
@@ -26,6 +27,7 @@ impl ResultName for FailureReason {
             FailureReason::Unknown
             | FailureReason::NetworkAccess
             | FailureReason::Timeout
+            | FailureReason::BuildScript
             | FailureReason::OOM
             | FailureReason::ICE => self.short_name(),
         }

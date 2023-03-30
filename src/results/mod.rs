@@ -199,6 +199,7 @@ pub enum FailureReason {
     Timeout,
     ICE,
     NetworkAccess,
+    BuildScript,
     CompilerError(BTreeSet<DiagnosticCode>),
     DependsOn(BTreeSet<Crate>),
 }
@@ -213,6 +214,7 @@ impl ::std::fmt::Display for FailureReason {
             FailureReason::Timeout => write!(f, "timeout"),
             FailureReason::ICE => write!(f, "ice"),
             FailureReason::NetworkAccess => write!(f, "network-access"),
+            FailureReason::BuildScript => write!(f, "build-script"),
             FailureReason::CompilerError(codes) => write!(
                 f,
                 "compiler-error({})",
@@ -261,6 +263,7 @@ impl ::std::str::FromStr for FailureReason {
         } else {
             match s {
                 "network-access" => Ok(FailureReason::NetworkAccess),
+                "build-script" => Ok(FailureReason::BuildScript),
                 "unknown" => Ok(FailureReason::Unknown),
                 "oom" => Ok(FailureReason::OOM),
                 "timeout" => Ok(FailureReason::Timeout),
@@ -277,6 +280,7 @@ impl FailureReason {
             FailureReason::OOM | FailureReason::Timeout | FailureReason::NetworkAccess => true,
             FailureReason::CompilerError(_)
             | FailureReason::DependsOn(_)
+            | FailureReason::BuildScript
             | FailureReason::Unknown
             | FailureReason::ICE => false,
         }

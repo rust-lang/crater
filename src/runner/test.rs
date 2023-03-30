@@ -5,7 +5,7 @@ use crate::results::{BrokenReason, EncodingType, FailureReason, TestResult, Writ
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
 use cargo_metadata::diagnostic::DiagnosticLevel;
-use cargo_metadata::{Message, Metadata, Package, Target};
+use cargo_metadata::{Message, Metadata, Package, PackageId, Target};
 use docsrs_metadata::Metadata as DocsrsMetadata;
 use failure::Error;
 use remove_dir_all::remove_dir_all;
@@ -109,6 +109,7 @@ fn run_cargo<DB: WriteResults>(
     }
 
     let mut did_ice = false;
+    let mut build_script_failure = false;
     let mut did_network = false;
     let mut error_codes = BTreeSet::new();
     let mut deps = BTreeSet::new();
@@ -122,6 +123,16 @@ fn run_cargo<DB: WriteResults>(
         }
         if line.contains("code: 111") && line.contains("Connection refused") {
             did_network = true;
+        }
+        if let Some(rest) = line.strip_prefix("error: failed to run custom build command for `") {
+            build_script_failure = true;
+            let krate = rest.trim_end_matches('`');
+            let krate = PackageId { repr: krate.into() };
+            if !local_packages_id.contains(&krate) {
+                if let Ok(krate) = Crate::try_from(&krate) {
+                    deps.insert(krate);
+                }
+            }
         }
 
         // Avoid trying to deserialize non JSON output
@@ -198,6 +209,8 @@ fn run_cargo<DB: WriteResults>(
                 Err(e.context(FailureReason::CompilerError(error_codes)).into())
             } else if did_network {
                 Err(e.context(FailureReason::NetworkAccess).into())
+            } else if build_script_failure {
+                Err(e.context(FailureReason::BuildScript).into())
             } else {
                 Err(e.into())
             }

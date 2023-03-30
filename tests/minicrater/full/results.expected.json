@@ -110,6 +110,24 @@
     },
     {
       "krate": {
+        "Local": "build-script-fail"
+      },
+      "name": "build-script-fail (local)",
+      "res": "build-fail",
+      "runs": [
+        {
+          "log": "stable/local/build-script-fail",
+          "res": "build-fail:build-script"
+        },
+        {
+          "log": "beta/local/build-script-fail",
+          "res": "build-fail:build-script"
+        }
+      ],
+      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-script-fail"
+    },
+    {
+      "krate": {
         "Local": "clippy-warn"
       },
       "name": "clippy-warn (local)",
@@ -237,7 +255,7 @@
       "runs": [
         {
           "log": "stable/local/network-access",
-          "res": "build-fail:unknown"
+          "res": "build-fail:build-script"
         },
         {
           "log": "beta/local/network-access",

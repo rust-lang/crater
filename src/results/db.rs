@@ -65,6 +65,15 @@ impl<'a> DatabaseDB<'a> {
                 )",
             &[],
         )?;
+        self.db.execute(
+            "delete from experiment_crates where rowid in (
+                select rowid from experiment_crates where \
+                    experiment in (select name from experiments where status = 'completed') \
+                    limit 100
+                )",
+            &[],
+        )?;
+
         Ok(())
     }
 

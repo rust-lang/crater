@@ -110,6 +110,7 @@ fn run_cargo<DB: WriteResults>(
 
     let mut did_ice = false;
     let mut did_network = false;
+    let mut did_trybuild = false;
     let mut error_codes = BTreeSet::new();
     let mut deps = BTreeSet::new();
 
@@ -122,6 +123,9 @@ fn run_cargo<DB: WriteResults>(
         }
         if line.contains("code: 111") && line.contains("Connection refused") {
             did_network = true;
+        }
+        if line.contains("the environment variable TRYBUILD=overwrite") {
+            did_trybuild = true;
         }
 
         // Avoid trying to deserialize non JSON output
@@ -198,6 +202,8 @@ fn run_cargo<DB: WriteResults>(
                 Err(e.context(FailureReason::CompilerError(error_codes)).into())
             } else if did_network {
                 Err(e.context(FailureReason::NetworkAccess).into())
+            } else if did_trybuild {
+                Err(e.context(FailureReason::CompilerDiagnosticChange).into())
             } else {
                 Err(e.into())
             }

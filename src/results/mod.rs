@@ -199,6 +199,7 @@ pub enum FailureReason {
     Timeout,
     ICE,
     NetworkAccess,
+    CompilerDiagnosticChange,
     CompilerError(BTreeSet<DiagnosticCode>),
     DependsOn(BTreeSet<Crate>),
 }
@@ -230,6 +231,7 @@ impl ::std::fmt::Display for FailureReason {
                     .collect::<Vec<String>>()
                     .join(", "),
             ),
+            FailureReason::CompilerDiagnosticChange => write!(f, "compiler-diagnostic-change"),
         }
     }
 }
@@ -274,7 +276,10 @@ impl ::std::str::FromStr for FailureReason {
 impl FailureReason {
     pub(crate) fn is_spurious(&self) -> bool {
         match *self {
-            FailureReason::OOM | FailureReason::Timeout | FailureReason::NetworkAccess => true,
+            FailureReason::OOM
+            | FailureReason::Timeout
+            | FailureReason::NetworkAccess
+            | FailureReason::CompilerDiagnosticChange => true,
             FailureReason::CompilerError(_)
             | FailureReason::DependsOn(_)
             | FailureReason::Unknown

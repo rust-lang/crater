@@ -17,6 +17,7 @@ impl ResultName for FailureReason {
             FailureReason::ICE => "ICE".into(),
             FailureReason::CompilerError(_) => "compiler error".into(),
             FailureReason::DependsOn(_) => "faulty deps".into(),
+            FailureReason::CompilerDiagnosticChange => "compiler diagnostic changed".into(),
         }
     }
 
@@ -27,6 +28,7 @@ impl ResultName for FailureReason {
             | FailureReason::NetworkAccess
             | FailureReason::Timeout
             | FailureReason::OOM
+            | FailureReason::CompilerDiagnosticChange
             | FailureReason::ICE => self.short_name(),
         }
     }

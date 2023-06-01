@@ -127,7 +127,13 @@ struct ExperimentContext {
 }
 
 fn humanize(duration: Duration) -> String {
-    let duration = duration.to_std().expect("non-negative duration");
+    let duration = match duration.to_std() {
+        Ok(d) => d,
+        Err(_) => {
+            // Don't try to make it pretty as a fallback.
+            return format!("{:?}", duration);
+        }
+    };
     if duration.as_secs() < 60 {
         format!("{duration:?}")
     } else if duration.as_secs() < 60 * 60 {

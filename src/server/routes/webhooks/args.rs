@@ -128,7 +128,7 @@ generate_parser!(pub enum Command {
         requirement: Option<String> = "requirement",
     })
 
-    "abort" => Abort(AbortArgs {
+    "abort" | "cancel" => Abort(AbortArgs {
         name: Option<String> = "name",
     })
 

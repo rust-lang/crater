@@ -169,7 +169,7 @@ mod tests {
             arg2: Option<String> = "arg2",
         })
 
-        "bar" => Bar(BarArgs {
+        "bar" | "bar-alias" => Bar(BarArgs {
             arg3: Option<String> = "arg3",
         })
 
@@ -201,6 +201,7 @@ mod tests {
             })
         );
         test!("bar", TestCommand::Bar(BarArgs { arg3: None }));
+        test!("bar-alias", TestCommand::Bar(BarArgs { arg3: None }));
         test!("", TestCommand::Baz(BazArgs { arg4: None }));
 
         // Test if args are parsed correctly
@@ -226,6 +227,12 @@ mod tests {
         );
         test!(
             "bar arg3=\"foo \\\" bar\"",
+            TestCommand::Bar(BarArgs {
+                arg3: Some("foo \" bar".into()),
+            })
+        );
+        test!(
+            "bar-alias arg3=\"foo \\\" bar\"",
             TestCommand::Bar(BarArgs {
                 arg3: Some("foo \" bar".into()),
             })

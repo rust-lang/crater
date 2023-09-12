@@ -17,10 +17,10 @@ pub enum CommandParseError {
 
 macro_rules! generate_parser {
     (pub enum $enum:ident {
-        $($command:expr => $variant:ident($var_struct:ident {
+        $($command:pat => $variant:ident($var_struct:ident {
             $($flag:ident: $type:ty = $name:expr,)*
         }))*
-        _ => $d_variant:ident($d_var_struct:ident {$($d_flag:ident: $d_type:ty = $d_name:expr,)*})
+        => $d_variant:ident($d_var_struct:ident {$($d_flag:ident: $d_type:ty = $d_name:expr,)*})
     }) => {
         use crate::prelude::*;
         use std::str::FromStr;
@@ -128,7 +128,7 @@ generate_parser!(pub enum Command {
         requirement: Option<String> = "requirement",
     })
 
-    "abort" => Abort(AbortArgs {
+    "abort" | "cancel" => Abort(AbortArgs {
         name: Option<String> = "name",
     })
 
@@ -144,7 +144,7 @@ generate_parser!(pub enum Command {
 
     "reload-acl" => ReloadACL(ReloadACLArgs {})
 
-    _ => Edit(EditArgs {
+    => Edit(EditArgs {
         name: Option<String> = "name",
         start: Option<Toolchain> = "start",
         end: Option<Toolchain> = "end",
@@ -169,11 +169,11 @@ mod tests {
             arg2: Option<String> = "arg2",
         })
 
-        "bar" => Bar(BarArgs {
+        "bar" | "bar-alias" => Bar(BarArgs {
             arg3: Option<String> = "arg3",
         })
 
-        _ => Baz(BazArgs {
+        => Baz(BazArgs {
             arg4: Option<i32> = "arg4",
         })
     });
@@ -201,6 +201,7 @@ mod tests {
             })
         );
         test!("bar", TestCommand::Bar(BarArgs { arg3: None }));
+        test!("bar-alias", TestCommand::Bar(BarArgs { arg3: None }));
         test!("", TestCommand::Baz(BazArgs { arg4: None }));
 
         // Test if args are parsed correctly
@@ -226,6 +227,12 @@ mod tests {
         );
         test!(
             "bar arg3=\"foo \\\" bar\"",
+            TestCommand::Bar(BarArgs {
+                arg3: Some("foo \" bar".into()),
+            })
+        );
+        test!(
+            "bar-alias arg3=\"foo \\\" bar\"",
             TestCommand::Bar(BarArgs {
                 arg3: Some("foo \" bar".into()),
             })

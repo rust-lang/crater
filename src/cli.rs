@@ -521,7 +521,7 @@ impl Crater {
                 } else {
                     default_capabilities_for_target()
                 };
-                caps.extend(capabilities.clone().into_iter());
+                caps.extend(capabilities.clone());
 
                 agent::run(
                     url,

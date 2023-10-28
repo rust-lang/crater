@@ -190,6 +190,7 @@ mod tests {
     use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
     use flate2::read::GzDecoder;
     use mime::Mime;
+    use rustwide::logging::LogStorage;
     use std::io::Read;
     use tar::Archive;
 
@@ -217,8 +218,7 @@ mod tests {
                 &ex,
                 &ex.toolchains[0],
                 crate1,
-                None,
-                &config,
+                &LogStorage::from(&config),
                 EncodingType::Gzip,
                 || {
                     info!("tc1 crate1");
@@ -231,8 +231,7 @@ mod tests {
                 &ex,
                 &ex.toolchains[1],
                 crate1,
-                None,
-                &config,
+                &LogStorage::from(&config),
                 EncodingType::Plain,
                 || {
                     info!("tc2 crate1");
@@ -245,8 +244,7 @@ mod tests {
                 &ex,
                 &ex.toolchains[0],
                 crate2,
-                None,
-                &config,
+                &LogStorage::from(&config),
                 EncodingType::Gzip,
                 || {
                     info!("tc1 crate2");
@@ -259,8 +257,7 @@ mod tests {
                 &ex,
                 &ex.toolchains[1],
                 crate2,
-                None,
-                &config,
+                &LogStorage::from(&config),
                 EncodingType::Plain,
                 || {
                     info!("tc2 crate2");

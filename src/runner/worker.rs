@@ -3,8 +3,9 @@ use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
 use crate::results::{BrokenReason, TestResult, WriteResults};
 use crate::runner::tasks::{Task, TaskStep};
-use crate::runner::{OverrideResult, RunnerState};
+use crate::runner::OverrideResult;
 use crate::utils;
+use rustwide::logging::LogStorage;
 use rustwide::{BuildDirectory, Workspace};
 use std::collections::HashMap;
 use std::sync::Condvar;
@@ -20,7 +21,6 @@ pub(super) struct Worker<'a, DB: WriteResults + Sync> {
     build_dir: HashMap<&'a crate::toolchain::Toolchain, Mutex<BuildDirectory>>,
     ex: &'a Experiment,
     config: &'a crate::config::Config,
-    state: &'a RunnerState,
     db: &'a DB,
     target_dir_cleanup: AtomicBool,
     next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
@@ -32,7 +32,6 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         workspace: &'a Workspace,
         ex: &'a Experiment,
         config: &'a crate::config::Config,
-        state: &'a RunnerState,
         db: &'a DB,
         next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
     ) -> Self {
@@ -52,7 +51,6 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             ex,
             config,
             next_crate,
-            state,
             db,
             target_dir_cleanup: AtomicBool::new(false),
         }
@@ -62,7 +60,11 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         &self.name
     }
 
-    fn run_task(&self, task: &Task) -> Result<(), (failure::Error, TestResult)> {
+    fn run_task(
+        &self,
+        task: &Task,
+        storage: &LogStorage,
+    ) -> Result<(), (failure::Error, TestResult)> {
         info!("running task: {:?}", task);
 
         let mut res = Ok(());
@@ -77,7 +79,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                 &self.build_dir,
                 self.ex,
                 self.db,
-                self.state,
+                storage,
             );
 
             // We retry task failing on the second toolchain (i.e., regressions). In
@@ -205,19 +207,15 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             }
 
             let mut result = Ok(());
+            let storage = LogStorage::from(self.config);
             for task in tasks {
                 if result.is_ok() {
-                    result = self.run_task(&task);
+                    result = self.run_task(&task, &storage);
                 }
                 if let Err((err, test_result)) = &result {
-                    if let Err(e) = task.mark_as_failed(
-                        self.ex,
-                        self.db,
-                        self.state,
-                        self.config,
-                        err,
-                        test_result,
-                    ) {
+                    if let Err(e) =
+                        task.mark_as_failed(self.ex, self.db, err, test_result, &storage)
+                    {
                         crate::utils::report_failure(&e);
                     }
                 }

@@ -10,6 +10,7 @@ use docsrs_metadata::Metadata as DocsrsMetadata;
 use failure::Error;
 use remove_dir_all::remove_dir_all;
 use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
+use rustwide::logging::LogStorage;
 use rustwide::{Build, PrepareError};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::convert::TryFrom;
@@ -215,6 +216,7 @@ pub(super) fn run_test<DB: WriteResults>(
     action: &str,
     ctx: &TaskCtx<DB>,
     test_fn: fn(&TaskCtx<DB>, &Build, &[Package]) -> Fallible<TestResult>,
+    logs: &LogStorage,
 ) -> Fallible<()> {
     if let Some(res) = ctx
         .db
@@ -222,18 +224,11 @@ pub(super) fn run_test<DB: WriteResults>(
     {
         info!("skipping crate {}. existing result: {}", ctx.krate, res);
     } else {
-        let log_storage = ctx
-            .state
-            .lock()
-            .prepare_logs
-            .get(ctx.krate)
-            .map(|s| s.duplicate());
         ctx.db.record_result(
             ctx.experiment,
             ctx.toolchain,
             ctx.krate,
-            log_storage,
-            ctx.config,
+            logs,
             EncodingType::Plain,
             || {
                 info!(

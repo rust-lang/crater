@@ -9,10 +9,7 @@ use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
 use crate::results::{TestResult, WriteResults};
 use crate::runner::worker::{DiskSpaceWatcher, Worker};
-use rustwide::logging::LogStorage;
 use rustwide::Workspace;
-use std::collections::HashMap;
-use std::sync::Mutex;
 use std::thread::scope;
 use std::time::Duration;
 
@@ -22,28 +19,6 @@ const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.80;
 #[derive(Debug, thiserror::Error)]
 #[error("overridden task result to {0}")]
 pub struct OverrideResult(TestResult);
-
-struct RunnerStateInner {
-    prepare_logs: HashMap<Crate, LogStorage>,
-}
-
-struct RunnerState {
-    inner: Mutex<RunnerStateInner>,
-}
-
-impl RunnerState {
-    fn new() -> Self {
-        RunnerState {
-            inner: Mutex::new(RunnerStateInner {
-                prepare_logs: HashMap::new(),
-            }),
-        }
-    }
-
-    fn lock(&self) -> std::sync::MutexGuard<RunnerStateInner> {
-        self.inner.lock().unwrap()
-    }
-}
 
 pub fn run_ex<DB: WriteResults + Sync>(
     ex: &Experiment,
@@ -106,19 +81,8 @@ pub fn run_ex<DB: WriteResults + Sync>(
 
     info!("running tasks in {} threads...", threads_count);
 
-    let state = RunnerState::new();
     let workers = (0..threads_count)
-        .map(|i| {
-            Worker::new(
-                format!("worker-{i}"),
-                workspace,
-                ex,
-                config,
-                &state,
-                db,
-                next_crate,
-            )
-        })
+        .map(|i| Worker::new(format!("worker-{i}"), workspace, ex, config, db, next_crate))
         .collect::<Vec<_>>();
 
     let disk_watcher = DiskSpaceWatcher::new(

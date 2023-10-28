@@ -1,5 +1,4 @@
 use crate::agent::api::AgentApi;
-use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
@@ -48,16 +47,14 @@ impl<'a> WriteResults for ResultsUploader<'a> {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-        existing_logs: Option<LogStorage>,
-        config: &Config,
+        storage: &LogStorage,
         _: EncodingType,
         f: F,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let storage = existing_logs.unwrap_or_else(|| LogStorage::from(config));
-        let result = logging::capture(&storage, f)?;
+        let result = logging::capture(storage, f)?;
         let output = storage.to_string();
 
         let mut updated = None;

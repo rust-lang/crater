@@ -1,4 +1,3 @@
-use crate::config::Config;
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::experiments::{Experiment, Status};
@@ -224,16 +223,14 @@ impl<'a> WriteResults for DatabaseDB<'a> {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-        existing_logs: Option<LogStorage>,
-        config: &Config,
+        storage: &LogStorage,
         encoding_type: EncodingType,
         f: F,
     ) -> Fallible<TestResult>
     where
         F: FnOnce() -> Fallible<TestResult>,
     {
-        let storage = existing_logs.unwrap_or_else(|| LogStorage::from(config));
-        let result = logging::capture(&storage, f)?;
+        let result = logging::capture(storage, f)?;
         let output = storage.to_string();
         self.store_result(
             ex,
@@ -266,6 +263,7 @@ impl<'a> DeleteResults for DatabaseDB<'a> {
 #[cfg(test)]
 mod tests {
     use base64::Engine;
+    use rustwide::logging::LogStorage;
 
     use super::{DatabaseDB, ProgressData, TaskResult};
     use crate::actions::{Action, ActionsCtx, CreateExperiment};
@@ -360,8 +358,7 @@ mod tests {
                 &ex,
                 &MAIN_TOOLCHAIN,
                 &krate,
-                None,
-                &config,
+                &LogStorage::from(&config),
                 EncodingType::Plain,
                 || {
                     info!("hello world");
@@ -408,8 +405,7 @@ mod tests {
                 &ex,
                 &TEST_TOOLCHAIN,
                 &krate,
-                None,
-                &config,
+                &LogStorage::from(&config),
                 EncodingType::Plain,
                 || {
                     info!("Another log message!");

@@ -182,7 +182,10 @@ fn crate_to_path_fragment(
     path
 }
 
-fn get_crate_version_status(index: &GitIndex, krate: &Crate) -> Fallible<Option<CrateVersionStatus>> {
+fn get_crate_version_status(
+    index: &GitIndex,
+    krate: &Crate,
+) -> Fallible<Option<CrateVersionStatus>> {
     if let Crate::Registry(krate) = krate {
         let index_krate = index
             .crate_(&krate.name)

@@ -4,9 +4,7 @@ use crate::prelude::*;
 use crate::server::agents::Agent;
 use chrono::{DateTime, Utc};
 use prometheus::proto::{Metric, MetricFamily};
-use prometheus::{
-    HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec,
-};
+use prometheus::{HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec};
 
 const JOBS_METRIC: &str = "crater_completed_jobs_total";
 const AGENT_WORK_METRIC: &str = "crater_agent_supposed_to_work";

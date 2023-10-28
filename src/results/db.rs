@@ -90,7 +90,9 @@ impl<'a> DatabaseDB<'a> {
                 &result.krate,
                 &result.toolchain,
                 &result.result,
-                &base64::engine::general_purpose::STANDARD.decode(&result.log).with_context(|_| "invalid base64 log provided")?,
+                &base64::engine::general_purpose::STANDARD
+                    .decode(&result.log)
+                    .with_context(|_| "invalid base64 log provided")?,
                 encoding_type,
             )?;
 

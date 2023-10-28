@@ -8,13 +8,13 @@ use crate::results::TestResult;
 use crate::server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use crate::toolchain::Toolchain;
 use crate::utils;
+use base64::Engine;
 use rand::Rng;
 use reqwest::blocking::RequestBuilder;
 use reqwest::header::AUTHORIZATION;
 use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json::json;
-use base64::Engine;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AgentApiError {

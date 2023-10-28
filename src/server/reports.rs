@@ -24,15 +24,13 @@ fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallib
         }
         BucketRegion::Custom { url } => {
             config.set_region(Some(aws_types::region::Region::from_static("us-east-1")));
-            config.set_endpoint_resolver(Some(Arc::new(aws_sdk_s3::Endpoint::immutable(url)?)));
+            config.set_endpoint_url(Some(url.clone()));
         }
     }
     config.set_credentials_provider(Some(data.tokens.reports_bucket.to_aws_credentials()));
     // https://github.com/awslabs/aws-sdk-rust/issues/586 -- without this, the
     // SDK will just completely not retry requests.
-    config.set_sleep_impl(Some(Arc::new(
-        aws_smithy_async::rt::sleep::TokioSleep::new(),
-    )));
+    config.set_sleep_impl(Some(aws_sdk_s3::config::SharedAsyncSleep::new(aws_smithy_async::rt::sleep::TokioSleep::new())));
     config.set_retry_config(Some(RetryConfig::standard()));
     let config = config.build();
     let client = aws_sdk_s3::Client::new(&config);

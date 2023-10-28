@@ -56,10 +56,10 @@ prometheus = "0.7.0"
 cargo_metadata = "0.15"
 indexmap = "1.4.0"
 tokio = "1.24"
-aws-types = { version = "0.52", features = ["hardcoded-credentials"] }
-aws-smithy-http = "0.52"
-aws-smithy-async = "0.52"
-aws-sdk-s3 = "0.22"
+aws-types = "0.56.1"
+aws-credential-types = "0.56.1"
+aws-smithy-async = "0.56.1"
+aws-sdk-s3 = "0.34"
 thiserror = "1.0.38"
 
 [dev-dependencies]

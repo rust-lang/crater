@@ -1,7 +1,6 @@
 mod db;
 #[cfg(test)]
 mod dummy;
-use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
 use crate::prelude::*;
@@ -45,8 +44,7 @@ pub trait WriteResults {
         ex: &Experiment,
         toolchain: &Toolchain,
         krate: &Crate,
-        existing_logs: Option<LogStorage>,
-        config: &Config,
+        existing_logs: &LogStorage,
         encoding_type: EncodingType,
         f: F,
     ) -> Fallible<TestResult>

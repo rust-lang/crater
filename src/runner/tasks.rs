@@ -3,8 +3,8 @@ use crate::crates::{Crate, GitHubRepo};
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::{EncodingType, TestResult, WriteResults};
+use crate::runner::test;
 use crate::runner::test::detect_broken;
-use crate::runner::{test, RunnerState};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use rustwide::{Build, BuildDirectory, Workspace};
@@ -21,7 +21,6 @@ pub(super) struct TaskCtx<'ctx, DB: WriteResults + 'ctx> {
     pub(super) experiment: &'ctx Experiment,
     pub(super) toolchain: &'ctx Toolchain,
     pub(super) krate: &'ctx Crate,
-    pub(super) state: &'ctx RunnerState,
     pub(super) quiet: bool,
 }
 
@@ -33,7 +32,6 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
         experiment: &'ctx Experiment,
         toolchain: &'ctx Toolchain,
         krate: &'ctx Crate,
-        state: &'ctx RunnerState,
         quiet: bool,
     ) -> Self {
         TaskCtx {
@@ -43,7 +41,6 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
             experiment,
             toolchain,
             krate,
-            state,
             quiet,
         }
     }
@@ -102,10 +99,9 @@ impl Task {
         &self,
         ex: &Experiment,
         db: &DB,
-        state: &RunnerState,
-        config: &Config,
         err: &failure::Error,
         result: &TestResult,
+        storage: &LogStorage,
     ) -> Fallible<()> {
         match self.step {
             TaskStep::Prepare | TaskStep::Cleanup => {}
@@ -116,24 +112,11 @@ impl Task {
             | TaskStep::Clippy { ref tc, .. }
             | TaskStep::Rustdoc { ref tc, .. }
             | TaskStep::UnstableFeatures { ref tc } => {
-                let log_storage = state
-                    .lock()
-                    .prepare_logs
-                    .get(&self.krate)
-                    .map(|s| s.duplicate());
-                db.record_result(
-                    ex,
-                    tc,
-                    &self.krate,
-                    log_storage,
-                    config,
-                    EncodingType::Plain,
-                    || {
-                        error!("this task or one of its parent failed!");
-                        utils::report_failure(err);
-                        Ok(result.clone())
-                    },
-                )?;
+                db.record_result(ex, tc, &self.krate, storage, EncodingType::Plain, || {
+                    error!("this task or one of its parent failed!");
+                    utils::report_failure(err);
+                    Ok(result.clone())
+                })?;
             }
         }
 
@@ -147,7 +130,7 @@ impl Task {
         build_dir: &'ctx HashMap<&'ctx crate::toolchain::Toolchain, Mutex<BuildDirectory>>,
         ex: &'ctx Experiment,
         db: &'ctx DB,
-        state: &'ctx RunnerState,
+        logs: &LogStorage,
     ) -> Fallible<()> {
         let (build_dir, action, test, toolchain, quiet): (
             _,
@@ -184,22 +167,16 @@ impl Task {
             ),
             TaskStep::Cleanup => {
                 // Remove stored logs
-                state.lock().prepare_logs.remove(&self.krate);
                 return Ok(());
             }
             TaskStep::Prepare => {
-                let storage = LogStorage::from(config);
-                state
-                    .lock()
-                    .prepare_logs
-                    .insert(self.krate.clone(), storage.clone());
-                logging::capture(&storage, || {
+                logging::capture(logs, || {
                     let rustwide_crate = self.krate.to_rustwide();
                     for attempt in 1..=15 {
                         match detect_broken(rustwide_crate.fetch(workspace)) {
                             Ok(()) => break,
                             Err(e) => {
-                                if storage.to_string().contains("No space left on device") {
+                                if logs.to_string().contains("No space left on device") {
                                     if attempt == 15 {
                                         // If we've failed 15 times, then
                                         // just give up. It's been at least
@@ -256,33 +233,16 @@ impl Task {
                 // If a skipped crate is somehow sent to the agent (for example, when a crate was
                 // added to the experiment and *then* blacklisted) report the crate as skipped
                 // instead of silently ignoring it.
-                db.record_result(
-                    ex,
-                    tc,
-                    &self.krate,
-                    None,
-                    config,
-                    EncodingType::Plain,
-                    || {
-                        warn!("crate skipped");
-                        Ok(TestResult::Skipped)
-                    },
-                )?;
+                db.record_result(ex, tc, &self.krate, logs, EncodingType::Plain, || {
+                    warn!("crate skipped");
+                    Ok(TestResult::Skipped)
+                })?;
                 return Ok(());
             }
         };
 
-        let ctx = TaskCtx::new(
-            build_dir,
-            config,
-            db,
-            ex,
-            toolchain,
-            &self.krate,
-            state,
-            quiet,
-        );
-        test::run_test(action, &ctx, test)?;
+        let ctx = TaskCtx::new(build_dir, config, db, ex, toolchain, &self.krate, quiet);
+        test::run_test(action, &ctx, test, logs)?;
 
         Ok(())
     }

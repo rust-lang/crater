@@ -38,7 +38,7 @@ clap = { version = "4", features = ["derive"] }
 tar = "0.4.36"
 tempfile = "3.0.0"
 tera = "0.11.7"
-toml = "0.4.6"
+toml = "0.8.6"
 url = "2"
 walkdir = "2"
 warp = "0.3"

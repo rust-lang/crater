@@ -698,12 +698,11 @@ mod tests {
         };
         let gh = Crate::GitHub(repo);
 
-        let mut index = GitIndex::with_path(
+        let index = GitIndex::with_path(
             WORK_DIR.join("crates.io-index"),
             "https://github.com/rust-lang/crates.io-index",
         )
         .unwrap();
-        index.update().unwrap();
 
         assert_eq!(
             get_crate_version_status(&index, &reg).unwrap().unwrap(),

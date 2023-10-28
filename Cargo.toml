@@ -65,4 +65,4 @@ thiserror = "1.0.38"
 [dev-dependencies]
 assert_cmd = "2.0.4"
 difference = "2.0.0"
-predicates = "2.0.0"
+predicates = "3.0.4"

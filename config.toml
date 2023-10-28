@@ -131,6 +131,8 @@ niftygate-asset = { skip = true } # cfg for stable/nightly, but not beta
 futuredsp = { skip = true } # cfg for stable/nightly, but not beta
 buildstructor = { skip-tests = true } # compiler error checks in tests
 crokey = { skip-tests = true } # compiler error checks in tests
+heap-vec = { skip-tests = true } # UB, sometimes segfaults
+k2_tree = { skip-tests = true } # UB, sometimes segfaults
 
 [github-repos]
 # "org_name/repo_name" = { option = true }

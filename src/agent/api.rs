@@ -14,6 +14,7 @@ use reqwest::header::AUTHORIZATION;
 use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json::json;
+use base64::Engine;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AgentApiError {
@@ -186,7 +187,7 @@ impl AgentApi {
                             "crate": krate,
                             "toolchain": toolchain,
                             "result": result,
-                            "log": base64::encode(log),
+                            "log": base64::engine::general_purpose::STANDARD.encode(log),
                         },
                     ],
                     "version": version

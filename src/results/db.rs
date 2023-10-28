@@ -7,6 +7,7 @@ use crate::results::{
     DeleteResults, EncodedLog, EncodingType, ReadResults, TestResult, WriteResults,
 };
 use crate::toolchain::Toolchain;
+use base64::Engine;
 use rustwide::logging::{self, LogStorage};
 
 #[derive(Deserialize)]
@@ -89,7 +90,7 @@ impl<'a> DatabaseDB<'a> {
                 &result.krate,
                 &result.toolchain,
                 &result.result,
-                &base64::decode(&result.log).with_context(|_| "invalid base64 log provided")?,
+                &base64::engine::general_purpose::STANDARD.decode(&result.log).with_context(|_| "invalid base64 log provided")?,
                 encoding_type,
             )?;
 
@@ -262,6 +263,8 @@ impl<'a> DeleteResults for DatabaseDB<'a> {
 
 #[cfg(test)]
 mod tests {
+    use base64::Engine;
+
     use super::{DatabaseDB, ProgressData, TaskResult};
     use crate::actions::{Action, ActionsCtx, CreateExperiment};
     use crate::config::Config;
@@ -468,7 +471,7 @@ mod tests {
                         krate: updated.clone(),
                         toolchain: MAIN_TOOLCHAIN.clone(),
                         result: TestResult::TestPass,
-                        log: base64::encode("foo"),
+                        log: base64::engine::general_purpose::STANDARD.encode("foo"),
                     }],
                     version: Some((krate.clone(), updated.clone())),
                 },

@@ -755,7 +755,7 @@ dependencies = [
  "hmac",
  "http",
  "hyper",
- "indexmap 1.9.3",
+ "indexmap 2.0.2",
  "lazy_static",
  "log",
  "mime",
@@ -2320,6 +2320,7 @@ checksum = "8adf3ddd720272c6ea8bf59463c04e0f93d0bbf7c5439b691bca2987e0270897"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.2",
+ "serde",
 ]
 
 [[package]]

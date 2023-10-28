@@ -1,7 +1,7 @@
 use crate::crates::{lists::List, Crate};
 use crate::dirs::WORK_DIR;
 use crate::prelude::*;
-use crates_index::Index;
+use crates_index::GitIndex;
 use std::collections::HashMap;
 use std::fs::{self};
 
@@ -15,7 +15,7 @@ impl List for RegistryList {
         let mut counts = HashMap::new();
 
         fs::create_dir_all(&*WORK_DIR)?;
-        let mut index = Index::with_path(
+        let mut index = GitIndex::with_path(
             WORK_DIR.join("crates.io-index"),
             "https://github.com/rust-lang/crates.io-index",
         )

@@ -7,7 +7,7 @@ use crate::report::analyzer::{analyze_report, ReportConfig, ToolchainSelect};
 use crate::results::{EncodedLog, EncodingType, FailureReason, ReadResults, TestResult};
 use crate::toolchain::Toolchain;
 use crate::utils;
-use crates_index::Index;
+use crates_index::GitIndex;
 use mime::{self, Mime};
 use percent_encoding::{utf8_percent_encode, AsciiSet};
 use std::borrow::Cow;
@@ -182,7 +182,7 @@ fn crate_to_path_fragment(
     path
 }
 
-fn get_crate_version_status(index: &Index, krate: &Crate) -> Fallible<Option<CrateVersionStatus>> {
+fn get_crate_version_status(index: &GitIndex, krate: &Crate) -> Fallible<Option<CrateVersionStatus>> {
     if let Crate::Registry(krate) = krate {
         let index_krate = index
             .crate_(&krate.name)
@@ -217,7 +217,7 @@ pub fn generate_report<DB: ReadResults>(
     crates: &[Crate],
 ) -> Fallible<RawTestResults> {
     let mut crates = crates.to_vec();
-    let index = Index::with_path(
+    let index = GitIndex::with_path(
         WORK_DIR.join("crates.io-index"),
         "https://github.com/rust-lang/crates.io-index",
     )
@@ -616,7 +616,7 @@ mod tests {
     use crate::experiments::{CapLints, Experiment, Mode, Status};
     use crate::results::{BrokenReason, DummyDB, FailureReason, TestResult};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
-    use crates_index::Index;
+    use crates_index::GitIndex;
 
     #[test]
     fn test_crate_to_path_fragment() {
@@ -698,7 +698,7 @@ mod tests {
         };
         let gh = Crate::GitHub(repo);
 
-        let mut index = Index::with_path(
+        let mut index = GitIndex::with_path(
             WORK_DIR.join("crates.io-index"),
             "https://github.com/rust-lang/crates.io-index",
         )

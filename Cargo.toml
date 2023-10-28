@@ -25,8 +25,8 @@ lazy_static = "1.0"
 mime = "0.3.1"
 minifier = { version = "0.2", features = ["html"] }
 r2d2 = "0.8.2"
-r2d2_sqlite = "0.21.0"
-rusqlite = { version = "0.28.0", features = ["chrono", "functions", "bundled"] }
+r2d2_sqlite = "0.22.0"
+rusqlite = { version = "0.29.0", features = ["chrono", "functions", "bundled"] }
 rand = "0.8"
 regex = "1.0"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
@@ -48,7 +48,7 @@ hmac = "0.12"
 sha-1 = "0.10"
 rust_team_data = { git = "https://github.com/rust-lang/team" }
 systemstat = "0.1.11"
-rustwide = { version = "0.15.0", features = ["unstable", "unstable-toolchain-ci"] }
+rustwide = { version = "0.16.0", features = ["unstable", "unstable-toolchain-ci"] }
 percent-encoding = "2.1.0"
 remove_dir_all = "0.7"
 ctrlc = "3.1.3"

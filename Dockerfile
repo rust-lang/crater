@@ -13,6 +13,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential \
     git \
     pkg-config \
+    cmake \
     libsqlite3-dev \
     libssl-dev
 

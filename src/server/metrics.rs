@@ -4,10 +4,7 @@ use crate::prelude::*;
 use crate::server::agents::Agent;
 use chrono::{DateTime, Utc};
 use prometheus::proto::{Metric, MetricFamily};
-use prometheus::{
-    HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec, __register_counter_vec,
-    __register_gauge, __register_gauge_vec, opts, register_counter, register_int_counter,
-};
+use prometheus::{HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec};
 
 const JOBS_METRIC: &str = "crater_completed_jobs_total";
 const AGENT_WORK_METRIC: &str = "crater_agent_supposed_to_work";
@@ -66,7 +63,7 @@ impl Metrics {
             .inc_by(1);
     }
 
-    pub fn record_completed_jobs(&self, agent: &str, experiment: &str, amount: i64) {
+    pub fn record_completed_jobs(&self, agent: &str, experiment: &str, amount: u64) {
         self.crater_completed_jobs_total
             .with_label_values(&[agent, experiment])
             .inc_by(amount);

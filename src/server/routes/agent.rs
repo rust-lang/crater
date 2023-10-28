@@ -206,7 +206,7 @@ impl RecordProgressThread {
                     metrics.record_completed_jobs(
                         &worker_name,
                         &ex.name,
-                        result.data.results.len() as i64,
+                        result.data.results.len() as u64,
                     );
 
                     if let Err(e) = db.clear_stale_records() {

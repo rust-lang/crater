@@ -86,7 +86,7 @@ impl ReportWriter for S3Writer {
             let mut request = self
                 .client
                 .create_multipart_upload()
-                .acl(aws_sdk_s3::model::ObjectCannedAcl::PublicRead)
+                .acl(aws_sdk_s3::types::ObjectCannedAcl::PublicRead)
                 .key(format!(
                     "{}/{}",
                     self.prefix,
@@ -111,7 +111,7 @@ impl ReportWriter for S3Writer {
             let bytes = bytes::Bytes::from(s);
             let mut part = 1;
             let mut start = 0;
-            let mut parts = aws_sdk_s3::model::CompletedMultipartUpload::builder();
+            let mut parts = aws_sdk_s3::types::CompletedMultipartUpload::builder();
             while start < bytes.len() {
                 let chunk = bytes.slice(start..std::cmp::min(start + chunk_size, bytes.len()));
 
@@ -126,7 +126,7 @@ impl ReportWriter for S3Writer {
                 match self.runtime.block_on(request.send()) {
                     Ok(p) => {
                         parts = parts.parts(
-                            aws_sdk_s3::model::CompletedPart::builder()
+                            aws_sdk_s3::types::CompletedPart::builder()
                                 .e_tag(p.e_tag.clone().unwrap())
                                 .part_number(part)
                                 .build(),
@@ -160,8 +160,8 @@ impl ReportWriter for S3Writer {
             let mut request = self
                 .client
                 .put_object()
-                .body(aws_smithy_http::byte_stream::ByteStream::from(s))
-                .acl(aws_sdk_s3::model::ObjectCannedAcl::PublicRead)
+                .body(aws_sdk_s3::primitives::ByteStream::from(s))
+                .acl(aws_sdk_s3::types::ObjectCannedAcl::PublicRead)
                 .key(format!(
                     "{}/{}",
                     self.prefix,

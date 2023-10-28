@@ -8,6 +8,7 @@ use crate::results::TestResult;
 use crate::server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use crate::toolchain::Toolchain;
 use crate::utils;
+use base64::Engine;
 use rand::Rng;
 use reqwest::blocking::RequestBuilder;
 use reqwest::header::AUTHORIZATION;
@@ -186,7 +187,7 @@ impl AgentApi {
                             "crate": krate,
                             "toolchain": toolchain,
                             "result": result,
-                            "log": base64::encode(log),
+                            "log": base64::engine::general_purpose::STANDARD.encode(log),
                         },
                     ],
                     "version": version

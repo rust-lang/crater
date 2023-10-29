@@ -48,7 +48,6 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
 
 pub(super) enum TaskStep {
     Prepare,
-    Cleanup,
     Skip { tc: Toolchain },
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
@@ -62,7 +61,6 @@ impl fmt::Debug for TaskStep {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (name, quiet, tc) = match *self {
             TaskStep::Prepare => ("prepare", false, None),
-            TaskStep::Cleanup => ("cleanup", false, None),
             TaskStep::Skip { ref tc } => ("skip", false, Some(tc)),
             TaskStep::BuildAndTest { ref tc, quiet } => ("build and test", quiet, Some(tc)),
             TaskStep::BuildOnly { ref tc, quiet } => ("build", quiet, Some(tc)),
@@ -104,7 +102,7 @@ impl Task {
         storage: &LogStorage,
     ) -> Fallible<()> {
         match self.step {
-            TaskStep::Prepare | TaskStep::Cleanup => {}
+            TaskStep::Prepare => {}
             TaskStep::Skip { ref tc }
             | TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
@@ -165,10 +163,6 @@ impl Task {
                 tc,
                 false,
             ),
-            TaskStep::Cleanup => {
-                // Remove stored logs
-                return Ok(());
-            }
             TaskStep::Prepare => {
                 logging::capture(logs, || {
                     let rustwide_crate = self.krate.to_rustwide();

@@ -167,7 +167,7 @@ fn endpoint_next_crate(
 #[derive(Clone)]
 pub struct RecordProgressThread {
     // String is the worker name
-    queue: Sender<(ExperimentData<ProgressData>, String)>,
+    queue: Sender<ExperimentData<ProgressData>>,
     in_flight_requests: Arc<(Mutex<usize>, Condvar)>,
 }
 
@@ -189,7 +189,7 @@ impl RecordProgressThread {
             // Panics should already be logged and otherwise there's not much we
             // can/should do.
             let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let (result, worker_name) = rx.recv().unwrap();
+                let result = rx.recv().unwrap();
                 this.block_until_idle();
 
                 let start = std::time::Instant::now();
@@ -204,7 +204,6 @@ impl RecordProgressThread {
                     }
 
                     metrics.record_completed_jobs(
-                        &worker_name,
                         &ex.name,
                         result.data.results.len() as u64,
                     );
@@ -300,12 +299,12 @@ impl Drop for RequestGuard {
 fn endpoint_record_progress(
     result: ExperimentData<ProgressData>,
     data: Arc<Data>,
-    auth: AuthDetails,
+    _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
     match data
         .record_progress_worker
         .queue
-        .try_send((result, auth.name))
+        .try_send(result)
     {
         Ok(()) => Ok(ApiResponse::Success { result: true }.into_response()?),
         Err(crossbeam_channel::TrySendError::Full(_)) => {

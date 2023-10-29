@@ -3,7 +3,7 @@ use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
 use crate::results::{DatabaseDB, EncodingType, ProgressData};
 use crate::server::api_types::{AgentConfig, ApiResponse};
-use crate::server::auth::{auth_filter, AuthDetails, TokenType};
+use crate::server::auth::{auth_filter, AuthDetails};
 use crate::server::messages::Message;
 use crate::server::{Data, GithubData, HttpError};
 use crossbeam_channel::Sender;
@@ -37,7 +37,7 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(data_filter.clone())
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_config);
 
     let next_experiment = warp::post()
@@ -45,7 +45,7 @@ pub fn routes(
         .and(warp::path::end())
         .and(mutex_filter.clone())
         .and(github_data_filter)
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_next_experiment);
 
     let next_crate = warp::post()
@@ -53,7 +53,7 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(data_filter.clone())
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_next_crate);
 
     let record_progress = warp::post()
@@ -61,14 +61,14 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(data_filter.clone())
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_record_progress);
 
     let heartbeat = warp::post()
         .and(warp::path("heartbeat"))
         .and(warp::path::end())
         .and(data_filter)
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_heartbeat);
 
     let error = warp::post()
@@ -76,7 +76,7 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(mutex_filter)
-        .and(auth_filter(data, TokenType::Agent))
+        .and(auth_filter(data))
         .map(endpoint_error);
 
     warp::any()
@@ -167,7 +167,7 @@ fn endpoint_next_crate(
 #[derive(Clone)]
 pub struct RecordProgressThread {
     // String is the worker name
-    queue: Sender<(ExperimentData<ProgressData>, String)>,
+    queue: Sender<ExperimentData<ProgressData>>,
     in_flight_requests: Arc<(Mutex<usize>, Condvar)>,
 }
 
@@ -189,7 +189,7 @@ impl RecordProgressThread {
             // Panics should already be logged and otherwise there's not much we
             // can/should do.
             let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let (result, worker_name) = rx.recv().unwrap();
+                let result = rx.recv().unwrap();
                 this.block_until_idle();
 
                 let start = std::time::Instant::now();
@@ -203,11 +203,7 @@ impl RecordProgressThread {
                         crate::utils::report_failure(&e);
                     }
 
-                    metrics.record_completed_jobs(
-                        &worker_name,
-                        &ex.name,
-                        result.data.results.len() as u64,
-                    );
+                    metrics.record_completed_jobs(&ex.name, 1);
 
                     if let Err(e) = db.clear_stale_records() {
                         // Not a hard failure. We can continue even if we failed
@@ -300,13 +296,9 @@ impl Drop for RequestGuard {
 fn endpoint_record_progress(
     result: ExperimentData<ProgressData>,
     data: Arc<Data>,
-    auth: AuthDetails,
+    _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    match data
-        .record_progress_worker
-        .queue
-        .try_send((result, auth.name))
-    {
+    match data.record_progress_worker.queue.try_send(result) {
         Ok(()) => Ok(ApiResponse::Success { result: true }.into_response()?),
         Err(crossbeam_channel::TrySendError::Full(_)) => {
             data.metrics.crater_bounced_record_progress.inc_by(1);

@@ -20,7 +20,7 @@ pub struct TaskResult {
 
 #[derive(Deserialize)]
 pub struct ProgressData {
-    pub results: Vec<TaskResult>,
+    pub result: TaskResult,
     pub version: Option<(Crate, Crate)>,
 }
 
@@ -83,24 +83,22 @@ impl<'a> DatabaseDB<'a> {
         data: &ProgressData,
         encoding_type: EncodingType,
     ) -> Fallible<()> {
-        for result in &data.results {
-            self.store_result(
-                ex,
-                &result.krate,
-                &result.toolchain,
-                &result.result,
-                &base64::engine::general_purpose::STANDARD
-                    .decode(&result.log)
-                    .with_context(|_| "invalid base64 log provided")?,
-                encoding_type,
-            )?;
+        self.store_result(
+            ex,
+            &data.result.krate,
+            &data.result.toolchain,
+            &data.result.result,
+            &base64::engine::general_purpose::STANDARD
+                .decode(&data.result.log)
+                .with_context(|_| "invalid base64 log provided")?,
+            encoding_type,
+        )?;
 
-            if let Some((old, new)) = &data.version {
-                self.update_crate_version(ex, old, new)?;
-            }
-
-            self.mark_crate_as_completed(ex, &result.krate)?;
+        if let Some((old, new)) = &data.version {
+            self.update_crate_version(ex, old, new)?;
         }
+
+        self.mark_crate_as_completed(ex, &data.result.krate)?;
 
         Ok(())
     }
@@ -465,12 +463,12 @@ mod tests {
             .store(
                 &ex,
                 &ProgressData {
-                    results: vec![TaskResult {
+                    result: TaskResult {
                         krate: updated.clone(),
                         toolchain: MAIN_TOOLCHAIN.clone(),
                         result: TestResult::TestPass,
                         log: base64::engine::general_purpose::STANDARD.encode("foo"),
-                    }],
+                    },
                     version: Some((krate.clone(), updated.clone())),
                 },
                 EncodingType::Plain,

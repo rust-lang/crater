@@ -91,7 +91,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             let mut should_retry = false;
             if res.is_err() && self.ex.toolchains.len() == 2 {
                 let toolchain = match &task.step {
-                    TaskStep::Prepare | TaskStep::Cleanup => None,
+                    TaskStep::Prepare => None,
                     TaskStep::Skip { tc }
                     | TaskStep::BuildAndTest { tc, .. }
                     | TaskStep::BuildOnly { tc, .. }
@@ -200,10 +200,6 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                         },
                     });
                 }
-                tasks.push(Task {
-                    krate: krate.clone(),
-                    step: TaskStep::Cleanup,
-                });
             }
 
             let mut result = Ok(());

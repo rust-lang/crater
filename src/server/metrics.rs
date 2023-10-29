@@ -3,7 +3,6 @@ use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
 use crate::server::agents::Agent;
 use chrono::{DateTime, Utc};
-use prometheus::proto::{Metric, MetricFamily};
 use prometheus::{HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec};
 
 const JOBS_METRIC: &str = "crater_completed_jobs_total";
@@ -26,7 +25,7 @@ impl Metrics {
     pub fn new() -> Fallible<Self> {
         let jobs_opts = prometheus::opts!(JOBS_METRIC, "total completed jobs");
         let crater_completed_jobs_total =
-            prometheus::register_int_counter_vec!(jobs_opts, &["agent", "experiment"])?;
+            prometheus::register_int_counter_vec!(jobs_opts, &["experiment"])?;
         let crater_bounced_record_progress = prometheus::register_int_counter!(
             "crater_bounced_record_progress",
             "hits with full record progress queue"
@@ -63,39 +62,15 @@ impl Metrics {
             .inc_by(1);
     }
 
-    pub fn record_completed_jobs(&self, agent: &str, experiment: &str, amount: u64) {
+    pub fn record_completed_jobs(&self, experiment: &str, amount: u64) {
         self.crater_completed_jobs_total
-            .with_label_values(&[agent, experiment])
+            .with_label_values(&[experiment])
             .inc_by(amount);
     }
 
-    fn get_metric_by_name(name: &str) -> Option<MetricFamily> {
-        let families = prometheus::gather();
-        families.into_iter().find(|fam| fam.get_name() == name)
-    }
-
-    fn get_label_by_name<'a>(metric: &'a Metric, label: &str) -> Option<&'a str> {
-        metric
-            .get_label()
-            .iter()
-            .find(|lab| lab.get_name() == label)
-            .map(|lab| lab.get_value())
-    }
-
     fn remove_experiment_jobs(&self, experiment: &str) -> Fallible<()> {
-        if let Some(metric) = Self::get_metric_by_name(JOBS_METRIC) {
-            let agents = metric
-                .get_metric()
-                .iter()
-                .filter(|met| Self::get_label_by_name(met, "experiment").unwrap() == experiment)
-                .map(|met| Self::get_label_by_name(met, "agent").unwrap())
-                .collect::<Vec<&str>>();
-
-            for agent in agents.iter() {
-                self.crater_completed_jobs_total
-                    .remove_label_values(&[agent, experiment])?;
-            }
-        }
+        self.crater_completed_jobs_total
+            .remove_label_values(&[experiment])?;
 
         Ok(())
     }
@@ -143,10 +118,25 @@ mod tests {
     use crate::server::tokens::Tokens;
     use chrono::Utc;
     use lazy_static::lazy_static;
-    use prometheus::proto::MetricFamily;
+    use prometheus::proto::{Metric, MetricFamily};
 
     lazy_static! {
         static ref METRICS: Metrics = Metrics::new().unwrap();
+    }
+
+    impl Metrics {
+        fn get_metric_by_name(name: &str) -> Option<MetricFamily> {
+            let families = prometheus::gather();
+            families.into_iter().find(|fam| fam.get_name() == name)
+        }
+
+        fn get_label_by_name<'a>(metric: &'a Metric, label: &str) -> Option<&'a str> {
+            metric
+                .get_label()
+                .iter()
+                .find(|lab| lab.get_name() == label)
+                .map(|lab| lab.get_value())
+        }
     }
 
     fn test_experiment_presence(metric: &MetricFamily, experiment: &str) -> bool {
@@ -160,12 +150,9 @@ mod tests {
     fn test_on_complete_experiment() {
         let ex1 = "pr-0";
         let ex2 = "pr-1";
-        let agent1 = "agent-1";
-        let agent2 = "agent-2";
 
-        METRICS.record_completed_jobs(agent1, ex1, 1);
-        METRICS.record_completed_jobs(agent2, ex1, 1);
-        METRICS.record_completed_jobs(agent2, ex2, 1);
+        METRICS.record_completed_jobs(ex1, 1);
+        METRICS.record_completed_jobs(ex2, 1);
 
         //test metrics are correctly registered
         let jobs = Metrics::get_metric_by_name(JOBS_METRIC).unwrap();

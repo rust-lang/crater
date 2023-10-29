@@ -14,11 +14,6 @@ lazy_static! {
         Regex::new(r"^crater(-agent)?/(?P<sha>[a-f0-9]{7,40})( \(.*\))?$").unwrap();
 }
 
-#[derive(Copy, Clone)]
-pub enum TokenType {
-    Agent,
-}
-
 pub struct AuthDetails {
     pub name: String,
     pub git_revision: Option<String>,
@@ -45,7 +40,7 @@ fn git_revision(user_agent: &str) -> Option<String> {
         .map(|cap| cap["sha"].to_string())
 }
 
-fn check_auth(data: &Data, headers: &HeaderMap, token_type: TokenType) -> Option<AuthDetails> {
+fn check_auth(data: &Data, headers: &HeaderMap) -> Option<AuthDetails> {
     // Try to extract the git revision from the User-Agent header
     let git_revision = if let Some(ua_value) = headers.get(USER_AGENT) {
         if let Ok(ua) = ua_value.to_str() {
@@ -60,11 +55,7 @@ fn check_auth(data: &Data, headers: &HeaderMap, token_type: TokenType) -> Option
     if let Some(authorization_value) = headers.get(AUTHORIZATION) {
         if let Ok(authorization) = authorization_value.to_str() {
             if let Some(token) = parse_token(authorization) {
-                let tokens = match token_type {
-                    TokenType::Agent => &data.tokens.agents,
-                };
-
-                if let Some(name) = tokens.get(token) {
+                if let Some(name) = data.tokens.agents.get(token) {
                     return Some(AuthDetails {
                         name: name.clone(),
                         git_revision,
@@ -79,12 +70,11 @@ fn check_auth(data: &Data, headers: &HeaderMap, token_type: TokenType) -> Option
 
 pub fn auth_filter(
     data: Arc<Data>,
-    token_type: TokenType,
 ) -> impl Filter<Extract = (AuthDetails,), Error = Rejection> + Clone {
     warp::header::headers_cloned().and_then(move |headers| {
         let data = data.clone();
         async move {
-            match check_auth(&data, &headers, token_type) {
+            match check_auth(&data, &headers) {
                 Some(details) => Ok(details),
                 None => Err(warp::reject::custom(HttpError::Forbidden)),
             }

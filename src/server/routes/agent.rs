@@ -3,7 +3,7 @@ use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
 use crate::results::{DatabaseDB, EncodingType, ProgressData};
 use crate::server::api_types::{AgentConfig, ApiResponse};
-use crate::server::auth::{auth_filter, AuthDetails, TokenType};
+use crate::server::auth::{auth_filter, AuthDetails};
 use crate::server::messages::Message;
 use crate::server::{Data, GithubData, HttpError};
 use crossbeam_channel::Sender;
@@ -37,7 +37,7 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(data_filter.clone())
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_config);
 
     let next_experiment = warp::post()
@@ -45,7 +45,7 @@ pub fn routes(
         .and(warp::path::end())
         .and(mutex_filter.clone())
         .and(github_data_filter)
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_next_experiment);
 
     let next_crate = warp::post()
@@ -53,7 +53,7 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(data_filter.clone())
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_next_crate);
 
     let record_progress = warp::post()
@@ -61,14 +61,14 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(data_filter.clone())
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_record_progress);
 
     let heartbeat = warp::post()
         .and(warp::path("heartbeat"))
         .and(warp::path::end())
         .and(data_filter)
-        .and(auth_filter(data.clone(), TokenType::Agent))
+        .and(auth_filter(data.clone()))
         .map(endpoint_heartbeat);
 
     let error = warp::post()
@@ -76,7 +76,7 @@ pub fn routes(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(mutex_filter)
-        .and(auth_filter(data, TokenType::Agent))
+        .and(auth_filter(data))
         .map(endpoint_error);
 
     warp::any()

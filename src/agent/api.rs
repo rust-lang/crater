@@ -182,14 +182,12 @@ impl AgentApi {
                 .build_request(Method::POST, "record-progress")
                 .json(&json!({
                     "experiment-name": ex.name,
-                    "results": [
-                        {
-                            "crate": krate,
-                            "toolchain": toolchain,
-                            "result": result,
-                            "log": base64::engine::general_purpose::STANDARD.encode(log),
-                        },
-                    ],
+                    "result": {
+                        "crate": krate,
+                        "toolchain": toolchain,
+                        "result": result,
+                        "log": base64::engine::general_purpose::STANDARD.encode(log),
+                    },
                     "version": version
                 }))
                 .send()?

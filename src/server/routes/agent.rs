@@ -203,10 +203,7 @@ impl RecordProgressThread {
                         crate::utils::report_failure(&e);
                     }
 
-                    metrics.record_completed_jobs(
-                        &ex.name,
-                        result.data.results.len() as u64,
-                    );
+                    metrics.record_completed_jobs(&ex.name, 1);
 
                     if let Err(e) = db.clear_stale_records() {
                         // Not a hard failure. We can continue even if we failed
@@ -301,11 +298,7 @@ fn endpoint_record_progress(
     data: Arc<Data>,
     _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    match data
-        .record_progress_worker
-        .queue
-        .try_send(result)
-    {
+    match data.record_progress_worker.queue.try_send(result) {
         Ok(()) => Ok(ApiResponse::Success { result: true }.into_response()?),
         Err(crossbeam_channel::TrySendError::Full(_)) => {
             data.metrics.crater_bounced_record_progress.inc_by(1);

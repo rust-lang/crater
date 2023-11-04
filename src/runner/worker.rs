@@ -148,22 +148,24 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
 
             info!("{} processing crate {}", self.name, krate);
 
-            let mut tasks = Vec::new();
+            let mut did_prepare = false;
+            for tc in &self.ex.toolchains {
+                let mut tasks = Vec::new();
 
-            if !self.ex.ignore_blacklist && self.config.should_skip(&krate) {
-                for tc in &self.ex.toolchains {
+                if !self.ex.ignore_blacklist && self.config.should_skip(&krate) {
                     tasks.push(Task {
                         krate: krate.clone(),
                         step: TaskStep::Skip { tc: tc.clone() },
                     });
-                }
-            } else {
-                tasks.push(Task {
-                    krate: krate.clone(),
-                    step: TaskStep::Prepare,
-                });
-                let quiet = self.config.is_quiet(&krate);
-                for tc in &self.ex.toolchains {
+                } else {
+                    if !did_prepare {
+                        did_prepare = true;
+                        tasks.push(Task {
+                            krate: krate.clone(),
+                            step: TaskStep::Prepare,
+                        });
+                    }
+                    let quiet = self.config.is_quiet(&krate);
                     tasks.push(Task {
                         krate: krate.clone(),
                         step: match self.ex.mode {
@@ -200,19 +202,19 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                         },
                     });
                 }
-            }
 
-            let mut result = Ok(());
-            let storage = LogStorage::from(self.config);
-            for task in tasks {
-                if result.is_ok() {
-                    result = self.run_task(&task, &storage);
-                }
-                if let Err((err, test_result)) = &result {
-                    if let Err(e) =
-                        task.mark_as_failed(self.ex, self.db, err, test_result, &storage)
-                    {
-                        crate::utils::report_failure(&e);
+                let mut result = Ok(());
+                let storage = LogStorage::from(self.config);
+                for task in tasks {
+                    if result.is_ok() {
+                        result = self.run_task(&task, &storage);
+                    }
+                    if let Err((err, test_result)) = &result {
+                        if let Err(e) =
+                            task.mark_as_failed(self.ex, self.db, err, test_result, &storage)
+                        {
+                            crate::utils::report_failure(&e);
+                        }
                     }
                 }
             }

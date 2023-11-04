@@ -92,8 +92,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             if res.is_err() && self.ex.toolchains.len() == 2 {
                 let toolchain = match &task.step {
                     TaskStep::Prepare => None,
-                    TaskStep::Skip { tc }
-                    | TaskStep::BuildAndTest { tc, .. }
+                    TaskStep::BuildAndTest { tc, .. }
                     | TaskStep::BuildOnly { tc, .. }
                     | TaskStep::CheckOnly { tc, .. }
                     | TaskStep::Clippy { tc, .. }
@@ -148,73 +147,102 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
 
             info!("{} processing crate {}", self.name, krate);
 
-            let mut did_prepare = false;
-            for tc in &self.ex.toolchains {
-                let mut tasks = Vec::new();
-
-                if !self.ex.ignore_blacklist && self.config.should_skip(&krate) {
-                    tasks.push(Task {
-                        krate: krate.clone(),
-                        step: TaskStep::Skip { tc: tc.clone() },
-                    });
-                } else {
-                    if !did_prepare {
-                        did_prepare = true;
-                        tasks.push(Task {
-                            krate: krate.clone(),
-                            step: TaskStep::Prepare,
-                        });
-                    }
-                    let quiet = self.config.is_quiet(&krate);
-                    tasks.push(Task {
-                        krate: krate.clone(),
-                        step: match self.ex.mode {
-                            Mode::BuildOnly => TaskStep::BuildOnly {
-                                tc: tc.clone(),
-                                quiet,
-                            },
-                            Mode::BuildAndTest
-                                if !self.ex.ignore_blacklist
-                                    && self.config.should_skip_tests(&krate) =>
-                            {
-                                TaskStep::BuildOnly {
-                                    tc: tc.clone(),
-                                    quiet,
-                                }
-                            }
-                            Mode::BuildAndTest => TaskStep::BuildAndTest {
-                                tc: tc.clone(),
-                                quiet,
-                            },
-                            Mode::CheckOnly => TaskStep::CheckOnly {
-                                tc: tc.clone(),
-                                quiet,
-                            },
-                            Mode::Clippy => TaskStep::Clippy {
-                                tc: tc.clone(),
-                                quiet,
-                            },
-                            Mode::Rustdoc => TaskStep::Rustdoc {
-                                tc: tc.clone(),
-                                quiet,
-                            },
-                            Mode::UnstableFeatures => TaskStep::UnstableFeatures { tc: tc.clone() },
+            if !self.ex.ignore_blacklist && self.config.should_skip(&krate) {
+                for tc in &self.ex.toolchains {
+                    // If a skipped crate is somehow sent to the agent (for example, when a crate was
+                    // added to the experiment and *then* blacklisted) report the crate as skipped
+                    // instead of silently ignoring it.
+                    if let Err(e) = self.db.record_result(
+                        self.ex,
+                        tc,
+                        &krate,
+                        &LogStorage::from(self.config),
+                        crate::results::EncodingType::Plain,
+                        || {
+                            warn!("crate skipped");
+                            Ok(TestResult::Skipped)
                         },
-                    });
-                }
-
-                let mut result = Ok(());
-                let storage = LogStorage::from(self.config);
-                for task in tasks {
-                    if result.is_ok() {
-                        result = self.run_task(&task, &storage);
+                    ) {
+                        crate::utils::report_failure(&e);
                     }
-                    if let Err((err, test_result)) = &result {
-                        if let Err(e) =
-                            task.mark_as_failed(self.ex, self.db, err, test_result, &storage)
+                }
+                continue;
+            }
+
+            let logs = LogStorage::from(self.config);
+            let prepare_task = Task {
+                krate: krate.clone(),
+                step: TaskStep::Prepare,
+            };
+            if let Err((err, test_result)) = &self.run_task(&prepare_task, &logs) {
+                if let Err(e) =
+                    prepare_task.mark_as_failed(self.ex, self.db, err, test_result, &logs)
+                {
+                    crate::utils::report_failure(&e);
+                }
+                for tc in &self.ex.toolchains {
+                    if let Err(e) = self.db.record_result(
+                        self.ex,
+                        tc,
+                        &krate,
+                        &LogStorage::from(self.config),
+                        crate::results::EncodingType::Plain,
+                        || {
+                            error!("this task or one of its parent failed!");
+                            utils::report_failure(err);
+                            Ok(test_result.clone())
+                        },
+                    ) {
+                        crate::utils::report_failure(&e);
+                    }
+                }
+                continue;
+            }
+
+            for tc in &self.ex.toolchains {
+                let quiet = self.config.is_quiet(&krate);
+                let task = Task {
+                    krate: krate.clone(),
+                    step: match self.ex.mode {
+                        Mode::BuildOnly => TaskStep::BuildOnly {
+                            tc: tc.clone(),
+                            quiet,
+                        },
+                        Mode::BuildAndTest
+                            if !self.ex.ignore_blacklist
+                                && self.config.should_skip_tests(&krate) =>
                         {
-                            crate::utils::report_failure(&e);
+                            TaskStep::BuildOnly {
+                                tc: tc.clone(),
+                                quiet,
+                            }
                         }
+                        Mode::BuildAndTest => TaskStep::BuildAndTest {
+                            tc: tc.clone(),
+                            quiet,
+                        },
+                        Mode::CheckOnly => TaskStep::CheckOnly {
+                            tc: tc.clone(),
+                            quiet,
+                        },
+                        Mode::Clippy => TaskStep::Clippy {
+                            tc: tc.clone(),
+                            quiet,
+                        },
+                        Mode::Rustdoc => TaskStep::Rustdoc {
+                            tc: tc.clone(),
+                            quiet,
+                        },
+                        Mode::UnstableFeatures => TaskStep::UnstableFeatures { tc: tc.clone() },
+                    },
+                };
+
+                let storage = logs.clone();
+                if let Err((err, test_result)) = &self.run_task(&task, &storage) {
+                    if let Err(e) =
+                        task.mark_as_failed(self.ex, self.db, err, test_result, &storage)
+                    {
+                        crate::utils::report_failure(&e);
                     }
                 }
             }

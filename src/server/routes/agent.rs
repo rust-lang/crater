@@ -12,6 +12,7 @@ use http::Response;
 use hyper::Body;
 use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex};
+use std::time::Instant;
 use warp::{self, Filter, Rejection};
 
 #[derive(Deserialize)]
@@ -214,7 +215,7 @@ impl RecordProgressThread {
 
                     metrics
                         .crater_endpoint_time
-                        .with_label_values(&["record_progress"])
+                        .with_label_values(&["record_progress_worker"])
                         .observe(start.elapsed().as_secs_f64());
                 }
             }));
@@ -298,14 +299,23 @@ fn endpoint_record_progress(
     data: Arc<Data>,
     _auth: AuthDetails,
 ) -> Fallible<Response<Body>> {
-    match data.record_progress_worker.queue.try_send(result) {
+    let start = Instant::now();
+
+    let ret = match data.record_progress_worker.queue.try_send(result) {
         Ok(()) => Ok(ApiResponse::Success { result: true }.into_response()?),
         Err(crossbeam_channel::TrySendError::Full(_)) => {
             data.metrics.crater_bounced_record_progress.inc_by(1);
             Ok(ApiResponse::<()>::SlowDown.into_response()?)
         }
         Err(crossbeam_channel::TrySendError::Disconnected(_)) => unreachable!(),
-    }
+    };
+
+    data.metrics
+        .crater_endpoint_time
+        .with_label_values(&["record_progress_endpoint"])
+        .observe(start.elapsed().as_secs_f64());
+
+    ret
 }
 
 fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {

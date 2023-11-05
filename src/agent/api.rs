@@ -68,6 +68,7 @@ impl ResponseExt for ::reqwest::blocking::Response {
 pub struct AgentApi {
     url: String,
     token: String,
+    random_id: String,
 }
 
 impl AgentApi {
@@ -75,6 +76,7 @@ impl AgentApi {
         AgentApi {
             url: url.to_string(),
             token: token.to_string(),
+            random_id: format!("{:X}{:X}", rand::random::<u64>(), rand::random::<u64>()),
         }
     }
 
@@ -200,6 +202,9 @@ impl AgentApi {
         self.retry(|this| {
             let _: bool = this
                 .build_request(Method::POST, "heartbeat")
+                .json(&json!({
+                    "id": self.random_id,
+                }))
                 .send()?
                 .to_api_response()?;
             Ok(())

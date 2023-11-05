@@ -5,7 +5,9 @@ use crate::prelude::*;
 use crate::server::tokens::Tokens;
 use chrono::Duration;
 use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 
 /// Number of seconds without an heartbeat after an agent should be considered unreachable.
 const INACTIVE_AFTER: i64 = 300;
@@ -74,13 +76,39 @@ impl Agent {
 #[derive(Clone)]
 pub struct Agents {
     db: Database,
+    // worker -> timestamp
+    current_workers: Arc<Mutex<HashMap<String, (WorkerInfo, std::time::Instant)>>>,
+}
+
+#[derive(Deserialize)]
+pub struct WorkerInfo {
+    id: String,
 }
 
 impl Agents {
     pub fn new(db: Database, tokens: &Tokens) -> Fallible<Self> {
-        let agents = Agents { db };
+        let agents = Agents {
+            db,
+            current_workers: Arc::new(Mutex::new(HashMap::new())),
+        };
         agents.synchronize(tokens)?;
         Ok(agents)
+    }
+
+    pub fn active_worker_count(&self) -> usize {
+        let mut guard = self.current_workers.lock().unwrap();
+        guard.retain(|_, (_, timestamp)| {
+            // It's been 10 minutes since we heard from this worker, drop it from our active list.
+            timestamp.elapsed() > std::time::Duration::from_secs(60 * 10)
+        });
+        guard.len()
+    }
+
+    pub fn add_worker(&self, id: WorkerInfo) {
+        self.current_workers
+            .lock()
+            .unwrap()
+            .insert(id.id.clone(), (id, std::time::Instant::now()));
     }
 
     fn synchronize(&self, tokens: &Tokens) -> Fallible<()> {

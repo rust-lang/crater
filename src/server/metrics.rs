@@ -10,6 +10,7 @@ const AGENT_WORK_METRIC: &str = "crater_agent_supposed_to_work";
 const AGENT_FAILED: &str = "crater_agent_failure";
 const LAST_CRATES_UPDATE_METRIC: &str = "crater_last_crates_update";
 const ENDPOINT_TIME: &str = "crater_endpoint_time_seconds";
+const WORKER_COUNT: &str = "crater_worker_count";
 
 #[derive(Clone)]
 pub struct Metrics {
@@ -19,6 +20,7 @@ pub struct Metrics {
     crater_work_status: IntGaugeVec,
     crater_last_crates_update: IntGauge,
     pub crater_endpoint_time: HistogramVec,
+    crater_worker_count: IntGauge,
 }
 
 impl Metrics {
@@ -46,6 +48,9 @@ impl Metrics {
             &["endpoint"]
         )?;
 
+        let crater_worker_count = prometheus::opts!(WORKER_COUNT, "number of active workers");
+        let crater_worker_count = prometheus::register_int_gauge!(crater_worker_count)?;
+
         Ok(Metrics {
             crater_completed_jobs_total,
             crater_bounced_record_progress,
@@ -53,7 +58,12 @@ impl Metrics {
             crater_work_status,
             crater_last_crates_update,
             crater_endpoint_time,
+            crater_worker_count,
         })
+    }
+
+    pub fn record_worker_count(&self, count: usize) {
+        self.crater_worker_count.set(count as i64);
     }
 
     pub fn record_error(&self, agent: &str, experiment: &str) {

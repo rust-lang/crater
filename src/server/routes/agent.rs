@@ -2,6 +2,7 @@ use crate::agent::Capabilities;
 use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
 use crate::results::{DatabaseDB, EncodingType, ProgressData};
+use crate::server::agents::WorkerInfo;
 use crate::server::api_types::{AgentConfig, ApiResponse};
 use crate::server::auth::{auth_filter, AuthDetails};
 use crate::server::messages::Message;
@@ -68,6 +69,7 @@ pub fn routes(
     let heartbeat = warp::post()
         .and(warp::path("heartbeat"))
         .and(warp::path::end())
+        .and(warp::body::json())
         .and(data_filter)
         .and(auth_filter(data.clone()))
         .map(endpoint_heartbeat);
@@ -318,12 +320,19 @@ fn endpoint_record_progress(
     ret
 }
 
-fn endpoint_heartbeat(data: Arc<Data>, auth: AuthDetails) -> Fallible<Response<Body>> {
+fn endpoint_heartbeat(
+    id: WorkerInfo,
+    data: Arc<Data>,
+    auth: AuthDetails,
+) -> Fallible<Response<Body>> {
+    data.agents.add_worker(id);
     if let Some(rev) = auth.git_revision {
         data.agents.set_git_revision(&auth.name, &rev)?;
     }
 
     data.agents.record_heartbeat(&auth.name)?;
+    data.metrics
+        .record_worker_count(data.agents.active_worker_count());
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }
 

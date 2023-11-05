@@ -48,7 +48,6 @@ impl<'ctx, DB: WriteResults + 'ctx> TaskCtx<'ctx, DB> {
 
 pub(super) enum TaskStep {
     Prepare,
-    Skip { tc: Toolchain },
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
     CheckOnly { tc: Toolchain, quiet: bool },
@@ -61,7 +60,6 @@ impl fmt::Debug for TaskStep {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (name, quiet, tc) = match *self {
             TaskStep::Prepare => ("prepare", false, None),
-            TaskStep::Skip { ref tc } => ("skip", false, Some(tc)),
             TaskStep::BuildAndTest { ref tc, quiet } => ("build and test", quiet, Some(tc)),
             TaskStep::BuildOnly { ref tc, quiet } => ("build", quiet, Some(tc)),
             TaskStep::CheckOnly { ref tc, quiet } => ("check", quiet, Some(tc)),
@@ -103,8 +101,7 @@ impl Task {
     ) -> Fallible<()> {
         match self.step {
             TaskStep::Prepare => {}
-            TaskStep::Skip { ref tc }
-            | TaskStep::BuildAndTest { ref tc, .. }
+            TaskStep::BuildAndTest { ref tc, .. }
             | TaskStep::BuildOnly { ref tc, .. }
             | TaskStep::CheckOnly { ref tc, .. }
             | TaskStep::Clippy { ref tc, .. }
@@ -220,16 +217,6 @@ impl Task {
                         }
                     }
                     Ok(())
-                })?;
-                return Ok(());
-            }
-            TaskStep::Skip { ref tc } => {
-                // If a skipped crate is somehow sent to the agent (for example, when a crate was
-                // added to the experiment and *then* blacklisted) report the crate as skipped
-                // instead of silently ignoring it.
-                db.record_result(ex, tc, &self.krate, logs, EncodingType::Plain, || {
-                    warn!("crate skipped");
-                    Ok(TestResult::Skipped)
                 })?;
                 return Ok(());
             }

@@ -99,7 +99,7 @@ impl Agents {
         let mut guard = self.current_workers.lock().unwrap();
         guard.retain(|_, (_, timestamp)| {
             // It's been 10 minutes since we heard from this worker, drop it from our active list.
-            timestamp.elapsed() > std::time::Duration::from_secs(60 * 10)
+            timestamp.elapsed() < std::time::Duration::from_secs(60 * 10)
         });
         guard.len()
     }

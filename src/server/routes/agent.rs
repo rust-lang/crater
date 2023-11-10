@@ -303,6 +303,10 @@ fn endpoint_record_progress(
 ) -> Fallible<Response<Body>> {
     let start = Instant::now();
 
+    data.metrics
+        .result_log_size
+        .observe(result.data.result.log.len() as f64);
+
     let ret = match data.record_progress_worker.queue.try_send(result) {
         Ok(()) => Ok(ApiResponse::Success { result: true }.into_response()?),
         Err(crossbeam_channel::TrySendError::Full(_)) => {

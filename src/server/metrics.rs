@@ -3,7 +3,7 @@ use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
 use crate::server::agents::Agent;
 use chrono::{DateTime, Utc};
-use prometheus::{HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec};
+use prometheus::{Histogram, HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec};
 
 const JOBS_METRIC: &str = "crater_completed_jobs_total";
 const AGENT_WORK_METRIC: &str = "crater_agent_supposed_to_work";
@@ -21,6 +21,7 @@ pub struct Metrics {
     crater_last_crates_update: IntGauge,
     pub crater_endpoint_time: HistogramVec,
     crater_worker_count: IntGauge,
+    pub result_log_size: Histogram,
 }
 
 impl Metrics {
@@ -47,6 +48,11 @@ impl Metrics {
                 .buckets(prometheus::exponential_buckets(0.05, 1.2, 25).unwrap()),
             &["endpoint"]
         )?;
+        let result_log_size = prometheus::register_histogram!(
+            "crater_log_length",
+            "payload size in bytes",
+            prometheus::exponential_buckets(4096.0, 1.28, 30)?
+        )?;
 
         let crater_worker_count = prometheus::opts!(WORKER_COUNT, "number of active workers");
         let crater_worker_count = prometheus::register_int_gauge!(crater_worker_count)?;
@@ -59,6 +65,7 @@ impl Metrics {
             crater_last_crates_update,
             crater_endpoint_time,
             crater_worker_count,
+            result_log_size,
         })
     }
 

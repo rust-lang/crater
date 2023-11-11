@@ -86,6 +86,7 @@ impl Metrics {
     }
 
     fn remove_experiment_jobs(&self, experiment: &str) -> Fallible<()> {
+        self.record_completed_jobs(experiment, 0);
         self.crater_completed_jobs_total
             .remove_label_values(&[experiment])?;
 

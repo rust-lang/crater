@@ -112,6 +112,7 @@ fn run_cargo<DB: WriteResults>(
     let mut did_ice = false;
     let mut did_network = false;
     let mut did_trybuild = false;
+    let mut ran_out_of_space = false;
     let mut error_codes = BTreeSet::new();
     let mut deps = BTreeSet::new();
 
@@ -121,6 +122,9 @@ fn run_cargo<DB: WriteResults>(
         }
         if line.contains("Address already in use") {
             did_network = true;
+        }
+        if line.to_lowercase().contains("no space left on device") {
+            ran_out_of_space = true;
         }
         if line.contains("code: 111") && line.contains("Connection refused") {
             did_network = true;
@@ -205,6 +209,8 @@ fn run_cargo<DB: WriteResults>(
                 Err(e.context(FailureReason::NetworkAccess).into())
             } else if did_trybuild {
                 Err(e.context(FailureReason::CompilerDiagnosticChange).into())
+            } else if ran_out_of_space {
+                Err(e.context(FailureReason::NoSpace).into())
             } else {
                 Err(e.into())
             }

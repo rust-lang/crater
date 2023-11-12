@@ -510,7 +510,7 @@ fn compare(
             | (BuildFail(_), TestSkipped)
             | (BuildFail(_), TestPass)
             | (TestFail(_), TestPass) => Comparison::Fixed,
-
+            (TestFail(_), BuildFail(reason)) if !reason.is_spurious() => Comparison::Regressed,
             (TestFail(reason1), BuildFail(reason2))
                 if reason1.is_spurious() || reason2.is_spurious() =>
             {
@@ -831,6 +831,7 @@ mod tests {
                 TestPass, BuildFail(Unknown) => Regressed;
                 TestSkipped, BuildFail(Unknown) => Regressed;
                 TestFail(Unknown), BuildFail(Unknown) => Regressed;
+                TestFail(OOM), BuildFail(Unknown) => Regressed;
 
                 // ICE is special
                 BuildFail(Unknown), BuildFail(ICE) => Regressed;
@@ -846,7 +847,6 @@ mod tests {
                 TestPass, TestFail(OOM) => SpuriousRegressed;
                 TestPass, BuildFail(OOM) => SpuriousRegressed;
                 TestSkipped, BuildFail(OOM) => SpuriousRegressed;
-                TestFail(OOM), BuildFail(Unknown) => SpuriousRegressed;
                 TestFail(Unknown), BuildFail(OOM) => SpuriousRegressed;
 
                 // Errors

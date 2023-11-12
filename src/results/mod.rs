@@ -194,6 +194,7 @@ impl ::std::str::FromStr for DiagnosticCode {
 pub enum FailureReason {
     Unknown,
     OOM,
+    NoSpace,
     Timeout,
     ICE,
     NetworkAccess,
@@ -209,6 +210,7 @@ impl ::std::fmt::Display for FailureReason {
         match self {
             FailureReason::Unknown => write!(f, "unknown"),
             FailureReason::OOM => write!(f, "oom"),
+            FailureReason::NoSpace => write!(f, "no-space"),
             FailureReason::Timeout => write!(f, "timeout"),
             FailureReason::ICE => write!(f, "ice"),
             FailureReason::NetworkAccess => write!(f, "network-access"),
@@ -265,6 +267,7 @@ impl ::std::str::FromStr for FailureReason {
                 "oom" => Ok(FailureReason::OOM),
                 "timeout" => Ok(FailureReason::Timeout),
                 "ice" => Ok(FailureReason::ICE),
+                "no-space" => Ok(FailureReason::NoSpace),
                 _ => bail!("unexpected value: {}", s),
             }
         }
@@ -275,6 +278,7 @@ impl FailureReason {
     pub(crate) fn is_spurious(&self) -> bool {
         match *self {
             FailureReason::OOM
+            | FailureReason::NoSpace
             | FailureReason::Timeout
             | FailureReason::NetworkAccess
             | FailureReason::CompilerDiagnosticChange => true,
@@ -351,6 +355,7 @@ mod tests {
             "build-fail:compiler-error(001)" => BuildFail(CompilerError(btreeset!["001".parse().unwrap()])),
             "build-fail:oom" => BuildFail(OOM),
             "build-fail:ice" => BuildFail(ICE),
+            "build-fail:no-space" => BuildFail(NoSpace),
             "test-fail:timeout" => TestFail(Timeout),
             "test-pass" => TestPass,
             "error" => Error,

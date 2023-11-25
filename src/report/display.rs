@@ -15,6 +15,7 @@ impl ResultName for FailureReason {
             FailureReason::NetworkAccess => "network access".into(),
             FailureReason::OOM => "OOM".into(),
             FailureReason::ICE => "ICE".into(),
+            FailureReason::NoSpace => "no space left on device".into(),
             FailureReason::CompilerError(_) => "compiler error".into(),
             FailureReason::DependsOn(_) => "faulty deps".into(),
             FailureReason::CompilerDiagnosticChange => "compiler diagnostic changed".into(),
@@ -28,6 +29,7 @@ impl ResultName for FailureReason {
             | FailureReason::NetworkAccess
             | FailureReason::Timeout
             | FailureReason::OOM
+            | FailureReason::NoSpace
             | FailureReason::CompilerDiagnosticChange
             | FailureReason::ICE => self.short_name(),
         }

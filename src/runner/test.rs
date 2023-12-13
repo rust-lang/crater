@@ -202,7 +202,11 @@ fn run_cargo<DB: WriteResults>(
             if did_ice {
                 Err(e.context(FailureReason::ICE).into())
             } else if !deps.is_empty() {
-                Err(e.context(FailureReason::DependsOn(deps)).into())
+                if ran_out_of_space {
+                    Err(e.context(FailureReason::NoSpace).into())
+                } else {
+                    Err(e.context(FailureReason::DependsOn(deps)).into())
+                }
             } else if !error_codes.is_empty() {
                 Err(e.context(FailureReason::CompilerError(error_codes)).into())
             } else if did_network {

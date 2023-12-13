@@ -200,6 +200,8 @@ fn run_cargo<DB: WriteResults>(
         Err(e) => {
             if did_ice {
                 Err(e.context(FailureReason::ICE).into())
+            } else if ran_out_of_space {
+                Err(e.context(FailureReason::NoSpace).into())
             } else if !deps.is_empty() {
                 Err(e.context(FailureReason::DependsOn(deps)).into())
             } else if !error_codes.is_empty() {
@@ -208,8 +210,6 @@ fn run_cargo<DB: WriteResults>(
                 Err(e.context(FailureReason::NetworkAccess).into())
             } else if did_trybuild {
                 Err(e.context(FailureReason::CompilerDiagnosticChange).into())
-            } else if ran_out_of_space {
-                Err(e.context(FailureReason::NoSpace).into())
             } else {
                 Err(e.into())
             }

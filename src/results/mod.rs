@@ -278,11 +278,11 @@ impl FailureReason {
     pub(crate) fn is_spurious(&self) -> bool {
         match *self {
             FailureReason::OOM
-            | FailureReason::NoSpace
             | FailureReason::Timeout
             | FailureReason::NetworkAccess
             | FailureReason::CompilerDiagnosticChange => true,
             FailureReason::CompilerError(_)
+            | FailureReason::NoSpace
             | FailureReason::DependsOn(_)
             | FailureReason::Unknown
             | FailureReason::ICE => false,

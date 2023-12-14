@@ -77,12 +77,12 @@ impl ReportWriter for S3Writer {
     fn write_bytes<P: AsRef<Path>>(
         &self,
         path: P,
-        s: Vec<u8>,
+        body: &[u8],
         mime: &Mime,
         encoding_type: EncodingType,
     ) -> Fallible<()> {
         // At least 50 MB, then use a multipart upload...
-        if s.len() >= 50 * 1024 * 1024 {
+        if body.len() >= 50 * 1024 * 1024 {
             let mut request = self
                 .client
                 .create_multipart_upload()
@@ -108,12 +108,12 @@ impl ReportWriter for S3Writer {
             };
 
             let chunk_size = 20 * 1024 * 1024;
-            let bytes = bytes::Bytes::from(s);
             let mut part = 1;
             let mut start = 0;
             let mut parts = aws_sdk_s3::types::CompletedMultipartUpload::builder();
-            while start < bytes.len() {
-                let chunk = bytes.slice(start..std::cmp::min(start + chunk_size, bytes.len()));
+            while start < body.len() {
+                let chunk = &body[start..std::cmp::min(start + chunk_size, body.len())];
+                let chunk = bytes::Bytes::copy_from_slice(chunk);
 
                 let request = self
                     .client
@@ -160,7 +160,9 @@ impl ReportWriter for S3Writer {
             let mut request = self
                 .client
                 .put_object()
-                .body(aws_sdk_s3::primitives::ByteStream::from(s))
+                .body(aws_sdk_s3::primitives::ByteStream::from(
+                    bytes::Bytes::copy_from_slice(body),
+                ))
                 .acl(aws_sdk_s3::types::ObjectCannedAcl::PublicRead)
                 .key(format!(
                     "{}/{}",
@@ -185,7 +187,7 @@ impl ReportWriter for S3Writer {
     }
 
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()> {
-        self.write_bytes(path, s.into_owned().into_bytes(), mime, EncodingType::Plain)
+        self.write_bytes(path, s.as_bytes(), mime, EncodingType::Plain)
     }
 }
 

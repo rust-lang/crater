@@ -1,5 +1,3 @@
-use aws_sdk_s3::config::retry::RetryConfig;
-
 use crate::experiments::{Experiment, Status};
 use crate::prelude::*;
 use crate::report::{self, Comparison, TestResults};
@@ -17,24 +15,21 @@ use super::tokens::BucketRegion;
 const AUTOMATIC_THREAD_WAKEUP: u64 = 600;
 
 fn generate_report(data: &Data, ex: &Experiment, results: &DatabaseDB) -> Fallible<TestResults> {
-    let mut config = aws_types::SdkConfig::builder();
+    let mut config = aws_config::from_env();
     match &data.tokens.reports_bucket.region {
         BucketRegion::S3 { region } => {
-            config.set_region(Some(aws_types::region::Region::new(region.to_owned())));
+            config = config.region(aws_sdk_s3::config::Region::new(region.to_owned()));
         }
         BucketRegion::Custom { url } => {
-            config.set_region(Some(aws_types::region::Region::from_static("us-east-1")));
-            config.set_endpoint_url(Some(url.clone()));
+            config = config.region(aws_sdk_s3::config::Region::from_static("us-east-1"));
+            config = config.endpoint_url(url.clone());
         }
     }
-    config.set_credentials_provider(Some(data.tokens.reports_bucket.to_aws_credentials()));
-    // https://github.com/awslabs/aws-sdk-rust/issues/586 -- without this, the
-    // SDK will just completely not retry requests.
-    config.set_sleep_impl(Some(aws_sdk_s3::config::SharedAsyncSleep::new(
-        aws_smithy_async::rt::sleep::TokioSleep::new(),
-    )));
-    config.set_retry_config(Some(RetryConfig::standard()));
-    let config = config.build();
+    config = config.credentials_provider(data.tokens.reports_bucket.to_aws_credentials());
+    let config = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?
+        .block_on(config.load());
     let client = aws_sdk_s3::Client::new(&config);
     let writer = report::S3Writer::create(
         client,

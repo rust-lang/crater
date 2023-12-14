@@ -1,3 +1,7 @@
+use std::fs::File;
+use std::num::NonZeroUsize;
+use std::ptr::NonNull;
+
 use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
@@ -7,6 +11,52 @@ use crate::results::{EncodedLog, EncodingType, ReadResults};
 use flate2::{write::GzEncoder, Compression};
 use indexmap::IndexMap;
 use tar::{Builder as TarBuilder, Header as TarHeader};
+use tempfile::tempfile;
+
+#[cfg(unix)]
+struct TempfileBackedBuffer {
+    _file: File,
+    mmap: NonNull<[u8]>,
+}
+
+#[cfg(unix)]
+impl TempfileBackedBuffer {
+    fn new(file: File) -> Fallible<TempfileBackedBuffer> {
+        let len = file.metadata()?.len().try_into().unwrap();
+        unsafe {
+            let base = nix::sys::mman::mmap(
+                None,
+                NonZeroUsize::new(len).unwrap(),
+                nix::sys::mman::ProtFlags::PROT_READ,
+                nix::sys::mman::MapFlags::MAP_PRIVATE,
+                Some(&file),
+                0,
+            )?;
+            let Some(base) = NonNull::new(base as *mut u8) else {
+                panic!("Failed to map file");
+            };
+            Ok(TempfileBackedBuffer {
+                _file: file,
+                mmap: NonNull::slice_from_raw_parts(base, len),
+            })
+        }
+    }
+
+    fn buffer(&self) -> &[u8] {
+        unsafe { self.mmap.as_ref() }
+    }
+}
+
+#[cfg(unix)]
+impl Drop for TempfileBackedBuffer {
+    fn drop(&mut self) {
+        unsafe {
+            if let Err(e) = nix::sys::mman::munmap(self.mmap.as_ptr() as *mut _, self.mmap.len()) {
+                eprintln!("Failed to unmap temporary file: {:?}", e);
+            }
+        }
+    }
+}
 
 #[derive(Serialize)]
 pub struct Archive {
@@ -92,6 +142,7 @@ fn iterate<'a, DB: ReadResults + 'a>(
     })
 }
 
+#[allow(unused_mut)]
 fn write_all_archive<DB: ReadResults, W: ReportWriter>(
     db: &DB,
     ex: &Experiment,
@@ -100,18 +151,37 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
     config: &Config,
 ) -> Fallible<Archive> {
     for i in 1..=RETRIES {
-        let mut all = TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default()));
+        // We write this large-ish tarball into a tempfile, which moves the I/O to disk operations
+        // rather than keeping it in memory. This avoids complicating the code by doing incremental
+        // writes to S3 (requiring buffer management etc) while avoiding keeping the blob entirely
+        // in memory.
+        let backing = tempfile()?;
+        let mut all = TarBuilder::new(GzEncoder::new(backing, Compression::default()));
         for entry in iterate(db, ex, crates, config) {
             let entry = entry?;
             let mut header = entry.header();
             all.append_data(&mut header, &entry.path, &entry.log_bytes[..])?;
         }
 
-        let data = all.into_inner()?.finish()?;
-        let len = data.len();
+        let mut data = all.into_inner()?.finish()?;
+        let mut buffer;
+        let view;
+        #[cfg(unix)]
+        {
+            buffer = TempfileBackedBuffer::new(data)?;
+            view = buffer.buffer();
+        }
+        #[cfg(not(unix))]
+        {
+            use std::io::{Read, Seek};
+            data.rewind()?;
+            buffer = Vec::new();
+            data.read_to_end(&mut buffer)?;
+            view = &buffer[..];
+        }
         match dest.write_bytes(
             "logs-archives/all.tar.gz",
-            data,
+            view,
             &"application/gzip".parse().unwrap(),
             EncodingType::Plain,
         ) {
@@ -123,7 +193,10 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
                     std::thread::sleep(std::time::Duration::from_secs(2));
                     warn!(
                         "retry ({}/{}) writing logs-archives/all.tar.gz ({} bytes) (error: {:?})",
-                        i, RETRIES, len, e,
+                        i,
+                        RETRIES,
+                        view.len(),
+                        e,
                     );
                     continue;
                 }
@@ -164,7 +237,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
         let data = archive.into_inner()?.finish()?;
         dest.write_bytes(
             format!("logs-archives/{comparison}.tar.gz"),
-            data,
+            &data,
             &"application/gzip".parse().unwrap(),
             EncodingType::Plain,
         )?;

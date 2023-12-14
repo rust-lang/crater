@@ -293,7 +293,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
             s.spawn(move || {
                 while let Ok((log_path, data, encoding)) = rx.recv() {
                     if let Err(e) =
-                        dest.write_bytes(log_path, data, &mime::TEXT_PLAIN_UTF_8, encoding)
+                        dest.write_bytes(log_path, &data, &mime::TEXT_PLAIN_UTF_8, encoding)
                     {
                         errors.lock().unwrap().push(e);
                     }
@@ -548,7 +548,7 @@ pub trait ReportWriter: Send + Sync {
     fn write_bytes<P: AsRef<Path>>(
         &self,
         path: P,
-        b: Vec<u8>,
+        b: &[u8],
         mime: &Mime,
         encoding_type: EncodingType,
     ) -> Fallible<()>;
@@ -574,7 +574,7 @@ impl ReportWriter for FileWriter {
     fn write_bytes<P: AsRef<Path>>(
         &self,
         path: P,
-        b: Vec<u8>,
+        b: &[u8],
         _: &Mime,
         _: EncodingType,
     ) -> Fallible<()> {
@@ -619,7 +619,7 @@ impl ReportWriter for DummyWriter {
     fn write_bytes<P: AsRef<Path>>(
         &self,
         path: P,
-        b: Vec<u8>,
+        b: &[u8],
         mime: &Mime,
         _: EncodingType,
     ) -> Fallible<()> {

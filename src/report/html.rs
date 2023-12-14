@@ -298,13 +298,13 @@ pub fn write_html_report<W: ReportWriter>(
     info!("copying static assets");
     dest.write_bytes(
         "report.js",
-        js_in.content()?.into_owned(),
+        &js_in.content()?,
         js_in.mime(),
         EncodingType::Plain,
     )?;
     dest.write_bytes(
         "report.css",
-        css_in.content()?.into_owned(),
+        &css_in.content()?,
         css_in.mime(),
         EncodingType::Plain,
     )?;

@@ -111,7 +111,7 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
         let len = data.len();
         match dest.write_bytes(
             "logs-archives/all.tar.gz",
-            data,
+            &data,
             &"application/gzip".parse().unwrap(),
             EncodingType::Plain,
         ) {
@@ -164,7 +164,7 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
         let data = archive.into_inner()?.finish()?;
         dest.write_bytes(
             format!("logs-archives/{comparison}.tar.gz"),
-            data,
+            &data,
             &"application/gzip".parse().unwrap(),
             EncodingType::Plain,
         )?;

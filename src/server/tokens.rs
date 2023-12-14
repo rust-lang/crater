@@ -30,17 +30,13 @@ pub struct ReportsBucket {
 }
 
 impl ReportsBucket {
-    pub(crate) fn to_aws_credentials(
-        &self,
-    ) -> aws_credential_types::provider::SharedCredentialsProvider {
-        aws_credential_types::provider::SharedCredentialsProvider::new(
-            aws_sdk_s3::config::Credentials::new(
-                self.access_key.clone(),
-                self.secret_key.clone(),
-                None,
-                None,
-                "crater-credentials",
-            ),
+    pub(crate) fn to_aws_credentials(&self) -> aws_sdk_s3::config::Credentials {
+        aws_sdk_s3::config::Credentials::new(
+            self.access_key.clone(),
+            self.secret_key.clone(),
+            None,
+            None,
+            "crater-credentials",
         )
     }
 }

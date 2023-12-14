@@ -13,11 +13,13 @@ use indexmap::IndexMap;
 use tar::{Builder as TarBuilder, Header as TarHeader};
 use tempfile::tempfile;
 
+#[cfg(unix)]
 struct TempfileBackedBuffer {
     _file: File,
     mmap: NonNull<[u8]>,
 }
 
+#[cfg(unix)]
 impl TempfileBackedBuffer {
     fn new(file: File) -> Fallible<TempfileBackedBuffer> {
         let len = file.metadata()?.len().try_into().unwrap();
@@ -45,6 +47,7 @@ impl TempfileBackedBuffer {
     }
 }
 
+#[cfg(unix)]
 impl Drop for TempfileBackedBuffer {
     fn drop(&mut self) {
         unsafe {
@@ -139,6 +142,7 @@ fn iterate<'a, DB: ReadResults + 'a>(
     })
 }
 
+#[allow(unused_mut)]
 fn write_all_archive<DB: ReadResults, W: ReportWriter>(
     db: &DB,
     ex: &Experiment,
@@ -159,11 +163,25 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
             all.append_data(&mut header, &entry.path, &entry.log_bytes[..])?;
         }
 
-        let data = all.into_inner()?.finish()?;
-        let buffer = TempfileBackedBuffer::new(data)?;
+        let mut data = all.into_inner()?.finish()?;
+        let mut buffer;
+        let view;
+        #[cfg(unix)]
+        {
+            buffer = TempfileBackedBuffer::new(data)?;
+            view = buffer.buffer();
+        }
+        #[cfg(not(unix))]
+        {
+            use std::io::{Read, Seek};
+            data.rewind()?;
+            buffer = Vec::new();
+            data.read_to_end(&mut buffer)?;
+            view = &buffer[..];
+        }
         match dest.write_bytes(
             "logs-archives/all.tar.gz",
-            buffer.buffer(),
+            view,
             &"application/gzip".parse().unwrap(),
             EncodingType::Plain,
         ) {
@@ -177,7 +195,7 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
                         "retry ({}/{}) writing logs-archives/all.tar.gz ({} bytes) (error: {:?})",
                         i,
                         RETRIES,
-                        buffer.buffer().len(),
+                        view.len(),
                         e,
                     );
                     continue;

@@ -27,7 +27,7 @@ impl DummyDB {
     pub fn add_dummy_log(&mut self, ex: &Experiment, krate: Crate, tc: Toolchain, log: EncodedLog) {
         self.experiments
             .entry(ex.name.to_string())
-            .or_insert_with(DummyData::default)
+            .or_default()
             .logs
             .insert((krate, tc), log);
     }
@@ -41,7 +41,7 @@ impl DummyDB {
     ) {
         self.experiments
             .entry(ex.name.to_string())
-            .or_insert_with(DummyData::default)
+            .or_default()
             .results
             .insert((krate, tc), res);
     }

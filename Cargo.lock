@@ -848,6 +848,7 @@ dependencies = [
  "log",
  "mime",
  "minifier",
+ "nix 0.27.1",
  "percent-encoding 2.3.0",
  "predicates",
  "prometheus",

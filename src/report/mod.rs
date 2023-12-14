@@ -626,7 +626,7 @@ impl ReportWriter for DummyWriter {
         self.results
             .lock()
             .unwrap()
-            .insert((path.as_ref().to_path_buf(), mime.clone()), b);
+            .insert((path.as_ref().to_path_buf(), mime.clone()), b.to_vec());
         Ok(())
     }
 

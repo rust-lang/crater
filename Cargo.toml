@@ -59,6 +59,7 @@ tokio = "1.24"
 aws-sdk-s3 = "1.7"
 aws-config = { version = "1", features = ["behavior-version-latest"] }
 thiserror = "1.0.38"
+nix = { version = "0.27.1", features = ["mman"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.4"

@@ -36,10 +36,10 @@
         {% for run in crate.runs %}
             <span class="run">
                 {% if run %}
-                    <b class="r{{ run.res }}"></b>
-                    <a href="{{ run.log|safe }}/log.txt">{{ result_names[run.res] }}</a>
+                    <b class="c{{ run.color_idx }}"></b>
+                    <a href="{{ run.log|safe }}/log.txt">{{ result_names[run.name_idx] }}</a>
                 {% else %}
-                    <b class="c{{ crate.res }}"></b>
+                    <b class="c{{ crate.color_idx }}"></b>
                     {{ crate.res }}
                 {% endif %}
             </span>

@@ -78,7 +78,7 @@ impl ResultName for TestResult {
     }
 }
 
-#[derive(Serialize)]
+#[derive(PartialEq, Eq, Hash, Serialize)]
 pub enum Color {
     Single(&'static str),
     Striped(&'static str, &'static str),

@@ -2,22 +2,26 @@
   "categories": [
     [
       "regressed",
+      0,
       {
         "Tree": {
           "count": 1,
           "tree": {
             "rust-lang/crater/f190933e896443e285e3bb6962fb87d7439b8d65": [
               {
+                "color_idx": 0,
                 "name": "beta-faulty-deps (local)",
                 "res": "regressed",
                 "runs": [
                   {
+                    "color_idx": 7,
                     "log": "stable/local/beta-faulty-deps",
-                    "res": 0
+                    "name_idx": 0
                   },
                   {
+                    "color_idx": 0,
                     "log": "beta/local/beta-faulty-deps",
-                    "res": 1
+                    "name_idx": 1
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
@@ -29,22 +33,26 @@
     ],
     [
       "regressed",
+      0,
       {
         "RootResults": {
           "count": 4,
           "results": {
             "build ICE": [
               {
+                "color_idx": 0,
                 "name": "ice-regression (local)",
                 "res": "regressed",
                 "runs": [
                   {
+                    "color_idx": 0,
                     "log": "stable/local/ice-regression",
-                    "res": 4
+                    "name_idx": 3
                   },
                   {
+                    "color_idx": 0,
                     "log": "beta/local/ice-regression",
-                    "res": 5
+                    "name_idx": 4
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
@@ -52,16 +60,19 @@
             ],
             "build compiler-error(E0013)": [
               {
+                "color_idx": 0,
                 "name": "error-code (local)",
                 "res": "regressed",
                 "runs": [
                   {
+                    "color_idx": 7,
                     "log": "stable/local/error-code",
-                    "res": 0
+                    "name_idx": 0
                   },
                   {
+                    "color_idx": 0,
                     "log": "beta/local/error-code",
-                    "res": 3
+                    "name_idx": 3
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
@@ -69,16 +80,19 @@
             ],
             "build compiler-error(E0015)": [
               {
+                "color_idx": 0,
                 "name": "error-code (local)",
                 "res": "regressed",
                 "runs": [
                   {
+                    "color_idx": 7,
                     "log": "stable/local/error-code",
-                    "res": 0
+                    "name_idx": 0
                   },
                   {
+                    "color_idx": 0,
                     "log": "beta/local/error-code",
-                    "res": 3
+                    "name_idx": 3
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
@@ -86,16 +100,19 @@
             ],
             "build failed (unknown)": [
               {
+                "color_idx": 0,
                 "name": "beta-regression (local)",
                 "res": "regressed",
                 "runs": [
                   {
+                    "color_idx": 7,
                     "log": "stable/local/beta-regression",
-                    "res": 0
+                    "name_idx": 0
                   },
                   {
+                    "color_idx": 0,
                     "log": "beta/local/beta-regression",
-                    "res": 2
+                    "name_idx": 2
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
@@ -107,6 +124,7 @@
     ],
     [
       "fixed",
+      1,
       {
         "Tree": {
           "count": 0,
@@ -116,37 +134,44 @@
     ],
     [
       "fixed",
+      1,
       {
         "RootResults": {
           "count": 1,
           "results": {
             "build failed (unknown)": [
               {
+                "color_idx": 1,
                 "name": "beta-fixed (local)",
                 "res": "fixed",
                 "runs": [
                   {
+                    "color_idx": 0,
                     "log": "stable/local/beta-fixed",
-                    "res": 2
+                    "name_idx": 2
                   },
                   {
+                    "color_idx": 7,
                     "log": "beta/local/beta-fixed",
-                    "res": 0
+                    "name_idx": 0
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-fixed"
               },
               {
+                "color_idx": 1,
                 "name": "network-access (local)",
                 "res": "fixed",
                 "runs": [
                   {
+                    "color_idx": 0,
                     "log": "stable/local/network-access",
-                    "res": 2
+                    "name_idx": 2
                   },
                   {
+                    "color_idx": 3,
                     "log": "beta/local/network-access",
-                    "res": 6
+                    "name_idx": 5
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
@@ -157,14 +182,35 @@
       }
     ]
   ],
-  "comparison_colors": {
-    "fixed": {
+  "colors": [
+    {
+      "Single": "#db3026"
+    },
+    {
       "Single": "#5630db"
     },
-    "regressed": {
-      "Single": "#db3026"
+    {
+      "Single": "#44176e"
+    },
+    {
+      "Single": "#65461e"
+    },
+    {
+      "Single": "#72a156"
+    },
+    {
+      "Striped": [
+        "#494b4a",
+        "#555555"
+      ]
+    },
+    {
+      "Single": "#788843"
+    },
+    {
+      "Single": "#62a156"
     }
-  },
+  ],
   "crates_count": 17,
   "full": false,
   "info": {
@@ -193,34 +239,10 @@
       "url": "downloads.html"
     }
   ],
-  "result_colors": [
-    {
-      "Single": "#62a156"
-    },
-    {
-      "Single": "#db3026"
-    },
-    {
-      "Single": "#db3026"
-    },
-    {
-      "Single": "#db3026"
-    },
-    {
-      "Single": "#db3026"
-    },
-    {
-      "Single": "#db3026"
-    },
-    {
-      "Single": "#65461e"
-    }
-  ],
   "result_names": [
     "test passed",
     "build faulty deps",
     "build failed (unknown)",
-    "build compiler error",
     "build compiler error",
     "build ICE",
     "test failed (unknown)"

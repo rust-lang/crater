@@ -5,18 +5,8 @@
 
 {% block extra_head %}
     <style>
-        {% for color in result_colors %}
-            .r{{ loop.index0 }} {
-                {% if color.Single %}
-                    background: {{ color.Single }};
-                {% elif color.Striped %}
-                    background: repeating-linear-gradient(-45deg, {{ color.Striped[0] }}, {{ color.Striped[0] }} 15px, {{ color.Striped[1] }} 15px, {{ color.Striped[1] }} 30px);
-                {% endif %}
-            }
-        {% endfor %}
-
-        {% for name, color in comparison_colors %}
-            .c{{ name }} {
+        {% for color in colors %}
+            .c{{ loop.index0 }} {
                 {% if color.Single %}
                     background: {{ color.Single }};
                 {% elif color.Striped %}
@@ -31,10 +21,11 @@
     {% if categories %}
         {% for iter in categories %}
             {% set name = iter.0 %}
-            {% set crates = iter.1 %}
+            {% set category_color_idx = iter.1 %}
+            {% set crates = iter.2 %}
             <div class="category">
                 {% if crates.Plain %}
-                    <div class="header c{{ name }} toggle" data-toggle="#crt-{{ name }}">
+                    <div class="header c{{ category_color_idx }} toggle" data-toggle="#crt-{{ name }}">
                         {{ name }} ({{ crates.Plain|length }})
                     </div>
                     <div class="crates hidden" id="crt-{{ name }}">
@@ -44,14 +35,14 @@
                         {% endfor %}
                     </div>
                 {% elif crates.Tree and crates.Tree.count > 0 %}
-                    <div class="header c{{ name }} toggle" data-toggle="#crt-{{ name }}-tr">
+                    <div class="header c{{ category_color_idx }} toggle" data-toggle="#crt-{{ name }}-tr">
                         {{ name }}: dependencies ({{ crates.Tree.count }} root crates, {{info[name]}} {{ name }} crates in total) 
                     </div>
                     <div class="crates hidden" id="crt-{{ name }}-tr">
                     {% for root, subcrates in crates.Tree.tree %}
                             <div class="category">
                                 <div class="flex toggle" data-toggle="#{{ name }}-tr{{ loop.index }}">
-                                    <div class="header c{{ name}} subheader">{{ name}}</div>
+                                    <div class="header c{{ category_color_idx }} subheader">{{ name}}</div>
                                     <div class="header header-background">
                                         {{ root }} ({{ subcrates|length }})
                                     </div>
@@ -66,14 +57,14 @@
                     {% endfor %}
                     </div>
                 {% elif crates.RootResults %}
-                    <div class="header c{{ name }} toggle" data-toggle="#crt-{{ name }}-rt">
+                    <div class="header c{{ category_color_idx }} toggle" data-toggle="#crt-{{ name }}-rt">
                         {{ name }}: root results ({{ crates.RootResults.count }} different results, {{info[name]}} {{ name }} crates in total)
                     </div>
                     <div class="crates hidden" id="crt-{{ name }}-rt">
                     {% for result, subcrates in crates.RootResults.results %}
                             <div class="category">
                                 <div class="flex toggle" data-toggle="#{{ name }}-rt{{ loop.index }}">
-                                    <div class="header c{{ name}} subheader">{{ name}}</div>
+                                    <div class="header c{{ category_color_idx }} subheader">{{ name}}</div>
                                     <div class="header header-background">
                                         {{ result }} ({{ subcrates|length }})
                                     </div>

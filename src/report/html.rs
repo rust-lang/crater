@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::assets;
 use crate::experiments::Experiment;
 use crate::prelude::*;
@@ -6,7 +8,9 @@ use crate::report::{
     ResultColor, ResultName, TestResults,
 };
 use crate::results::EncodingType;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
+
+use super::CrateVersionStatus;
 
 #[derive(Serialize)]
 struct NavbarItem {
@@ -23,15 +27,15 @@ enum CurrentPage {
 }
 
 #[derive(Serialize)]
-enum ReportCratesHTML {
-    Plain(Vec<CrateResultHTML>),
+enum ReportCratesHTML<'a> {
+    Plain(Vec<CrateResultHTML<'a>>),
     Tree {
         count: u32,
-        tree: IndexMap<String, Vec<CrateResultHTML>>,
+        tree: IndexMap<String, Vec<CrateResultHTML<'a>>>,
     },
     RootResults {
         count: u32,
-        results: IndexMap<String, Vec<CrateResultHTML>>,
+        results: IndexMap<String, Vec<CrateResultHTML<'a>>>,
     },
 }
 
@@ -61,13 +65,13 @@ impl CurrentPage {
 struct ResultsContext<'a> {
     ex: &'a Experiment,
     nav: Vec<NavbarItem>,
-    categories: Vec<(Comparison, ReportCratesHTML)>,
+    // (comparison, category color, ...)
+    categories: Vec<(Comparison, usize, ReportCratesHTML<'a>)>,
     info: IndexMap<Comparison, u32>,
     full: bool,
     crates_count: usize,
-    comparison_colors: IndexMap<Comparison, Color>,
-    result_colors: Vec<Color>,
-    result_names: Vec<String>,
+    colors: IndexSet<Color>,
+    result_names: IndexSet<String>,
 }
 
 #[derive(Serialize)]
@@ -80,20 +84,52 @@ struct DownloadsContext<'a> {
 }
 
 #[derive(Serialize)]
-struct CrateResultHTML {
-    name: String,
-    url: String,
+struct CrateResultHTML<'a> {
+    name: &'a str,
+    url: &'a str,
     res: Comparison,
     #[serde(skip_serializing_if = "Option::is_none")]
-    status: Option<String>,
-    runs: [Option<BuildTestResultHTML>; 2],
+    status: Option<CrateVersionStatus>,
+    color_idx: usize,
+    runs: [Option<BuildTestResultHTML<'a>>; 2],
 }
 
 // Map TestResult to usize to avoid the presence of special characters in html
 #[derive(Serialize)]
-struct BuildTestResultHTML {
-    res: usize,
-    log: String,
+struct BuildTestResultHTML<'a> {
+    color_idx: usize,
+    name_idx: usize,
+    log: &'a str,
+}
+
+fn to_html_crate_result<'a>(
+    colors: &mut IndexSet<Color>,
+    result_names: &mut IndexSet<String>,
+    category_color: usize,
+    result: &'a CrateResult,
+) -> CrateResultHTML<'a> {
+    let mut runs = [None, None];
+
+    for (pos, run) in result.runs.iter().enumerate() {
+        if let Some(run) = run {
+            let (color_idx, _) = colors.insert_full(run.res.color());
+            let (name_idx, _) = result_names.insert_full(run.res.short_name());
+            runs[pos] = Some(BuildTestResultHTML {
+                color_idx,
+                name_idx,
+                log: run.log.as_str(),
+            });
+        }
+    }
+
+    CrateResultHTML {
+        name: result.name.as_str(),
+        url: result.url.as_str(),
+        status: result.status,
+        res: result.res,
+        color_idx: category_color,
+        runs,
+    }
 }
 
 fn write_report<W: ReportWriter>(
@@ -105,54 +141,37 @@ fn write_report<W: ReportWriter>(
     dest: &W,
     output_templates: bool,
 ) -> Fallible<()> {
-    let mut comparison_colors = IndexMap::new();
-    let mut test_results_to_int = IndexMap::new();
-    let mut result_colors = Vec::new();
-    let mut result_names = Vec::new();
+    let mut colors = IndexSet::new();
+    let mut result_names = IndexSet::new();
 
-    let mut to_html_crate_result = |result: CrateResult| {
-        let mut runs = [None, None];
-
-        for (pos, run) in result.runs.iter().enumerate() {
-            if let Some(ref run) = run {
-                let idx = test_results_to_int
-                    .entry(run.res.clone())
-                    .or_insert_with(|| {
-                        result_colors.push(run.res.color());
-                        result_names.push(run.res.short_name());
-                        result_names.len() - 1
-                    });
-                runs[pos] = Some(BuildTestResultHTML {
-                    res: *idx,
-                    log: run.log.clone(),
-                });
-            }
-        }
-
-        CrateResultHTML {
-            name: result.name.clone(),
-            url: result.url.clone(),
-            status: result.status.map(|status| status.to_string()),
-            res: result.res,
-            runs,
-        }
-    };
+    let color_for_category = res
+        .categories
+        .keys()
+        .map(|category| (category.color(), colors.insert_full(category.color()).0))
+        .collect::<HashMap<_, _>>();
 
     let categories = res
         .categories
         .iter()
         .filter(|(category, _)| full || category.show_in_summary())
-        .map(|(&category, crates)| (category, crates.to_owned()))
+        .map(|(&category, crates)| (category, crates))
         .flat_map(|(category, crates)| {
-            comparison_colors.insert(category, category.color());
-
+            let category_color_idx = *color_for_category.get(&category.color()).unwrap();
             match crates {
                 ReportCrates::Plain(crates) => vec![(
                     category,
+                    category_color_idx,
                     ReportCratesHTML::Plain(
                         crates
-                            .into_iter()
-                            .map(|result| to_html_crate_result(result))
+                            .iter()
+                            .map(|result| {
+                                to_html_crate_result(
+                                    &mut colors,
+                                    &mut result_names,
+                                    category_color_idx,
+                                    result,
+                                )
+                            })
                             .collect::<Vec<_>>(),
                     ),
                 )]
@@ -163,8 +182,15 @@ fn write_report<W: ReportWriter>(
                         .map(|(root, deps)| {
                             (
                                 root.to_string(),
-                                deps.into_iter()
-                                    .map(|result| to_html_crate_result(result))
+                                deps.iter()
+                                    .map(|result| {
+                                        to_html_crate_result(
+                                            &mut colors,
+                                            &mut result_names,
+                                            category_color_idx,
+                                            result,
+                                        )
+                                    })
                                     .collect::<Vec<_>>(),
                             )
                         })
@@ -175,8 +201,15 @@ fn write_report<W: ReportWriter>(
                             (
                                 res.long_name(),
                                 krates
-                                    .into_iter()
-                                    .map(|result| to_html_crate_result(result))
+                                    .iter()
+                                    .map(|result| {
+                                        to_html_crate_result(
+                                            &mut colors,
+                                            &mut result_names,
+                                            category_color_idx,
+                                            result,
+                                        )
+                                    })
                                     .collect::<Vec<_>>(),
                             )
                         })
@@ -185,6 +218,7 @@ fn write_report<W: ReportWriter>(
                     vec![
                         (
                             category,
+                            category_color_idx,
                             ReportCratesHTML::Tree {
                                 count: tree.keys().len() as u32,
                                 tree,
@@ -192,6 +226,7 @@ fn write_report<W: ReportWriter>(
                         ),
                         (
                             category,
+                            category_color_idx,
                             ReportCratesHTML::RootResults {
                                 count: results.keys().len() as u32,
                                 results,
@@ -216,13 +251,14 @@ fn write_report<W: ReportWriter>(
         info: res.info.clone(),
         full,
         crates_count,
-        comparison_colors,
-        result_colors,
+        colors,
         result_names,
     };
 
     info!("generating {}", to);
-    let html = minifier::html::minify(&assets::render_template("report/results.html", &context)?);
+    let rendered = assets::render_template("report/results.html", &context)
+        .context("rendering template report/results.html")?;
+    let html = minifier::html::minify(&rendered);
     dest.write_string(to, html.into(), &mime::TEXT_HTML)?;
 
     if output_templates {

@@ -1,6 +1,13 @@
 {
   "categories": [],
-  "comparison_colors": {},
+  "colors": [
+    {
+      "Single": "#72a156"
+    },
+    {
+      "Single": "#65461e"
+    }
+  ],
   "crates_count": 2,
   "full": false,
   "info": {
@@ -24,6 +31,5 @@
       "url": "downloads.html"
     }
   ],
-  "result_colors": [],
   "result_names": []
 }

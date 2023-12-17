@@ -2,6 +2,7 @@
   "categories": [
     [
       "regressed",
+      0,
       {
         "Tree": {
           "count": 0,
@@ -11,22 +12,26 @@
     ],
     [
       "regressed",
+      0,
       {
         "RootResults": {
           "count": 1,
           "results": {
             "build failed (unknown)": [
               {
+                "color_idx": 0,
                 "name": "beta-regression (local)",
                 "res": "regressed",
                 "runs": [
                   {
+                    "color_idx": 2,
                     "log": "stable/local/beta-regression",
-                    "res": 0
+                    "name_idx": 0
                   },
                   {
+                    "color_idx": 0,
                     "log": "beta/local/beta-regression",
-                    "res": 1
+                    "name_idx": 1
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
@@ -37,11 +42,17 @@
       }
     ]
   ],
-  "comparison_colors": {
-    "regressed": {
+  "colors": [
+    {
       "Single": "#db3026"
+    },
+    {
+      "Single": "#72a156"
+    },
+    {
+      "Single": "#62a156"
     }
-  },
+  ],
   "crates_count": 2,
   "full": false,
   "info": {
@@ -63,14 +74,6 @@
       "active": false,
       "label": "Downloads",
       "url": "downloads.html"
-    }
-  ],
-  "result_colors": [
-    {
-      "Single": "#62a156"
-    },
-    {
-      "Single": "#db3026"
     }
   ],
   "result_names": [

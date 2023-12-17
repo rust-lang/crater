@@ -2,19 +2,23 @@
   "categories": [
     [
       "test-pass",
+      0,
       {
         "Plain": [
           {
+            "color_idx": 0,
             "name": "build-pass (local)",
             "res": "test-pass",
             "runs": [
               {
+                "color_idx": 2,
                 "log": "stable/local/build-pass",
-                "res": 0
+                "name_idx": 0
               },
               {
+                "color_idx": 2,
                 "log": "stable%2Brustflags=-Dclippy::all/local/build-pass",
-                "res": 0
+                "name_idx": 0
               }
             ],
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
@@ -24,6 +28,7 @@
     ],
     [
       "regressed",
+      1,
       {
         "Tree": {
           "count": 0,
@@ -33,22 +38,26 @@
     ],
     [
       "regressed",
+      1,
       {
         "RootResults": {
           "count": 1,
           "results": {
             "build compiler-error(clippy::print_with_newline)": [
               {
+                "color_idx": 1,
                 "name": "clippy-warn (local)",
                 "res": "regressed",
                 "runs": [
                   {
+                    "color_idx": 2,
                     "log": "stable/local/clippy-warn",
-                    "res": 0
+                    "name_idx": 0
                   },
                   {
+                    "color_idx": 1,
                     "log": "stable%2Brustflags=-Dclippy::all/local/clippy-warn",
-                    "res": 1
+                    "name_idx": 1
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
@@ -59,14 +68,17 @@
       }
     ]
   ],
-  "comparison_colors": {
-    "regressed": {
+  "colors": [
+    {
+      "Single": "#72a156"
+    },
+    {
       "Single": "#db3026"
     },
-    "test-pass": {
-      "Single": "#72a156"
+    {
+      "Single": "#62a156"
     }
-  },
+  ],
   "crates_count": 2,
   "full": true,
   "info": {
@@ -88,14 +100,6 @@
       "active": false,
       "label": "Downloads",
       "url": "downloads.html"
-    }
-  ],
-  "result_colors": [
-    {
-      "Single": "#62a156"
-    },
-    {
-      "Single": "#db3026"
     }
   ],
   "result_names": [

@@ -161,5 +161,7 @@ pub fn render_template<C: Serialize>(name: &str, context: &C) -> Fallible<String
         tera = &TERA_CACHE;
     }
 
-    Ok(tera.render(name, context).to_failure()?)
+    Ok(tera
+        .render(name, context)
+        .map_err(|e| failure::format_err!("{:?}", e))?)
 }

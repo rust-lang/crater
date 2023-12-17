@@ -1,6 +1,22 @@
 {
   "categories": [],
-  "comparison_colors": {},
+  "colors": [
+    {
+      "Striped": [
+        "#494b4a",
+        "#555555"
+      ]
+    },
+    {
+      "Single": "#72a156"
+    },
+    {
+      "Striped": [
+        "#72a156",
+        "#80b65f"
+      ]
+    }
+  ],
   "crates_count": 3,
   "full": false,
   "info": {
@@ -25,6 +41,5 @@
       "url": "downloads.html"
     }
   ],
-  "result_colors": [],
   "result_names": []
 }

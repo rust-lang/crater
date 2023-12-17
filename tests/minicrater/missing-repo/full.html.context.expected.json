@@ -2,19 +2,23 @@
   "categories": [
     [
       "broken",
+      0,
       {
         "Plain": [
           {
+            "color_idx": 0,
             "name": "ghost.missing",
             "res": "broken",
             "runs": [
               {
+                "color_idx": 0,
                 "log": "stable/gh/ghost.missing",
-                "res": 0
+                "name_idx": 0
               },
               {
+                "color_idx": 0,
                 "log": "beta/gh/ghost.missing",
-                "res": 0
+                "name_idx": 0
               }
             ],
             "url": "https://github.com/ghost/missing"
@@ -23,11 +27,11 @@
       }
     ]
   ],
-  "comparison_colors": {
-    "broken": {
+  "colors": [
+    {
       "Single": "#44176e"
     }
-  },
+  ],
   "crates_count": 1,
   "full": true,
   "info": {
@@ -48,11 +52,6 @@
       "active": false,
       "label": "Downloads",
       "url": "downloads.html"
-    }
-  ],
-  "result_colors": [
-    {
-      "Single": "#44176e"
     }
   ],
   "result_names": [

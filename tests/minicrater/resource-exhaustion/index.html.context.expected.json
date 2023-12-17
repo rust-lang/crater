@@ -2,19 +2,23 @@
   "categories": [
     [
       "spurious-fixed",
+      1,
       {
         "Plain": [
           {
+            "color_idx": 1,
             "name": "memory-hungry (local)",
             "res": "spurious-fixed",
             "runs": [
               {
+                "color_idx": 2,
                 "log": "stable/local/memory-hungry",
-                "res": 0
+                "name_idx": 0
               },
               {
+                "color_idx": 3,
                 "log": "beta/local/memory-hungry",
-                "res": 1
+                "name_idx": 1
               }
             ],
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
@@ -23,14 +27,23 @@
       }
     ]
   ],
-  "comparison_colors": {
-    "spurious-fixed": {
+  "colors": [
+    {
+      "Single": "#72a156"
+    },
+    {
       "Striped": [
         "#5630db",
         "#5d3dcf"
       ]
+    },
+    {
+      "Single": "#db3026"
+    },
+    {
+      "Single": "#65461e"
     }
-  },
+  ],
   "crates_count": 2,
   "full": false,
   "info": {
@@ -52,14 +65,6 @@
       "active": false,
       "label": "Downloads",
       "url": "downloads.html"
-    }
-  ],
-  "result_colors": [
-    {
-      "Single": "#db3026"
-    },
-    {
-      "Single": "#65461e"
     }
   ],
   "result_names": [

@@ -2,19 +2,23 @@
   "categories": [
     [
       "build-fail",
+      0,
       {
         "Plain": [
           {
+            "color_idx": 0,
             "name": "build-fail (local)",
             "res": "build-fail",
             "runs": [
               {
+                "color_idx": 3,
                 "log": "stable/local/build-fail",
-                "res": 0
+                "name_idx": 0
               },
               {
+                "color_idx": 3,
                 "log": "beta/local/build-fail",
-                "res": 0
+                "name_idx": 0
               }
             ],
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
@@ -24,19 +28,23 @@
     ],
     [
       "test-pass",
+      1,
       {
         "Plain": [
           {
+            "color_idx": 1,
             "name": "build-pass (local)",
             "res": "test-pass",
             "runs": [
               {
+                "color_idx": 4,
                 "log": "stable/local/build-pass",
-                "res": 1
+                "name_idx": 1
               },
               {
+                "color_idx": 4,
                 "log": "beta/local/build-pass",
-                "res": 1
+                "name_idx": 1
               }
             ],
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
@@ -46,19 +54,23 @@
     ],
     [
       "test-fail",
+      2,
       {
         "Plain": [
           {
+            "color_idx": 2,
             "name": "test-fail (local)",
             "res": "test-fail",
             "runs": [
               {
+                "color_idx": 0,
                 "log": "stable/local/test-fail",
-                "res": 2
+                "name_idx": 2
               },
               {
+                "color_idx": 0,
                 "log": "beta/local/test-fail",
-                "res": 2
+                "name_idx": 2
               }
             ],
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
@@ -67,17 +79,23 @@
       }
     ]
   ],
-  "comparison_colors": {
-    "build-fail": {
+  "colors": [
+    {
       "Single": "#65461e"
     },
-    "test-fail": {
+    {
+      "Single": "#72a156"
+    },
+    {
       "Single": "#788843"
     },
-    "test-pass": {
-      "Single": "#72a156"
+    {
+      "Single": "#db3026"
+    },
+    {
+      "Single": "#62a156"
     }
-  },
+  ],
   "crates_count": 3,
   "full": true,
   "info": {
@@ -100,17 +118,6 @@
       "active": false,
       "label": "Downloads",
       "url": "downloads.html"
-    }
-  ],
-  "result_colors": [
-    {
-      "Single": "#db3026"
-    },
-    {
-      "Single": "#62a156"
-    },
-    {
-      "Single": "#65461e"
     }
   ],
   "result_names": [

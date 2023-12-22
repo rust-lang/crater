@@ -179,22 +179,13 @@ impl<'a> ReadResults for DatabaseDB<'a> {
         toolchain: &Toolchain,
         krate: &Crate,
     ) -> Fallible<Option<TestResult>> {
-        let result: Option<String> = self
-            .db
-            .query(
-                "SELECT result FROM results \
+        Ok(self.db.query_row(
+            "SELECT result FROM results \
                  WHERE experiment = ?1 AND toolchain = ?2 AND crate = ?3 \
                  LIMIT 1;",
-                [&ex.name, &toolchain.to_string(), &krate.id()],
-                |row| row.get("result"),
-            )?
-            .pop();
-
-        if let Some(res) = result {
-            Ok(Some(res.parse()?))
-        } else {
-            Ok(None)
-        }
+            [&ex.name, &toolchain.to_string(), &krate.id()],
+            |row| Ok(row.get_ref("result")?.as_str()?.parse::<TestResult>()?),
+        )?)
     }
 }
 

@@ -2,15 +2,15 @@
   "available_archives": [
     {
       "name": "All the crates",
-      "path": "logs-archives/all.tar.gz"
+      "path": "logs-archives/all.tar.zst"
     },
     {
       "name": "test-pass crates",
-      "path": "logs-archives/test-pass.tar.gz"
+      "path": "logs-archives/test-pass.tar.zst"
     },
     {
       "name": "spurious-fixed crates",
-      "path": "logs-archives/spurious-fixed.tar.gz"
+      "path": "logs-archives/spurious-fixed.tar.zst"
     }
   ],
   "crates_count": 2,

@@ -2,15 +2,15 @@
   "available_archives": [
     {
       "name": "All the crates",
-      "path": "logs-archives/all.tar.gz"
+      "path": "logs-archives/all.tar.zst"
     },
     {
       "name": "regressed crates",
-      "path": "logs-archives/regressed.tar.gz"
+      "path": "logs-archives/regressed.tar.zst"
     },
     {
       "name": "test-pass crates",
-      "path": "logs-archives/test-pass.tar.gz"
+      "path": "logs-archives/test-pass.tar.zst"
     }
   ],
   "crates_count": 2,

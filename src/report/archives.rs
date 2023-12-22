@@ -8,7 +8,6 @@ use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::{compare, Comparison, ReportWriter};
 use crate::results::{EncodedLog, EncodingType, ReadResults};
-use flate2::{write::GzEncoder, Compression};
 use indexmap::IndexMap;
 use tar::{Builder as TarBuilder, Header as TarHeader};
 use tempfile::tempfile;
@@ -156,7 +155,7 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
         // writes to S3 (requiring buffer management etc) while avoiding keeping the blob entirely
         // in memory.
         let backing = tempfile()?;
-        let mut all = TarBuilder::new(GzEncoder::new(backing, Compression::default()));
+        let mut all = TarBuilder::new(zstd::stream::Encoder::new(backing, 0)?);
         for entry in iterate(db, ex, crates, config) {
             let entry = entry?;
             let mut header = entry.header();
@@ -180,9 +179,9 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
             view = &buffer[..];
         }
         match dest.write_bytes(
-            "logs-archives/all.tar.gz",
+            "logs-archives/all.tar.zst",
             view,
-            &"application/gzip".parse().unwrap(),
+            &"application/zstd".parse().unwrap(),
             EncodingType::Plain,
         ) {
             Ok(()) => break,
@@ -192,7 +191,7 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
                 } else {
                     std::thread::sleep(std::time::Duration::from_secs(2));
                     warn!(
-                        "retry ({}/{}) writing logs-archives/all.tar.gz ({} bytes) (error: {:?})",
+                        "retry ({}/{}) writing logs-archives/all.tar.zst ({} bytes) (error: {:?})",
                         i,
                         RETRIES,
                         view.len(),
@@ -206,7 +205,7 @@ fn write_all_archive<DB: ReadResults, W: ReportWriter>(
 
     Ok(Archive {
         name: "All the crates".to_string(),
-        path: "logs-archives/all.tar.gz".to_string(),
+        path: "logs-archives/all.tar.zst".to_string(),
     })
 }
 
@@ -229,22 +228,22 @@ pub fn write_logs_archives<DB: ReadResults, W: ReportWriter>(
 
         by_comparison
             .entry(entry.comparison)
-            .or_insert_with(|| TarBuilder::new(GzEncoder::new(Vec::new(), Compression::default())))
+            .or_insert_with(|| TarBuilder::new(zstd::stream::Encoder::new(Vec::new(), 3).unwrap()))
             .append_data(&mut entry.header(), &entry.path, &entry.log_bytes[..])?;
     }
 
     for (comparison, archive) in by_comparison.drain(..) {
         let data = archive.into_inner()?.finish()?;
         dest.write_bytes(
-            format!("logs-archives/{comparison}.tar.gz"),
+            format!("logs-archives/{comparison}.tar.zst"),
             &data,
-            &"application/gzip".parse().unwrap(),
+            &"application/zstd".parse().unwrap(),
             EncodingType::Plain,
         )?;
 
         archives.push(Archive {
             name: format!("{comparison} crates"),
-            path: format!("logs-archives/{comparison}.tar.gz"),
+            path: format!("logs-archives/{comparison}.tar.zst"),
         });
     }
 
@@ -261,11 +260,11 @@ mod tests {
     use crate::prelude::*;
     use crate::report::DummyWriter;
     use crate::results::{DatabaseDB, EncodingType, FailureReason, TestResult, WriteResults};
-    use flate2::read::GzDecoder;
     use mime::Mime;
     use rustwide::logging::LogStorage;
     use std::io::Read;
     use tar::Archive;
+    use zstd::stream::Decoder;
 
     #[test]
     fn test_logs_archives_generation() {
@@ -355,20 +354,20 @@ mod tests {
         assert_eq!(
             &archives_paths,
             &[
-                "logs-archives/all.tar.gz",
-                "logs-archives/regressed.tar.gz",
-                "logs-archives/test-pass.tar.gz",
+                "logs-archives/all.tar.zst",
+                "logs-archives/regressed.tar.zst",
+                "logs-archives/test-pass.tar.zst",
             ]
         );
 
         // Load the content of all the archives
-        let mime: Mime = "application/gzip".parse().unwrap();
-        let all_content = writer.get("logs-archives/all.tar.gz", &mime);
-        let mut all = Archive::new(GzDecoder::new(all_content.as_slice()));
-        let regressed_content = writer.get("logs-archives/regressed.tar.gz", &mime);
-        let mut regressed = Archive::new(GzDecoder::new(regressed_content.as_slice()));
-        let test_pass_content = writer.get("logs-archives/test-pass.tar.gz", &mime);
-        let mut test_pass = Archive::new(GzDecoder::new(test_pass_content.as_slice()));
+        let mime: Mime = "application/zstd".parse().unwrap();
+        let all_content = writer.get("logs-archives/all.tar.zst", &mime);
+        let mut all = Archive::new(Decoder::new(all_content.as_slice()).unwrap());
+        let regressed_content = writer.get("logs-archives/regressed.tar.zst", &mime);
+        let mut regressed = Archive::new(Decoder::new(regressed_content.as_slice()).unwrap());
+        let test_pass_content = writer.get("logs-archives/test-pass.tar.zst", &mime);
+        let mut test_pass = Archive::new(Decoder::new(test_pass_content.as_slice()).unwrap());
 
         macro_rules! check_content {
             ($archive:ident: { $($file:expr => $match:expr,)* }) => {{
@@ -401,7 +400,7 @@ mod tests {
             }}
         }
 
-        // Check all.tar.gz
+        // Check all.tar.zst
         check_content!(all: {
             format!("regressed/{}/{}.txt", crate1.id(), ex.toolchains[0]) => "tc1 crate1",
             format!("regressed/{}/{}.txt", crate1.id(), ex.toolchains[1]) => "tc2 crate1",
@@ -409,13 +408,13 @@ mod tests {
             format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[1]) => "tc2 crate2",
         });
 
-        // Check regressed.tar.gz
+        // Check regressed.tar.zst
         check_content!(regressed: {
             format!("regressed/{}/{}.txt", crate1.id(), ex.toolchains[0]) => "tc1 crate1",
             format!("regressed/{}/{}.txt", crate1.id(), ex.toolchains[1]) => "tc2 crate1",
         });
 
-        // Check test-pass.tar.gz
+        // Check test-pass.tar.zst
         check_content!(test_pass: {
             format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[0]) => "tc1 crate2",
             format!("test-pass/{}/{}.txt", crate2.id(), ex.toolchains[1]) => "tc2 crate2",

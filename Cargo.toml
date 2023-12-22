@@ -19,6 +19,7 @@ docsrs-metadata = { git = "https://github.com/rust-lang/docs.rs/" }
 dotenv = "0.15"
 failure = "0.1.3"
 flate2 = "1"
+zstd = "0.13.0"
 http = "0.2"
 hyper = "0.14"
 lazy_static = "1.0"

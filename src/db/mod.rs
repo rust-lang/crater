@@ -6,6 +6,7 @@ use r2d2::{CustomizeConnection, Pool};
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
 use rusqlite::{Connection, Row, Transaction};
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 use tempfile::NamedTempFile;
@@ -51,6 +52,11 @@ impl Database {
         }
 
         let path = WORK_DIR.join(DATABASE_PATH);
+        std::fs::create_dir_all(&*WORK_DIR)?;
+        Database::new(SqliteConnectionManager::file(path), None)
+    }
+
+    pub fn open_at(path: &Path) -> Fallible<Self> {
         std::fs::create_dir_all(&*WORK_DIR)?;
         Database::new(SqliteConnectionManager::file(path), None)
     }

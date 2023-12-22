@@ -659,7 +659,7 @@ impl Experiment {
     }
 }
 
-struct ExperimentDBRecord {
+pub struct ExperimentDBRecord {
     name: String,
     mode: String,
     cap_lints: String,
@@ -680,7 +680,7 @@ struct ExperimentDBRecord {
 }
 
 impl ExperimentDBRecord {
-    fn from_row(row: &Row) -> rusqlite::Result<Self> {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(ExperimentDBRecord {
             name: row.get("name")?,
             mode: row.get("mode")?,
@@ -702,7 +702,7 @@ impl ExperimentDBRecord {
         })
     }
 
-    fn into_experiment(self) -> Fallible<Experiment> {
+    pub fn into_experiment(self) -> Fallible<Experiment> {
         Ok(Experiment {
             name: self.name,
             toolchains: [self.toolchain_start.parse()?, self.toolchain_end.parse()?],

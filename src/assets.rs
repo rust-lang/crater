@@ -162,6 +162,6 @@ pub fn render_template<C: Serialize>(name: &str, context: &C) -> Fallible<String
     }
 
     Ok(tera
-        .render(name, context)
+        .render(name, &tera::Context::from_serialize(context)?)
         .map_err(|e| failure::format_err!("{:?}", e))?)
 }

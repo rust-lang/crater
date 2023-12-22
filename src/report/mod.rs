@@ -243,9 +243,9 @@ pub fn generate_report<DB: ReadResults>(
                 })
             });
             // Convert errors to Nones
-            let mut crate_results = crate_results.map(|r| r.ok()).collect::<Vec<_>>();
-            let crate2 = crate_results.pop().unwrap();
-            let crate1 = crate_results.pop().unwrap();
+            let mut crate_results = crate_results.map(|r| r.ok());
+            let crate1 = crate_results.next().unwrap();
+            let crate2 = crate_results.next().unwrap();
             let comp = compare(
                 config,
                 krate,

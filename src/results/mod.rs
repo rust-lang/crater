@@ -125,18 +125,20 @@ macro_rules! test_result_enum {
 
             fn from_str(input: &str) -> Fallible<Self> {
                 // if there is more than one ':' we assume it's part of a failure reason serialization
-                let parts: Vec<&str> = input.splitn(2, ':').collect();
+                let mut parts = input.splitn(2, ':');
+                let part1 = parts.next().unwrap();
+                let part2 = parts.next();
 
-                if parts.len() == 1 {
-                    match parts[0] {
+                if part2.is_none() {
+                    match part1 {
                         $($with_reason_repr => Ok($name::$with_reason_name($reason::Unknown)),)*
                         $($reasonless_repr => Ok($name::$reasonless_name),)*
                         other => Err(TestResultParseError::UnknownResult(other.into()).into()),
                     }
                 } else {
-                    match parts[0] {
+                    match part1 {
                         $($reasonless_repr => Err(TestResultParseError::UnexpectedFailureReason.into()),)*
-                        $($with_reason_repr => Ok($name::$with_reason_name(parts[1].parse()?)),)*
+                        $($with_reason_repr => Ok($name::$with_reason_name(part2.unwrap().parse()?)),)*
                         other => Err(TestResultParseError::UnknownResult(other.into()).into()),
                     }
                 }

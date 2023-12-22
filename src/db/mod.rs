@@ -191,6 +191,24 @@ pub trait QueryUtils {
         })
     }
 
+    fn query_row<T, F: FnOnce(&Row) -> Fallible<T>>(
+        &self,
+        sql: &str,
+        params: impl rusqlite::Params,
+        func: F,
+    ) -> Fallible<Option<T>> {
+        self.with_conn(|conn| {
+            self.trace(sql, || {
+                let mut prepared = conn.prepare(sql)?;
+                let mut rows = prepared.query(params)?;
+                if let Ok(Some(row)) = rows.next() {
+                    return Ok(Some(func(row)?));
+                }
+                Ok(None)
+            })
+        })
+    }
+
     fn trace<T, F: FnOnce() -> T>(&self, sql: &str, f: F) -> T {
         let start = Instant::now();
         let res = f();

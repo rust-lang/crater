@@ -2,8 +2,8 @@
 name = "crater"
 version = "0.1.0"
 edition = "2021"
-
 build = "build.rs"
+default-run = "crater"
 
 [profile.dev]
 opt-level = 0
@@ -24,7 +24,7 @@ http = "0.2"
 hyper = "0.14"
 lazy_static = "1.0"
 mime = "0.3.1"
-minifier = { version = "0.2", features = ["html"] }
+minifier = { version = "0.3", features = ["html"] }
 r2d2 = "0.8.2"
 r2d2_sqlite = "0.22.0"
 rusqlite = { version = "0.29.0", features = ["chrono", "functions", "bundled"] }
@@ -38,7 +38,7 @@ serde_regex = "1.1.0"
 clap = { version = "4", features = ["derive"] }
 tar = "0.4.36"
 tempfile = "3.0.0"
-tera = "0.11.7"
+tera = "1.19.1"
 toml = "0.8.6"
 url = "2"
 walkdir = "2"
@@ -60,7 +60,7 @@ tokio = "1.24"
 aws-sdk-s3 = "1.7"
 aws-config = { version = "1", features = ["behavior-version-latest"] }
 thiserror = "1.0.38"
-nix = { version = "0.27.1", features = ["mman"] }
+nix = { version = "0.27.1", features = ["mman", "resource"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.4"

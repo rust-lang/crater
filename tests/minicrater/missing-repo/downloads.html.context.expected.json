@@ -2,11 +2,11 @@
   "available_archives": [
     {
       "name": "All the crates",
-      "path": "logs-archives/all.tar.gz"
+      "path": "logs-archives/all.tar.zst"
     },
     {
       "name": "broken crates",
-      "path": "logs-archives/broken.tar.gz"
+      "path": "logs-archives/broken.tar.zst"
     }
   ],
   "crates_count": 1,

@@ -2,31 +2,31 @@
   "available_archives": [
     {
       "name": "All the crates",
-      "path": "logs-archives/all.tar.gz"
+      "path": "logs-archives/all.tar.zst"
     },
     {
       "name": "regressed crates",
-      "path": "logs-archives/regressed.tar.gz"
+      "path": "logs-archives/regressed.tar.zst"
     },
     {
       "name": "fixed crates",
-      "path": "logs-archives/fixed.tar.gz"
+      "path": "logs-archives/fixed.tar.zst"
     },
     {
       "name": "broken crates",
-      "path": "logs-archives/broken.tar.gz"
+      "path": "logs-archives/broken.tar.zst"
     },
     {
       "name": "build-fail crates",
-      "path": "logs-archives/build-fail.tar.gz"
+      "path": "logs-archives/build-fail.tar.zst"
     },
     {
       "name": "test-pass crates",
-      "path": "logs-archives/test-pass.tar.gz"
+      "path": "logs-archives/test-pass.tar.zst"
     },
     {
       "name": "test-fail crates",
-      "path": "logs-archives/test-fail.tar.gz"
+      "path": "logs-archives/test-fail.tar.zst"
     }
   ],
   "crates_count": 17,

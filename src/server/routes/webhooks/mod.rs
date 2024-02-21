@@ -12,7 +12,7 @@ use http::{HeaderMap, Response, StatusCode};
 use hyper::Body;
 use std::str::FromStr;
 use std::sync::Arc;
-use warp::{self, Filter, Rejection};
+use warp::{Filter, Rejection};
 
 fn process_webhook(
     payload: &[u8],

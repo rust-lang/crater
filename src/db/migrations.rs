@@ -1,8 +1,5 @@
 use crate::prelude::*;
-use rand::{
-    self,
-    distributions::{Alphanumeric, DistString},
-};
+use rand::distributions::{Alphanumeric, DistString};
 use rusqlite::{Connection, Transaction};
 use std::collections::HashSet;
 

@@ -135,6 +135,24 @@ heap-vec = { skip-tests = true } # UB, sometimes segfaults
 k2_tree = { skip-tests = true } # UB, sometimes segfaults
 stabby-macros = { skip = true } # broken rustc version parsing
 stabby = { skip = true } # broken rustc version parsing
+knetrs = { skip-tests = true } # UB
+yices2 = { skip = true } # Sometimes times out, sometimes doesn't
+scheduled-executor = { skip-tests = true } # UB, allocator corruption
+skippy-rs = { skip-tests = true } # UB, out-of-bounds get_unchecked
+pepe-telemetry = { skip-test = true } # flaky test (concurrency)
+puid = { skip-tests = true } # flaky test (timing)
+watchable = { skip-tests = true } # flaky test (timing)
+lispi = { skip-tests = true } # flaky test (data races)
+cargo-ramdisk = { skip-tests = true } # flaky test (concurrency)
+njord = { skip-tests = true } # flaky test
+matecito = { skip-tests = true } # flaky test (timing)
+namaste = { skip-tests = true} # flaky test
+faktory = { skip-tests = true } # UB via atomic-option
+gazebo = { skip-tests = true } # UB but only in the test suite
+context_bind = { skip-tests = true } # UB
+unbounded-spsc = { skip-tests = true } # UB
+vtable_gen = { skip-tests = true } # UB
+crt0stack = { skip-tests = true } # UB
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
@@ -175,5 +193,26 @@ stabby = { skip = true } # broken rustc version parsing
 "mistrpopo/MandelbrotAnimation" = { skip-tests = true } # second build seems to always fail
 "bastibl/futuresdr" = { skip = true } # unstable features
 "FutureSDR/FutureSDR" = { skip = true } # unstable features
+"yamgent/rusty-jam-2-dog-chicken" = { skip-tests = true } # UB
+"Liorst4/liorforth" = { skip-tests = true } # UB
+"perlindgren/fastmem" = { skip-tests = true } # UB
+"aharisu/navi" = { skip-tests = true } # UB, allocator corruption
+"fkjogu/stochasticsampling" = { skip-tests = true } # UB, allocator corruption
+"senrust/toy_compiler2" = { skip-tests = true } # UB when tests run concurrently
+"Yogaflre/leetcode" = { skip-tests = true } # UB
+"UndeadRat22/kzg10-rust" = { skip-tests = true } # Wraps a non-thread-safe C++ library
+"JakeDawkins/graphql-client-302-repro" = { skip-tests = true } # Stack overflow in a proc macro
+"cdstanford/hydroflow-hackathon" = { skip-tests = true } # UB in a proc macro
+"hydro-project/compute-pi" = { skip-tests = true } # UB in a proc macro
+"KatsukiFujimoto/git-rs" = { skip-tests = true } # flaky test (HashSet iteration)
+"MarkChuCarroll/schism" = { skip-tests = true } # flaky test (concurrency)
+"Osrepnay/algae" = { skip-tests = true } # flaky test (timing)
+"Yichangcs/Ruscheme" = { skip-tests = true } # flaky test (concurrency)
+"bakaq/rust-blackhole" = { skip-tests = true } # flaky test (rng)
+"diegoasanch/advent-of-code-2023" = { skip-tests = true } # flaky test (HashMap iteration)
+"grnmeira/Snake" = { skip-tests = true } # flaky test (rng)
+"wojciechkepka/pkger" = { skip-tests = true } # flaky test (concurrency)
+"xffxff/muzero-rs" = { skip-tests = true } # flaky test (rng)
+"maxjeffos/rs_dynamic_args" = { skip-tests = true } # flaky test (concurrency)
 
 [local-crates]

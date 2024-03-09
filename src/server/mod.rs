@@ -17,12 +17,12 @@ use crate::server::agents::Agents;
 use crate::server::auth::ACL;
 use crate::server::github::{GitHub, GitHubApi};
 use crate::server::tokens::{BotTokens, Tokens};
-use http::{self, header::HeaderValue, Response};
+use http::{header::HeaderValue, Response};
 use hyper::Body;
 use metrics::Metrics;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use warp::{self, Filter};
+use warp::Filter;
 
 lazy_static! {
     static ref SERVER_HEADER: String =

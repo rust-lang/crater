@@ -14,7 +14,7 @@ use hyper::Body;
 use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Instant;
-use warp::{self, Filter, Rejection};
+use warp::{Filter, Rejection};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]

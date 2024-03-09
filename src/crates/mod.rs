@@ -6,7 +6,6 @@ use crate::prelude::*;
 use cargo_metadata::PackageId;
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
 use rustwide::Crate as RustwideCrate;
-use std::convert::TryFrom;
 use std::fmt;
 use std::path::Path;
 use std::str::FromStr;

@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::utils;
+use regex::Regex;
 use rustwide::Toolchain as RustwideToolchain;
 use std::fmt;
 use std::str::FromStr;
@@ -102,6 +103,12 @@ pub enum ToolchainParseError {
     InvalidSourceName(String),
     #[error("invalid toolchain flag: {0}")]
     InvalidFlag(String),
+    #[error("invalid toolchain SHA: {0} is missing a `try#` or `master#` prefix")]
+    PrefixMissing(String),
+}
+
+lazy_static! {
+    static ref TOOLCHAIN_SHA_RE: Regex = Regex::new(r"^[a-f0-9]{40}$").unwrap();
 }
 
 impl FromStr for Toolchain {
@@ -130,6 +137,10 @@ impl FromStr for Toolchain {
             }
         } else if raw_source.is_empty() {
             return Err(ToolchainParseError::EmptyName);
+        } else if TOOLCHAIN_SHA_RE.is_match(raw_source) {
+            // A common user error is unprefixed SHAs for the `start` or `end` toolchains, check for
+            // these here.
+            return Err(ToolchainParseError::PrefixMissing(raw_source.to_string()));
         } else {
             RustwideToolchain::dist(raw_source)
         };
@@ -348,5 +359,6 @@ mod tests {
         assert!(Toolchain::from_str("stable+donotusethisflag=ever").is_err());
         assert!(Toolchain::from_str("stable+patch=").is_err());
         assert!(Toolchain::from_str("try#1234+target=").is_err());
+        assert!(Toolchain::from_str("0000000000000000000000000000000000000000").is_err());
     }
 }

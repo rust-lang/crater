@@ -6,7 +6,7 @@ use http::{Response, StatusCode};
 use hyper::Body;
 use serde::Serialize;
 use std::sync::Arc;
-use warp::{self, Filter, Rejection};
+use warp::{Filter, Rejection};
 
 mod agents;
 mod experiments;

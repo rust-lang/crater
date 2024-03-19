@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use failure::{AsFail, Backtrace, Fail};
+use failure::{AsFail, Backtrace};
 use percent_encoding::{AsciiSet, CONTROLS};
 use std::any::Any;
 use std::fmt;

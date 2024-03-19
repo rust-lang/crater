@@ -13,7 +13,6 @@ use crate::utils::disk_usage::DiskUsage;
 use failure::Error;
 use rustwide::Workspace;
 use std::collections::BTreeSet;
-use std::iter::FromIterator;
 use std::ops;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;

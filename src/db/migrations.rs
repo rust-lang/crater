@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use rand::{
-    self,
     distributions::{Alphanumeric, DistString},
 };
 use rusqlite::{Connection, Transaction};

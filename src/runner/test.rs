@@ -13,7 +13,6 @@ use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
 use rustwide::logging::LogStorage;
 use rustwide::{Build, PrepareError};
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::convert::TryFrom;
 
 fn failure_reason(err: &Error) -> FailureReason {
     for cause in err.iter_chain() {

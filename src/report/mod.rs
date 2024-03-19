@@ -8,12 +8,11 @@ use crate::results::{EncodedLog, EncodingType, FailureReason, ReadResults, TestR
 use crate::toolchain::Toolchain;
 use crate::utils;
 use crates_index::GitIndex;
-use mime::{self, Mime};
+use mime::Mime;
 use percent_encoding::{utf8_percent_encode, AsciiSet};
 use std::borrow::Cow;
 #[cfg(test)]
 use std::collections::HashMap;
-use std::convert::AsRef;
 use std::fmt::{self, Display};
 use std::fs;
 use std::path::{Path, PathBuf};

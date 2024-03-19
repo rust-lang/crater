@@ -7,7 +7,7 @@ use regex::Regex;
 use rust_team_data::v1 as team_data;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
-use warp::{self, Filter, Rejection};
+use warp::{Filter, Rejection};
 
 lazy_static! {
     static ref GIT_REVISION_RE: Regex =

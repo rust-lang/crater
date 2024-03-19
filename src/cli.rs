@@ -34,6 +34,7 @@ use std::time::Duration;
 pub struct Ex(String);
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DockerEnv(String);
 impl FromStr for Ex {
     type Err = Error;

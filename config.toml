@@ -75,6 +75,7 @@ idx = { skip-tests = true } # depends on filesystem
 image-stream = { skip-tests = true } # depends on network
 ipc-channel = { slow = true } # tests slow to run
 jemalloc-ctl = { skip-tests = true } # flaky tests
+latin_squares = { skip-tests = true } # flaky test (random)
 ledger-transport-zemu = { skip = true } # buggy build script
 libfuzzy-sys = { skip = true } # flaky build
 loadconf = { skip-tests = true } # flaky test
@@ -109,6 +110,7 @@ structopt = { broken = true } # missing feature
 sysconf = { skip-tests = true } # flaky test
 tasks-framework = { skip-tests = true } # flaky tests
 theban_interval_tree = { skip-tests = true } # flaky tests
+timemoji = { skip-tests = true } # flaky tests (random)
 tokio = { broken = true } # missing feature
 tokio-periodic = { skip-tests = true } # flaky tests
 tokio-rustls = { broken = true } # missing feature
@@ -214,5 +216,9 @@ crt0stack = { skip-tests = true } # UB
 "wojciechkepka/pkger" = { skip-tests = true } # flaky test (concurrency)
 "xffxff/muzero-rs" = { skip-tests = true } # flaky test (rng)
 "maxjeffos/rs_dynamic_args" = { skip-tests = true } # flaky test (concurrency)
+"ns6251/spin-cookie-token-sample" = { skip = true } # linker error caused by a pinned dependency
+"FlixCoder/EvoResNN" = { skip-tests = true } # flaky tests (random)
+"WiZLite/wisp" = { skip-tests = true } # flaky tests (rely on HashMap iteration order)
+"adrien-zinger/dyn-timeout" = { skip-tests = true } # flaky tests (time sensitive due to deadlock)
 
 [local-crates]

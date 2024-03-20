@@ -280,11 +280,15 @@ impl FailureReason {
     pub(crate) fn is_spurious(&self) -> bool {
         match *self {
             FailureReason::OOM
-            | FailureReason::NoSpace
             | FailureReason::Timeout
             | FailureReason::NetworkAccess
             | FailureReason::CompilerDiagnosticChange => true,
             FailureReason::CompilerError(_)
+            // while no space is technically spurious,
+            //  we consider it non-spurious here so it is
+            // - more visible
+            // - included in the `retry-regressed-list.txt`
+            | FailureReason::NoSpace
             | FailureReason::DependsOn(_)
             | FailureReason::Unknown
             | FailureReason::ICE => false,

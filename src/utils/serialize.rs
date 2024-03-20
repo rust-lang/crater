@@ -1,6 +1,5 @@
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 
-
 pub fn to_vec<S, T>(data: T, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

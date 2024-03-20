@@ -1,7 +1,5 @@
 use crate::prelude::*;
-use rand::{
-    distributions::{Alphanumeric, DistString},
-};
+use rand::distributions::{Alphanumeric, DistString};
 use rusqlite::{Connection, Transaction};
 use std::collections::HashSet;
 
@@ -387,7 +385,7 @@ pub fn execute(db: &mut Connection) -> Fallible<()> {
     };
 
     for &(name, ref migration) in &migrations() {
-        if !executed_migrations.contains(&name.to_string()) {
+        if !executed_migrations.contains(name) {
             let t = db.transaction()?;
             match migration {
                 MigrationKind::SQL(sql) => t.execute_batch(sql),

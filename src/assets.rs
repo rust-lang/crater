@@ -145,7 +145,7 @@ fn build_tera_cache() -> Fallible<Tera> {
 }
 
 #[allow(unused_variables)]
-pub fn render_template<C: Serialize>(name: &str, context: &C) -> Fallible<String> {
+pub fn render_template<C: Serialize>(name: &str, context: C) -> Fallible<String> {
     // On debug builds the cache is rebuilt every time to pick up changed templates
     let tera_owned: Tera;
     let tera;
@@ -161,7 +161,8 @@ pub fn render_template<C: Serialize>(name: &str, context: &C) -> Fallible<String
         tera = &TERA_CACHE;
     }
 
+    let tera_context = tera::Context::from_serialize(context)?;
     Ok(tera
-        .render(name, context)
+        .render(name, &tera_context)
         .map_err(|e| failure::format_err!("{:?}", e))?)
 }

@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use mime::{self, Mime};
+use mime::Mime;
 use serde::Serialize;
 use std::borrow::Cow;
 use std::collections::HashMap;

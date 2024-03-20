@@ -5,7 +5,7 @@ use http::{Response, StatusCode};
 use hyper::Body;
 use prometheus::{Encoder, TextEncoder};
 use std::sync::Arc;
-use warp::{self, Filter, Rejection};
+use warp::{Filter, Rejection};
 
 pub fn routes(
     data: Arc<Data>,

@@ -5,29 +5,8 @@
       0,
       {
         "Tree": {
-          "count": 1,
-          "tree": {
-            "rust-lang/crater/f190933e896443e285e3bb6962fb87d7439b8d65": [
-              {
-                "color_idx": 0,
-                "name": "beta-faulty-deps (local)",
-                "res": "regressed",
-                "runs": [
-                  {
-                    "color_idx": 7,
-                    "log": "stable/local/beta-faulty-deps",
-                    "name_idx": 0
-                  },
-                  {
-                    "color_idx": 0,
-                    "log": "beta/local/beta-faulty-deps",
-                    "name_idx": 1
-                  }
-                ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
-              }
-            ]
-          }
+          "count": 0,
+          "tree": {}
         }
       }
     ],
@@ -47,35 +26,15 @@
                   {
                     "color_idx": 0,
                     "log": "stable/local/ice-regression",
-                    "name_idx": 3
+                    "name_idx": 2
                   },
                   {
                     "color_idx": 0,
                     "log": "beta/local/ice-regression",
-                    "name_idx": 4
-                  }
-                ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
-              }
-            ],
-            "build compiler-error(E0013)": [
-              {
-                "color_idx": 0,
-                "name": "error-code (local)",
-                "res": "regressed",
-                "runs": [
-                  {
-                    "color_idx": 7,
-                    "log": "stable/local/error-code",
-                    "name_idx": 0
-                  },
-                  {
-                    "color_idx": 0,
-                    "log": "beta/local/error-code",
                     "name_idx": 3
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
               }
             ],
             "build compiler-error(E0015)": [
@@ -92,13 +51,51 @@
                   {
                     "color_idx": 0,
                     "log": "beta/local/error-code",
-                    "name_idx": 3
+                    "name_idx": 2
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+              }
+            ],
+            "build compiler-error(E0658)": [
+              {
+                "color_idx": 0,
+                "name": "error-code (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "color_idx": 7,
+                    "log": "stable/local/error-code",
+                    "name_idx": 0
+                  },
+                  {
+                    "color_idx": 0,
+                    "log": "beta/local/error-code",
+                    "name_idx": 2
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
               }
             ],
             "build failed (unknown)": [
+              {
+                "color_idx": 0,
+                "name": "beta-faulty-deps (local)",
+                "res": "regressed",
+                "runs": [
+                  {
+                    "color_idx": 7,
+                    "log": "stable/local/beta-faulty-deps",
+                    "name_idx": 0
+                  },
+                  {
+                    "color_idx": 0,
+                    "log": "beta/local/beta-faulty-deps",
+                    "name_idx": 1
+                  }
+                ],
+                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
+              },
               {
                 "color_idx": 0,
                 "name": "beta-regression (local)",
@@ -112,7 +109,7 @@
                   {
                     "color_idx": 0,
                     "log": "beta/local/beta-regression",
-                    "name_idx": 2
+                    "name_idx": 1
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
@@ -148,7 +145,7 @@
                   {
                     "color_idx": 0,
                     "log": "stable/local/beta-fixed",
-                    "name_idx": 2
+                    "name_idx": 1
                   },
                   {
                     "color_idx": 7,
@@ -166,12 +163,12 @@
                   {
                     "color_idx": 0,
                     "log": "stable/local/network-access",
-                    "name_idx": 2
+                    "name_idx": 1
                   },
                   {
                     "color_idx": 3,
                     "log": "beta/local/network-access",
-                    "name_idx": 5
+                    "name_idx": 4
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
@@ -194,12 +191,12 @@
               {
                 "color_idx": 2,
                 "log": "stable/local/broken-cargotoml",
-                "name_idx": 6
+                "name_idx": 5
               },
               {
                 "color_idx": 2,
                 "log": "beta/local/broken-cargotoml",
-                "name_idx": 6
+                "name_idx": 5
               }
             ],
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/broken-cargotoml"
@@ -212,12 +209,12 @@
               {
                 "color_idx": 2,
                 "log": "stable/local/yanked-deps",
-                "name_idx": 7
+                "name_idx": 6
               },
               {
                 "color_idx": 2,
                 "log": "beta/local/yanked-deps",
-                "name_idx": 7
+                "name_idx": 6
               }
             ],
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/yanked-deps"
@@ -238,12 +235,12 @@
               {
                 "color_idx": 0,
                 "log": "stable/local/build-fail",
-                "name_idx": 2
+                "name_idx": 1
               },
               {
                 "color_idx": 0,
                 "log": "beta/local/build-fail",
-                "name_idx": 2
+                "name_idx": 1
               }
             ],
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
@@ -256,7 +253,7 @@
               {
                 "color_idx": 0,
                 "log": "stable/local/faulty-deps",
-                "name_idx": 1
+                "name_idx": 7
               },
               {
                 "color_idx": 0,
@@ -398,12 +395,12 @@
               {
                 "color_idx": 3,
                 "log": "stable/local/test-fail",
-                "name_idx": 5
+                "name_idx": 4
               },
               {
                 "color_idx": 3,
                 "log": "beta/local/test-fail",
-                "name_idx": 5
+                "name_idx": 4
               }
             ],
             "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
@@ -471,12 +468,12 @@
   ],
   "result_names": [
     "test passed",
-    "build faulty deps",
     "build failed (unknown)",
     "build compiler error",
     "build ICE",
     "test failed (unknown)",
     "broken Cargo.toml",
-    "deps yanked"
+    "deps yanked",
+    "build faulty deps"
   ]
 }

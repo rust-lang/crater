@@ -189,12 +189,16 @@ pub struct Issue {
     pub number: i32,
     pub url: String,
     pub html_url: String,
+    // used in some targets
+    #[allow(unused)]
     pub labels: Vec<Label>,
     pub pull_request: Option<PullRequest>,
 }
 
 #[derive(Deserialize)]
 pub struct PullRequest {
+    // used in some targets
+    #[allow(unused)]
     pub html_url: String,
 }
 
@@ -231,6 +235,8 @@ pub struct Team {
 
 #[derive(Deserialize)]
 pub struct Commit {
+    // used in some targets
+    #[allow(unused)]
     pub sha: String,
     pub parents: Vec<CommitParent>,
 }

@@ -253,7 +253,7 @@
               {
                 "color_idx": 0,
                 "log": "stable/local/faulty-deps",
-                "name_idx": 7
+                "name_idx": 1
               },
               {
                 "color_idx": 0,
@@ -473,7 +473,6 @@
     "build ICE",
     "test failed (unknown)",
     "broken Cargo.toml",
-    "deps yanked",
-    "build faulty deps"
+    "deps yanked"
   ]
 }

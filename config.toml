@@ -153,6 +153,9 @@ context_bind = { skip-tests = true } # UB
 unbounded-spsc = { skip-tests = true } # UB
 vtable_gen = { skip-tests = true } # UB
 crt0stack = { skip-tests = true } # UB
+fsdr-blocks = { skip = true } # does not build on beta
+leptos_core = { skip = true } # does not build on beta
+rustc_get_version = { skip = true } # does not build on beta
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
@@ -214,5 +217,9 @@ crt0stack = { skip-tests = true } # UB
 "wojciechkepka/pkger" = { skip-tests = true } # flaky test (concurrency)
 "xffxff/muzero-rs" = { skip-tests = true } # flaky test (rng)
 "maxjeffos/rs_dynamic_args" = { skip-tests = true } # flaky test (concurrency)
+"AntiHero/leptos_fun" = { skip = true } # broken cfg for beta
+"samcarey/drop_block_test" = { skip = true } # broken cfg for beta
+"c0repwn3r/mangrove" = { skip = true } # broken beta rustc version parsing
+"zbzalex/rustc_get_version" = { skip = true } # broken beta rustc version parsing
 
 [local-crates]

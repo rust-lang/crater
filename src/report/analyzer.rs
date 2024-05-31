@@ -246,7 +246,7 @@ mod tests {
             results: fix_root,
         };
 
-        let test_pass = ReportCrates::Plain(vec![crates.remove("test-pass").unwrap()]);
+        let test_pass = ReportCrates::Plain(vec![crates.swap_remove("test-pass").unwrap()]);
 
         let mut categories = IndexMap::new();
         categories.insert(Comparison::Regressed, regressed);

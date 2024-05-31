@@ -170,7 +170,7 @@ impl ACL {
         Ok(())
     }
 
-    pub fn allowed(&self, username: &str, user_id: usize) -> Fallible<bool> {
+    pub fn allowed(&self, username: &str, user_id: u64) -> Fallible<bool> {
         if self.rust_teams {
             let url = format!("{}/permissions/crater.json", team_data::BASE_URL);
             let members: team_data::Permission = crate::utils::http::get_sync(&url)?.json()?;

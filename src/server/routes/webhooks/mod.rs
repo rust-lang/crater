@@ -72,7 +72,7 @@ fn process_webhook(
 fn process_command(
     host: &str,
     sender: &str,
-    sender_id: usize,
+    sender_id: u64,
     body: &str,
     repo: &Repository,
     issue: &Issue,

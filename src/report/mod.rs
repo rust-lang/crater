@@ -409,7 +409,9 @@ fn gen_retry_list(res: &RawTestResults) -> String {
     let regressed_crates = res
         .crates
         .iter()
-        .filter(|crate_res| crate_res.res == Comparison::Regressed)
+        .filter(|crate_res| {
+            crate_res.res == Comparison::Regressed || crate_res.res == Comparison::SpuriousRegressed
+        })
         .map(|crate_res| &crate_res.krate);
 
     for krate in regressed_crates {

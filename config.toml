@@ -64,12 +64,14 @@ fe_session = { skip-tests = true } # flaky test
 feed = { skip-tests = true } # flaky test
 fftw = { slow = true } # build time close to 2 minutes
 fine_grained = { skip-tests = true } # flaky tests
+gaffer = { skip-tests = true } # flaky tests (timing-dependent)
 gcc = { skip-tests = true } # flaky test
 gear = { skip = true } # flaky build
 geocode = { skip-tests = true } # depends on network
 glib = { slow = true } # tests slow to run
 guerrilla = { skip-tests = true } # flaky tests
 hashconsing = { skip-tests = true } # flaky test
+hopscotch = { skip-tests = true } # flaky tests (quickcheck + inconsistent ords)
 hyperdav = { skip-tests = true } # relies on an external service
 idx = { skip-tests = true } # depends on filesystem
 image-stream = { skip-tests = true } # depends on network
@@ -117,6 +119,7 @@ treeflection = { skip-tests = true } # flaky test
 update_rate = { skip-tests = true } # flaky tests
 urdf-viz = { skip = true } # flaky build
 vidar = { skip-tests = true } # flaky test
+workpool = { skip-tests = true } # flaky tests (timing + thread::sleep in pool::collect_into_vec tests)
 carboxyl_time = { skip-tests = true } # flaky test (timing)
 cobalt = { skip-tests = true } # flaky test (timing)
 conduit-hyper = { skip-tests = true } # flaky test (timing)
@@ -165,6 +168,7 @@ rustc_get_version = { skip = true } # does not build on beta
 "fromheten/plato" = { skip-tests = true } # flaky tests
 "jafow/pals" = { skip-tests = true } # flaky tests
 "johnedmonds/chance" = { skip-tests = true } # flaky tests
+"lht102/coding-problems-practice" = { skip-tests = true } # version-dependent tests (sort_unstable_by ordering)
 "LukeMathWalker/tracing-bunyan-formatter" = { skip-tests = true } # flaky tests
 "nilsmartel/act" = { skip-tests = true } # flaky tests
 "nt-ca-aqe/kitchen-kata-async-rust" = { skip-tests = true } # flaky tests

@@ -38,7 +38,7 @@ fn current_mount() -> Fallible<Filesystem> {
     let system = System::new();
 
     let mut found = None;
-    let mut found_pos = std::usize::MAX;
+    let mut found_pos = usize::MAX;
     for mount in system.mounts()?.into_iter() {
         let path = Path::new(&mount.fs_mounted_on);
         for (i, ancestor) in current_dir.ancestors().enumerate() {

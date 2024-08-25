@@ -13,6 +13,7 @@ use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
 use rustwide::logging::LogStorage;
 use rustwide::{Build, PrepareError};
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::io::ErrorKind;
 
 fn failure_reason(err: &Error) -> FailureReason {
     for cause in err.iter_chain() {
@@ -24,6 +25,36 @@ fn failure_reason(err: &Error) -> FailureReason {
             return FailureReason::Timeout;
         } else if let Some(reason) = cause.downcast_ctx::<FailureReason>() {
             return reason.clone();
+        } else if let Some(CommandError::IO(io)) = cause.downcast_ctx() {
+            match io.kind() {
+                ErrorKind::OutOfMemory => {
+                    return FailureReason::OOM;
+                }
+                _ => {
+                    // FIXME use ErrorKind once #![feature(io_error_more)] is stable <https://github.com/rust-lang/rust/issues/86442>
+                    #[cfg(target_os = "linux")]
+                    match io.raw_os_error() {
+                        // <https://mariadb.com/kb/en/operating-system-error-codes/#linux-error-codes>
+                        | Some(28) /* ErrorKind::StorageFull */
+                        | Some(122) /* ErrorKind::FilesystemQuotaExceeded */
+                        | Some(31) /* TooManyLinks */=> {
+                            return FailureReason::NoSpace
+                        }
+                        _ => {}
+                    }
+
+                    #[cfg(target_os = "windows")]
+                    match io.raw_os_error() {
+                        // <https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes>
+                        | Some(39|112) /* ErrorKind::StorageFull */
+                        | Some(1295) /* ErrorKind::FilesystemQuotaExceeded */
+                        | Some(1142) /* TooManyLinks */=> {
+                            return FailureReason::NoSpace
+                        }
+                        _ => {}
+                    }
+                }
+            }
         }
     }
 
@@ -200,6 +231,8 @@ fn run_cargo<DB: WriteResults>(
         Err(e) => {
             if did_ice {
                 Err(e.context(FailureReason::ICE).into())
+            } else if ran_out_of_space {
+                Err(e.context(FailureReason::NoSpace).into())
             } else if !deps.is_empty() {
                 Err(e.context(FailureReason::DependsOn(deps)).into())
             } else if !error_codes.is_empty() {
@@ -208,8 +241,6 @@ fn run_cargo<DB: WriteResults>(
                 Err(e.context(FailureReason::NetworkAccess).into())
             } else if did_trybuild {
                 Err(e.context(FailureReason::CompilerDiagnosticChange).into())
-            } else if ran_out_of_space {
-                Err(e.context(FailureReason::NoSpace).into())
             } else {
                 Err(e.into())
             }

@@ -166,7 +166,7 @@ fn write_report<W: ReportWriter>(
                     .into_iter()
                     .map(|krate| {
                         // done here to avoid cloning krate
-                        let deps = tree.remove(&krate.krate).unwrap_or_default();
+                        let deps = tree.shift_remove(&krate.krate).unwrap_or_default();
                         (krate, deps)
                     })
                     .collect::<IndexMap<_, _>>();

@@ -171,7 +171,7 @@ pub struct Error {
 
 #[derive(Deserialize)]
 pub struct User {
-    pub id: usize,
+    pub id: u64,
     pub login: String,
 }
 

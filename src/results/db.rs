@@ -233,6 +233,24 @@ impl<'a> WriteResults for DatabaseDB<'a> {
     }
 }
 
+impl crate::runner::RecordProgress for DatabaseDB<'_> {
+    fn record_progress(
+        &self,
+        ex: &Experiment,
+        krate: &Crate,
+        toolchain: &Toolchain,
+        log: &[u8],
+        result: &TestResult,
+        version: Option<(&Crate, &Crate)>,
+    ) -> Fallible<()> {
+        self.store_result(ex, krate, toolchain, result, log, EncodingType::Plain)?;
+        if let Some((old, new)) = version {
+            self.update_crate_version(ex, old, new)?;
+        }
+        Ok(())
+    }
+}
+
 impl<'a> DeleteResults for DatabaseDB<'a> {
     fn delete_all_results(&self, ex: &Experiment) -> Fallible<()> {
         self.db

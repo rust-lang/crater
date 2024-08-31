@@ -1,8 +1,6 @@
 mod api;
-mod results;
 
-use crate::agent::api::AgentApi;
-use crate::agent::results::ResultsUploader;
+pub use crate::agent::api::AgentApi;
 use crate::config::Config;
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
@@ -149,7 +147,6 @@ fn run_heartbeat(url: &str, token: &str) {
 fn run_experiment(
     agent: &Agent,
     workspace: &Workspace,
-    db: &ResultsUploader,
     threads_count: usize,
     past_experiment: &mut Option<String>,
 ) -> Result<(), (Option<Box<Experiment>>, Error)> {
@@ -173,9 +170,14 @@ fn run_experiment(
         }
     }
 
-    crate::runner::run_ex(&ex, workspace, db, threads_count, &agent.config, &|| {
-        agent.next_crate(&ex.name)
-    })
+    crate::runner::run_ex(
+        &ex,
+        workspace,
+        &agent.api,
+        threads_count,
+        &agent.config,
+        &|| agent.next_crate(&ex.name),
+    )
     .map_err(|err| (Some(Box::new(ex)), err))?;
     Ok(())
 }
@@ -188,7 +190,6 @@ pub fn run(
     workspace: &Workspace,
 ) -> Fallible<()> {
     let agent = Agent::new(url, token, caps)?;
-    let db = results::ResultsUploader::new(&agent.api);
 
     run_heartbeat(url, token);
     health_thread();
@@ -196,7 +197,7 @@ pub fn run(
     let mut past_experiment = None;
     loop {
         if let Err((ex, err)) =
-            run_experiment(&agent, workspace, &db, threads_count, &mut past_experiment)
+            run_experiment(&agent, workspace, threads_count, &mut past_experiment)
         {
             utils::report_failure(&err);
             if let Some(ex) = ex {

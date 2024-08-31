@@ -1,7 +1,7 @@
 use crate::crates::Crate;
 use crate::prelude::*;
 use crate::results::DiagnosticCode;
-use crate::results::{BrokenReason, EncodingType, FailureReason, TestResult, WriteResults};
+use crate::results::{BrokenReason, FailureReason, TestResult};
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
 use cargo_metadata::diagnostic::DiagnosticLevel;
@@ -109,8 +109,8 @@ fn get_local_packages(build_env: &Build) -> Fallible<Vec<Package>> {
         .collect())
 }
 
-fn run_cargo<DB: WriteResults>(
-    ctx: &TaskCtx<DB>,
+fn run_cargo(
+    ctx: &TaskCtx,
     build_env: &Build,
     args: &[&str],
     check_errors: bool,
@@ -248,59 +248,40 @@ fn run_cargo<DB: WriteResults>(
     }
 }
 
-pub(super) fn run_test<DB: WriteResults>(
+pub(super) fn run_test(
     action: &str,
-    ctx: &TaskCtx<DB>,
-    test_fn: fn(&TaskCtx<DB>, &Build, &[Package]) -> Fallible<TestResult>,
+    ctx: &TaskCtx,
+    test_fn: fn(&TaskCtx, &Build, &[Package]) -> Fallible<TestResult>,
     logs: &LogStorage,
-) -> Fallible<()> {
-    if let Some(res) = ctx
-        .db
-        .get_result(ctx.experiment, ctx.toolchain, ctx.krate)?
-    {
-        info!("skipping crate {}. existing result: {}", ctx.krate, res);
-    } else {
-        ctx.db.record_result(
-            ctx.experiment,
-            ctx.toolchain,
+) -> Fallible<TestResult> {
+    rustwide::logging::capture(logs, || {
+        info!(
+            "{} {} against {} for {}",
+            action,
             ctx.krate,
-            logs,
-            EncodingType::Plain,
-            || {
-                info!(
-                    "{} {} against {} for {}",
-                    action,
-                    ctx.krate,
-                    ctx.toolchain.to_string(),
-                    ctx.experiment.name
-                );
-                let sandbox = SandboxBuilder::new()
-                    .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
-                    .enable_networking(false);
+            ctx.toolchain.to_string(),
+            ctx.experiment.name
+        );
+        let sandbox = SandboxBuilder::new()
+            .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
+            .enable_networking(false);
 
-                let krate = &ctx.krate.to_rustwide();
-                let mut build_dir = ctx.build_dir.lock().unwrap();
-                let mut build = build_dir.build(ctx.toolchain, krate, sandbox);
+        let krate = &ctx.krate.to_rustwide();
+        let mut build_dir = ctx.build_dir.lock().unwrap();
+        let mut build = build_dir.build(ctx.toolchain, krate, sandbox);
 
-                for patch in ctx.toolchain.patches.iter() {
-                    build = build.patch_with_git(&patch.name, &patch.repo, &patch.branch);
-                }
+        for patch in ctx.toolchain.patches.iter() {
+            build = build.patch_with_git(&patch.name, &patch.repo, &patch.branch);
+        }
 
-                detect_broken(build.run(|build| {
-                    let local_packages = get_local_packages(build)?;
-                    test_fn(ctx, build, &local_packages)
-                }))
-            },
-        )?;
-    }
-    Ok(())
+        detect_broken(build.run(|build| {
+            let local_packages = get_local_packages(build)?;
+            test_fn(ctx, build, &local_packages)
+        }))
+    })
 }
 
-fn build<DB: WriteResults>(
-    ctx: &TaskCtx<DB>,
-    build_env: &Build,
-    local_packages: &[Package],
-) -> Fallible<()> {
+fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallible<()> {
     run_cargo(
         ctx,
         build_env,
@@ -320,7 +301,7 @@ fn build<DB: WriteResults>(
     Ok(())
 }
 
-fn test<DB: WriteResults>(ctx: &TaskCtx<DB>, build_env: &Build) -> Fallible<()> {
+fn test(ctx: &TaskCtx, build_env: &Build) -> Fallible<()> {
     run_cargo(
         ctx,
         build_env,
@@ -331,8 +312,8 @@ fn test<DB: WriteResults>(ctx: &TaskCtx<DB>, build_env: &Build) -> Fallible<()> 
     )
 }
 
-pub(super) fn test_build_and_test<DB: WriteResults>(
-    ctx: &TaskCtx<DB>,
+pub(super) fn test_build_and_test(
+    ctx: &TaskCtx,
     build_env: &Build,
     local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
@@ -351,8 +332,8 @@ pub(super) fn test_build_and_test<DB: WriteResults>(
     })
 }
 
-pub(super) fn test_build_only<DB: WriteResults>(
-    ctx: &TaskCtx<DB>,
+pub(super) fn test_build_only(
+    ctx: &TaskCtx,
     build_env: &Build,
     local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
@@ -363,8 +344,8 @@ pub(super) fn test_build_only<DB: WriteResults>(
     }
 }
 
-pub(super) fn test_check_only<DB: WriteResults>(
-    ctx: &TaskCtx<DB>,
+pub(super) fn test_check_only(
+    ctx: &TaskCtx,
     build_env: &Build,
     local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
@@ -388,8 +369,8 @@ pub(super) fn test_check_only<DB: WriteResults>(
     }
 }
 
-pub(super) fn test_clippy_only<DB: WriteResults>(
-    ctx: &TaskCtx<DB>,
+pub(super) fn test_clippy_only(
+    ctx: &TaskCtx,
     build_env: &Build,
     local_packages: &[Package],
 ) -> Fallible<TestResult> {
@@ -413,8 +394,8 @@ pub(super) fn test_clippy_only<DB: WriteResults>(
     }
 }
 
-pub(super) fn test_rustdoc<DB: WriteResults>(
-    ctx: &TaskCtx<DB>,
+pub(super) fn test_rustdoc(
+    ctx: &TaskCtx,
     build_env: &Build,
     local_packages: &[Package],
 ) -> Fallible<TestResult> {

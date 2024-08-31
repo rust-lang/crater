@@ -256,10 +256,6 @@ fn write_report<W: ReportWriter>(
     };
 
     info!("generating {}", to);
-    let rendered = assets::render_template("report/results.html", &context)
-        .context("rendering template report/results.html")?;
-    let html = minifier::html::minify(&rendered);
-    dest.write_string(to, html.into(), &mime::TEXT_HTML)?;
 
     if output_templates {
         dest.write_string(
@@ -268,6 +264,11 @@ fn write_report<W: ReportWriter>(
             &mime::APPLICATION_JSON,
         )?;
     }
+
+    let rendered = assets::render_template("report/results.html", context)
+        .context("rendering template report/results.html")?;
+    let html = minifier::html::minify(&rendered);
+    dest.write_string(to, html.into(), &mime::TEXT_HTML)?;
 
     Ok(())
 }

@@ -237,7 +237,9 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                     },
                 };
 
-                let storage = logs.clone();
+                // Fork logs off to distinct branch, so that each toolchain has its own log file,
+                // while keeping the shared prepare step in common.
+                let storage = logs.duplicate();
                 if let Err((err, test_result)) = &self.run_task(&task, &storage) {
                     if let Err(e) =
                         task.mark_as_failed(self.ex, self.db, err, test_result, &storage)

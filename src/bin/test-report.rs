@@ -6,6 +6,12 @@ use failure::Fallible;
 use mime::{self, Mime};
 use std::{borrow::Cow, fmt, path::Path};
 
+#[cfg(not(unix))]
+fn main() {
+    eprintln!("Not implemented!");
+}
+
+#[cfg(unix)]
 fn main() {
     let mut env = env_logger::Builder::new();
     env.filter_module("test_report", log::LevelFilter::Info);

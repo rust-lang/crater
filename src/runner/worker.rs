@@ -1,11 +1,14 @@
+use crate::agent::AgentApi;
 use crate::crates::Crate;
 use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
-use crate::results::{BrokenReason, TestResult, WriteResults};
+use crate::results::{BrokenReason, TestResult};
 use crate::runner::tasks::{Task, TaskStep};
+use crate::runner::test::detect_broken;
 use crate::runner::OverrideResult;
+use crate::toolchain::Toolchain;
 use crate::utils;
-use rustwide::logging::LogStorage;
+use rustwide::logging::{self, LogStorage};
 use rustwide::{BuildDirectory, Workspace};
 use std::collections::HashMap;
 use std::sync::Condvar;
@@ -15,24 +18,50 @@ use std::sync::{
 };
 use std::time::Duration;
 
-pub(super) struct Worker<'a, DB: WriteResults + Sync> {
+pub trait RecordProgress: Send + Sync {
+    fn record_progress(
+        &self,
+        ex: &Experiment,
+        krate: &Crate,
+        toolchain: &Toolchain,
+        log: &[u8],
+        result: &TestResult,
+        version: Option<(&Crate, &Crate)>,
+    ) -> Fallible<()>;
+}
+
+impl RecordProgress for AgentApi {
+    fn record_progress(
+        &self,
+        ex: &Experiment,
+        krate: &Crate,
+        toolchain: &Toolchain,
+        log: &[u8],
+        result: &TestResult,
+        version: Option<(&Crate, &Crate)>,
+    ) -> Fallible<()> {
+        self.record_progress(ex, krate, toolchain, log, result, version)
+    }
+}
+
+pub(super) struct Worker<'a> {
     name: String,
     workspace: &'a Workspace,
     build_dir: HashMap<&'a crate::toolchain::Toolchain, Mutex<BuildDirectory>>,
     ex: &'a Experiment,
     config: &'a crate::config::Config,
-    db: &'a DB,
+    api: &'a dyn RecordProgress,
     target_dir_cleanup: AtomicBool,
     next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
 }
 
-impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
+impl<'a> Worker<'a> {
     pub(super) fn new(
         name: String,
         workspace: &'a Workspace,
         ex: &'a Experiment,
         config: &'a crate::config::Config,
-        db: &'a DB,
+        api: &'a dyn RecordProgress,
         next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
     ) -> Self {
         let mut build_dir = HashMap::new();
@@ -51,7 +80,7 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             ex,
             config,
             next_crate,
-            db,
+            api,
             target_dir_cleanup: AtomicBool::new(false),
         }
     }
@@ -64,23 +93,21 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
         &self,
         task: &Task,
         storage: &LogStorage,
-    ) -> Result<(), (failure::Error, TestResult)> {
+    ) -> Result<TestResult, (failure::Error, TestResult)> {
         info!("running task: {:?}", task);
 
-        let mut res = Ok(());
+        let mut res = None;
         let max_attempts = 5;
         for run in 1..=max_attempts {
             // If we're running a task, we call ourselves healthy.
             crate::agent::set_healthy();
 
-            res = task.run(
-                self.config,
-                self.workspace,
-                &self.build_dir,
-                self.ex,
-                self.db,
-                storage,
-            );
+            match task.run(self.config, &self.build_dir, self.ex, storage) {
+                Ok(res) => return Ok(res),
+                Err(e) => {
+                    res = Some(e);
+                }
+            }
 
             // We retry task failing on the second toolchain (i.e., regressions). In
             // the future we might expand this list further but for now this helps
@@ -89,9 +116,8 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
             // For now we make no distinction between build failures and test failures
             // here, but that may change if this proves too slow.
             let mut should_retry = false;
-            if res.is_err() && self.ex.toolchains.len() == 2 {
+            if self.ex.toolchains.len() == 2 {
                 let toolchain = match &task.step {
-                    TaskStep::Prepare => None,
                     TaskStep::BuildAndTest { tc, .. }
                     | TaskStep::BuildOnly { tc, .. }
                     | TaskStep::CheckOnly { tc, .. }
@@ -105,33 +131,32 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                     }
                 }
             }
+
             if !should_retry {
                 break;
             }
 
             log::info!("Retrying task {:?} [{run}/{max_attempts}]", task);
         }
-        if let Err(e) = res {
-            error!("task {:?} failed", task);
-            utils::report_failure(&e);
+        // Unreachable unless we failed to succeed above.
+        let e = res.unwrap();
+        error!("task {:?} failed", task);
+        utils::report_failure(&e);
 
-            let mut result = if self.config.is_broken(&task.krate) {
-                TestResult::BrokenCrate(BrokenReason::Unknown)
-            } else {
-                TestResult::Error
-            };
+        let mut result = if self.config.is_broken(&task.krate) {
+            TestResult::BrokenCrate(BrokenReason::Unknown)
+        } else {
+            TestResult::Error
+        };
 
-            for err in e.iter_chain() {
-                if let Some(OverrideResult(res)) = err.downcast_ctx() {
-                    result = res.clone();
-                    break;
-                }
+        for err in e.iter_chain() {
+            if let Some(OverrideResult(res)) = err.downcast_ctx() {
+                result = res.clone();
+                break;
             }
-
-            return Err((e, result));
         }
 
-        Ok(())
+        Err((e, result))
     }
 
     pub(super) fn run(&self) -> Fallible<()> {
@@ -152,16 +177,13 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                     // If a skipped crate is somehow sent to the agent (for example, when a crate was
                     // added to the experiment and *then* blacklisted) report the crate as skipped
                     // instead of silently ignoring it.
-                    if let Err(e) = self.db.record_result(
+                    if let Err(e) = self.api.record_progress(
                         self.ex,
-                        tc,
                         &krate,
-                        &LogStorage::from(self.config),
-                        crate::results::EncodingType::Plain,
-                        || {
-                            warn!("crate skipped");
-                            Ok(TestResult::Skipped)
-                        },
+                        tc,
+                        "crate skipped".as_bytes(),
+                        &TestResult::Skipped,
+                        None,
                     ) {
                         crate::utils::report_failure(&e);
                     }
@@ -169,29 +191,83 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                 continue;
             }
 
+            let mut updated_version = None;
             let logs = LogStorage::from(self.config);
-            let prepare_task = Task {
-                krate: krate.clone(),
-                step: TaskStep::Prepare,
-            };
-            if let Err((err, test_result)) = &self.run_task(&prepare_task, &logs) {
-                if let Err(e) =
-                    prepare_task.mark_as_failed(self.ex, self.db, err, test_result, &logs)
-                {
-                    crate::utils::report_failure(&e);
+            let prepare = logging::capture(&logs, || {
+                let rustwide_crate = krate.to_rustwide();
+                for attempt in 1..=15 {
+                    match detect_broken(rustwide_crate.fetch(self.workspace)) {
+                        Ok(()) => break,
+                        Err(e) => {
+                            if logs.to_string().contains("No space left on device") {
+                                if attempt == 15 {
+                                    // If we've failed 15 times, then
+                                    // just give up. It's been at least
+                                    // 45 seconds, which is enough that
+                                    // our disk space check should
+                                    // have run at least once in this
+                                    // time. If that's not helped, then
+                                    // maybe this git repository *is*
+                                    // actually too big.
+                                    //
+                                    // Ideally we'd have some kind of
+                                    // per-worker counter and if we hit
+                                    // this too often we'd replace the
+                                    // machine, but it's not very clear
+                                    // what "too often" means here.
+                                    return Err(e);
+                                } else {
+                                    log::warn!(
+                                        "Retrying crate fetch in 3 seconds (attempt {})",
+                                        attempt
+                                    );
+                                    std::thread::sleep(std::time::Duration::from_secs(3));
+                                }
+                            } else {
+                                return Err(e);
+                            }
+                        }
+                    }
                 }
+
+                if let Crate::GitHub(repo) = &krate {
+                    if let Some(sha) = rustwide_crate.git_commit(self.workspace) {
+                        let updated = crate::crates::GitHubRepo {
+                            sha: Some(sha),
+                            ..repo.clone()
+                        };
+                        updated_version = Some(Crate::GitHub(updated));
+                    } else {
+                        bail!("unable to capture sha for {}", repo.slug());
+                    }
+                }
+                Ok(())
+            });
+            if let Err(err) = prepare {
+                let mut result = if self.config.is_broken(&krate) {
+                    TestResult::BrokenCrate(BrokenReason::Unknown)
+                } else {
+                    TestResult::Error
+                };
+                for err in err.iter_chain() {
+                    if let Some(OverrideResult(res)) = err.downcast_ctx() {
+                        result = res.clone();
+                        break;
+                    }
+                }
+
                 for tc in &self.ex.toolchains {
-                    if let Err(e) = self.db.record_result(
+                    if let Err(e) = self.api.record_progress(
                         self.ex,
-                        tc,
                         &krate,
-                        &LogStorage::from(self.config),
-                        crate::results::EncodingType::Plain,
-                        || {
-                            error!("this task or one of its parent failed!");
-                            utils::report_failure(err);
-                            Ok(test_result.clone())
-                        },
+                        tc,
+                        format!(
+                            "{}\n\nthis task or one of its parent failed: {:?}",
+                            logs, err
+                        )
+                        .as_bytes(),
+                        &result,
+                        updated_version.as_ref().map(|new| (&krate, new)),
                     ) {
                         crate::utils::report_failure(&e);
                     }
@@ -240,11 +316,26 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
                 // Fork logs off to distinct branch, so that each toolchain has its own log file,
                 // while keeping the shared prepare step in common.
                 let storage = logs.duplicate();
-                if let Err((err, test_result)) = &self.run_task(&task, &storage) {
-                    if let Err(e) =
-                        task.mark_as_failed(self.ex, self.db, err, test_result, &storage)
-                    {
-                        crate::utils::report_failure(&e);
+                match self.run_task(&task, &storage) {
+                    Ok(res) => {
+                        self.api.record_progress(
+                            self.ex,
+                            &task.krate,
+                            tc,
+                            storage.to_string().as_bytes(),
+                            &res,
+                            updated_version.as_ref().map(|new| (&krate, new)),
+                        )?;
+                    }
+                    Err((err, test_result)) => {
+                        self.api.record_progress(
+                            self.ex,
+                            &task.krate,
+                            tc,
+                            format!("{}\n\n{:?}", storage, err).as_bytes(),
+                            &test_result,
+                            updated_version.as_ref().map(|new| (&krate, new)),
+                        )?;
                     }
                 }
             }
@@ -267,16 +358,16 @@ impl<'a, DB: WriteResults + Sync> Worker<'a, DB> {
     }
 }
 
-pub(super) struct DiskSpaceWatcher<'a, DB: WriteResults + Sync> {
+pub(super) struct DiskSpaceWatcher<'a> {
     interval: Duration,
     threshold: f32,
-    workers: &'a [Worker<'a, DB>],
+    workers: &'a [Worker<'a>],
     should_stop: Mutex<bool>,
     waiter: Condvar,
 }
 
-impl<'a, DB: WriteResults + Sync> DiskSpaceWatcher<'a, DB> {
-    pub(super) fn new(interval: Duration, threshold: f32, workers: &'a [Worker<'a, DB>]) -> Self {
+impl<'a> DiskSpaceWatcher<'a> {
+    pub(super) fn new(interval: Duration, threshold: f32, workers: &'a [Worker<'a>]) -> Self {
         DiskSpaceWatcher {
             interval,
             threshold,

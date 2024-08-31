@@ -7,11 +7,12 @@ use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
-use crate::results::{TestResult, WriteResults};
+use crate::results::TestResult;
 use crate::runner::worker::{DiskSpaceWatcher, Worker};
 use rustwide::Workspace;
 use std::thread::scope;
 use std::time::Duration;
+pub use worker::RecordProgress;
 
 const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(30);
 const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.80;
@@ -20,10 +21,10 @@ const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.80;
 #[error("overridden task result to {0}")]
 pub struct OverrideResult(TestResult);
 
-pub fn run_ex<DB: WriteResults + Sync>(
+pub fn run_ex(
     ex: &Experiment,
     workspace: &Workspace,
-    db: &DB,
+    api: &dyn RecordProgress,
     threads_count: usize,
     config: &Config,
     next_crate: &(dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
@@ -82,7 +83,16 @@ pub fn run_ex<DB: WriteResults + Sync>(
     info!("running tasks in {} threads...", threads_count);
 
     let workers = (0..threads_count)
-        .map(|i| Worker::new(format!("worker-{i}"), workspace, ex, config, db, next_crate))
+        .map(|i| {
+            Worker::new(
+                format!("worker-{i}"),
+                workspace,
+                ex,
+                config,
+                api,
+                next_crate,
+            )
+        })
         .collect::<Vec<_>>();
 
     let disk_watcher = DiskSpaceWatcher::new(

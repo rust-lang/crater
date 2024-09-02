@@ -219,6 +219,14 @@ impl RecordProgressThread {
                         .crater_endpoint_time
                         .with_label_values(&["record_progress_worker"])
                         .observe(start.elapsed().as_secs_f64());
+
+                    metrics
+                        .crater_progress_report
+                        .with_label_values(&[
+                            ex.name.as_str(),
+                            &result.data.result.result.to_string(),
+                        ])
+                        .inc();
                 }
             }));
         });

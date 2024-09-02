@@ -8,6 +8,7 @@ use prometheus::{Histogram, HistogramVec, IntCounter, IntCounterVec, IntGauge, I
 const JOBS_METRIC: &str = "crater_completed_jobs_total";
 const AGENT_WORK_METRIC: &str = "crater_agent_supposed_to_work";
 const AGENT_FAILED: &str = "crater_agent_failure";
+const PROGRESS_REPORT: &str = "crater_progress_report";
 const LAST_CRATES_UPDATE_METRIC: &str = "crater_last_crates_update";
 const ENDPOINT_TIME: &str = "crater_endpoint_time_seconds";
 const WORKER_COUNT: &str = "crater_worker_count";
@@ -22,6 +23,7 @@ pub struct Metrics {
     pub crater_endpoint_time: HistogramVec,
     crater_worker_count: IntGauge,
     pub result_log_size: Histogram,
+    pub crater_progress_report: IntCounterVec,
 }
 
 impl Metrics {
@@ -36,6 +38,11 @@ impl Metrics {
         let failure_opts = prometheus::opts!(AGENT_FAILED, "total completed jobs");
         let crater_agent_failure =
             prometheus::register_int_counter_vec!(failure_opts, &["agent", "experiment"])?;
+        let crater_progress_report_opts = prometheus::opts!(PROGRESS_REPORT, "progress report");
+        let crater_progress_report = prometheus::register_int_counter_vec!(
+            crater_progress_report_opts,
+            &["experiment", "kind"]
+        )?;
         let agent_opts = prometheus::opts!(AGENT_WORK_METRIC, "is agent supposed to work");
         let crater_work_status = prometheus::register_int_gauge_vec!(agent_opts, &["agent"])?;
         let crates_update_opts =
@@ -60,6 +67,7 @@ impl Metrics {
         Ok(Metrics {
             crater_completed_jobs_total,
             crater_bounced_record_progress,
+            crater_progress_report,
             crater_agent_failure,
             crater_work_status,
             crater_last_crates_update,

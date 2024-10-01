@@ -10,7 +10,7 @@ jobs:
     name: Linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install Rust nightly
         run: rustup update nightly && rustup default nightly && rustup component add rustfmt clippy
@@ -34,7 +34,7 @@ jobs:
         channel: [nightly]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install Rust ${{ matrix.channel }}
         shell: bash
@@ -59,7 +59,7 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install Rust nightly
         run: rustup update --no-self-update nightly && rustup default nightly
@@ -77,7 +77,7 @@ jobs:
     name: Build the Docker image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Build the Docker image
         run: docker build -t crater .

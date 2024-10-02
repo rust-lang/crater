@@ -1,7 +1,8 @@
 # Setting up a new Crater agent machine
 
 This document contains the steps to configure a new Crater agent machine from
-scratch, from an Amazon Linux image. To get a new one ask in `#rust-infra`.
+scratch, from an Amazon Linux image. To get a new one ask in
+[t-infra](https://rust-lang.zulipchat.com/#narrow/stream/242791-t-infra).
 
 The machine type we're currently using is:
 

@@ -148,7 +148,7 @@ impl<'a> DatabaseDB<'a> {
     }
 }
 
-impl<'a> ReadResults for DatabaseDB<'a> {
+impl ReadResults for DatabaseDB<'_> {
     fn load_log(
         &self,
         ex: &Experiment,
@@ -189,7 +189,7 @@ impl<'a> ReadResults for DatabaseDB<'a> {
     }
 }
 
-impl<'a> WriteResults for DatabaseDB<'a> {
+impl WriteResults for DatabaseDB<'_> {
     fn get_result(
         &self,
         ex: &Experiment,
@@ -251,7 +251,7 @@ impl crate::runner::RecordProgress for DatabaseDB<'_> {
     }
 }
 
-impl<'a> DeleteResults for DatabaseDB<'a> {
+impl DeleteResults for DatabaseDB<'_> {
     fn delete_all_results(&self, ex: &Experiment) -> Fallible<()> {
         self.db
             .execute("DELETE FROM results WHERE experiment = ?1;", &[&ex.name])?;

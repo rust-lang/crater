@@ -109,7 +109,7 @@ pub struct TransactionHandle<'a> {
     transaction: Transaction<'a>,
 }
 
-impl<'a> TransactionHandle<'a> {
+impl TransactionHandle<'_> {
     pub fn commit(self) -> Fallible<()> {
         self.transaction.commit()?;
         Ok(())
@@ -235,7 +235,7 @@ impl QueryUtils for Database {
     }
 }
 
-impl<'a> QueryUtils for TransactionHandle<'a> {
+impl QueryUtils for TransactionHandle<'_> {
     fn with_conn<T, F: FnOnce(&Connection) -> Fallible<T>>(&self, f: F) -> Fallible<T> {
         f(&self.transaction)
     }

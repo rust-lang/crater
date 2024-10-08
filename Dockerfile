@@ -5,7 +5,7 @@
 #  Build image  #
 #################
 
-FROM ubuntu:focal AS build
+FROM ubuntu:24.04 AS build
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     ca-certificates \
@@ -51,7 +51,7 @@ RUN find /source -name "*.rs" -exec touch {} \; && cargo build --release
 #  Output image  #
 ##################
 
-FROM ubuntu:focal AS binary
+FROM ubuntu:24.04 AS binary
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     docker.io \

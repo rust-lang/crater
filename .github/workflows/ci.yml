@@ -2,9 +2,6 @@ name: CI
 on:
   merge_group:
 
-env:
-  CHANNEL: nightly-2024-10-07
-
 jobs:
   lint:
     name: Linting
@@ -13,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust nightly
-        run: rustup install ${{ env.CHANNEL }} && rustup default ${{ env.CHANNEL }} && rustup component add rustfmt clippy
+        run: rustup update nightly && rustup default nightly && rustup component add rustfmt clippy
 
       - name: Check the code formatting with rustfmt
         run: cargo fmt --all -- --check
@@ -31,7 +28,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        channel: [nightly-2024-10-07]
+        channel: [nightly]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +59,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust nightly
-        run: rustup install ${{ env.CHANNEL }} && rustup default ${{ env.CHANNEL }}
+        run: rustup update --no-self-update nightly && rustup default nightly
 
       - name: Run minicrater
         shell: bash

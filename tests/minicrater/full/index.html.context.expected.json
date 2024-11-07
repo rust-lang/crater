@@ -15,7 +15,7 @@
       0,
       {
         "RootResults": {
-          "count": 4,
+          "count": 3,
           "results": {
             "build ICE": [
               {
@@ -38,26 +38,6 @@
               }
             ],
             "build compiler-error(E0015)": [
-              {
-                "color_idx": 0,
-                "name": "error-code (local)",
-                "res": "regressed",
-                "runs": [
-                  {
-                    "color_idx": 7,
-                    "log": "stable/local/error-code",
-                    "name_idx": 0
-                  },
-                  {
-                    "color_idx": 0,
-                    "log": "beta/local/error-code",
-                    "name_idx": 2
-                  }
-                ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
-              }
-            ],
-            "build compiler-error(E0658)": [
               {
                 "color_idx": 0,
                 "name": "error-code (local)",

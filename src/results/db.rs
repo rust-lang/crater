@@ -133,6 +133,10 @@ impl<'a> DatabaseDB<'a> {
         res: &TestResult,
         log: EncodedLog,
     ) -> Fallible<usize> {
+        log::info!(
+            "insert {krate:?} for ex={ex:?} with tc={toolchain:?}; result={res:?}",
+            ex = &ex.name
+        );
         self.db.execute(
             "INSERT INTO results (experiment, crate, toolchain, result, log, encoding) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6);",

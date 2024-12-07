@@ -877,7 +877,6 @@ dependencies = [
  "predicates",
  "prometheus",
  "r2d2",
- "r2d2_sqlite",
  "rand",
  "regex",
  "remove_dir_all",
@@ -3368,17 +3367,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "r2d2_sqlite"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99f31323d6161385f385046738df520e0e8694fa74852d35891fc0be08348ddc"
-dependencies = [
- "r2d2",
- "rusqlite",
- "uuid",
-]
-
-[[package]]
 name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4548,10 +4536,6 @@ name = "uuid"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81dfa00651efa65069b0b6b651f4aaa31ba9e3c3ce0137aaad053604ee7e0314"
-dependencies = [
- "getrandom",
- "rand",
-]
 
 [[package]]
 name = "vcpkg"

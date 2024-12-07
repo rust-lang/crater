@@ -2,25 +2,44 @@ mod migrations;
 
 use crate::dirs::WORK_DIR;
 use crate::prelude::*;
-use r2d2::{CustomizeConnection, Pool};
-use r2d2_sqlite::SqliteConnectionManager;
+use r2d2::Pool;
 use rusqlite::types::ToSql;
 use rusqlite::{Connection, Row, Transaction};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tempfile::NamedTempFile;
 
 static LEGACY_DATABASE_PATHS: &[&str] = &["server.db"];
 static DATABASE_PATH: &str = "crater.db";
 
-#[derive(Debug)]
-struct ConnectionCustomizer;
+struct SqliteConnectionManager {
+    file: PathBuf,
+}
 
-impl CustomizeConnection<Connection, ::rusqlite::Error> for ConnectionCustomizer {
-    fn on_acquire(&self, conn: &mut Connection) -> Result<(), ::rusqlite::Error> {
-        conn.execute("PRAGMA foreign_keys = ON;", [])?;
-        Ok(())
+impl r2d2::ManageConnection for SqliteConnectionManager {
+    type Connection = rusqlite::Connection;
+    type Error = rusqlite::Error;
+
+    fn connect(&self) -> Result<Self::Connection, Self::Error> {
+        let connection = rusqlite::Connection::open(&self.file)?;
+        connection.pragma_update(None, "foreign_keys", "ON")?;
+        connection.pragma_update(None, "journal_mode", "WAL")?;
+        // we're ok losing durability in the event of a crash, and per docs this is still safe from
+        // corruption under WAL mode.
+        connection.pragma_update(None, "synchronous", "NORMAL")?;
+        // per docs, this is recommended for long-lived connections (like what we have)
+        // https://www.sqlite.org/pragma.html#pragma_optimize
+        connection.pragma_update(None, "optimize", "0x10002")?;
+        Ok(connection)
+    }
+
+    fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
+        conn.query_row("select 1", [], |_| Ok(()))
+    }
+
+    fn has_broken(&self, conn: &mut Self::Connection) -> bool {
+        self.is_valid(conn).is_ok()
     }
 }
 
@@ -53,26 +72,33 @@ impl Database {
 
         let path = WORK_DIR.join(DATABASE_PATH);
         std::fs::create_dir_all(&*WORK_DIR)?;
-        Database::new(SqliteConnectionManager::file(path), None)
+        Database::new(SqliteConnectionManager { file: path }, None)
     }
 
     pub fn open_at(path: &Path) -> Fallible<Self> {
         std::fs::create_dir_all(&*WORK_DIR)?;
-        Database::new(SqliteConnectionManager::file(path), None)
+        Database::new(
+            SqliteConnectionManager {
+                file: path.to_owned(),
+            },
+            None,
+        )
     }
 
     #[cfg(test)]
     pub fn temp() -> Fallible<Self> {
         let tempfile = NamedTempFile::new()?;
         Database::new(
-            SqliteConnectionManager::file(tempfile.path()),
+            SqliteConnectionManager {
+                file: tempfile.path().to_owned(),
+            },
             Some(tempfile),
         )
     }
 
     fn new(conn: SqliteConnectionManager, tempfile: Option<NamedTempFile>) -> Fallible<Self> {
         let pool = Pool::builder()
-            .connection_customizer(Box::new(ConnectionCustomizer))
+            .connection_timeout(Duration::from_millis(500))
             .build(conn)?;
 
         migrations::execute(&mut pool.get()? as &mut Connection)?;

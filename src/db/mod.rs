@@ -39,7 +39,7 @@ impl r2d2::ManageConnection for SqliteConnectionManager {
     }
 
     fn has_broken(&self, conn: &mut Self::Connection) -> bool {
-        self.is_valid(conn).is_ok()
+        self.is_valid(conn).is_err()
     }
 }
 

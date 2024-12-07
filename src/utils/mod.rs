@@ -95,5 +95,5 @@ fn is_backtrace_runtime_enabled() -> bool {
     std::env::var("RUST_BACKTRACE")
         .ok()
         .and_then(|s| i32::from_str(&s).ok())
-        .map_or(false, |val| val != 0)
+        .is_some_and(|val| val != 0)
 }

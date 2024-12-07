@@ -228,12 +228,11 @@ pub fn generate_report<DB: ReadResults>(
         .iter()
         .map(|krate| {
             // Any errors here will turn into unknown results
-            let crate_results = ex.toolchains.iter().map(|tc| -> Fallible<BuildTestResult> {
-                let res = db
-                    .load_test_result(ex, tc, krate)?
-                    .ok_or_else(|| err_msg("no result"))?;
+            let mut crate_results = ex.toolchains.iter().map(|tc| -> Option<BuildTestResult> {
+                // Convert errors to None with ok()
+                let res = db.load_test_result(ex, tc, krate).ok()??;
 
-                Ok(BuildTestResult {
+                Some(BuildTestResult {
                     res,
                     log: crate_to_path_fragment(tc, krate, SanitizationContext::Url)
                         .to_str()
@@ -241,8 +240,6 @@ pub fn generate_report<DB: ReadResults>(
                         .replace('\'', "/"), // Normalize paths in reports generated on Windows
                 })
             });
-            // Convert errors to Nones
-            let mut crate_results = crate_results.map(|r| r.ok());
             let crate1 = crate_results.next().unwrap();
             let crate2 = crate_results.next().unwrap();
             let comp = compare(

@@ -130,7 +130,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                                 "warning",
                                 format!(
                                     "If you notice any spurious failure [please add them to the \
-                                 blacklist]({}/blob/master/config.toml)!",
+                                 denylist]({}/blob/master/config.toml)!",
                                     crate::CRATER_REPO_URL,
                                 ),
                             )

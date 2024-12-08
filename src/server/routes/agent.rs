@@ -210,48 +210,51 @@ impl RecordProgressThread {
             in_flight_requests,
         };
         let ret = this.clone();
-        std::thread::spawn(move || loop {
-            // Panics should already be logged and otherwise there's not much we
-            // can/should do.
-            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let result = rx.recv().unwrap();
-                this.block_until_idle();
+        std::thread::Builder::new()
+            .name(String::from("record-prog-crater"))
+            .spawn(move || loop {
+                // Panics should already be logged and otherwise there's not much we
+                // can/should do.
+                let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    let result = rx.recv().unwrap();
+                    this.block_until_idle();
 
-                let start = std::time::Instant::now();
+                    let start = std::time::Instant::now();
 
-                if let Some(ex) = Experiment::get(&db, &result.experiment_name).unwrap() {
-                    let db = DatabaseDB::new(&db);
-                    if let Err(e) = db.store(&ex, &result.data, EncodingType::Plain) {
-                        // Failing to record a result is basically fine -- this
-                        // just means that we'll have to re-try this job.
-                        log::error!("Failed to store result into database: {:?}", e);
-                        crate::utils::report_failure(&e);
+                    if let Some(ex) = Experiment::get(&db, &result.experiment_name).unwrap() {
+                        let db = DatabaseDB::new(&db);
+                        if let Err(e) = db.store(&ex, &result.data, EncodingType::Plain) {
+                            // Failing to record a result is basically fine -- this
+                            // just means that we'll have to re-try this job.
+                            log::error!("Failed to store result into database: {:?}", e);
+                            crate::utils::report_failure(&e);
+                        }
+
+                        metrics.record_completed_jobs(&ex.name, 1);
+
+                        if let Err(e) = db.clear_stale_records() {
+                            // Not a hard failure. We can continue even if we failed
+                            // to clear records from already completed runs...
+                            log::error!("Failed to clear stale records: {:?}", e);
+                            crate::utils::report_failure(&e);
+                        }
+
+                        metrics
+                            .crater_endpoint_time
+                            .with_label_values(&["record_progress_worker"])
+                            .observe(start.elapsed().as_secs_f64());
+
+                        metrics
+                            .crater_progress_report
+                            .with_label_values(&[
+                                ex.name.as_str(),
+                                &result.data.result.result.to_string(),
+                            ])
+                            .inc();
                     }
-
-                    metrics.record_completed_jobs(&ex.name, 1);
-
-                    if let Err(e) = db.clear_stale_records() {
-                        // Not a hard failure. We can continue even if we failed
-                        // to clear records from already completed runs...
-                        log::error!("Failed to clear stale records: {:?}", e);
-                        crate::utils::report_failure(&e);
-                    }
-
-                    metrics
-                        .crater_endpoint_time
-                        .with_label_values(&["record_progress_worker"])
-                        .observe(start.elapsed().as_secs_f64());
-
-                    metrics
-                        .crater_progress_report
-                        .with_label_values(&[
-                            ex.name.as_str(),
-                            &result.data.result.result.to_string(),
-                        ])
-                        .inc();
-                }
-            }));
-        });
+                }));
+            })
+            .unwrap();
 
         ret
     }

@@ -8,6 +8,9 @@ default-run = "crater"
 [profile.dev]
 opt-level = 0
 
+[profile.release]
+strip = false
+
 [dependencies]
 base64 = "0.21.5"
 bytes = "1"

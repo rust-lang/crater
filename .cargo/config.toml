@@ -1,0 +1,5 @@
+[build]
+rustflags = [
+    "-Cforce-frame-pointers",
+    "-Csymbol-mangling-version=v0"
+]

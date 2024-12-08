@@ -52,7 +52,7 @@ impl Action for CreateExperiment {
 
         let crates = crate::crates::lists::get_crates(&self.crates, ctx.db, ctx.config)?;
 
-        ctx.db.transaction(|transaction| {
+        ctx.db.transaction(true, |transaction| {
             transaction.execute(
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \

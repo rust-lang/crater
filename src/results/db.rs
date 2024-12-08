@@ -134,7 +134,8 @@ impl<'a> DatabaseDB<'a> {
         log: EncodedLog,
     ) -> Fallible<usize> {
         log::info!(
-            "insert {krate:?} for ex={ex:?} with tc={toolchain:?}; result={res:?}",
+            "insert {krate} for ex={ex:?} with tc={toolchain}; result={res:?}",
+            krate = krate.id(),
             ex = &ex.name
         );
         self.db.execute(

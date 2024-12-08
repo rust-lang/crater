@@ -21,7 +21,7 @@ pub(crate) trait List {
         let crates = self.fetch()?;
 
         let now = Utc::now();
-        db.transaction(|t| {
+        db.transaction(true, |t| {
             // Replace the existing list in the database
             t.execute("DELETE FROM crates WHERE list = ?1;", &[&Self::NAME])?;
             for krate in &crates {

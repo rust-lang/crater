@@ -23,14 +23,16 @@ impl r2d2::ManageConnection for SqliteConnectionManager {
 
     fn connect(&self) -> Result<Self::Connection, Self::Error> {
         let connection = rusqlite::Connection::open(&self.file)?;
-        connection.pragma_update(None, "foreign_keys", "ON")?;
-        connection.pragma_update(None, "journal_mode", "WAL")?;
-        // we're ok losing durability in the event of a crash, and per docs this is still safe from
-        // corruption under WAL mode.
-        connection.pragma_update(None, "synchronous", "NORMAL")?;
-        // per docs, this is recommended for long-lived connections (like what we have)
+        connection
+            .pragma_update(None, "foreign_keys", "ON")
+            .unwrap();
+
+        // per docs, this is recommended for relatively long-lived connections (like what we have
+        // due to the r2d2 pooling)
         // https://www.sqlite.org/pragma.html#pragma_optimize
-        connection.pragma_update(None, "optimize", "0x10002")?;
+        connection
+            .pragma_update(None, "optimize", "0x10002")
+            .unwrap();
         Ok(connection)
     }
 
@@ -40,6 +42,20 @@ impl r2d2::ManageConnection for SqliteConnectionManager {
 
     fn has_broken(&self, conn: &mut Self::Connection) -> bool {
         self.is_valid(conn).is_err()
+    }
+}
+
+#[derive(Debug)]
+struct ErrorHandler;
+
+impl<E: std::error::Error> r2d2::HandleError<E> for ErrorHandler {
+    fn handle_error(&self, error: E) {
+        // ensure that a message gets logged regardless of whether it's enabled.
+        if log::log_enabled!(log::Level::Error) {
+            log::error!("r2d2 error: {:?}", error);
+        } else {
+            eprintln!("r2d2 error: {:?}", error);
+        }
     }
 }
 
@@ -99,9 +115,32 @@ impl Database {
     fn new(conn: SqliteConnectionManager, tempfile: Option<NamedTempFile>) -> Fallible<Self> {
         let pool = Pool::builder()
             .connection_timeout(Duration::from_millis(500))
+            .error_handler(Box::new(ErrorHandler))
             .build(conn)?;
 
-        migrations::execute(&mut pool.get()? as &mut Connection)?;
+        let mut connection = pool.get()?;
+        if connection.pragma_query_value(None, "journal_mode", |r| {
+            let current = r.get_ref(0)?.as_str()?;
+            // in memory database is allowed to stay that way
+            Ok(current != "WAL" && current != "memory")
+        })? {
+            connection
+                .pragma_update(None, "journal_mode", "WAL")
+                .unwrap();
+        }
+
+        // we're ok losing durability in the event of a crash, and per docs this is still safe from
+        // corruption under WAL mode.
+        if connection.pragma_query_value(None, "synchronous", |r| {
+            let current = r.get_ref(0)?.as_i64()?;
+            Ok(current != 1)
+        })? {
+            connection
+                .pragma_update(None, "synchronous", "NORMAL")
+                .unwrap();
+        }
+
+        migrations::execute(&mut connection)?;
 
         Ok(Database {
             pool,
@@ -111,11 +150,16 @@ impl Database {
 
     pub fn transaction<T, F: FnOnce(&TransactionHandle) -> Fallible<T>>(
         &self,
+        will_write: bool,
         f: F,
     ) -> Fallible<T> {
         let mut conn = self.pool.get()?;
         let handle = TransactionHandle {
-            transaction: conn.transaction()?,
+            transaction: if will_write {
+                conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?
+            } else {
+                conn.transaction_with_behavior(rusqlite::TransactionBehavior::Deferred)?
+            },
         };
 
         match f(&handle) {

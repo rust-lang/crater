@@ -391,7 +391,7 @@ pub fn execute(db: &mut Connection) -> Fallible<()> {
                 MigrationKind::SQL(sql) => t.execute_batch(sql),
                 MigrationKind::Code(code) => code(&t),
             }
-            .with_context(|_| format!("error running migration: {name}"))?;
+            .with_context(|e| format!("error running migration: {name}: {e:?}"))?;
 
             t.execute("INSERT INTO migrations (name) VALUES (?1)", [&name])?;
             t.commit()?;

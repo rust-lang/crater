@@ -613,7 +613,7 @@ impl Experiment {
         #[cfg(test)]
         const RUN_TIMEOUT: u32 = 1;
 
-        db.transaction(|transaction| {
+        db.transaction(true, |transaction| {
             //get the first 'limit' queued crates from the experiment crates list
             let mut params: Vec<&dyn rusqlite::types::ToSql> = Vec::new();
             let crates = transaction

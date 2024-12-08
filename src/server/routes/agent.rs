@@ -147,24 +147,46 @@ fn endpoint_next_experiment(
     Ok(ApiResponse::Success { result }.into_response()?)
 }
 
-fn endpoint_next_crate(
+fn endpoint_next_crate_inner(
     experiment: String,
     data: Arc<Data>,
-    _auth: AuthDetails,
-) -> Fallible<Response<Body>> {
+) -> Fallible<Option<crate::crates::Crate>> {
     let result: Option<crate::crates::Crate> =
         if let Some(ex) = Experiment::get(&data.db, &experiment)? {
-            let mut crates = ex.get_uncompleted_crates(&data.db, Some(1))?;
+            while let Some(next) = data.uncompleted_cache.lock().unwrap().pop_front() {
+                if next.0.elapsed() <= std::time::Duration::from_secs(60) {
+                    return Ok(Some(next.1));
+                }
+            }
+
+            let mut crates = ex.get_uncompleted_crates(&data.db, Some(100))?;
             if crates.is_empty() {
                 None
             } else {
-                Some(crates.remove(0))
+                let now = std::time::Instant::now();
+                let ret = crates.pop().unwrap();
+                data.uncompleted_cache
+                    .lock()
+                    .unwrap()
+                    .extend(crates.into_iter().map(|c| (now, c)));
+                Some(ret)
             }
         } else {
             None
         };
 
-    Ok(ApiResponse::Success { result }.into_response()?)
+    Ok(result)
+}
+
+fn endpoint_next_crate(
+    experiment: String,
+    data: Arc<Data>,
+    _auth: AuthDetails,
+) -> Fallible<Response<Body>> {
+    Ok(ApiResponse::Success {
+        result: endpoint_next_crate_inner(experiment, data)?,
+    }
+    .into_response()?)
 }
 
 #[derive(Clone)]

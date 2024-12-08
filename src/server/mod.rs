@@ -11,6 +11,7 @@ pub mod tokens;
 mod try_builds;
 
 use crate::config::Config;
+use crate::crates::Crate;
 use crate::db::Database;
 use crate::prelude::*;
 use crate::server::agents::Agents;
@@ -20,8 +21,10 @@ use crate::server::tokens::{BotTokens, Tokens};
 use http::{header::HeaderValue, Response};
 use hyper::Body;
 use metrics::Metrics;
+use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use warp::Filter;
 
 lazy_static! {
@@ -47,6 +50,7 @@ pub struct Data {
     pub db: Database,
     pub reports_worker: reports::ReportsWorker,
     pub record_progress_worker: routes::agent::RecordProgressThread,
+    pub uncompleted_cache: Arc<Mutex<VecDeque<(Instant, Crate)>>>,
     pub acl: ACL,
     pub metrics: Metrics,
 }
@@ -94,6 +98,7 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
         reports_worker: reports::ReportsWorker::new(),
         acl,
         metrics,
+        uncompleted_cache: Arc::new(Mutex::new(VecDeque::new())),
     };
 
     let mutex = Arc::new(Mutex::new(data.clone()));

@@ -112,7 +112,7 @@ impl Agents {
     }
 
     fn synchronize(&self, tokens: &Tokens) -> Fallible<()> {
-        self.db.transaction(|trans| {
+        self.db.transaction(true, |trans| {
             let mut real = tokens.agents.values().collect::<HashSet<&String>>();
             let current: Vec<String> = self
                 .db
@@ -204,7 +204,7 @@ impl Agents {
     pub fn add_capabilities(&self, agent: &str, caps: &Capabilities) -> Fallible<()> {
         const SQL: &str = "INSERT INTO agent_capabilities (agent_name, capability) VALUES (?, ?)";
 
-        self.db.transaction(|t| {
+        self.db.transaction(true, |t| {
             for cap in caps.iter() {
                 t.execute_cached(SQL, &[&agent, &cap])?;
             }

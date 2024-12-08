@@ -150,11 +150,16 @@ impl Database {
 
     pub fn transaction<T, F: FnOnce(&TransactionHandle) -> Fallible<T>>(
         &self,
+        will_write: bool,
         f: F,
     ) -> Fallible<T> {
         let mut conn = self.pool.get()?;
         let handle = TransactionHandle {
-            transaction: conn.transaction()?,
+            transaction: if will_write {
+                conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?
+            } else {
+                conn.transaction_with_behavior(rusqlite::TransactionBehavior::Deferred)?
+            },
         };
 
         match f(&handle) {

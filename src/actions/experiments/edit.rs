@@ -45,7 +45,7 @@ impl Action for EditExperiment {
             return Err(ExperimentError::CanOnlyEditQueuedExperiments.into());
         }
 
-        ctx.db.transaction(|t| {
+        ctx.db.transaction(true, |t| {
             // Try to update both toolchains
             for (i, col) in ["toolchain_start", "toolchain_end"].iter().enumerate() {
                 if let Some(tc) = self.toolchains[i].take() {

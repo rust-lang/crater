@@ -154,12 +154,12 @@ fn endpoint_next_crate_inner(
     let result: Option<crate::crates::Crate> =
         if let Some(ex) = Experiment::get(&data.db, &experiment)? {
             while let Some(next) = data.uncompleted_cache.lock().unwrap().pop_front() {
-                if next.0.elapsed() <= std::time::Duration::from_secs(60) {
+                if next.0.elapsed() <= std::time::Duration::from_secs(120) {
                     return Ok(Some(next.1));
                 }
             }
 
-            let mut crates = ex.get_uncompleted_crates(&data.db, Some(100))?;
+            let mut crates = ex.get_uncompleted_crates(&data.db, Some(1000))?;
             if crates.is_empty() {
                 None
             } else {

@@ -27,6 +27,11 @@ impl r2d2::ManageConnection for SqliteConnectionManager {
             .pragma_update(None, "foreign_keys", "ON")
             .unwrap();
 
+        // increase the in-memory cache from 2MB to 50MB
+        connection
+            .pragma_update(None, "cache_size", "-51200")
+            .unwrap();
+
         // per docs, this is recommended for relatively long-lived connections (like what we have
         // due to the r2d2 pooling)
         // https://www.sqlite.org/pragma.html#pragma_optimize
@@ -114,7 +119,7 @@ impl Database {
 
     fn new(conn: SqliteConnectionManager, tempfile: Option<NamedTempFile>) -> Fallible<Self> {
         let pool = Pool::builder()
-            .connection_timeout(Duration::from_millis(500))
+            .connection_timeout(Duration::from_secs(5))
             .error_handler(Box::new(ErrorHandler))
             .build(conn)?;
 

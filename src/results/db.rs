@@ -83,9 +83,31 @@ impl<'a> DatabaseDB<'a> {
         data: &ProgressData,
         encoding_type: EncodingType,
     ) -> Fallible<()> {
+        let krate = if let Some((old, new)) = &data.version {
+            // If we're updating the name of the crate (typically changing the hash we found on
+            // github) then we ought to also use that new name for marking the crate as complete.
+            // Otherwise, we leave behind the old (unversioned) name and end up running this crate
+            // many times, effectively never actually completing it.
+            self.update_crate_version(ex, old, new)?;
+
+            // sanity check that the previous name of the crate is the one we intended to run.
+            if old.id() != data.result.krate.id() {
+                log::warn!(
+                    "Storing result under {} despite job intended for {} (with wrong name old={})",
+                    new.id(),
+                    data.result.krate.id(),
+                    old.id(),
+                );
+            }
+
+            new
+        } else {
+            &data.result.krate
+        };
+
         self.store_result(
             ex,
-            &data.result.krate,
+            krate,
             &data.result.toolchain,
             &data.result.result,
             &base64::engine::general_purpose::STANDARD
@@ -94,11 +116,7 @@ impl<'a> DatabaseDB<'a> {
             encoding_type,
         )?;
 
-        if let Some((old, new)) = &data.version {
-            self.update_crate_version(ex, old, new)?;
-        }
-
-        self.mark_crate_as_completed(ex, &data.result.krate)?;
+        self.mark_crate_as_completed(ex, krate)?;
 
         Ok(())
     }

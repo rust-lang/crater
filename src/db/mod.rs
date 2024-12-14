@@ -27,9 +27,10 @@ impl r2d2::ManageConnection for SqliteConnectionManager {
             .pragma_update(None, "foreign_keys", "ON")
             .unwrap();
 
-        // increase the in-memory cache from 2MB to 50MB
+        // the goal of this is to try to keep `experiment_crates` mostly cached in memory.
+        // that makes it much faster to scan it for the next crate we want to serve.
         connection
-            .pragma_update(None, "cache_size", "-51200")
+            .pragma_update(None, "cache_size", "-307200")
             .unwrap();
 
         // per docs, this is recommended for relatively long-lived connections (like what we have

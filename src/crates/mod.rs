@@ -252,6 +252,10 @@ mod tests {
                     .to_string(),
                 sha: None
             }),
+"registry+https://github.com/rust-lang/crates.io-index#cookie@0.15.0" => Crate::Registry(RegistryCrate {
+                name: "cookie".to_string(),
+                version: "0.15.0".to_string(),
+            }),
         }
 
         assert!(Crate::try_from(&PackageId {

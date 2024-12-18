@@ -144,7 +144,7 @@ fn run_cargo(
     let mut did_trybuild = false;
     let mut ran_out_of_space = false;
     let mut error_codes = BTreeSet::new();
-    let mut deps = BTreeSet::new();
+    let mut deps: Option<BTreeSet<Crate>> = None;
 
     let mut detect_error = |line: &str, actions: &mut ProcessLinesActions| {
         if line.contains("urlopen error") && line.contains("Temporary failure in name resolution") {
@@ -189,11 +189,13 @@ fn run_cargo(
                     // If the error is in a crate that is not local then it's referred to a dependency
                     // of the current crate
                     (DiagnosticLevel::Error, pkgid) => {
+                        let deps = deps.get_or_insert_default();
                         if let Ok(krate) = Crate::try_from(pkgid) {
                             deps.insert(krate);
                         }
                     }
                     (DiagnosticLevel::Ice, pkgid) => {
+                        let deps = deps.get_or_insert_default();
                         if let Ok(krate) = Crate::try_from(pkgid) {
                             deps.insert(krate);
                         }
@@ -233,7 +235,7 @@ fn run_cargo(
                 Err(e.context(FailureReason::ICE).into())
             } else if ran_out_of_space {
                 Err(e.context(FailureReason::NoSpace).into())
-            } else if !deps.is_empty() {
+            } else if let Some(deps) = deps {
                 Err(e.context(FailureReason::DependsOn(deps)).into())
             } else if !error_codes.is_empty() {
                 Err(e.context(FailureReason::CompilerError(error_codes)).into())

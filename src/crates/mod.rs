@@ -114,6 +114,24 @@ impl TryFrom<&'_ PackageId> for Crate {
                     }
                 }
             }
+            ["registry", url, ..] => {
+                let Some((_registry, krate)) = url.split_once('#') else {
+                    bail!(
+                        "malformed pkgid format: {}\n maybe the representation has changed?",
+                        pkgid.repr
+                    );
+                };
+                let Some((crate_name, crate_version)) = krate.split_once('@') else {
+                    bail!(
+                        "malformed pkgid format: {}\n maybe the representation has changed?",
+                        pkgid.repr
+                    );
+                };
+                Ok(Crate::Registry(RegistryCrate {
+                    name: crate_name.to_string(),
+                    version: crate_version.to_string(),
+                }))
+            }
             _ => bail!(
                 "malformed pkgid format: {}\n maybe the representation has changed?",
                 pkgid.repr
@@ -252,7 +270,7 @@ mod tests {
                     .to_string(),
                 sha: None
             }),
-"registry+https://github.com/rust-lang/crates.io-index#cookie@0.15.0" => Crate::Registry(RegistryCrate {
+            "registry+https://github.com/rust-lang/crates.io-index#cookie@0.15.0" => Crate::Registry(RegistryCrate {
                 name: "cookie".to_string(),
                 version: "0.15.0".to_string(),
             }),

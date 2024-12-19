@@ -197,6 +197,7 @@ pub enum FailureReason {
     Unknown,
     OOM,
     NoSpace,
+    BusErrorWhileLinking,
     Timeout,
     ICE,
     NetworkAccess,
@@ -213,6 +214,7 @@ impl ::std::fmt::Display for FailureReason {
             FailureReason::Unknown => write!(f, "unknown"),
             FailureReason::OOM => write!(f, "oom"),
             FailureReason::NoSpace => write!(f, "no-space"),
+            FailureReason::BusErrorWhileLinking => write!(f, "bus-error-while-linking"),
             FailureReason::Timeout => write!(f, "timeout"),
             FailureReason::ICE => write!(f, "ice"),
             FailureReason::NetworkAccess => write!(f, "network-access"),
@@ -281,6 +283,7 @@ impl FailureReason {
         match *self {
             FailureReason::OOM
             | FailureReason::NoSpace
+            | FailureReason::BusErrorWhileLinking
             | FailureReason::Timeout
             | FailureReason::NetworkAccess
             | FailureReason::CompilerDiagnosticChange => true,

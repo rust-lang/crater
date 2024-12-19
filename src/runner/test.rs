@@ -141,6 +141,7 @@ fn run_cargo(
 
     let mut did_ice = false;
     let mut did_network = false;
+    let mut had_bus_error_while_linking = false;
     let mut did_trybuild = false;
     let mut ran_out_of_space = false;
     let mut error_codes = BTreeSet::new();
@@ -152,6 +153,9 @@ fn run_cargo(
         }
         if line.contains("Address already in use") {
             did_network = true;
+        }
+        if line.contains("collect2: fatal error: ld terminated with signal 7 [Bus error]") {
+            had_bus_error_while_linking = true;
         }
         if line.to_lowercase().contains("no space left on device") {
             ran_out_of_space = true;
@@ -233,6 +237,8 @@ fn run_cargo(
                 Err(e.context(FailureReason::ICE).into())
             } else if ran_out_of_space {
                 Err(e.context(FailureReason::NoSpace).into())
+            } else if had_bus_error_while_linking {
+                Err(e.context(FailureReason::BusErrorWhileLinking).into())
             } else if !deps.is_empty() {
                 Err(e.context(FailureReason::DependsOn(deps)).into())
             } else if !error_codes.is_empty() {

@@ -161,7 +161,7 @@ impl ACL {
         let members = github.team_members(
             *orgs[org]
                 .get(team)
-                .ok_or_else(|| err_msg(format!("team {org}/{team} doesn't exist")))?,
+                .ok_or_else(|| anyhow!("team {org}/{team} doesn't exist"))?,
         )?;
         for member in &members {
             new_cache.insert(member.clone());

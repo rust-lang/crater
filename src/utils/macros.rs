@@ -7,9 +7,9 @@ macro_rules! string_enum {
         }
 
         impl ::std::str::FromStr for $name {
-            type Err = ::failure::Error;
+            type Err = ::anyhow::Error;
 
-            fn from_str(s: &str) -> ::failure::Fallible<$name> {
+            fn from_str(s: &str) -> ::anyhow::Result<$name> {
                 match s {
                     $($str => Ok($name::$item),)*
                     s => bail!("invalid {}: {}", stringify!($name), s),

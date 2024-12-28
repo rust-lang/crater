@@ -9,6 +9,7 @@
 //! application state employs ownership techniques to ensure that
 //! parallel access is consistent and race-free.
 
+use anyhow::{bail, Error, Result};
 use clap::Parser;
 use crater::actions::{self, Action, ActionsCtx};
 use crater::agent::{self, Capabilities};
@@ -21,7 +22,6 @@ use crater::results::{DatabaseDB, DeleteResults};
 use crater::runner;
 use crater::server;
 use crater::toolchain::Toolchain;
-use failure::{bail, Error, Fallible};
 use rustwide::{cmd::SandboxImage, Workspace, WorkspaceBuilder};
 use std::collections::HashSet;
 use std::net::SocketAddr;
@@ -38,7 +38,7 @@ pub struct DockerEnv(#[allow(unused)] String);
 impl FromStr for Ex {
     type Err = Error;
 
-    fn from_str(ex: &str) -> Fallible<Ex> {
+    fn from_str(ex: &str) -> Result<Ex> {
         Ok(Ex(ex.to_string()))
     }
 }
@@ -46,7 +46,7 @@ impl FromStr for Ex {
 impl FromStr for DockerEnv {
     type Err = Error;
 
-    fn from_str(env: &str) -> Fallible<DockerEnv> {
+    fn from_str(env: &str) -> Result<DockerEnv> {
         Ok(DockerEnv(env.to_string()))
     }
 }
@@ -57,7 +57,7 @@ pub struct Dest(PathBuf);
 impl FromStr for Dest {
     type Err = Error;
 
-    fn from_str(env: &str) -> Fallible<Dest> {
+    fn from_str(env: &str) -> Result<Dest> {
         Ok(Dest(env.into()))
     }
 }
@@ -273,7 +273,7 @@ pub enum Crater {
 }
 
 impl Crater {
-    pub fn run(&self) -> Fallible<()> {
+    pub fn run(&self) -> Result<()> {
         match *self {
             Crater::CreateLists { ref lists } => {
                 let mut lists: HashSet<_> = lists.iter().map(|s| s.as_str()).collect();

@@ -1,8 +1,8 @@
+use anyhow::Result;
 use crater::experiments::ExperimentDBRecord;
 use crater::report::ReportWriter;
 use crater::results::EncodingType;
 use crater::{config::Config, db::QueryUtils};
-use failure::Fallible;
 use mime::{self, Mime};
 use std::{borrow::Cow, fmt, path::Path};
 
@@ -31,7 +31,7 @@ fn main() {
     let experiments: Vec<_> = experiments
         .into_iter()
         .map(|record| record.into_experiment())
-        .collect::<Fallible<_>>()
+        .collect::<Result<_>>()
         .unwrap();
     let ex = experiments.iter().find(|e| e.name == "pr-118920").unwrap();
     let rdb = crater::results::DatabaseDB::new(&db);
@@ -67,11 +67,11 @@ impl ReportWriter for NullWriter {
         _b: &[u8],
         _mime: &Mime,
         _encoding_type: EncodingType,
-    ) -> Fallible<()> {
+    ) -> Result<()> {
         // no-op
         Ok(())
     }
-    fn write_string<P: AsRef<Path>>(&self, _path: P, _s: Cow<str>, _mime: &Mime) -> Fallible<()> {
+    fn write_string<P: AsRef<Path>>(&self, _path: P, _s: Cow<str>, _mime: &Mime) -> Result<()> {
         // no-op
         Ok(())
     }

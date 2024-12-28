@@ -73,7 +73,7 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
             let github = GitHubApi::new(&tokens);
             let bot_username = github.username()?;
             info!("bot username: {}", bot_username);
-            Fallible::Ok(GithubData {
+            Ok::<_, anyhow::Error>(GithubData {
                 api: github,
                 bot_username,
                 tokens,

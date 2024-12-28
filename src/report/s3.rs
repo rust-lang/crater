@@ -23,10 +23,10 @@ pub struct S3Prefix {
 }
 
 impl FromStr for S3Prefix {
-    type Err = ::failure::Error;
+    type Err = ::anyhow::Error;
 
     fn from_str(url: &str) -> Fallible<S3Prefix> {
-        let parsed = Url::parse(url).with_context(|_| S3Error::BadUrl(url.into()))?;
+        let parsed = Url::parse(url).with_context(|| S3Error::BadUrl(url.into()))?;
 
         if parsed.scheme() != "s3"
             || parsed.username() != ""
@@ -103,7 +103,7 @@ impl ReportWriter for S3Writer {
             let upload = match self.runtime.block_on(request.send()) {
                 Ok(u) => u,
                 Err(e) => {
-                    failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+                    bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
                 }
             };
 
@@ -133,7 +133,7 @@ impl ReportWriter for S3Writer {
                         )
                     }
                     Err(e) => {
-                        failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+                        bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
                     }
                 };
 
@@ -151,7 +151,7 @@ impl ReportWriter for S3Writer {
             match self.runtime.block_on(request.send()) {
                 Ok(_) => (),
                 Err(e) => {
-                    failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+                    bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
                 }
             };
 
@@ -180,7 +180,7 @@ impl ReportWriter for S3Writer {
             match self.runtime.block_on(request.send()) {
                 Ok(_) => Ok(()),
                 Err(e) => {
-                    failure::bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
+                    bail!("Failed to upload to {:?}: {:?}", path.as_ref(), e);
                 }
             }
         }

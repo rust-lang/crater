@@ -93,7 +93,7 @@ impl<'a> Worker<'a> {
         &self,
         task: &Task,
         storage: &LogStorage,
-    ) -> Result<TestResult, (failure::Error, TestResult)> {
+    ) -> Result<TestResult, (anyhow::Error, TestResult)> {
         info!("running task: {:?}", task);
 
         let mut res = None;
@@ -149,8 +149,8 @@ impl<'a> Worker<'a> {
             TestResult::Error
         };
 
-        for err in e.iter_chain() {
-            if let Some(OverrideResult(res)) = err.downcast_ctx() {
+        for err in e.chain() {
+            if let Some(OverrideResult(res)) = err.downcast_ref() {
                 result = res.clone();
                 break;
             }
@@ -249,8 +249,8 @@ impl<'a> Worker<'a> {
                 } else {
                     TestResult::Error
                 };
-                for err in err.iter_chain() {
-                    if let Some(OverrideResult(res)) = err.downcast_ctx() {
+                for err in err.chain() {
+                    if let Some(OverrideResult(res)) = err.downcast_ref() {
                         result = res.clone();
                         break;
                     }

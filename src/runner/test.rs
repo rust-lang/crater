@@ -4,10 +4,10 @@ use crate::results::DiagnosticCode;
 use crate::results::{BrokenReason, FailureReason, TestResult};
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
+use anyhow::Error;
 use cargo_metadata::diagnostic::DiagnosticLevel;
 use cargo_metadata::{Message, Metadata, Package, Target};
 use docsrs_metadata::Metadata as DocsrsMetadata;
-use failure::Error;
 use remove_dir_all::remove_dir_all;
 use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
 use rustwide::logging::LogStorage;
@@ -16,16 +16,16 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::ErrorKind;
 
 fn failure_reason(err: &Error) -> FailureReason {
-    for cause in err.iter_chain() {
-        if let Some(&CommandError::SandboxOOM) = cause.downcast_ctx() {
+    for cause in err.chain() {
+        if let Some(&CommandError::SandboxOOM) = cause.downcast_ref() {
             return FailureReason::OOM;
         } else if let Some(&CommandError::NoOutputFor(_) | &CommandError::Timeout(_)) =
-            cause.downcast_ctx()
+            cause.downcast_ref()
         {
             return FailureReason::Timeout;
-        } else if let Some(reason) = cause.downcast_ctx::<FailureReason>() {
+        } else if let Some(reason) = cause.downcast_ref::<FailureReason>() {
             return reason.clone();
-        } else if let Some(CommandError::IO(io)) = cause.downcast_ctx() {
+        } else if let Some(CommandError::IO(io)) = cause.downcast_ref() {
             match io.kind() {
                 ErrorKind::OutOfMemory => {
                     return FailureReason::OOM;
@@ -66,13 +66,13 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
         Ok(ok) => Ok(ok),
         Err(err) => {
             let mut reason = None;
-            for cause in err.iter_chain() {
-                if let Some(error) = cause.downcast_ctx() {
+            for cause in err.chain() {
+                if let Some(error) = cause.downcast_ref() {
                     reason = match *error {
                         PrepareError::MissingCargoToml => Some(BrokenReason::CargoToml),
                         PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
-                        PrepareError::YankedDependencies => Some(BrokenReason::Yanked),
-                        PrepareError::MissingDependencies => {
+                        PrepareError::YankedDependencies(_) => Some(BrokenReason::Yanked),
+                        PrepareError::MissingDependencies(_) => {
                             Some(BrokenReason::MissingDependencies)
                         }
                         PrepareError::PrivateGitRepository => {
@@ -86,9 +86,7 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
                 }
             }
             if let Some(reason) = reason {
-                Err(err
-                    .context(OverrideResult(TestResult::BrokenCrate(reason)))
-                    .into())
+                Err(err.context(OverrideResult(TestResult::BrokenCrate(reason))))
             } else {
                 Err(err)
             }
@@ -228,21 +226,21 @@ fn run_cargo(
 
     match command.run() {
         Ok(()) => Ok(()),
-        Err(e) => {
+        e @ Err(_) => {
             if did_ice {
-                Err(e.context(FailureReason::ICE).into())
+                e.context(FailureReason::ICE)
             } else if ran_out_of_space {
-                Err(e.context(FailureReason::NoSpace).into())
+                e.context(FailureReason::NoSpace)
             } else if !deps.is_empty() {
-                Err(e.context(FailureReason::DependsOn(deps)).into())
+                e.context(FailureReason::DependsOn(deps))
             } else if !error_codes.is_empty() {
-                Err(e.context(FailureReason::CompilerError(error_codes)).into())
+                e.context(FailureReason::CompilerError(error_codes))
             } else if did_network {
-                Err(e.context(FailureReason::NetworkAccess).into())
+                e.context(FailureReason::NetworkAccess)
             } else if did_trybuild {
-                Err(e.context(FailureReason::CompilerDiagnosticChange).into())
+                e.context(FailureReason::CompilerDiagnosticChange)
             } else {
-                Err(e.into())
+                e.map_err(|err| err.into())
             }
         }
     }
@@ -462,7 +460,7 @@ fn is_library(target: &Target) -> bool {
 
 #[test]
 fn test_failure_reason() {
-    let error : failure::Error = CommandError::IO(std::io::Error::other("Test")).into();
+    let error : anyhow::Error = anyhow!(CommandError::IO(std::io::Error::other("Test")));
     assert_eq!(failure_reason(&error), FailureReason::Unknown);
-    assert_eq!(failure_reason(&error.context(FailureReason::ICE).into()), FailureReason::ICE);
+    assert_eq!(failure_reason(&error.context(FailureReason::ICE)), FailureReason::ICE);
 }

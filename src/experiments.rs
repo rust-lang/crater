@@ -56,9 +56,9 @@ pub enum CrateSelect {
 from_into_string!(CrateSelect);
 
 impl FromStr for CrateSelect {
-    type Err = failure::Error;
+    type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> failure::Fallible<Self> {
+    fn from_str(s: &str) -> Fallible<Self> {
         let ret = match s {
             s if s.starts_with("top-") => {
                 let n: u32 = s["top-".len()..].parse()?;
@@ -156,7 +156,7 @@ impl DeferredCrateSelect {
 }
 
 impl FromStr for DeferredCrateSelect {
-    type Err = failure::Error;
+    type Err = anyhow::Error;
 
     fn from_str(input: &str) -> Fallible<Self> {
         if input.starts_with("https://") || input.starts_with("http://") {

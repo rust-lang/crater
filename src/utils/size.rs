@@ -39,15 +39,15 @@ impl fmt::Display for Size {
 }
 
 impl FromStr for Size {
-    type Err = failure::Error;
+    type Err = anyhow::Error;
 
     fn from_str(mut input: &str) -> Fallible<Size> {
-        let mut last = input.chars().last().ok_or_else(|| err_msg("empty size"))?;
+        let mut last = input.chars().last().ok_or_else(|| anyhow!("empty size"))?;
 
         // Eat a trailing 'b'
         if last == 'b' || last == 'B' {
             input = &input[..input.len() - 1];
-            last = input.chars().last().ok_or_else(|| err_msg("empty size"))?;
+            last = input.chars().last().ok_or_else(|| anyhow!("empty size"))?;
         }
 
         if last == 'K' || last == 'k' {

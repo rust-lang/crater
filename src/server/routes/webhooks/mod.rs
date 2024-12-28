@@ -111,7 +111,7 @@ fn process_command(
         info!("user @{} sent command: {}", sender, command);
 
         let args: Command =
-            Command::from_str(command).with_context(|_| "failed to parse the command")?;
+            Command::from_str(command).with_context(|| "failed to parse the command")?;
 
         match args {
             Command::Ping(_) => {
@@ -199,15 +199,15 @@ fn receive_endpoint(
     let signature = headers
         .get("X-Hub-Signature")
         .and_then(|h| h.to_str().ok())
-        .ok_or_else(|| err_msg("missing header X-Hub-Signature\n"))?;
+        .ok_or_else(|| anyhow!("missing header X-Hub-Signature\n"))?;
     let event = headers
         .get("X-GitHub-Event")
         .and_then(|h| h.to_str().ok())
-        .ok_or_else(|| err_msg("missing header X-GitHub-Event\n"))?;
+        .ok_or_else(|| anyhow!("missing header X-GitHub-Event\n"))?;
     let host = headers
         .get("Host")
         .and_then(|h| h.to_str().ok())
-        .ok_or_else(|| err_msg("missing header Host\n"))?;
+        .ok_or_else(|| anyhow!("missing header Host\n"))?;
 
     process_webhook(&body[..], host, signature, event, &data, &github_data)
 }

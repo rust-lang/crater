@@ -34,7 +34,7 @@ impl List for GitHubList {
         info!("loading cached GitHub list from {}", self.source);
 
         let mut resp = crate::utils::http::get_sync(&self.source)
-            .with_context(|_| format!("failed to fetch GitHub crates list from {}", self.source))?;
+            .with_context(|| format!("failed to fetch GitHub crates list from {}", self.source))?;
         let mut reader = ::csv::Reader::from_reader(&mut resp);
 
         let mut list = Vec::new();
@@ -88,7 +88,7 @@ impl GitHubRepo {
 }
 
 impl FromStr for GitHubRepo {
-    type Err = ::failure::Error;
+    type Err = ::anyhow::Error;
 
     fn from_str(input: &str) -> Fallible<Self> {
         let mut components = input

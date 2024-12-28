@@ -17,13 +17,23 @@ use std::io::ErrorKind;
 
 fn failure_reason(err: &Error) -> FailureReason {
     for cause in err.chain() {
-        if let Some(&CommandError::SandboxOOM) = cause.downcast_ref() {
-            return FailureReason::OOM;
-        } else if let Some(&CommandError::NoOutputFor(_) | &CommandError::Timeout(_)) =
-            cause.downcast_ref()
-        {
-            return FailureReason::Timeout;
-        } else if let Some(reason) = cause.downcast_ref::<FailureReason>() {
+        if let Some(command_error) = cause.downcast_ref::<CommandError>() {
+            match command_error {
+                CommandError::NoOutputFor(_)
+                | CommandError::Timeout(_)
+                | CommandError::KillAfterTimeoutFailed(_) => return FailureReason::Timeout,
+                CommandError::SandboxOOM => return FailureReason::OOM,
+                CommandError::SandboxImagePullFailed(_)
+                | CommandError::SandboxImageMissing(_)
+                | CommandError::SandboxContainerCreate(_)
+                | CommandError::WorkspaceNotMountedCorrectly
+                | CommandError::InvalidDockerInspectOutput(_) => return FailureReason::Docker,
+
+                CommandError::ExecutionFailed { .. } | CommandError::IO(_) | _ => {}
+            }
+        }
+
+        if let Some(reason) = cause.downcast_ref::<FailureReason>() {
             return reason.clone();
         } else if let Some(CommandError::IO(io)) = cause.downcast_ref() {
             match io.kind() {

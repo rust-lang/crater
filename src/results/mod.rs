@@ -200,6 +200,7 @@ pub enum FailureReason {
     Timeout,
     ICE,
     NetworkAccess,
+    Docker,
     CompilerDiagnosticChange,
     CompilerError(BTreeSet<DiagnosticCode>),
     DependsOn(BTreeSet<Crate>),
@@ -216,6 +217,7 @@ impl ::std::fmt::Display for FailureReason {
             FailureReason::Timeout => write!(f, "timeout"),
             FailureReason::ICE => write!(f, "ice"),
             FailureReason::NetworkAccess => write!(f, "network-access"),
+            FailureReason::Docker => write!(f, "docker"),
             FailureReason::CompilerError(codes) => write!(
                 f,
                 "compiler-error({})",
@@ -283,6 +285,7 @@ impl FailureReason {
             | FailureReason::NoSpace
             | FailureReason::Timeout
             | FailureReason::NetworkAccess
+            | FailureReason::Docker
             | FailureReason::CompilerDiagnosticChange => true,
             FailureReason::CompilerError(_)
             | FailureReason::DependsOn(_)

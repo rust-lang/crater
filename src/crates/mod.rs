@@ -74,68 +74,210 @@ impl TryFrom<&'_ PackageId> for Crate {
     type Error = anyhow::Error;
 
     fn try_from(pkgid: &PackageId) -> Fallible<Crate> {
-        let parts = &pkgid
-            .repr
-            .split_ascii_whitespace()
-            .flat_map(|s| {
-                // remove ()
-                s.trim_matches(|c: char| c.is_ascii_punctuation())
-                    // split resource and protocol
-                    .split('+')
-            })
-            .collect::<Vec<_>>();
+        if pkgid.repr.contains(|c: char| c.is_ascii_whitespace()) {
+            let parts = &pkgid
+                .repr
+                .split_ascii_whitespace()
+                .flat_map(|s| {
+                    // remove ()
+                    s.trim_matches(|c: char| c.is_ascii_punctuation())
+                        // split resource and protocol
+                        .split('+')
+                })
+                .collect::<Vec<_>>();
 
-        match parts[..] {
-            [name, version, "registry", _] => Ok(Crate::Registry(RegistryCrate {
-                name: name.to_string(),
-                version: version.to_string(),
-            })),
-            [_, _, "path", path] => Ok(Crate::Path(path.to_string())),
-            [_, _, "git", repo] => {
-                if repo.starts_with("https://github.com") {
-                    Ok(Crate::GitHub(repo.replace('#', "/").parse()?))
-                } else {
-                    let mut parts = repo.split('#').rev().collect::<Vec<_>>();
-                    let url = parts.pop();
-                    let sha = parts.pop();
+            match parts[..] {
+                [name, version, "registry", _] => Ok(Crate::Registry(RegistryCrate {
+                    name: name.to_string(),
+                    version: version.to_string(),
+                })),
+                [_, _, "path", path] => Ok(Crate::Path(path.to_string())),
+                [_, _, "git", repo] => {
+                    if repo.starts_with("https://github.com") {
+                        Ok(Crate::GitHub(repo.replace('#', "/").parse()?))
+                    } else {
+                        let mut parts = repo.split('#').rev().collect::<Vec<_>>();
+                        let url = parts.pop();
+                        let sha = parts.pop();
 
-                    match (url, sha) {
-                        (Some(url), None) => Ok(Crate::Git(GitRepo {
-                            url: url.to_string(),
-                            sha: None,
-                        })),
-                        (Some(url), Some(sha)) => Ok(Crate::Git(GitRepo {
-                            // remove additional queries if the sha is present
-                            // as the crate version is already uniquely determined
-                            url: url.split('?').next().unwrap().to_string(),
-                            sha: Some(sha.to_string()),
-                        })),
-                        _ => bail!("malformed git repo: {}", repo),
+                        match (url, sha) {
+                            (Some(url), None) => Ok(Crate::Git(GitRepo {
+                                url: url.to_string(),
+                                sha: None,
+                            })),
+                            (Some(url), Some(sha)) => Ok(Crate::Git(GitRepo {
+                                // remove additional queries if the sha is present
+                                // as the crate version is already uniquely determined
+                                url: url.split('?').next().unwrap().to_string(),
+                                sha: Some(sha.to_string()),
+                            })),
+                            _ => bail!("malformed git repo: {}", repo),
+                        }
                     }
                 }
+                _ => bail!(
+                    "malformed pkgid format: {}\n maybe the representation has changed?",
+                    pkgid.repr
+                ),
             }
-            ["registry", url, ..] => {
-                let Some((_registry, krate)) = url.split_once('#') else {
-                    bail!(
-                        "malformed pkgid format: {}\n maybe the representation has changed?",
-                        pkgid.repr
-                    );
+        } else if let Some((kind_proto, host_path_query_anchor)) = pkgid.repr.split_once("://") {
+            let (kind, proto) = if let Some((kind, proto)) = kind_proto.split_once('+') {
+                (Some(kind), proto)
+            } else {
+                (None, kind_proto)
+            };
+
+            let (host_path_query, anchor) =
+                if let Some((host_path_query, anchor)) = host_path_query_anchor.split_once('#') {
+                    (host_path_query, Some(anchor))
+                } else {
+                    (host_path_query_anchor, None)
                 };
-                let Some((crate_name, crate_version)) = krate.split_once('@') else {
-                    bail!(
-                        "malformed pkgid format: {}\n maybe the representation has changed?",
-                        pkgid.repr
-                    );
+
+            let (host_path, query) =
+                if let Some((host_path, query)) = host_path_query.split_once('?') {
+                    (host_path, Some(query))
+                } else {
+                    (host_path_query, None)
                 };
-                Ok(Crate::Registry(RegistryCrate {
-                    name: crate_name.to_string(),
-                    version: crate_version.to_string(),
-                }))
+
+            match (kind, proto, query) {
+                (Some("path") | None, "file", None) => Ok(Crate::Path(host_path.to_string())),
+                (Some("registry"), _, None) => {
+                    if let Some(anchor) = anchor {
+                        if let Some((package_name, version)) = anchor.split_once(['@', ':']) {
+                            Ok(Crate::Registry(RegistryCrate {
+                                name: package_name.to_string(),
+                                version: version.to_string(),
+                            }))
+                        } else if !anchor
+                            .contains(|c: char| !c.is_ascii_alphanumeric() && c != '_' && c != '-')
+                        {
+                            // anchor appears to be a valid package name
+                            Ok(Crate::Registry(RegistryCrate {
+                                name: anchor.to_string(),
+                                version: "unknown".to_string(),
+                            }))
+                        } else {
+                            // as the anchor is not a valid package name check whether it can be a version
+                            let Some(minor_major_path) = anchor.split(['-', '+']).next() else {
+                                bail!("split always returns at least one element")
+                            };
+
+                            if minor_major_path.split('.').count() > 3
+                                || minor_major_path
+                                    .split('.')
+                                    .any(|part| part.contains(|c: char| !c.is_ascii_digit()))
+                            {
+                                bail!(
+                                    "malformed pkgid format: {}\n maybe the representation has changed?",
+                                    pkgid.repr
+                                )
+                            }
+
+                            let Some(package_name) = host_path.split('/').last() else {
+                                bail!(
+                                    "malformed pkgid format: {}\n maybe the representation has changed?",
+                                    pkgid.repr
+                                )
+                            };
+
+                            Ok(Crate::Registry(RegistryCrate {
+                                name: package_name.to_string(),
+                                version: anchor.to_string(),
+                            }))
+                        }
+                    } else {
+                        bail!(
+                            "malformed pkgid format: {}\n maybe the representation has changed?",
+                            pkgid.repr
+                        )
+                    }
+                }
+                (None, "http" | "https", _) | (Some("git"), _, _)
+                    if host_path.starts_with("github.com/") =>
+                {
+                    let mut parts = host_path.split('/').skip(1);
+                    let Some(org) = parts.next() else {
+                        bail!(
+                            "malformed pkgid format: {}\n maybe the representation has changed?",
+                            pkgid.repr
+                        )
+                    };
+
+                    let name = if let Some((package_name, _version)) =
+                        anchor.and_then(|anchor| anchor.split_once(['@', ':']))
+                    {
+                        package_name
+                    } else if let Some(name) = parts.next() {
+                        name
+                    } else {
+                        bail!(
+                            "malformed pkgid format: {}\n maybe the representation has changed?",
+                            pkgid.repr
+                        )
+                    };
+
+                    Ok(Crate::GitHub(GitHubRepo {
+                        org: org.to_string(),
+                        name: name.to_string(),
+                        sha: None,
+                    }))
+                }
+
+                (Some("git"), _, None) | (None, "ssh" | "git" | "http" | "https", None) => {
+                    let kind = if let Some(kind) = kind {
+                        format! {"{kind}+"}
+                    } else {
+                        String::new()
+                    };
+                    Ok(Crate::Git(GitRepo {
+                        url: format!("{kind}{proto}://{host_path}"),
+                        sha: None,
+                    }))
+                }
+                (Some("git"), _, Some(query))
+                | (None, "ssh" | "git" | "http" | "https", Some(query)) => {
+                    let Some((query_kind, rev)) = query.split_once('=') else {
+                        bail!(
+                            "malformed pkgid format: {}\n maybe the representation has changed?",
+                            pkgid.repr
+                        )
+                    };
+
+                    let kind = if let Some(kind) = kind {
+                        format! {"{kind}+"}
+                    } else {
+                        String::new()
+                    };
+                    match query_kind {
+                        "branch" | "tag" | "rev" => Ok(Crate::Git(GitRepo {
+                            url: format!("{kind}{proto}://{host_path}"),
+                            sha: Some(rev.to_string()),
+                        })),
+                        _ => {
+                            bail!(
+                                "malformed pkgid format: {}\n maybe the representation has changed?",
+                                pkgid.repr
+                            )
+                        }
+                    }
+                }
+                _ => bail!(
+                    "malformed pkgid format: {}\n maybe the representation has changed?",
+                    pkgid.repr
+                ),
             }
-            _ => bail!(
-                "malformed pkgid format: {}\n maybe the representation has changed?",
-                pkgid.repr
-            ),
+        } else if let Some((package_name, version)) = pkgid.repr.split_once(['@', ':']) {
+            Ok(Crate::Registry(RegistryCrate {
+                name: package_name.to_string(),
+                version: version.to_string(),
+            }))
+        } else {
+            Ok(Crate::Registry(RegistryCrate {
+                name: pkgid.repr.clone(),
+                version: "unknown".to_string(),
+            }))
         }
     }
 }
@@ -270,16 +412,48 @@ mod tests {
                     .to_string(),
                 sha: None
             }),
+
+            // package id spec <https://doc.rust-lang.org/cargo/reference/pkgid-spec.html>
+
             "registry+https://github.com/rust-lang/crates.io-index#cookie@0.15.0" => Crate::Registry(RegistryCrate {
                 name: "cookie".to_string(),
                 version: "0.15.0".to_string(),
             }),
-        }
+            "regex@1.4.3" => Crate::Registry(RegistryCrate {
+                name: "regex".to_string(),
+                version: "1.4.3".to_string(),
+            }),
 
-        assert!(Crate::try_from(&PackageId {
-            repr: "invalid".to_string()
-        })
-        .is_err());
+            "https://github.com/rust-lang/cargo#0.52.0" => Crate::GitHub(GitHubRepo {
+                org: "rust-lang".to_string(),
+                name: "cargo".to_string(),
+                sha: None
+            }),
+            "https://github.com/rust-lang/cargo#cargo-platform@0.1.2" => Crate::GitHub(GitHubRepo {
+                org: "rust-lang".to_string(),
+                name: "cargo-platform".to_string(),
+                sha: None
+            }),
+
+            "ssh://git@github.com/rust-lang/regex.git#regex@1.4.3" => Crate::Git(GitRepo {
+                url: "ssh://git@github.com/rust-lang/regex.git".to_string(),
+                sha: None
+            }),
+            "git+ssh://git@github.com/rust-lang/regex.git#regex@1.4.3" => Crate::Git(GitRepo {
+                url: "git+ssh://git@github.com/rust-lang/regex.git".to_string(),
+                sha: None
+            }),
+            "git+ssh://git@github.com/rust-lang/regex.git?branch=dev#regex@1.4.3" => Crate::Git(GitRepo {
+                url: "git+ssh://git@github.com/rust-lang/regex.git".to_string(),
+                sha: Some("dev".to_string())
+            }),
+
+            "file:///path/to/my/project/foo" => Crate::Path("/path/to/my/project/foo".to_string()),
+            "file:///path/to/my/project/foo#1.1.8" => Crate::Path("/path/to/my/project/foo".to_string()),
+            "path+file:///path/to/my/project/foo#1.1.8" => Crate::Path("/path/to/my/project/foo".to_string()),
+
+            "invalid" => Crate::Registry(RegistryCrate{ name: "invalid".to_string(), version: "unknown".to_string() }),
+        }
     }
 
     #[test]

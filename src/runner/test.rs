@@ -153,6 +153,10 @@ fn run_cargo(
         if line.contains("Address already in use") {
             did_network = true;
         }
+        if line.contains("collect2: fatal error: ld terminated with signal 7 [Bus error]") {
+            // the cause of the bus error is running out of disk space
+            ran_out_of_space = true;
+        }
         if line.to_lowercase().contains("no space left on device") {
             ran_out_of_space = true;
         }

@@ -13,7 +13,7 @@ impl ResultName for FailureReason {
             FailureReason::Unknown => "failed (unknown)".into(),
             FailureReason::Timeout => "timed out".into(),
             FailureReason::NetworkAccess => "network access".into(),
-            FailureReason::Docker => "docker".into(),
+            FailureReason::Docker => "failed (docker error)".into(),
             FailureReason::OOM => "OOM".into(),
             FailureReason::ICE => "ICE".into(),
             FailureReason::NoSpace => "no space left on device".into(),

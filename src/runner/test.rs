@@ -16,59 +16,53 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::ErrorKind;
 
 fn failure_reason(err: &Error) -> FailureReason {
-    for cause in err.chain() {
-        if let Some(command_error) = cause.downcast_ref::<CommandError>() {
-            match command_error {
-                CommandError::NoOutputFor(_)
-                | CommandError::Timeout(_)
-                | CommandError::KillAfterTimeoutFailed(_) => return FailureReason::Timeout,
-                CommandError::SandboxOOM => return FailureReason::OOM,
-                CommandError::SandboxImagePullFailed(_)
-                | CommandError::SandboxImageMissing(_)
-                | CommandError::SandboxContainerCreate(_)
-                | CommandError::WorkspaceNotMountedCorrectly
-                | CommandError::InvalidDockerInspectOutput(_) => return FailureReason::Docker,
+    if let Some(reason) = err.downcast_ref::<FailureReason>() {
+        reason.clone()
+    } else if let Some(command_error) = err.downcast_ref::<CommandError>() {
+        match command_error {
+            CommandError::NoOutputFor(_)
+            | CommandError::Timeout(_)
+            | CommandError::KillAfterTimeoutFailed(_) => FailureReason::Timeout,
+            CommandError::SandboxOOM => FailureReason::OOM,
+            CommandError::SandboxImagePullFailed(_)
+            | CommandError::SandboxImageMissing(_)
+            | CommandError::SandboxContainerCreate(_)
+            | CommandError::WorkspaceNotMountedCorrectly
+            | CommandError::InvalidDockerInspectOutput(_) => FailureReason::Docker,
+            CommandError::IO(io) => {
+                match io.kind() {
+                    ErrorKind::OutOfMemory => FailureReason::OOM,
+                    _ => {
+                        // FIXME use ErrorKind once #![feature(io_error_more)] is stable <https://github.com/rust-lang/rust/issues/86442>
+                        #[cfg(target_os = "linux")]
+                        match io.raw_os_error() {
+                                // <https://mariadb.com/kb/en/operating-system-error-codes/#linux-error-codes>
+                                | Some(28) /* ErrorKind::StorageFull */
+                                | Some(122) /* ErrorKind::FilesystemQuotaExceeded */
+                                | Some(31) /* TooManyLinks */=> {
+                                    return FailureReason::NoSpace
+                                }
+                                _ => FailureReason::Unknown
+                            }
 
-                CommandError::ExecutionFailed { .. } | CommandError::IO(_) | _ => {}
-            }
-        }
-
-        if let Some(reason) = cause.downcast_ref::<FailureReason>() {
-            return reason.clone();
-        } else if let Some(CommandError::IO(io)) = cause.downcast_ref() {
-            match io.kind() {
-                ErrorKind::OutOfMemory => {
-                    return FailureReason::OOM;
-                }
-                _ => {
-                    // FIXME use ErrorKind once #![feature(io_error_more)] is stable <https://github.com/rust-lang/rust/issues/86442>
-                    #[cfg(target_os = "linux")]
-                    match io.raw_os_error() {
-                        // <https://mariadb.com/kb/en/operating-system-error-codes/#linux-error-codes>
-                        | Some(28) /* ErrorKind::StorageFull */
-                        | Some(122) /* ErrorKind::FilesystemQuotaExceeded */
-                        | Some(31) /* TooManyLinks */=> {
-                            return FailureReason::NoSpace
-                        }
-                        _ => {}
-                    }
-
-                    #[cfg(target_os = "windows")]
-                    match io.raw_os_error() {
-                        // <https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes>
-                        | Some(39|112) /* ErrorKind::StorageFull */
-                        | Some(1295) /* ErrorKind::FilesystemQuotaExceeded */
-                        | Some(1142) /* TooManyLinks */=> {
-                            return FailureReason::NoSpace
-                        }
-                        _ => {}
+                        #[cfg(target_os = "windows")]
+                        match io.raw_os_error() {
+                                // <https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes>
+                                | Some(39|112) /* ErrorKind::StorageFull */
+                                | Some(1295) /* ErrorKind::FilesystemQuotaExceeded */
+                                | Some(1142) /* TooManyLinks */=> {
+                                    return FailureReason::NoSpace
+                                }
+                                _ => FailureReason::Unknown
+                            }
                     }
                 }
             }
+            CommandError::ExecutionFailed { .. } | _ => FailureReason::Unknown,
         }
+    } else {
+        FailureReason::Unknown
     }
-
-    FailureReason::Unknown
 }
 
 pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
@@ -467,10 +461,12 @@ fn is_library(target: &Target) -> bool {
             .all(|k| !["example", "test", "bench"].contains(&k.as_str()))
 }
 
-
 #[test]
 fn test_failure_reason() {
-    let error : anyhow::Error = anyhow!(CommandError::IO(std::io::Error::other("Test")));
+    let error: anyhow::Error = anyhow!(CommandError::IO(std::io::Error::other("Test")));
     assert_eq!(failure_reason(&error), FailureReason::Unknown);
-    assert_eq!(failure_reason(&error.context(FailureReason::ICE)), FailureReason::ICE);
+    assert_eq!(
+        failure_reason(&error.context(FailureReason::ICE)),
+        FailureReason::ICE
+    );
 }

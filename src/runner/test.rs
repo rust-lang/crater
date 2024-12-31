@@ -458,3 +458,11 @@ fn is_library(target: &Target) -> bool {
             .iter()
             .all(|k| !["example", "test", "bench"].contains(&k.as_str()))
 }
+
+
+#[test]
+fn test_failure_reason() {
+    let error : failure::Error = CommandError::IO(std::io::Error::other("Test")).into();
+    assert_eq!(failure_reason(&error), FailureReason::Unknown);
+    assert_eq!(failure_reason(&error.context(FailureReason::ICE).into()), FailureReason::ICE);
+}

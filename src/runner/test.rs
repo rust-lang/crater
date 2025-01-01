@@ -70,25 +70,18 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
         Ok(ok) => Ok(ok),
         Err(err) => {
             let mut reason = None;
-            for cause in err.chain() {
-                if let Some(error) = cause.downcast_ref() {
-                    reason = match *error {
-                        PrepareError::MissingCargoToml => Some(BrokenReason::CargoToml),
-                        PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
-                        PrepareError::YankedDependencies(_) => Some(BrokenReason::Yanked),
-                        PrepareError::MissingDependencies(_) => {
-                            Some(BrokenReason::MissingDependencies)
-                        }
-                        PrepareError::PrivateGitRepository => {
-                            Some(BrokenReason::MissingGitRepository)
-                        }
-                        _ => None,
-                    }
-                }
-                if reason.is_some() {
-                    break;
+
+            if let Some(error) = err.downcast_ref() {
+                reason = match *error {
+                    PrepareError::MissingCargoToml => Some(BrokenReason::CargoToml),
+                    PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
+                    PrepareError::YankedDependencies(_) => Some(BrokenReason::Yanked),
+                    PrepareError::MissingDependencies(_) => Some(BrokenReason::MissingDependencies),
+                    PrepareError::PrivateGitRepository => Some(BrokenReason::MissingGitRepository),
+                    _ => None,
                 }
             }
+
             if let Some(reason) = reason {
                 Err(err.context(OverrideResult(TestResult::BrokenCrate(reason))))
             } else {

@@ -149,11 +149,8 @@ impl<'a> Worker<'a> {
             TestResult::Error
         };
 
-        for err in e.chain() {
-            if let Some(OverrideResult(res)) = err.downcast_ref() {
-                result = res.clone();
-                break;
-            }
+        if let Some(OverrideResult(res)) = e.downcast_ref() {
+            result = res.clone();
         }
 
         Err((e, result))
@@ -249,11 +246,9 @@ impl<'a> Worker<'a> {
                 } else {
                     TestResult::Error
                 };
-                for err in err.chain() {
-                    if let Some(OverrideResult(res)) = err.downcast_ref() {
-                        result = res.clone();
-                        break;
-                    }
+
+                if let Some(OverrideResult(res)) = err.downcast_ref() {
+                    result = res.clone();
                 }
 
                 for tc in &self.ex.toolchains {

@@ -49,5 +49,5 @@ fn current_mount() -> Fallible<Filesystem> {
             }
         }
     }
-    found.ok_or_else(|| failure::err_msg("failed to find the current mount"))
+    found.ok_or_else(|| anyhow!("failed to find the current mount"))
 }

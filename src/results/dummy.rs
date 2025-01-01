@@ -21,7 +21,7 @@ impl DummyDB {
         Ok(self
             .experiments
             .get(&ex.name)
-            .ok_or_else(|| err_msg(format!("missing experiment {}", ex.name)))?)
+            .ok_or_else(|| anyhow!("missing experiment {}", ex.name))?)
     }
 
     pub fn add_dummy_log(&mut self, ex: &Experiment, krate: Crate, tc: Toolchain, log: EncodedLog) {

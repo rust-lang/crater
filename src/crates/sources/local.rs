@@ -32,10 +32,10 @@ impl List for LocalList {
                     .file_name()
                     .to_str()
                     .ok_or_else(|| {
-                        err_msg(format!(
+                        anyhow!(
                             "invalid UTF-8 in local crate name: {}",
                             entry.file_name().to_string_lossy()
-                        ))
+                        )
                     })?
                     .to_string();
 

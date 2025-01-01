@@ -6,7 +6,6 @@ mod cli;
 
 use clap::Parser;
 use crater::utils;
-use failure::Fallible;
 use std::panic;
 use std::process;
 
@@ -53,6 +52,6 @@ fn main() {
     process::exit(i32::from(!success));
 }
 
-fn main_() -> Fallible<()> {
+fn main_() -> anyhow::Result<()> {
     cli::Crater::parse().run()
 }

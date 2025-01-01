@@ -131,10 +131,10 @@ pub fn run(
         toolchains: [
             args.start
                 .or(detected_start)
-                .ok_or_else(|| err_msg("missing start toolchain"))?,
+                .ok_or_else(|| anyhow!("missing start toolchain"))?,
             args.end
                 .or(detected_end)
-                .ok_or_else(|| err_msg("missing end toolchain"))?,
+                .ok_or_else(|| anyhow!("missing end toolchain"))?,
         ],
         mode: args.mode.unwrap_or(Mode::BuildAndTest),
         crates: crates.unwrap_or(CrateSelect::Full),
@@ -345,7 +345,7 @@ fn generate_new_experiment_name(db: &Database, issue: &Issue) -> Fallible<String
         name = format!("pr-{}-{idx}", issue.number);
         idx = idx
             .checked_add(1)
-            .ok_or_else(|| err_msg("too many similarly-named pull requests"))?;
+            .ok_or_else(|| anyhow!("too many similarly-named pull requests"))?;
     }
     Ok(name)
 }

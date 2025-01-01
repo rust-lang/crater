@@ -112,7 +112,7 @@ impl<'a> DatabaseDB<'a> {
             &data.result.result,
             &base64::engine::general_purpose::STANDARD
                 .decode(&data.result.log)
-                .with_context(|_| "invalid base64 log provided")?,
+                .with_context(|| "invalid base64 log provided")?,
             encoding_type,
         )?;
 

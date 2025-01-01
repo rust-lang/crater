@@ -4,10 +4,10 @@ use crate::results::DiagnosticCode;
 use crate::results::{BrokenReason, FailureReason, TestResult};
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
+use anyhow::Error;
 use cargo_metadata::diagnostic::DiagnosticLevel;
 use cargo_metadata::{Message, Metadata, Package, Target};
 use docsrs_metadata::Metadata as DocsrsMetadata;
-use failure::Error;
 use remove_dir_all::remove_dir_all;
 use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
 use rustwide::logging::LogStorage;
@@ -16,49 +16,53 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::ErrorKind;
 
 fn failure_reason(err: &Error) -> FailureReason {
-    for cause in err.iter_chain() {
-        if let Some(&CommandError::SandboxOOM) = cause.downcast_ctx() {
-            return FailureReason::OOM;
-        } else if let Some(&CommandError::NoOutputFor(_) | &CommandError::Timeout(_)) =
-            cause.downcast_ctx()
-        {
-            return FailureReason::Timeout;
-        } else if let Some(reason) = cause.downcast_ctx::<FailureReason>() {
-            return reason.clone();
-        } else if let Some(CommandError::IO(io)) = cause.downcast_ctx() {
-            match io.kind() {
-                ErrorKind::OutOfMemory => {
-                    return FailureReason::OOM;
-                }
-                _ => {
-                    // FIXME use ErrorKind once #![feature(io_error_more)] is stable <https://github.com/rust-lang/rust/issues/86442>
-                    #[cfg(target_os = "linux")]
-                    match io.raw_os_error() {
-                        // <https://mariadb.com/kb/en/operating-system-error-codes/#linux-error-codes>
-                        | Some(28) /* ErrorKind::StorageFull */
-                        | Some(122) /* ErrorKind::FilesystemQuotaExceeded */
-                        | Some(31) /* TooManyLinks */=> {
-                            return FailureReason::NoSpace
-                        }
-                        _ => {}
-                    }
+    if let Some(reason) = err.downcast_ref::<FailureReason>() {
+        reason.clone()
+    } else if let Some(command_error) = err.downcast_ref::<CommandError>() {
+        match command_error {
+            CommandError::NoOutputFor(_)
+            | CommandError::Timeout(_)
+            | CommandError::KillAfterTimeoutFailed(_) => FailureReason::Timeout,
+            CommandError::SandboxOOM => FailureReason::OOM,
+            CommandError::SandboxImagePullFailed(_)
+            | CommandError::SandboxImageMissing(_)
+            | CommandError::SandboxContainerCreate(_)
+            | CommandError::WorkspaceNotMountedCorrectly
+            | CommandError::InvalidDockerInspectOutput(_) => FailureReason::Docker,
+            CommandError::IO(io) => {
+                match io.kind() {
+                    ErrorKind::OutOfMemory => FailureReason::OOM,
+                    _ => {
+                        // FIXME use ErrorKind once #![feature(io_error_more)] is stable <https://github.com/rust-lang/rust/issues/86442>
+                        #[cfg(target_os = "linux")]
+                        match io.raw_os_error() {
+                                // <https://mariadb.com/kb/en/operating-system-error-codes/#linux-error-codes>
+                                | Some(28) /* ErrorKind::StorageFull */
+                                | Some(122) /* ErrorKind::FilesystemQuotaExceeded */
+                                | Some(31) /* TooManyLinks */=> {
+                                    return FailureReason::NoSpace
+                                }
+                                _ => FailureReason::Unknown
+                            }
 
-                    #[cfg(target_os = "windows")]
-                    match io.raw_os_error() {
-                        // <https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes>
-                        | Some(39|112) /* ErrorKind::StorageFull */
-                        | Some(1295) /* ErrorKind::FilesystemQuotaExceeded */
-                        | Some(1142) /* TooManyLinks */=> {
-                            return FailureReason::NoSpace
-                        }
-                        _ => {}
+                        #[cfg(target_os = "windows")]
+                        match io.raw_os_error() {
+                                // <https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes>
+                                | Some(39|112) /* ErrorKind::StorageFull */
+                                | Some(1295) /* ErrorKind::FilesystemQuotaExceeded */
+                                | Some(1142) /* TooManyLinks */=> {
+                                    return FailureReason::NoSpace
+                                }
+                                _ => FailureReason::Unknown
+                            }
                     }
                 }
             }
+            CommandError::ExecutionFailed { .. } | _ => FailureReason::Unknown,
         }
+    } else {
+        FailureReason::Unknown
     }
-
-    FailureReason::Unknown
 }
 
 pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
@@ -66,29 +70,20 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
         Ok(ok) => Ok(ok),
         Err(err) => {
             let mut reason = None;
-            for cause in err.iter_chain() {
-                if let Some(error) = cause.downcast_ctx() {
-                    reason = match *error {
-                        PrepareError::MissingCargoToml => Some(BrokenReason::CargoToml),
-                        PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
-                        PrepareError::YankedDependencies => Some(BrokenReason::Yanked),
-                        PrepareError::MissingDependencies => {
-                            Some(BrokenReason::MissingDependencies)
-                        }
-                        PrepareError::PrivateGitRepository => {
-                            Some(BrokenReason::MissingGitRepository)
-                        }
-                        _ => None,
-                    }
-                }
-                if reason.is_some() {
-                    break;
+
+            if let Some(error) = err.downcast_ref() {
+                reason = match *error {
+                    PrepareError::MissingCargoToml => Some(BrokenReason::CargoToml),
+                    PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
+                    PrepareError::YankedDependencies(_) => Some(BrokenReason::Yanked),
+                    PrepareError::MissingDependencies(_) => Some(BrokenReason::MissingDependencies),
+                    PrepareError::PrivateGitRepository => Some(BrokenReason::MissingGitRepository),
+                    _ => None,
                 }
             }
+
             if let Some(reason) = reason {
-                Err(err
-                    .context(OverrideResult(TestResult::BrokenCrate(reason)))
-                    .into())
+                Err(err.context(OverrideResult(TestResult::BrokenCrate(reason))))
             } else {
                 Err(err)
             }
@@ -232,21 +227,21 @@ fn run_cargo(
 
     match command.run() {
         Ok(()) => Ok(()),
-        Err(e) => {
+        e @ Err(_) => {
             if did_ice {
-                Err(e.context(FailureReason::ICE).into())
+                e.context(FailureReason::ICE)
             } else if ran_out_of_space {
-                Err(e.context(FailureReason::NoSpace).into())
+                e.context(FailureReason::NoSpace)
             } else if !deps.is_empty() {
-                Err(e.context(FailureReason::DependsOn(deps)).into())
+                e.context(FailureReason::DependsOn(deps))
             } else if !error_codes.is_empty() {
-                Err(e.context(FailureReason::CompilerError(error_codes)).into())
+                e.context(FailureReason::CompilerError(error_codes))
             } else if did_network {
-                Err(e.context(FailureReason::NetworkAccess).into())
+                e.context(FailureReason::NetworkAccess)
             } else if did_trybuild {
-                Err(e.context(FailureReason::CompilerDiagnosticChange).into())
+                e.context(FailureReason::CompilerDiagnosticChange)
             } else {
-                Err(e.into())
+                e.map_err(|err| err.into())
             }
         }
     }
@@ -461,4 +456,14 @@ fn is_library(target: &Target) -> bool {
             .kind
             .iter()
             .all(|k| !["example", "test", "bench"].contains(&k.as_str()))
+}
+
+#[test]
+fn test_failure_reason() {
+    let error: anyhow::Error = anyhow!(CommandError::IO(std::io::Error::other("Test")));
+    assert_eq!(failure_reason(&error), FailureReason::Unknown);
+    assert_eq!(
+        failure_reason(&error.context(FailureReason::ICE)),
+        FailureReason::ICE
+    );
 }

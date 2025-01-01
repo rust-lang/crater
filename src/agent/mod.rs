@@ -8,7 +8,7 @@ use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::utils;
 use crate::utils::disk_usage::DiskUsage;
-use failure::Error;
+use anyhow::{Error, Result};
 use rustwide::Workspace;
 use std::collections::BTreeSet;
 use std::ops;
@@ -87,7 +87,7 @@ impl Agent {
         })
     }
 
-    fn experiment(&self) -> Fallible<Experiment> {
+    fn experiment(&self) -> Result<Experiment> {
         info!("asking the server for a new experiment...");
         Ok(self.api.next_experiment()?)
     }
@@ -137,7 +137,7 @@ fn run_heartbeat(url: &str, token: &str) {
     let api = AgentApi::new(url, token);
 
     thread::spawn(move || loop {
-        if let Err(e) = api.heartbeat().with_context(|_| "failed to send heartbeat") {
+        if let Err(e) = api.heartbeat().with_context(|| "failed to send heartbeat") {
             utils::report_failure(&e);
         }
         thread::sleep(Duration::from_secs(60));
@@ -203,8 +203,8 @@ pub fn run(
             if let Some(ex) = ex {
                 if let Err(e) = agent
                     .api
-                    .report_error(&ex, format!("{}", err.find_root_cause()))
-                    .with_context(|_| "error encountered")
+                    .report_error(&ex, format!("{}", err.root_cause()))
+                    .with_context(|| "error encountered")
                 {
                     utils::report_failure(&e);
                 }

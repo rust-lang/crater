@@ -8,7 +8,6 @@ use crate::server::auth::{auth_filter, AuthDetails};
 use crate::server::messages::Message;
 use crate::server::{Data, GithubData, HttpError};
 use crossbeam_channel::Sender;
-use failure::Compat;
 use http::Response;
 use hyper::Body;
 use std::collections::HashMap;
@@ -387,7 +386,7 @@ fn endpoint_error(
 
     let data = mutex.lock().unwrap();
     let ex = Experiment::get(&data.db, &error.experiment_name)?
-        .ok_or_else(|| err_msg("no experiment run by this agent"))?;
+        .ok_or_else(|| anyhow!("no experiment run by this agent"))?;
 
     data.metrics.record_error(&auth.name, &ex.name);
 
@@ -404,8 +403,8 @@ fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
 }
 
 async fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
-    let error = if let Some(compat) = err.find::<Compat<HttpError>>() {
-        Some(*compat.get_ref())
+    let error = if let Some(compat) = err.find::<HttpError>() {
+        Some(*compat)
     } else if err.is_not_found() {
         Some(HttpError::NotFound)
     } else {

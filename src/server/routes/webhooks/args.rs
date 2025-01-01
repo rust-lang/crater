@@ -46,7 +46,7 @@ macro_rules! generate_parser {
 
         #[allow(unused_variables, unused_mut)]
         impl FromStr for $enum {
-            type Err = ::failure::Error;
+            type Err = ::anyhow::Error;
 
             fn from_str(input: &str) -> Fallible<$enum> {
                 let mut parts = split_quoted(input)?.into_iter().peekable();

@@ -18,9 +18,8 @@ impl List for RegistryList {
         let mut index = GitIndex::with_path(
             WORK_DIR.join("crates.io-index"),
             "https://github.com/rust-lang/crates.io-index",
-        )
-        .to_failure()?;
-        index.update().to_failure()?;
+        )?;
+        index.update()?;
 
         for krate in index.crates() {
             // The versions() method returns the list of published versions starting from the

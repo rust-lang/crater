@@ -29,7 +29,7 @@ pub(crate) trait List {
                     "INSERT INTO crates (crate, list, loaded_at) VALUES (?1, ?2, ?3);",
                     &[&krate.id(), &Self::NAME, &now],
                 )
-                .with_context(|_| {
+                .with_context(|| {
                     format!(
                         "failed to insert crate {} into the {} list",
                         krate,

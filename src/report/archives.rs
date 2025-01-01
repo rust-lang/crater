@@ -98,8 +98,8 @@ fn iterate<'a, DB: ReadResults + 'a>(
                 .filter_map(move |tc| {
                     let log = db
                         .load_log(ex, tc, krate)
-                        .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
-                        .with_context(|_| format!("failed to read log of {krate} on {tc}"));
+                        .and_then(|c| c.ok_or_else(|| anyhow!("missing logs")))
+                        .with_context(|| format!("failed to read log of {krate} on {tc}"));
 
                     let log_bytes: EncodedLog = match log {
                         Ok(l) => l,

@@ -120,30 +120,24 @@ impl TryFrom<&'_ PackageId> for Crate {
                     pkgid.repr
                 ),
             }
-        } else if let Some((kind_proto, host_path_query_anchor)) = pkgid.repr.split_once("://") {
-            let (kind, proto) = if let Some((kind, proto)) = kind_proto.split_once('+') {
+        } else if pkgid.repr.contains("://") {
+            // Cargo Package Id Spec URL format
+            // <https://doc.rust-lang.org/cargo/reference/pkgid-spec.html>
+
+            let pkg_url = url::Url::parse(&pkgid.repr)?;
+
+            let (kind, proto) = if let Some((kind, proto)) = pkg_url.scheme().split_once('+') {
                 (Some(kind), proto)
             } else {
-                (None, kind_proto)
+                (None, pkg_url.scheme())
             };
 
-            let (host_path_query, anchor) =
-                if let Some((host_path_query, anchor)) = host_path_query_anchor.split_once('#') {
-                    (host_path_query, Some(anchor))
-                } else {
-                    (host_path_query_anchor, None)
-                };
+            let anchor = pkg_url.fragment();
+            let query = pkg_url.query();
 
-            let (host_path, query) =
-                if let Some((host_path, query)) = host_path_query.split_once('?') {
-                    (host_path, Some(query))
-                } else {
-                    (host_path_query, None)
-                };
-
-            match (kind, proto, query) {
-                (Some("path") | None, "file", None) => Ok(Crate::Path(host_path.to_string())),
-                (Some("registry"), _, None) => {
+            match (kind, proto) {
+                (Some("path") | None, "file") => Ok(Crate::Path(pkg_url.path().to_string())),
+                (Some("registry"), _) => {
                     if let Some(anchor) = anchor {
                         if let Some((package_name, version)) = anchor.split_once(['@', ':']) {
                             Ok(Crate::Registry(RegistryCrate {
@@ -175,7 +169,9 @@ impl TryFrom<&'_ PackageId> for Crate {
                                 )
                             }
 
-                            let Some(package_name) = host_path.split('/').last() else {
+                            let Some(package_name) =
+                                pkg_url.path_segments().and_then(|segments| segments.last())
+                            else {
                                 bail!(
                                     "malformed pkgid format: {}\n maybe the representation has changed?",
                                     pkgid.repr
@@ -194,73 +190,68 @@ impl TryFrom<&'_ PackageId> for Crate {
                         )
                     }
                 }
-                (None, "http" | "https", _) | (Some("git"), _, _)
-                    if host_path.starts_with("github.com/") =>
-                {
-                    let mut parts = host_path.split('/').skip(1);
-                    let Some(org) = parts.next() else {
-                        bail!(
-                            "malformed pkgid format: {}\n maybe the representation has changed?",
-                            pkgid.repr
-                        )
-                    };
-
-                    let name = if let Some((package_name, _version)) =
-                        anchor.and_then(|anchor| anchor.split_once(['@', ':']))
-                    {
-                        package_name
-                    } else if let Some(name) = parts.next() {
-                        name
-                    } else {
-                        bail!(
-                            "malformed pkgid format: {}\n maybe the representation has changed?",
-                            pkgid.repr
-                        )
-                    };
-
-                    Ok(Crate::GitHub(GitHubRepo {
-                        org: org.to_string(),
-                        name: name.to_string(),
-                        sha: None,
-                    }))
-                }
-
-                (Some("git"), _, None) | (None, "ssh" | "git" | "http" | "https", None) => {
-                    let kind = if let Some(kind) = kind {
-                        format! {"{kind}+"}
-                    } else {
-                        String::new()
-                    };
-                    Ok(Crate::Git(GitRepo {
-                        url: format!("{kind}{proto}://{host_path}"),
-                        sha: None,
-                    }))
-                }
-                (Some("git"), _, Some(query))
-                | (None, "ssh" | "git" | "http" | "https", Some(query)) => {
-                    let Some((query_kind, rev)) = query.split_once('=') else {
-                        bail!(
-                            "malformed pkgid format: {}\n maybe the representation has changed?",
-                            pkgid.repr
-                        )
-                    };
-
-                    let kind = if let Some(kind) = kind {
-                        format! {"{kind}+"}
-                    } else {
-                        String::new()
-                    };
-                    match query_kind {
-                        "branch" | "tag" | "rev" => Ok(Crate::Git(GitRepo {
-                            url: format!("{kind}{proto}://{host_path}"),
-                            sha: Some(rev.to_string()),
-                        })),
-                        _ => {
+                (Some("git"), _) | (None, "ssh" | "git" | "http" | "https") => {
+                    let sha = if let Some(query) = query {
+                        let Some((query_kind, rev)) = query.split_once('=') else {
                             bail!(
-                                "malformed pkgid format: {}\n maybe the representation has changed?",
-                                pkgid.repr
-                            )
+                        "malformed pkgid format: {}\n maybe the representation has changed?",
+                        pkgid.repr
+                    )
+                        };
+                        match query_kind {
+                            "branch" | "tag" | "rev" => Some(rev.to_string()),
+                            _ => {
+                                bail!(
+                            "malformed pkgid format: {}\n maybe the representation has changed?",
+                            pkgid.repr
+                        )
+                            }
                         }
+                    } else {
+                        None
+                    };
+
+                    if pkg_url.domain() == Some("github.com") {
+                        let Some(org) = pkg_url
+                            .path_segments()
+                            .and_then(|mut segments| segments.next())
+                        else {
+                            bail!(
+                            "malformed pkgid format: {}\n maybe the representation has changed?",
+                            pkgid.repr
+                        )
+                        };
+
+                        let name = if let Some((package_name, _version)) =
+                            anchor.and_then(|anchor| anchor.split_once(['@', ':']))
+                        {
+                            package_name
+                        } else if let Some(name) = pkg_url
+                            .path_segments()
+                            .and_then(|mut segments| segments.nth(1))
+                        {
+                            name
+                        } else {
+                            bail!(
+                            "malformed pkgid format: {}\n maybe the representation has changed?",
+                            pkgid.repr
+                        )
+                        };
+
+                        Ok(Crate::GitHub(GitHubRepo {
+                            org: org.to_string(),
+                            name: name.to_string(),
+                            sha,
+                        }))
+                    } else {
+                        let mut repo_url = pkg_url.clone();
+                        repo_url.set_fragment(None);
+                        repo_url.set_query(None);
+
+                        Ok(Crate::Git(GitRepo {
+                            url: repo_url.to_string(),
+                            sha,
+                        }))
                     }
                 }
                 _ => bail!(
@@ -269,11 +260,15 @@ impl TryFrom<&'_ PackageId> for Crate {
                 ),
             }
         } else if let Some((package_name, version)) = pkgid.repr.split_once(['@', ':']) {
+            // Cargo Package Id Spec
+            // name ("@"|":") semver
             Ok(Crate::Registry(RegistryCrate {
                 name: package_name.to_string(),
                 version: version.to_string(),
             }))
         } else {
+            // Cargo Package Id Spec
+            // name only
             Ok(Crate::Registry(RegistryCrate {
                 name: pkgid.repr.clone(),
                 version: "unknown".to_string(),
@@ -434,18 +429,26 @@ mod tests {
                 name: "cargo-platform".to_string(),
                 sha: None
             }),
-
-            "ssh://git@github.com/rust-lang/regex.git#regex@1.4.3" => Crate::Git(GitRepo {
-                url: "ssh://git@github.com/rust-lang/regex.git".to_string(),
+            "ssh://git@github.com/rust-lang/regex.git#regex@1.4.3" => Crate::GitHub(GitHubRepo {
+                org: "rust-lang".to_string(),
+                name: "regex".to_string(),
                 sha: None
             }),
-            "git+ssh://git@github.com/rust-lang/regex.git#regex@1.4.3" => Crate::Git(GitRepo {
-                url: "git+ssh://git@github.com/rust-lang/regex.git".to_string(),
+            "git+ssh://git@github.com/rust-lang/regex.git#regex@1.4.3" => Crate::GitHub(GitHubRepo {
+                org: "rust-lang".to_string(),
+                name: "regex".to_string(),
                 sha: None
             }),
-            "git+ssh://git@github.com/rust-lang/regex.git?branch=dev#regex@1.4.3" => Crate::Git(GitRepo {
-                url: "git+ssh://git@github.com/rust-lang/regex.git".to_string(),
+            "git+ssh://git@github.com/rust-lang/regex.git?branch=dev#regex@1.4.3" => Crate::GitHub(GitHubRepo {
+                org: "rust-lang".to_string(),
+                name: "regex".to_string(),
                 sha: Some("dev".to_string())
+            }),
+
+            "git+https://gitlab.com/dummy_org/dummy?rev=9823f01cf4948a41279f6a3febcf793130cab4f6" => Crate::Git(GitRepo {
+                url: "git+https://gitlab.com/dummy_org/dummy"
+                    .to_string(),
+                sha: Some("9823f01cf4948a41279f6a3febcf793130cab4f6".to_string())
             }),
 
             "file:///path/to/my/project/foo" => Crate::Path("/path/to/my/project/foo".to_string()),

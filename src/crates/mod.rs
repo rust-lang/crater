@@ -130,15 +130,23 @@ impl TryFrom<&'_ PackageId> for Crate {
                 Some(SourceKind::Git(rev)) => {
                     if let Some(url) = package_id.url() {
                         if url.domain() == Some("github.com") {
-                            Ok(Crate::GitHub(GitHubRepo {
-                                org: url
-                                    .path_segments()
-                                    .and_then(|mut path| path.next())
-                                    .unwrap_or_default()
-                                    .to_string(),
-                                name: package_id.name().to_string(),
-                                sha: rev.pretty_ref(false).map(|rev| rev.to_string()),
-                            }))
+                            if let Some(mut path) = url.path_segments() {
+                                let Some(org) = path.next() else {
+                                    bail!("Github URL path is too short")
+                                };
+
+                                let Some(repo_name) = path.next() else {
+                                    bail!("Github URL path is too short")
+                                };
+
+                                Ok(Crate::GitHub(GitHubRepo {
+                                    org: org.to_string(),
+                                    name: repo_name.to_string(),
+                                    sha: rev.pretty_ref(false).map(|rev| rev.to_string()),
+                                }))
+                            } else {
+                                bail!("Github Git URL doesn't have a valid path")
+                            }
                         } else {
                             Ok(Crate::Git(GitRepo {
                                 url: url.to_string(),
@@ -179,15 +187,23 @@ impl TryFrom<&'_ PackageId> for Crate {
                     Some(url) => match url.scheme() {
                         "http" | "https" | "git" | "ssh" => {
                             if url.domain() == Some("github.com") {
-                                Ok(Crate::GitHub(GitHubRepo {
-                                    org: url
-                                        .path_segments()
-                                        .and_then(|mut path| path.next())
-                                        .unwrap_or_default()
-                                        .to_string(),
-                                    name: package_id.name().to_string(),
-                                    sha: None,
-                                }))
+                                if let Some(mut path) = url.path_segments() {
+                                    let Some(org) = path.next() else {
+                                        bail!("Github URL path is too short")
+                                    };
+
+                                    let Some(repo_name) = path.next() else {
+                                        bail!("Github URL path is too short")
+                                    };
+
+                                    Ok(Crate::GitHub(GitHubRepo {
+                                        org: org.to_string(),
+                                        name: repo_name.to_string(),
+                                        sha: None,
+                                    }))
+                                } else {
+                                    bail!("Github Git URL doesn't have a valid path")
+                                }
                             } else {
                                 Ok(Crate::Git(GitRepo {
                                     url: url.to_string(),
@@ -359,7 +375,7 @@ mod tests {
             }),
             "https://github.com/rust-lang/cargo#cargo-platform@0.1.2" => Crate::GitHub(GitHubRepo {
                 org: "rust-lang".to_string(),
-                name: "cargo-platform".to_string(),
+                name: "cargo".to_string(), // repo name not crate name
                 sha: None
             }),
             "ssh://git@github.com/rust-lang/regex.git#regex@1.4.3" => Crate::GitHub(GitHubRepo {

@@ -208,7 +208,7 @@ rustc_get_version = { skip = true } # does not build on beta
 "senrust/toy_compiler2" = { skip-tests = true } # UB when tests run concurrently
 "Yogaflre/leetcode" = { skip-tests = true } # UB
 "UndeadRat22/kzg10-rust" = { skip-tests = true } # Wraps a non-thread-safe C++ library
-"JakeDawkins/graphql-client-302-repro" = { skip-tests = true } # Stack overflow in a proc macro
+"JakeDawkins/graphql-client-302-repro" = { skip = true } # Stack overflow in a proc macro
 "cdstanford/hydroflow-hackathon" = { skip-tests = true } # UB in a proc macro
 "hydro-project/compute-pi" = { skip-tests = true } # UB in a proc macro
 "KatsukiFujimoto/git-rs" = { skip-tests = true } # flaky test (HashSet iteration)

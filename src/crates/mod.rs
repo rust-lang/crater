@@ -161,8 +161,8 @@ impl TryFrom<&'_ PackageId> for Crate {
                         name: package_id.name().to_string(),
                         version: package_id
                             .version()
-                            .map(|version| version.to_string())
-                            .unwrap_or_else(|| String::from("unknown")),
+                            .ok_or_else(|| anyhow!("missing version for registry crate"))?
+                            .to_string(),
                     }))
                 }
                 Some(SourceKind::Directory) => {
@@ -173,8 +173,8 @@ impl TryFrom<&'_ PackageId> for Crate {
                         name: package_id.name().to_string(),
                         version: package_id
                             .version()
-                            .map(|version| version.to_string())
-                            .unwrap_or_else(|| String::from("unknown")),
+                            .ok_or_else(|| anyhow!("missing version for registry crate"))?
+                            .to_string(),
                     })),
                     Some(url) => match url.scheme() {
                         "http" | "https" | "git" | "ssh" => {
@@ -387,9 +387,13 @@ mod tests {
             "file:///path/to/my/project/foo" => Crate::Path("/path/to/my/project/foo".to_string()),
             "file:///path/to/my/project/foo#1.1.8" => Crate::Path("/path/to/my/project/foo".to_string()),
             "path+file:///path/to/my/project/foo#1.1.8" => Crate::Path("/path/to/my/project/foo".to_string()),
-
-            "invalid" => Crate::Registry(RegistryCrate{ name: "invalid".to_string(), version: "unknown".to_string() }),
         }
+
+        // while `invalid` is a valid package name it is missing a version
+        assert!(Crate::try_from(&PackageId {
+            repr: "invalid".to_string()
+        })
+        .is_err());
     }
 
     #[test]

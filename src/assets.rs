@@ -94,7 +94,7 @@ impl FileContent {
         Ok(match *self {
             FileContent::Static(content) => Cow::Borrowed(content),
             FileContent::Dynamic(ref path) => {
-                Cow::Owned(::std::fs::read(path).with_context(|_| {
+                Cow::Owned(::std::fs::read(path).with_context(|| {
                     format!("failed to load dynamic asset: {}", path.to_string_lossy())
                 })?)
             }
@@ -140,7 +140,8 @@ fn build_tera_cache() -> Fallible<Tera> {
         .collect::<Vec<_>>();
 
     let mut tera = Tera::default();
-    tera.add_raw_templates(to_add).to_failure()?;
+    tera.add_raw_templates(to_add)
+        .map_err(|err| anyhow!("{err}"))?;
     Ok(tera)
 }
 
@@ -164,5 +165,5 @@ pub fn render_template<C: Serialize>(name: &str, context: C) -> Fallible<String>
     let tera_context = tera::Context::from_serialize(context)?;
     Ok(tera
         .render(name, &tera_context)
-        .map_err(|e| failure::format_err!("{:?}", e))?)
+        .map_err(|e| anyhow!("{:?}", e))?)
 }

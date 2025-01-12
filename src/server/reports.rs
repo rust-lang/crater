@@ -154,7 +154,7 @@ impl ReportsWorker {
     pub fn spawn(&self, data: Data, github_data: Option<GithubData>) {
         let joiner = thread::spawn(move || loop {
             let result = reports_thread(&data.clone(), github_data.as_ref())
-                .with_context(|_| "the reports generator thread crashed");
+                .with_context(|| "the reports generator thread crashed");
             if let Err(e) = result {
                 utils::report_failure(&e);
             }

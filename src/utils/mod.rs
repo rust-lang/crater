@@ -1,8 +1,6 @@
 use crate::prelude::*;
-use failure::{AsFail, Backtrace};
 use percent_encoding::{AsciiSet, CONTROLS};
 use std::any::Any;
-use std::fmt;
 use std::str::FromStr;
 
 pub(crate) mod hex;
@@ -39,22 +37,13 @@ pub fn report_panic(e: &dyn Any) {
     }
 }
 
-pub fn report_failure(err: &(impl HasBacktrace + AsFail)) {
+pub fn report_failure(err: &anyhow::Error) {
     let backtrace = err.backtrace();
-    let err = err.as_fail();
     error!("{}", err);
 
-    for cause in err.iter_causes() {
+    for cause in err.chain() {
         error!("caused by: {}", cause);
     }
-
-    let backtrace = match backtrace {
-        Some(bt) => bt,
-        None => {
-            error!("no backtrace");
-            return;
-        }
-    };
 
     // Avoid printing a blank line if the backtrace exists but is empty.
     //
@@ -69,25 +58,6 @@ pub fn report_failure(err: &(impl HasBacktrace + AsFail)) {
     // If the the environment variable is not set, mention it to the user.
     if !is_backtrace_runtime_enabled() {
         error!("note: run with `RUST_BACKTRACE=1` to display a backtrace.");
-    }
-}
-
-pub trait HasBacktrace {
-    fn backtrace(&self) -> Option<&Backtrace>;
-}
-
-impl HasBacktrace for failure::Error {
-    fn backtrace(&self) -> Option<&Backtrace> {
-        Some(Self::backtrace(self))
-    }
-}
-
-impl<T> HasBacktrace for failure::Context<T>
-where
-    T: fmt::Display + Send + Sync + 'static,
-{
-    fn backtrace(&self) -> Option<&Backtrace> {
-        Fail::backtrace(self)
     }
 }
 

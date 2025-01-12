@@ -186,7 +186,7 @@ fn get_crate_version_status(
     if let Crate::Registry(krate) = krate {
         let index_krate = index
             .crate_(&krate.name)
-            .ok_or_else(|| err_msg(format!("no crate found in index {:?}", &krate)))?;
+            .ok_or_else(|| anyhow!("no crate found in index {:?}", &krate))?;
 
         let outdated = index_krate.most_recent_version().version() != krate.version;
 
@@ -220,8 +220,7 @@ pub fn generate_report<DB: ReadResults>(
     let index = GitIndex::with_path(
         WORK_DIR.join("crates.io-index"),
         "https://github.com/rust-lang/crates.io-index",
-    )
-    .to_failure()?;
+    )?;
     //crate ids are unique so unstable sort is equivalent to stable sort but is generally faster
     crates.sort_unstable_by_key(|a| a.id());
     let res = crates
@@ -311,8 +310,8 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
                     crate_to_path_fragment(tc, krate, SanitizationContext::Path).join("log.txt");
                 let content = db
                     .load_log(ex, tc, krate)
-                    .and_then(|c| c.ok_or_else(|| err_msg("missing logs")))
-                    .with_context(|_| format!("failed to read log of {krate} on {tc}"));
+                    .and_then(|c| c.ok_or_else(|| anyhow!("missing logs")))
+                    .with_context(|| format!("failed to read log of {krate} on {tc}"));
                 let content = match content {
                     Ok(c) => c,
                     Err(e) => {
@@ -339,7 +338,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
 
     let mut errors = errors.into_inner().unwrap();
     for error in errors.iter() {
-        utils::report_failure(&failure::format_err!("Logging upload failed: {:?}", error));
+        utils::report_failure(&anyhow!("Logging upload failed: {:?}", error));
     }
     if !errors.is_empty() {
         return Err(errors.remove(0));

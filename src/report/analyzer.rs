@@ -111,10 +111,10 @@ mod tests {
     use crate::report::{generate_report, Comparison};
     use crate::results::{DummyDB, FailureReason::*};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
-    use failure::Fallible;
+    use anyhow::Result;
 
     #[test]
-    fn test_report_analysis() -> Fallible<()> {
+    fn test_report_analysis() -> Result<()> {
         macro_rules! reg {
             ($name:expr) => {
                 Crate::Registry(RegistryCrate {

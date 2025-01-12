@@ -121,7 +121,7 @@ macro_rules! test_result_enum {
         }
 
         impl FromStr for $name {
-            type Err = ::failure::Error;
+            type Err = ::anyhow::Error;
 
             fn from_str(input: &str) -> Fallible<Self> {
                 // if there is more than one ':' we assume it's part of a failure reason serialization
@@ -183,9 +183,9 @@ impl DiagnosticCode {
 }
 
 impl ::std::str::FromStr for DiagnosticCode {
-    type Err = ::failure::Error;
+    type Err = ::anyhow::Error;
 
-    fn from_str(s: &str) -> ::failure::Fallible<DiagnosticCode> {
+    fn from_str(s: &str) -> anyhow::Result<DiagnosticCode> {
         Ok(DiagnosticCode {
             code: s.to_string(),
         })
@@ -200,12 +200,13 @@ pub enum FailureReason {
     Timeout,
     ICE,
     NetworkAccess,
+    Docker,
     CompilerDiagnosticChange,
     CompilerError(BTreeSet<DiagnosticCode>),
     DependsOn(BTreeSet<Crate>),
 }
 
-impl Fail for FailureReason {}
+impl std::error::Error for FailureReason {}
 
 impl ::std::fmt::Display for FailureReason {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -216,6 +217,7 @@ impl ::std::fmt::Display for FailureReason {
             FailureReason::Timeout => write!(f, "timeout"),
             FailureReason::ICE => write!(f, "ice"),
             FailureReason::NetworkAccess => write!(f, "network-access"),
+            FailureReason::Docker => write!(f, "docker"),
             FailureReason::CompilerError(codes) => write!(
                 f,
                 "compiler-error({})",
@@ -239,9 +241,9 @@ impl ::std::fmt::Display for FailureReason {
 }
 
 impl ::std::str::FromStr for FailureReason {
-    type Err = ::failure::Error;
+    type Err = ::anyhow::Error;
 
-    fn from_str(s: &str) -> ::failure::Fallible<FailureReason> {
+    fn from_str(s: &str) -> ::anyhow::Result<FailureReason> {
         if let (Some(idx), true) = (s.find('('), s.ends_with(')')) {
             let prefix = &s[..idx];
             let contents = s[idx + 1..s.len() - 1].split(", ");
@@ -283,6 +285,7 @@ impl FailureReason {
             | FailureReason::NoSpace
             | FailureReason::Timeout
             | FailureReason::NetworkAccess
+            | FailureReason::Docker
             | FailureReason::CompilerDiagnosticChange => true,
             FailureReason::CompilerError(_)
             | FailureReason::DependsOn(_)

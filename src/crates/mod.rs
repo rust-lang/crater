@@ -71,7 +71,7 @@ impl Crate {
 }
 
 impl TryFrom<&'_ PackageId> for Crate {
-    type Error = failure::Error;
+    type Error = anyhow::Error;
 
     fn try_from(pkgid: &PackageId) -> Fallible<Crate> {
         let parts = &pkgid
@@ -153,7 +153,7 @@ impl fmt::Display for Crate {
 }
 
 impl FromStr for Crate {
-    type Err = ::failure::Error;
+    type Err = ::anyhow::Error;
 
     // matches with `Crate::id'
     fn from_str(s: &str) -> Fallible<Self> {

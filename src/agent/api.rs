@@ -52,7 +52,7 @@ impl ResponseExt for ::reqwest::blocking::Response {
         let status = self.status();
         let result: ApiResponse<T> = self
             .json()
-            .with_context(|_| format!("failed to parse API response (status code {status})",))?;
+            .with_context(|| format!("failed to parse API response (status code {status})",))?;
         match result {
             ApiResponse::Success { result } => Ok(result),
             ApiResponse::SlowDown => Err(AgentApiError::ServerUnavailable.into()),
@@ -139,7 +139,7 @@ impl AgentApi {
         })
     }
 
-    pub fn next_experiment(&self) -> Fallible<Experiment> {
+    pub fn next_experiment(&self) -> Result<Experiment> {
         self.retry(|this| loop {
             let resp: Option<_> = this
                 .build_request(Method::POST, "next-experiment")

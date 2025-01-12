@@ -141,7 +141,7 @@ impl TryFrom<&'_ PackageId> for Crate {
 
                                 Ok(Crate::GitHub(GitHubRepo {
                                     org: org.to_string(),
-                                    name: repo_name.to_string(),
+                                    name: repo_name.trim_end_matches(".git").to_string(),
                                     sha: match rev {
                                         GitReference::Rev(rev)
                                             if rev.chars().all(|c| c.is_ascii_hexdigit()) =>
@@ -212,7 +212,7 @@ impl TryFrom<&'_ PackageId> for Crate {
 
                                     Ok(Crate::GitHub(GitHubRepo {
                                         org: org.to_string(),
-                                        name: repo_name.to_string(),
+                                        name: repo_name.trim_end_matches(".git").to_string(),
                                         sha: None,
                                     }))
                                 } else {

@@ -4,29 +4,38 @@
       "regressed",
       {
         "Complete": {
-          "orphans": [],
-          "res": [
+          "orphans": [
             [
               {
-                "krate": {
-                  "Local": "beta-faulty-deps"
-                },
-                "name": "beta-faulty-deps (local)",
-                "res": "regressed",
-                "runs": [
-                  {
-                    "log": "stable/local/beta-faulty-deps",
-                    "res": "test-pass"
-                  },
-                  {
-                    "log": "beta/local/beta-faulty-deps",
-                    "res": "build-fail:unknown"
-                  }
-                ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
+                "GitHub": {
+                  "name": "crater",
+                  "org": "rust-lang",
+                  "sha": "f190933e896443e285e3bb6962fb87d7439b8d65"
+                }
               },
-              []
-            ],
+              [
+                {
+                  "krate": {
+                    "Local": "beta-faulty-deps"
+                  },
+                  "name": "beta-faulty-deps (local)",
+                  "res": "regressed",
+                  "runs": [
+                    {
+                      "log": "stable/local/beta-faulty-deps",
+                      "res": "test-pass"
+                    },
+                    {
+                      "log": "beta/local/beta-faulty-deps",
+                      "res": "build-fail:depends-on(gh/rust-lang/crater/f190933e896443e285e3bb6962fb87d7439b8d65)"
+                    }
+                  ],
+                  "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
+                }
+              ]
+            ]
+          ],
+          "res": [
             [
               {
                 "krate": {

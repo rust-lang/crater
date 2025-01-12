@@ -142,7 +142,14 @@ impl TryFrom<&'_ PackageId> for Crate {
                                 Ok(Crate::GitHub(GitHubRepo {
                                     org: org.to_string(),
                                     name: repo_name.to_string(),
-                                    sha: rev.pretty_ref(false).map(|rev| rev.to_string()),
+                                    sha: match rev {
+                                        GitReference::Rev(rev)
+                                            if rev.chars().all(|c| c.is_ascii_hexdigit()) =>
+                                        {
+                                            Some(rev.to_string())
+                                        }
+                                        _ => None,
+                                    },
                                 }))
                             } else {
                                 bail!("Github Git URL doesn't have a valid path")
@@ -150,7 +157,14 @@ impl TryFrom<&'_ PackageId> for Crate {
                         } else {
                             Ok(Crate::Git(GitRepo {
                                 url: url.to_string(),
-                                sha: rev.pretty_ref(false).map(|rev| rev.to_string()),
+                                sha: match rev {
+                                    GitReference::Rev(rev)
+                                        if rev.chars().all(|c| c.is_ascii_hexdigit()) =>
+                                    {
+                                        Some(rev.to_string())
+                                    }
+                                    _ => None,
+                                },
                             }))
                         }
                     } else {
@@ -391,13 +405,13 @@ mod tests {
             "git+ssh://git@github.com/rust-lang/regex.git?branch=dev#regex@1.4.3" => Crate::GitHub(GitHubRepo {
                 org: "rust-lang".to_string(),
                 name: "regex".to_string(),
-                sha: Some("branch=dev".to_string())
+                sha: None
             }),
 
             "git+https://gitlab.com/dummy_org/dummy?rev=9823f01cf4948a41279f6a3febcf793130cab4f6" => Crate::Git(GitRepo {
                 url: "https://gitlab.com/dummy_org/dummy"
                     .to_string(),
-                sha: Some("rev=9823f01cf4948a41279f6a3febcf793130cab4f6".to_string())
+                sha: Some("9823f01cf4948a41279f6a3febcf793130cab4f6".to_string())
             }),
 
             "file:///path/to/my/project/foo" => Crate::Path("/path/to/my/project/foo".to_string()),

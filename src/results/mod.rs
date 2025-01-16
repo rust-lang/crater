@@ -272,6 +272,7 @@ impl ::std::str::FromStr for FailureReason {
                 "timeout" => Ok(FailureReason::Timeout),
                 "ice" => Ok(FailureReason::ICE),
                 "no-space" => Ok(FailureReason::NoSpace),
+                "docker" => Ok(FailureReason::Docker),
                 _ => bail!("unexpected value: {}", s),
             }
         }

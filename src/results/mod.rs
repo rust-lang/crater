@@ -272,6 +272,7 @@ impl ::std::str::FromStr for FailureReason {
                 "timeout" => Ok(FailureReason::Timeout),
                 "ice" => Ok(FailureReason::ICE),
                 "no-space" => Ok(FailureReason::NoSpace),
+                "docker" => Ok(FailureReason::Docker),
                 _ => bail!("unexpected value: {}", s),
             }
         }
@@ -356,6 +357,7 @@ mod tests {
         //"build-fail:depends-on()" => BuildFail(DependsOn(vec!["001"])),
         test_from_str! {
             "build-fail:unknown" => BuildFail(Unknown),
+            "build-fail:docker" => BuildFail(Docker),
             "build-fail:compiler-error(001, 002)" => BuildFail(CompilerError(btreeset!["001".parse().unwrap(), "002".parse().unwrap()])),
             "build-fail:compiler-error(001)" => BuildFail(CompilerError(btreeset!["001".parse().unwrap()])),
             "build-fail:oom" => BuildFail(OOM),

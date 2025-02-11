@@ -24,6 +24,7 @@ And the bot will reply to you.
   * [Creating experiments][h-cmd-run]
   * [Editing experiments][h-cmd-edit]
   * [Aborting experiments][h-cmd-abort]
+  * [Craterbot usage examples][h-craterbot-examples]
 * Troubleshooting:
   * [Regenerating a report if it failed][h-troubleshooting-retry-report]
   * [Reload the list of GitHub team members][h-troubleshooting-reload-teams]
@@ -230,6 +231,16 @@ command. For example, to abort an experiment named `foo` you can use:
   automatically][h-experiment-names]
 
 [Go back to the TOC][h-toc]
+
+### Craterbot usage examples
+
+[h-craterbot-examples]: #craterbot-usage-examples
+
+#### Example: gauge impact of a lint
+
+```
+@craterbot check start=master#fullhash end=try#fullhash+rustflags=-Dunit_bindings
+```
 
 ## Troubleshooting
 

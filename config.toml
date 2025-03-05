@@ -225,5 +225,6 @@ rustc_get_version = { skip = true } # does not build on beta
 "samcarey/drop_block_test" = { skip = true } # broken cfg for beta
 "c0repwn3r/mangrove" = { skip = true } # broken beta rustc version parsing
 "zbzalex/rustc_get_version" = { skip = true } # broken beta rustc version parsing
+"ns6251/spin-cookie-token-sample" = { skip = true } # invalid dep tree, spuriously compiles
 
 [local-crates]

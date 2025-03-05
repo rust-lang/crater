@@ -174,7 +174,7 @@ impl ACL {
         if self.rust_teams {
             let url = format!("{}/permissions/crater.json", team_data::BASE_URL);
             let members: team_data::Permission = crate::utils::http::get_sync(&url)?.json()?;
-            if members.github_ids.iter().any(|id| *id == user_id) {
+            if members.github_ids.contains(&user_id) {
                 return Ok(true);
             }
         }

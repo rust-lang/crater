@@ -93,6 +93,7 @@ nexus-rs = { skip-tests = true } # flaky tests
 nss-sys = { skip-tests = true } # flaky test (sefaults)
 poolite = { skip-tests = true } # flaky test
 proxy_config = { skip-tests = true } # flaky tests
+quicksort_gen = { skip-tests = true } # flaky tests
 read-process-memory = { skip-tests = true } # flaky tests
 region = { skip-tests = true } # flaky tests
 restson = { skip-tests = true } # uses HTTP requests

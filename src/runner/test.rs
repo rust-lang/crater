@@ -15,7 +15,7 @@ use rustwide::{Build, PrepareError};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::ErrorKind;
 
-fn failure_reason(err: &Error) -> FailureReason {
+pub(crate) fn failure_reason(err: &Error) -> FailureReason {
     if let Some(reason) = err.downcast_ref::<FailureReason>() {
         reason.clone()
     } else if let Some(command_error) = err.downcast_ref::<CommandError>() {

@@ -4,7 +4,7 @@ use crate::experiments::{Experiment, Mode};
 use crate::prelude::*;
 use crate::results::{BrokenReason, TestResult};
 use crate::runner::tasks::{Task, TaskStep};
-use crate::runner::test::detect_broken;
+use crate::runner::test::{detect_broken, failure_reason};
 use crate::runner::OverrideResult;
 use crate::toolchain::Toolchain;
 use crate::utils;
@@ -244,7 +244,7 @@ impl<'a> Worker<'a> {
                 let mut result = if self.config.is_broken(&krate) {
                     TestResult::BrokenCrate(BrokenReason::Unknown)
                 } else {
-                    TestResult::Error
+                    TestResult::PrepareFail(failure_reason(&err))
                 };
 
                 if let Some(OverrideResult(res)) = err.downcast_ref() {

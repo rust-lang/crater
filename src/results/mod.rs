@@ -307,6 +307,7 @@ string_enum!(pub enum BrokenReason {
 test_result_enum!(pub enum TestResult {
     with_reason {
         BrokenCrate(BrokenReason) => "broken",
+        PrepareFail(FailureReason) => "prepare-fail",
         BuildFail(FailureReason) => "build-fail",
         TestFail(FailureReason) => "test-fail",
     }
@@ -356,6 +357,11 @@ mod tests {
 
         //"build-fail:depends-on()" => BuildFail(DependsOn(vec!["001"])),
         test_from_str! {
+            "prepare-fail:unknown" => PrepareFail(Unknown),
+            "prepare-fail:oom" => PrepareFail(OOM),
+            "prepare-fail:docker" => PrepareFail(Docker),
+            "prepare-fail:no-space" => PrepareFail(NoSpace),
+            "prepare-fail:timeout" => PrepareFail(Timeout),
             "build-fail:unknown" => BuildFail(Unknown),
             "build-fail:docker" => BuildFail(Docker),
             "build-fail:compiler-error(001, 002)" => BuildFail(CompilerError(btreeset!["001".parse().unwrap(), "002".parse().unwrap()])),

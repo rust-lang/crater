@@ -486,45 +486,35 @@ fn compare(
             }
             (BuildFail(_), BuildFail(FailureReason::ICE)) => Comparison::Regressed,
 
+            // same
             (BuildFail(_), BuildFail(_)) => Comparison::SameBuildFail,
             (TestFail(_), TestFail(_)) => Comparison::SameTestFail,
             (TestSkipped, TestSkipped) => Comparison::SameTestSkipped,
             (TestPass, TestPass) => Comparison::SameTestPass,
 
-            (BuildFail(ref reason1), TestFail(ref reason2))
-                if reason1.is_spurious() || reason2.is_spurious() =>
-            {
-                Comparison::SpuriousFixed
+            // (spurious) fixed
+            (BuildFail(reason), TestSkipped)
+            | (BuildFail(reason), TestPass)
+            | (TestFail(reason), TestPass)
+            | (BuildFail(reason), TestFail(_)) => {
+                if reason.is_spurious() {
+                    Comparison::SpuriousFixed
+                } else {
+                    Comparison::Fixed
+                }
             }
-            (BuildFail(ref reason), TestSkipped)
-            | (BuildFail(ref reason), TestPass)
-            | (TestFail(ref reason), TestPass)
-                if reason.is_spurious() =>
-            {
-                Comparison::SpuriousFixed
-            }
-            (BuildFail(_), TestFail(_))
-            | (BuildFail(_), TestSkipped)
-            | (BuildFail(_), TestPass)
-            | (TestFail(_), TestPass) => Comparison::Fixed,
-            (TestFail(_), BuildFail(reason)) if !reason.is_spurious() => Comparison::Regressed,
-            (TestFail(reason1), BuildFail(reason2))
-                if reason1.is_spurious() || reason2.is_spurious() =>
-            {
-                Comparison::SpuriousRegressed
-            }
+
+            // (spurious) regressed
             (TestPass, TestFail(reason))
             | (TestPass, BuildFail(reason))
             | (TestSkipped, BuildFail(reason))
-            | (TestFail(_), BuildFail(reason))
-                if reason.is_spurious() =>
-            {
-                Comparison::SpuriousRegressed
+            | (TestFail(_), BuildFail(reason)) => {
+                if reason.is_spurious() {
+                    Comparison::SpuriousRegressed
+                } else {
+                    Comparison::Regressed
+                }
             }
-            (TestPass, TestFail(_))
-            | (TestPass, BuildFail(_))
-            | (TestSkipped, BuildFail(_))
-            | (TestFail(_), BuildFail(_)) => Comparison::Regressed,
 
             (Error, _) | (_, Error) => Comparison::Error,
             (Skipped, _) | (_, Skipped) => Comparison::Skipped,
@@ -821,6 +811,7 @@ mod tests {
 
                 // Non-spurious fixes/regressions
                 BuildFail(Unknown), TestFail(Unknown) => Fixed;
+                BuildFail(Unknown), TestFail(OOM) => Fixed;
                 BuildFail(Unknown), TestSkipped => Fixed;
                 BuildFail(Unknown), TestPass => Fixed;
                 TestFail(Unknown), TestPass => Fixed;
@@ -837,7 +828,6 @@ mod tests {
 
                 // Spurious fixes/regressions
                 BuildFail(OOM), TestFail(Unknown) => SpuriousFixed;
-                BuildFail(Unknown), TestFail(OOM) => SpuriousFixed;
                 BuildFail(OOM), TestSkipped => SpuriousFixed;
                 BuildFail(OOM), TestPass => SpuriousFixed;
                 TestFail(OOM), TestPass => SpuriousFixed;

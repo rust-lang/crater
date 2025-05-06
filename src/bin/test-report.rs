@@ -79,6 +79,6 @@ impl ReportWriter for NullWriter {
 
 impl fmt::Display for NullWriter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }

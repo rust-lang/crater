@@ -60,7 +60,7 @@ impl<E: std::error::Error> r2d2::HandleError<E> for ErrorHandler {
         if log::log_enabled!(log::Level::Error) {
             log::error!("r2d2 error: {:?}", error);
         } else {
-            eprintln!("r2d2 error: {:?}", error);
+            eprintln!("r2d2 error: {error:?}");
         }
     }
 }

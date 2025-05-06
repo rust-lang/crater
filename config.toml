@@ -143,7 +143,6 @@ yices2 = { skip = true } # Sometimes times out, sometimes doesn't
 scheduled-executor = { skip-tests = true } # UB, allocator corruption
 skippy-rs = { skip-tests = true } # UB, out-of-bounds get_unchecked
 pepe-telemetry = { skip-test = true } # flaky test (concurrency)
-puid = { skip-tests = true } # flaky test (timing)
 watchable = { skip-tests = true } # flaky test (timing)
 lispi = { skip-tests = true } # flaky test (data races)
 cargo-ramdisk = { skip-tests = true } # flaky test (concurrency)

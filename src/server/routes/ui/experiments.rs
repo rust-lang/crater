@@ -131,7 +131,7 @@ fn humanize(duration: Duration) -> String {
         Ok(d) => d,
         Err(_) => {
             // Don't try to make it pretty as a fallback.
-            return format!("{:?}", duration);
+            return format!("{duration:?}");
         }
     };
     if duration.as_secs() < 60 {

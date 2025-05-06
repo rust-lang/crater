@@ -29,35 +29,13 @@ fn failure_reason(err: &Error) -> FailureReason {
             | CommandError::SandboxContainerCreate(_)
             | CommandError::WorkspaceNotMountedCorrectly
             | CommandError::InvalidDockerInspectOutput(_) => FailureReason::Docker,
-            CommandError::IO(io) => {
-                match io.kind() {
-                    ErrorKind::OutOfMemory => FailureReason::OOM,
-                    _ => {
-                        // FIXME use ErrorKind once #![feature(io_error_more)] is stable <https://github.com/rust-lang/rust/issues/86442>
-                        #[cfg(target_os = "linux")]
-                        match io.raw_os_error() {
-                                // <https://mariadb.com/kb/en/operating-system-error-codes/#linux-error-codes>
-                                | Some(28) /* ErrorKind::StorageFull */
-                                | Some(122) /* ErrorKind::FilesystemQuotaExceeded */
-                                | Some(31) /* TooManyLinks */=> {
-                                    return FailureReason::NoSpace
-                                }
-                                _ => FailureReason::Unknown
-                            }
-
-                        #[cfg(target_os = "windows")]
-                        match io.raw_os_error() {
-                                // <https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes>
-                                | Some(39|112) /* ErrorKind::StorageFull */
-                                | Some(1295) /* ErrorKind::FilesystemQuotaExceeded */
-                                | Some(1142) /* TooManyLinks */=> {
-                                    return FailureReason::NoSpace
-                                }
-                                _ => FailureReason::Unknown
-                            }
-                    }
+            CommandError::IO(io) => match io.kind() {
+                ErrorKind::OutOfMemory => FailureReason::OOM,
+                ErrorKind::StorageFull | ErrorKind::QuotaExceeded | ErrorKind::TooManyLinks => {
+                    FailureReason::NoSpace
                 }
-            }
+                _ => FailureReason::Unknown,
+            },
             CommandError::ExecutionFailed { .. } | _ => FailureReason::Unknown,
         }
     } else {

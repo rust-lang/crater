@@ -256,11 +256,8 @@ impl<'a> Worker<'a> {
                         self.ex,
                         &krate,
                         tc,
-                        format!(
-                            "{}\n\nthis task or one of its parent failed: {:?}",
-                            logs, err
-                        )
-                        .as_bytes(),
+                        format!("{logs}\n\nthis task or one of its parent failed: {err:?}")
+                            .as_bytes(),
                         &result,
                         updated_version.as_ref().map(|new| (&krate, new)),
                     ) {
@@ -327,7 +324,7 @@ impl<'a> Worker<'a> {
                             self.ex,
                             &task.krate,
                             tc,
-                            format!("{}\n\n{:?}", storage, err).as_bytes(),
+                            format!("{storage}\n\n{err:?}").as_bytes(),
                             &test_result,
                             updated_version.as_ref().map(|new| (&krate, new)),
                         )?;

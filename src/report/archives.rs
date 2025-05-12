@@ -51,7 +51,7 @@ impl Drop for TempfileBackedBuffer {
     fn drop(&mut self) {
         unsafe {
             if let Err(e) = nix::sys::mman::munmap(self.mmap.as_ptr() as *mut _, self.mmap.len()) {
-                eprintln!("Failed to unmap temporary file: {:?}", e);
+                eprintln!("Failed to unmap temporary file: {e:?}");
             }
         }
     }

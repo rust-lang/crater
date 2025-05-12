@@ -84,7 +84,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                         )
                         .note(
                             "sos",
-                            "Can someone from the infra team check in on this? @rust-lang/infra",
+                            "If you need assistance dealing with this failure, please ask in [t-infra](https://rust-lang.zulipchat.com/#narrow/channel/242791-t-infra) on Zulip",
                         )
                         .send(&github_issue.api_url, data, github_data)?;
                     }

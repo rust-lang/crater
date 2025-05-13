@@ -58,6 +58,7 @@ impl ResultName for TestResult {
     fn short_name(&self) -> String {
         match self {
             TestResult::BrokenCrate(reason) => reason.short_name(),
+            TestResult::PrepareFail(reason) => format!("prepare {}", reason.short_name()),
             TestResult::BuildFail(reason) => format!("build {}", reason.short_name()),
             TestResult::TestFail(reason) => format!("test {}", reason.short_name()),
             TestResult::TestSkipped => "test skipped".into(),
@@ -69,6 +70,7 @@ impl ResultName for TestResult {
 
     fn long_name(&self) -> String {
         match self {
+            TestResult::PrepareFail(reason) => format!("prepare {}", reason.long_name()),
             TestResult::BuildFail(reason) => format!("build {}", reason.long_name()),
             TestResult::TestFail(reason) => format!("test {}", reason.long_name()),
             TestResult::BrokenCrate(reason) => reason.long_name(),
@@ -103,6 +105,7 @@ impl ResultColor for Comparison {
             Comparison::SameTestPass => Color::Single("#72a156"),
             Comparison::Error => Color::Single("#d77026"),
             Comparison::Broken => Color::Single("#44176e"),
+            Comparison::PrepareFail => Color::Striped("#44176e", "#d77026"),
             Comparison::SpuriousRegressed => Color::Striped("#db3026", "#d5433b"),
             Comparison::SpuriousFixed => Color::Striped("#5630db", "#5d3dcf"),
         }
@@ -117,6 +120,7 @@ impl ResultColor for TestResult {
             TestResult::TestFail(_) => Color::Single("#65461e"),
             TestResult::TestSkipped | TestResult::TestPass => Color::Single("#62a156"),
             TestResult::Error => Color::Single("#d77026"),
+            TestResult::PrepareFail(_) => Color::Striped("#44176e", "#d77026"),
             TestResult::Skipped => Color::Single("#494b4a"),
         }
     }

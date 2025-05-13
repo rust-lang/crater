@@ -71,6 +71,7 @@ string_enum!(pub enum Comparison {
     Unknown => "unknown",
     Error => "error",
     Broken => "broken",
+    PrepareFail => "prepare-fail",
     SameBuildFail => "build-fail",
     SameTestFail => "test-fail",
     SameTestSkipped => "test-skipped",
@@ -87,7 +88,8 @@ impl Comparison {
             | Comparison::Unknown
             | Comparison::Error
             | Comparison::SpuriousRegressed
-            | Comparison::SpuriousFixed => true,
+            | Comparison::SpuriousFixed
+            | Comparison::PrepareFail => true,
             Comparison::Skipped
             | Comparison::Broken
             | Comparison::SameBuildFail
@@ -107,6 +109,7 @@ impl Comparison {
             | Comparison::SpuriousFixed
             | Comparison::Skipped
             | Comparison::Broken
+            | Comparison::PrepareFail
             | Comparison::SameBuildFail
             | Comparison::SameTestFail
             | Comparison::SameTestSkipped
@@ -406,7 +409,9 @@ fn gen_retry_list(res: &RawTestResults) -> String {
         .crates
         .iter()
         .filter(|crate_res| {
-            crate_res.res == Comparison::Regressed || crate_res.res == Comparison::SpuriousRegressed
+            crate_res.res == Comparison::Regressed
+                || crate_res.res == Comparison::SpuriousRegressed
+                || crate_res.res == Comparison::PrepareFail
         })
         .map(|crate_res| &crate_res.krate);
 
@@ -486,53 +491,37 @@ fn compare(
             }
             (BuildFail(_), BuildFail(FailureReason::ICE)) => Comparison::Regressed,
 
+            // same
             (BuildFail(_), BuildFail(_)) => Comparison::SameBuildFail,
-            (TestFail(_), TestFail(_)) => Comparison::SameTestFail,
             (TestSkipped, TestSkipped) => Comparison::SameTestSkipped,
+            (TestFail(_), TestFail(_)) => Comparison::SameTestFail,
             (TestPass, TestPass) => Comparison::SameTestPass,
 
-            (BuildFail(ref reason1), TestFail(ref reason2))
-                if reason1.is_spurious() || reason2.is_spurious() =>
-            {
-                Comparison::SpuriousFixed
+            // (spurious) fixed
+            (BuildFail(reason), TestSkipped | TestFail(_) | TestPass)
+            | (TestFail(reason), TestPass) => {
+                if reason.is_spurious() {
+                    Comparison::SpuriousFixed
+                } else {
+                    Comparison::Fixed
+                }
             }
-            (BuildFail(ref reason), TestSkipped)
-            | (BuildFail(ref reason), TestPass)
-            | (TestFail(ref reason), TestPass)
-                if reason.is_spurious() =>
-            {
-                Comparison::SpuriousFixed
-            }
-            (BuildFail(_), TestFail(_))
-            | (BuildFail(_), TestSkipped)
-            | (BuildFail(_), TestPass)
-            | (TestFail(_), TestPass) => Comparison::Fixed,
-            (TestFail(_), BuildFail(reason)) if !reason.is_spurious() => Comparison::Regressed,
-            (TestFail(reason1), BuildFail(reason2))
-                if reason1.is_spurious() || reason2.is_spurious() =>
-            {
-                Comparison::SpuriousRegressed
-            }
-            (TestPass, TestFail(reason))
-            | (TestPass, BuildFail(reason))
-            | (TestSkipped, BuildFail(reason))
-            | (TestFail(_), BuildFail(reason))
-                if reason.is_spurious() =>
-            {
-                Comparison::SpuriousRegressed
-            }
-            (TestPass, TestFail(_))
-            | (TestPass, BuildFail(_))
-            | (TestSkipped, BuildFail(_))
-            | (TestFail(_), BuildFail(_)) => Comparison::Regressed,
 
+            // (spurious) regressed
+            (TestSkipped | TestFail(_) | TestPass, BuildFail(reason))
+            | (TestPass, TestFail(reason)) => {
+                if reason.is_spurious() {
+                    Comparison::SpuriousRegressed
+                } else {
+                    Comparison::Regressed
+                }
+            }
+
+            (PrepareFail(_), _) | (_, PrepareFail(_)) => Comparison::PrepareFail,
             (Error, _) | (_, Error) => Comparison::Error,
             (Skipped, _) | (_, Skipped) => Comparison::Skipped,
             (BrokenCrate(_), _) | (_, BrokenCrate(_)) => Comparison::Broken,
-            (TestFail(_), TestSkipped)
-            | (TestPass, TestSkipped)
-            | (TestSkipped, TestFail(_))
-            | (TestSkipped, TestPass) => {
+            (TestFail(_) | TestPass, TestSkipped) | (TestSkipped, TestFail(_) | TestPass) => {
                 panic!("can't compare {res1} and {res2}");
             }
         },
@@ -821,6 +810,7 @@ mod tests {
 
                 // Non-spurious fixes/regressions
                 BuildFail(Unknown), TestFail(Unknown) => Fixed;
+                BuildFail(Unknown), TestFail(OOM) => Fixed;
                 BuildFail(Unknown), TestSkipped => Fixed;
                 BuildFail(Unknown), TestPass => Fixed;
                 TestFail(Unknown), TestPass => Fixed;
@@ -837,7 +827,6 @@ mod tests {
 
                 // Spurious fixes/regressions
                 BuildFail(OOM), TestFail(Unknown) => SpuriousFixed;
-                BuildFail(Unknown), TestFail(OOM) => SpuriousFixed;
                 BuildFail(OOM), TestSkipped => SpuriousFixed;
                 BuildFail(OOM), TestPass => SpuriousFixed;
                 TestFail(OOM), TestPass => SpuriousFixed;
@@ -845,6 +834,10 @@ mod tests {
                 TestPass, BuildFail(OOM) => SpuriousRegressed;
                 TestSkipped, BuildFail(OOM) => SpuriousRegressed;
                 TestFail(Unknown), BuildFail(OOM) => SpuriousRegressed;
+
+                // PrepareFail
+                PrepareFail(Unknown), BuildFail(Unknown) => PrepareFail;
+                BuildFail(Unknown), PrepareFail(Unknown) => PrepareFail;
 
                 // Errors
                 Error, TestPass => Error;

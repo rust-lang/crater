@@ -58,7 +58,7 @@ fn process_webhook(
                     .line("rotating_light", format!("**Error:** {e}"))
                     .note(
                         "sos",
-                        "If you have any trouble with Crater please ping **`@rust-lang/infra`**!",
+                        "If you have any trouble with Crater please ask in [t-infra](https://rust-lang.zulipchat.com/#narrow/channel/242791-t-infra) on Zulip",
                     )
                     .send(&p.issue.url, data, github_data)?;
             }

@@ -41,6 +41,7 @@ impl ExperimentData {
                 Mode::Clippy => "cargo clippy",
                 Mode::Rustdoc => "cargo doc",
                 Mode::UnstableFeatures => "unstable features",
+                Mode::Fix => "cargo fix",
             },
             assigned_to: experiment.assigned_to.as_ref().map(|a| a.to_string()),
             priority: experiment.priority,

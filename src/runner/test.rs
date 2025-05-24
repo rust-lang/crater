@@ -1,4 +1,5 @@
 use crate::crates::Crate;
+use crate::experiments::CapLints;
 use crate::prelude::*;
 use crate::results::DiagnosticCode;
 use crate::results::{BrokenReason, FailureReason, TestResult};
@@ -9,7 +10,7 @@ use cargo_metadata::diagnostic::DiagnosticLevel;
 use cargo_metadata::{Message, Metadata, Package, Target};
 use docsrs_metadata::Metadata as DocsrsMetadata;
 use remove_dir_all::remove_dir_all;
-use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
+use rustwide::cmd::{CommandError, MountKind, ProcessLinesActions, SandboxBuilder};
 use rustwide::logging::LogStorage;
 use rustwide::{Build, PrepareError};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -89,6 +90,8 @@ fn run_cargo(
     check_errors: bool,
     local_packages: &[Package],
     env: HashMap<&'static str, String>,
+    mount_kind: MountKind,
+    cap_lints: Option<CapLints>,
 ) -> Fallible<()> {
     let local_packages_id: HashSet<_> = local_packages.iter().map(|p| &p.id).collect();
 
@@ -100,13 +103,17 @@ fn run_cargo(
         args.extend(tc_cargoflags.split(' '));
     }
 
-    let mut rustflags = format!("--cap-lints={}", ctx.experiment.cap_lints.to_str());
+    let mut rustflags = cap_lints
+        .map(|cap| format!("--cap-lints={cap}"))
+        .unwrap_or_default();
     if let Some(ref tc_rustflags) = ctx.toolchain.rustflags {
         rustflags.push(' ');
         rustflags.push_str(tc_rustflags);
     }
 
-    let mut rustdocflags = format!("--cap-lints={}", ctx.experiment.cap_lints.to_str());
+    let mut rustdocflags = cap_lints
+        .map(|cap| format!("--cap-lints={cap}"))
+        .unwrap_or_default();
     if let Some(ref tc_rustdocflags) = ctx.toolchain.rustdocflags {
         rustdocflags.push(' ');
         rustdocflags.push_str(tc_rustdocflags);
@@ -187,6 +194,7 @@ fn run_cargo(
     let mut command = build_env
         .cargo()
         .args(&args)
+        .source_dir_mount_kind(mount_kind)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env("RUSTFLAGS", rustflags)
@@ -263,6 +271,8 @@ fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallib
         true,
         local_packages,
         HashMap::default(),
+        MountKind::ReadOnly,
+        Some(ctx.experiment.cap_lints),
     )?;
     run_cargo(
         ctx,
@@ -271,6 +281,8 @@ fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallib
         true,
         local_packages,
         HashMap::default(),
+        MountKind::ReadOnly,
+        Some(ctx.experiment.cap_lints),
     )?;
     Ok(())
 }
@@ -283,6 +295,8 @@ fn test(ctx: &TaskCtx, build_env: &Build) -> Fallible<()> {
         false,
         &[],
         HashMap::default(),
+        MountKind::ReadOnly,
+        Some(ctx.experiment.cap_lints),
     )
 }
 
@@ -336,6 +350,8 @@ pub(super) fn test_check_only(
         true,
         local_packages_id,
         HashMap::default(),
+        MountKind::ReadOnly,
+        Some(ctx.experiment.cap_lints),
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
@@ -361,6 +377,8 @@ pub(super) fn test_clippy_only(
         true,
         local_packages,
         HashMap::default(),
+        MountKind::ReadOnly,
+        Some(ctx.experiment.cap_lints),
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
@@ -374,7 +392,16 @@ pub(super) fn test_rustdoc(
     local_packages: &[Package],
 ) -> Fallible<TestResult> {
     let run = |cargo_args, env| {
-        let res = run_cargo(ctx, build_env, cargo_args, true, local_packages, env);
+        let res = run_cargo(
+            ctx,
+            build_env,
+            cargo_args,
+            true,
+            local_packages,
+            env,
+            MountKind::ReadOnly,
+            Some(ctx.experiment.cap_lints),
+        );
 
         // Make sure to remove the built documentation
         // There is no point in storing it after the build is done
@@ -431,6 +458,35 @@ fn is_library(target: &Target) -> bool {
             .kind
             .iter()
             .all(|k| !["example", "test", "bench"].contains(&k.as_str()))
+}
+
+pub(crate) fn fix(
+    ctx: &TaskCtx,
+    build_env: &Build,
+    local_packages_id: &[Package],
+) -> Fallible<TestResult> {
+    if let Err(err) = run_cargo(
+        ctx,
+        build_env,
+        &[
+            "fix",
+            "--allow-no-vcs",
+            "--allow-dirty",
+            "--frozen",
+            "--all",
+            "--all-targets",
+            "--message-format=json",
+        ],
+        true,
+        local_packages_id,
+        HashMap::default(),
+        MountKind::ReadWrite,
+        None,
+    ) {
+        Ok(TestResult::BuildFail(failure_reason(&err)))
+    } else {
+        Ok(TestResult::TestPass)
+    }
 }
 
 #[test]

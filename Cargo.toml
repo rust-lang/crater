@@ -24,6 +24,7 @@ clap = { version = "4", features = ["derive"] }
 crates-index = { version = "2.2.0", default-features = false, features = [
     "git-performance",
     "git-https",
+    "parallel",
 ] }
 crossbeam-channel = "0.5"
 csv = "1.0.2"
@@ -45,6 +46,7 @@ percent-encoding = "2.1.0"
 prometheus = "0.13.3"
 r2d2 = "0.8.2"
 rand = "0.8"
+rayon = "1.10"
 regex = "1.0"
 remove_dir_all = "0.7"
 reqwest = { version = "0.11", features = ["blocking", "json"] }

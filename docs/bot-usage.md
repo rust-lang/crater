@@ -85,6 +85,7 @@ The following experiment modes are currently available:
 * `check-only`: run `cargo check` on every crate (faster)
 * `clippy`: run `cargo clippy` on every crate
 * `rustdoc`: run `cargo doc --no-deps` on every crate
+* `fix`: run `cargo fix` on every crate (intended for edition migration testing)
 
 The mode you should use depends on what your experiment is testing:
 

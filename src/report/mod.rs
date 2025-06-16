@@ -133,7 +133,7 @@ enum SanitizationContext {
 }
 
 impl SanitizationContext {
-    fn sanitize(self, input: &str) -> Cow<str> {
+    fn sanitize(self, input: &str) -> Cow<'_, str> {
         match self {
             SanitizationContext::Url => utf8_percent_encode(input, &REPORT_ENCODE_SET).into(),
 

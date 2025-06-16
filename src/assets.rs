@@ -90,7 +90,7 @@ enum FileContent {
 }
 
 impl FileContent {
-    fn load(&self) -> Fallible<Cow<[u8]>> {
+    fn load(&self) -> Fallible<Cow<'_, [u8]>> {
         Ok(match *self {
             FileContent::Static(content) => Cow::Borrowed(content),
             FileContent::Dynamic(ref path) => {
@@ -108,7 +108,7 @@ pub struct Asset {
 }
 
 impl Asset {
-    pub fn content(&self) -> Fallible<Cow<[u8]>> {
+    pub fn content(&self) -> Fallible<Cow<'_, [u8]>> {
         self.content.load()
     }
 

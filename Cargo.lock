@@ -3700,9 +3700,9 @@ dependencies = [
 
 [[package]]
 name = "rustwide"
-version = "0.19.1"
+version = "0.19.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6baafa8b7ca58977065228c042fcc2532f278c1ce508d7debda549b039ee61cb"
+checksum = "232a0a56b480af1dec0988a3686c80d8fdfa5685c72d05c9ad27a637bb54e88f"
 dependencies = [
  "anyhow",
  "attohttpc",
@@ -4776,7 +4776,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

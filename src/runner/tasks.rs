@@ -48,6 +48,7 @@ pub(super) enum TaskStep {
     Clippy { tc: Toolchain, quiet: bool },
     Rustdoc { tc: Toolchain, quiet: bool },
     UnstableFeatures { tc: Toolchain },
+    Fix { tc: Toolchain, quiet: bool },
 }
 
 impl fmt::Debug for TaskStep {
@@ -59,6 +60,7 @@ impl fmt::Debug for TaskStep {
             TaskStep::Clippy { ref tc, quiet } => ("clippy", quiet, Some(tc)),
             TaskStep::Rustdoc { ref tc, quiet } => ("doc", quiet, Some(tc)),
             TaskStep::UnstableFeatures { ref tc } => ("find unstable features on", false, Some(tc)),
+            TaskStep::Fix { ref tc, quiet } => ("fix", quiet, Some(tc)),
         };
 
         write!(f, "{name}")?;
@@ -124,6 +126,7 @@ impl Task {
                 tc,
                 false,
             ),
+            TaskStep::Fix { ref tc, quiet } => (&build_dir[tc], "fixing", test::fix, tc, quiet),
         };
 
         let ctx = TaskCtx::new(build_dir, config, ex, toolchain, &self.krate, quiet);

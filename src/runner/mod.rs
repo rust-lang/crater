@@ -47,9 +47,7 @@ pub fn run_ex(
     // jobs won't be completed.
     let mut i = 0;
     while !rustwide::cmd::docker_running(workspace) {
-        log::error!(
-            "docker is not currently up, waiting for it to start (tried {i} times)"
-        );
+        log::error!("docker is not currently up, waiting for it to start (tried {i} times)");
         i += 1;
     }
 

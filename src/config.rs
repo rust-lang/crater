@@ -183,9 +183,7 @@ impl Config {
         let mut any_missing = false;
         for crate_name in self.crates.keys() {
             if !list_of_crates.contains(crate_name) {
-                error!(
-                    "check-config failed: crate `{crate_name}` is not available."
-                );
+                error!("check-config failed: crate `{crate_name}` is not available.");
                 any_missing = true;
             }
         }
@@ -214,9 +212,7 @@ impl Config {
         let mut any_missing = false;
         for repo_name in self.github_repos.keys() {
             if !list_of_crates.contains(repo_name) {
-                error!(
-                    "check-config failed: GitHub repo `{repo_name}` is missing"
-                );
+                error!("check-config failed: GitHub repo `{repo_name}` is missing");
                 any_missing = true;
             }
         }

@@ -234,10 +234,7 @@ pub(super) fn run_test(
     rustwide::logging::capture(logs, || {
         info!(
             "{} {} against {} for {}",
-            action,
-            ctx.krate,
-            ctx.toolchain,
-            ctx.experiment.name
+            action, ctx.krate, ctx.toolchain, ctx.experiment.name
         );
         let sandbox = SandboxBuilder::new()
             .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))

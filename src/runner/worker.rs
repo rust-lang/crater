@@ -144,15 +144,13 @@ impl<'a> Worker<'a> {
         error!("task {task:?} failed");
         utils::report_failure(&e);
 
-        let mut result = if self.config.is_broken(&task.krate) {
+        let result = if let Some(OverrideResult(res)) = e.downcast_ref() {
+            res.clone()
+        } else if self.config.is_broken(&task.krate) {
             TestResult::BrokenCrate(BrokenReason::Unknown)
         } else {
             TestResult::Error
         };
-
-        if let Some(OverrideResult(res)) = e.downcast_ref() {
-            result = res.clone();
-        }
 
         Err((e, result))
     }

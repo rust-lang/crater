@@ -33,8 +33,6 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub struct Ex(String);
 
-#[derive(Debug, Clone)]
-pub struct DockerEnv(#[allow(unused)] String);
 impl FromStr for Ex {
     type Err = Error;
 
@@ -42,6 +40,9 @@ impl FromStr for Ex {
         Ok(Ex(ex.to_string()))
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct DockerEnv(String);
 
 impl FromStr for DockerEnv {
     type Err = Error;
@@ -205,7 +206,7 @@ pub enum Crater {
         #[clap(name = "threads", short = 't', long = "threads", default_value = "1")]
         threads: usize,
         #[clap(name = "docker-env", long = "docker-env")]
-        docker_env: Option<String>,
+        docker_env: Option<DockerEnv>,
         #[clap(name = "fast-workspace-init", long = "fast-workspace-init")]
         fast_workspace_init: bool,
     },
@@ -242,7 +243,7 @@ pub enum Crater {
         #[clap(name = "threads", short = 't', long = "threads", default_value = "1")]
         threads: usize,
         #[clap(name = "docker-env", long = "docker-env")]
-        docker_env: Option<String>,
+        docker_env: Option<DockerEnv>,
         #[clap(name = "fast-workspace-init", long = "fast-workspace-init")]
         fast_workspace_init: bool,
         #[clap(
@@ -438,8 +439,7 @@ impl Crater {
 
                     let result_db = DatabaseDB::new(&db);
 
-                    let workspace = self
-                        .workspace(docker_env.as_ref().map(|s| s.as_str()), fast_workspace_init)?;
+                    let workspace = self.workspace(docker_env.as_ref(), fast_workspace_init)?;
                     workspace.purge_all_build_dirs()?;
 
                     let crates =
@@ -528,8 +528,7 @@ impl Crater {
                     token,
                     threads,
                     &caps,
-                    &self
-                        .workspace(docker_env.as_ref().map(|s| s.as_str()), fast_workspace_init)?,
+                    &self.workspace(docker_env.as_ref(), fast_workspace_init)?,
                 )?;
             }
             Crater::CheckConfig { ref filename } => {
@@ -542,14 +541,18 @@ impl Crater {
         Ok(())
     }
 
-    fn workspace(&self, docker_env: Option<&str>, fast_init: bool) -> Result<Workspace, Error> {
+    fn workspace(
+        &self,
+        docker_env: Option<&DockerEnv>,
+        fast_init: bool,
+    ) -> Result<Workspace, Error> {
         let mut builder = WorkspaceBuilder::new(&crater::dirs::WORK_DIR, &crater::USER_AGENT)
             .fast_init(fast_init)
             .fetch_registry_index_during_builds(true)
             .command_timeout(Some(Duration::from_secs(15 * 60)))
             .command_no_output_timeout(Some(Duration::from_secs(5 * 60)))
             .running_inside_docker(std::env::var("CRATER_INSIDE_DOCKER").is_ok());
-        if let Some(env) = docker_env {
+        if let Some(DockerEnv(env)) = docker_env {
             builder = builder.sandbox_image(if env.contains('/') {
                 SandboxImage::remote(env)?
             } else {

@@ -58,7 +58,7 @@ impl<E: std::error::Error> r2d2::HandleError<E> for ErrorHandler {
     fn handle_error(&self, error: E) {
         // ensure that a message gets logged regardless of whether it's enabled.
         if log::log_enabled!(log::Level::Error) {
-            log::error!("r2d2 error: {:?}", error);
+            log::error!("r2d2 error: {error:?}");
         } else {
             eprintln!("r2d2 error: {error:?}");
         }
@@ -297,9 +297,9 @@ pub trait QueryUtils {
         let elapsed = start.elapsed();
         // Log all queries that take at least 1/2 a second to execute.
         if elapsed.as_millis() > 500 {
-            debug!("sql query \"{}\" executed in {:?}", sql, elapsed);
+            debug!("sql query \"{sql}\" executed in {elapsed:?}");
         } else {
-            trace!("sql query \"{}\" executed in {:?}", sql, elapsed);
+            trace!("sql query \"{sql}\" executed in {elapsed:?}");
         }
         res
     }

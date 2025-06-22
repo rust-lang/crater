@@ -41,7 +41,7 @@ pub(super) fn find_unstable_features(
     let mut features: Vec<_> = features.into_iter().collect();
     features.sort();
     for feature in features {
-        info!("unstable-feature: {}", feature);
+        info!("unstable-feature: {feature}");
     }
 
     Ok(TestResult::TestPass)

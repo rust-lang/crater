@@ -62,13 +62,13 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
         };
         let name = ex.name.clone();
 
-        info!("generating report for experiment {}...", name);
+        info!("generating report for experiment {name}...");
         ex.set_status(&data.db, Status::GeneratingReport)?;
 
         match generate_report(data, &ex, &results) {
             Err(err) => {
                 ex.set_status(&data.db, Status::ReportFailed)?;
-                error!("failed to generate the report of {}", name);
+                error!("failed to generate the report of {name}");
                 utils::report_failure(&err);
 
                 if let Some(github_data) = github_data {
@@ -102,7 +102,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
 
                 ex.set_status(&data.db, Status::Completed)?;
                 ex.set_report_url(&data.db, &report_url)?;
-                info!("report for the experiment {} generated successfully!", name);
+                info!("report for the experiment {name} generated successfully!");
 
                 let (regressed, fixed) = (
                     res.info.get(&Comparison::Regressed).unwrap_or(&0),

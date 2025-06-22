@@ -255,7 +255,7 @@ fn write_report<W: ReportWriter>(
         result_names,
     };
 
-    info!("generating {}", to);
+    info!("generating {to}");
 
     if output_templates {
         dest.write_string(

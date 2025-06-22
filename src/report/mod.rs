@@ -301,7 +301,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
 
         for (i, krate) in crates.iter().enumerate() {
             if i % progress_every == 0 {
-                info!("wrote logs for {}/{} crates", i, num_crates)
+                info!("wrote logs for {i}/{num_crates} crates")
             }
 
             if config.should_skip(krate) {
@@ -360,7 +360,7 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
 ) -> Fallible<TestResults> {
     let raw = generate_report(db, config, ex, crates)?;
 
-    info!("writing results to {}", dest);
+    info!("writing results to {dest}");
     info!("writing metadata");
     dest.write_string(
         "results.json",

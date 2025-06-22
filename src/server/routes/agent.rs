@@ -225,7 +225,7 @@ impl RecordProgressThread {
                         if let Err(e) = db.store(&ex, &result.data, EncodingType::Plain) {
                             // Failing to record a result is basically fine -- this
                             // just means that we'll have to re-try this job.
-                            log::error!("Failed to store result into database: {:?}", e);
+                            log::error!("Failed to store result into database: {e:?}");
                             crate::utils::report_failure(&e);
                         }
 
@@ -234,7 +234,7 @@ impl RecordProgressThread {
                         if let Err(e) = db.clear_stale_records() {
                             // Not a hard failure. We can continue even if we failed
                             // to clear records from already completed runs...
-                            log::error!("Failed to clear stale records: {:?}", e);
+                            log::error!("Failed to clear stale records: {e:?}");
                             crate::utils::report_failure(&e);
                         }
 

@@ -158,7 +158,7 @@ impl Config {
 
     fn check_for_dup_keys(buffer: &str) -> Fallible<()> {
         if let Err(e) = ::toml::from_str::<::toml::Value>(buffer) {
-            error!("got error parsing the config-file: {}", e);
+            error!("got error parsing the config-file: {e}");
             Err(e.into())
         } else {
             Ok(())
@@ -183,10 +183,7 @@ impl Config {
         let mut any_missing = false;
         for crate_name in self.crates.keys() {
             if !list_of_crates.contains(crate_name) {
-                error!(
-                    "check-config failed: crate `{}` is not available.",
-                    crate_name
-                );
+                error!("check-config failed: crate `{crate_name}` is not available.");
                 any_missing = true;
             }
         }
@@ -215,10 +212,7 @@ impl Config {
         let mut any_missing = false;
         for repo_name in self.github_repos.keys() {
             if !list_of_crates.contains(repo_name) {
-                error!(
-                    "check-config failed: GitHub repo `{}` is missing",
-                    repo_name
-                );
+                error!("check-config failed: GitHub repo `{repo_name}` is missing");
                 any_missing = true;
             }
         }

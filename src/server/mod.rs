@@ -72,7 +72,7 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
         .map(|tokens| {
             let github = GitHubApi::new(&tokens);
             let bot_username = github.username()?;
-            info!("bot username: {}", bot_username);
+            info!("bot username: {bot_username}");
             Ok::<_, anyhow::Error>(GithubData {
                 api: github,
                 bot_username,
@@ -107,7 +107,7 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
     info!("spawned reports worker...");
     cronjobs::spawn(data.clone());
 
-    info!("running server on {}...", bind);
+    info!("running server on {bind}...");
 
     let data = Arc::new(data);
     let github_data = github_data.map(Arc::new);

@@ -94,7 +94,7 @@ impl<'a> Worker<'a> {
         task: &Task,
         storage: &LogStorage,
     ) -> Result<TestResult, (anyhow::Error, TestResult)> {
-        info!("running task: {:?}", task);
+        info!("running task: {task:?}");
 
         let mut res = None;
         let max_attempts = 5;
@@ -136,11 +136,11 @@ impl<'a> Worker<'a> {
                 break;
             }
 
-            log::info!("Retrying task {:?} [{run}/{max_attempts}]", task);
+            log::info!("Retrying task {task:?} [{run}/{max_attempts}]");
         }
         // Unreachable unless we failed to succeed above.
         let e = res.unwrap();
-        error!("task {:?} failed", task);
+        error!("task {task:?} failed");
         utils::report_failure(&e);
 
         let mut result = if self.config.is_broken(&task.krate) {
@@ -215,8 +215,7 @@ impl<'a> Worker<'a> {
                                     return Err(e);
                                 } else {
                                     log::warn!(
-                                        "Retrying crate fetch in 3 seconds (attempt {})",
-                                        attempt
+                                        "Retrying crate fetch in 3 seconds (attempt {attempt})"
                                     );
                                     std::thread::sleep(std::time::Duration::from_secs(3));
                                 }
@@ -394,7 +393,7 @@ impl<'a> DiskSpaceWatcher<'a> {
             Ok(usage) => usage,
             Err(err) => {
                 // TODO: `current_mount` fails sometimes on Windows with ERROR_DEVICE_NOT_READY.
-                warn!("Failed to check space remaining: {}", err);
+                warn!("Failed to check space remaining: {err}");
                 return;
             }
         };

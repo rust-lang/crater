@@ -185,7 +185,7 @@ fn write_report<W: ReportWriter>(
     };
 
     let markdown = render_markdown(&context)?;
-    info!("generating {}", to);
+    info!("generating {to}");
     dest.write_string(to, markdown.into(), &mime::TEXT_PLAIN)?;
 
     if output_templates {

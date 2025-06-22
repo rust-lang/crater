@@ -112,8 +112,7 @@ impl AgentApi {
                             rand::thread_rng().gen_range(500..(retry_interval * 1000)),
                         );
                         warn!(
-                            "connection to the server failed. retrying in {:?}...",
-                            sleep_for
+                            "connection to the server failed. retrying in {sleep_for:?}..."
                         );
                         ::std::thread::sleep(sleep_for);
                         retry_interval *= 2;

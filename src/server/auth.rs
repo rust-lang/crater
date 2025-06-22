@@ -131,10 +131,9 @@ impl ACL {
         for (org, team) in &self.teams {
             if let Err(err) = self.load_team(github, &mut new_cache, &mut orgs, org, team) {
                 warn!(
-                    "failed to authorize members of {}/{} to use the bot",
-                    org, team
+                    "failed to authorize members of {org}/{team} to use the bot"
                 );
-                warn!("caused by: {}", err);
+                warn!("caused by: {err}");
             }
         }
 

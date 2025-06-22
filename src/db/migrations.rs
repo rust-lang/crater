@@ -396,7 +396,7 @@ pub fn execute(db: &mut Connection) -> Fallible<()> {
             t.execute("INSERT INTO migrations (name) VALUES (?1)", [&name])?;
             t.commit()?;
 
-            info!("executed migration: {}", name);
+            info!("executed migration: {name}");
         }
     }
 

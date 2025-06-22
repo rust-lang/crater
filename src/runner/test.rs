@@ -236,7 +236,7 @@ pub(super) fn run_test(
             "{} {} against {} for {}",
             action,
             ctx.krate,
-            ctx.toolchain.to_string(),
+            ctx.toolchain,
             ctx.experiment.name
         );
         let sandbox = SandboxBuilder::new()

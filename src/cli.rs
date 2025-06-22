@@ -33,21 +33,11 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub struct Ex(String);
 
-#[derive(Debug, Clone)]
-pub struct DockerEnv(#[allow(unused)] String);
 impl FromStr for Ex {
     type Err = Error;
 
     fn from_str(ex: &str) -> Result<Ex> {
         Ok(Ex(ex.to_string()))
-    }
-}
-
-impl FromStr for DockerEnv {
-    type Err = Error;
-
-    fn from_str(env: &str) -> Result<DockerEnv> {
-        Ok(DockerEnv(env.to_string()))
     }
 }
 

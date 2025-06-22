@@ -73,7 +73,7 @@ pub struct Agent {
 
 impl Agent {
     fn new(url: &str, token: &str, caps: &Capabilities) -> Fallible<Self> {
-        info!("connecting to crater server {}...", url);
+        info!("connecting to crater server {url}...");
 
         let api = AgentApi::new(url, token);
         let config = api.config(caps)?;
@@ -166,7 +166,7 @@ fn run_experiment(
             }
         }
         Err(err) => {
-            warn!("failed to check the disk usage: {}", err);
+            warn!("failed to check the disk usage: {err}");
         }
     }
 

@@ -29,9 +29,9 @@ pub(crate) const FILENAME_ENCODE_SET: AsciiSet = CONTROLS
 
 pub fn report_panic(e: &dyn Any) {
     if let Some(e) = e.downcast_ref::<String>() {
-        error!("panicked: {}", e)
+        error!("panicked: {e}")
     } else if let Some(e) = e.downcast_ref::<&'static str>() {
-        error!("panicked: {}", e)
+        error!("panicked: {e}")
     } else {
         error!("panicked")
     }
@@ -39,10 +39,10 @@ pub fn report_panic(e: &dyn Any) {
 
 pub fn report_failure(err: &anyhow::Error) {
     let backtrace = err.backtrace();
-    error!("{}", err);
+    error!("{err}");
 
     for cause in err.chain() {
-        error!("caused by: {}", cause);
+        error!("caused by: {cause}");
     }
 
     // Avoid printing a blank line if the backtrace exists but is empty.
@@ -51,7 +51,7 @@ pub fn report_failure(err: &anyhow::Error) {
     // environment variables are not set.
     let backtrace = backtrace.to_string();
     if !backtrace.is_empty() {
-        error!("{}", backtrace);
+        error!("{backtrace}");
         return;
     }
 

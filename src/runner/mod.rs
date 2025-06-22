@@ -48,8 +48,7 @@ pub fn run_ex(
     let mut i = 0;
     while !rustwide::cmd::docker_running(workspace) {
         log::error!(
-            "docker is not currently up, waiting for it to start (tried {} times)",
-            i
+            "docker is not currently up, waiting for it to start (tried {i} times)"
         );
         i += 1;
     }
@@ -80,7 +79,7 @@ pub fn run_ex(
         }
     }
 
-    info!("running tasks in {} threads...", threads_count);
+    info!("running tasks in {threads_count} threads...");
 
     let workers = (0..threads_count)
         .map(|i| {

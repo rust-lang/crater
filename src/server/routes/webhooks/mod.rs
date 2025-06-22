@@ -108,7 +108,7 @@ fn process_command(
             return Ok(());
         }
 
-        info!("user @{} sent command: {}", sender, command);
+        info!("user @{sender} sent command: {command}");
 
         let args: Command =
             Command::from_str(command).with_context(|| "failed to parse the command")?;

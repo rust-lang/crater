@@ -517,10 +517,10 @@ fn compare(
                 }
             }
 
-            (PrepareFail(_), _) | (_, PrepareFail(_)) => Comparison::PrepareFail,
-            (Error, _) | (_, Error) => Comparison::Error,
             (Skipped, _) | (_, Skipped) => Comparison::Skipped,
             (BrokenCrate(_), _) | (_, BrokenCrate(_)) => Comparison::Broken,
+            (PrepareFail(_), _) | (_, PrepareFail(_)) => Comparison::PrepareFail,
+            (Error, _) | (_, Error) => Comparison::Error,
             (TestFail(_) | TestPass, TestSkipped) | (TestSkipped, TestFail(_) | TestPass) => {
                 panic!("can't compare {res1} and {res2}");
             }
@@ -838,6 +838,8 @@ mod tests {
                 // PrepareFail
                 PrepareFail(Unknown), BuildFail(Unknown) => PrepareFail;
                 BuildFail(Unknown), PrepareFail(Unknown) => PrepareFail;
+                PrepareFail(Unknown), Error => PrepareFail;
+                Error, PrepareFail(Unknown) => PrepareFail;
 
                 // Errors
                 Error, TestPass => Error;
@@ -870,6 +872,11 @@ mod tests {
                 TestSkipped, BrokenCrate(BrokenReason::Unknown) => Broken;
                 TestFail(Unknown), BrokenCrate(BrokenReason::Unknown) => Broken;
                 BuildFail(Unknown), BrokenCrate(BrokenReason::Unknown) => Broken;
+
+                PrepareFail(Unknown), BrokenCrate(BrokenReason::Unknown) => Broken;
+                BrokenCrate(BrokenReason::Unknown), PrepareFail(Unknown) => Broken;
+                BrokenCrate(BrokenReason::Unknown), Error => Broken;
+                Error, BrokenCrate(BrokenReason::Unknown) => Broken;
             ]
         );
 

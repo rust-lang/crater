@@ -123,7 +123,8 @@ impl<'a> Worker<'a> {
                     | TaskStep::CheckOnly { tc, .. }
                     | TaskStep::Clippy { tc, .. }
                     | TaskStep::Rustdoc { tc, .. }
-                    | TaskStep::UnstableFeatures { tc } => Some(tc),
+                    | TaskStep::UnstableFeatures { tc }
+                    | TaskStep::Fix { tc, .. } => Some(tc),
                 };
                 if let Some(toolchain) = toolchain {
                     if toolchain == self.ex.toolchains.last().unwrap() {
@@ -301,6 +302,10 @@ impl<'a> Worker<'a> {
                             quiet,
                         },
                         Mode::UnstableFeatures => TaskStep::UnstableFeatures { tc: tc.clone() },
+                        Mode::Fix => TaskStep::Fix {
+                            tc: tc.clone(),
+                            quiet,
+                        },
                     },
                 };
 

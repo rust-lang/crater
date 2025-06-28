@@ -30,6 +30,7 @@ string_enum!(pub enum Mode {
     Clippy => "clippy",
     Rustdoc => "rustdoc",
     UnstableFeatures => "unstable-features",
+    Fix => "fix",
 });
 
 string_enum!(pub enum CapLints {

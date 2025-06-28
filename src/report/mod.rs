@@ -300,7 +300,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
         }
 
         for (i, krate) in crates.iter().enumerate() {
-            if i % progress_every == 0 {
+            if i.is_multiple_of(progress_every) {
                 info!("wrote logs for {i}/{num_crates} crates")
             }
 

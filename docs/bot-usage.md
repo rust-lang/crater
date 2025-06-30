@@ -107,15 +107,17 @@ available:
 * `top-{n}`: run the experiment on the `n` most downloaded crates on
   [crates.io](crates.io) (e.g. `top-100`).
 * `random-{n}`: run the experiment on `n` randomly selected crates (e.g. `random-20`).
-* `list:{...}`: run the experiment on the specified crates.
+* `list:{...}`: run the experiment on the comma-seperated list of crates.
+* `{url}`: run the experiment on the crates specified in the file specified by `{url}`,
+  The url must start with `http[s]://` and must point to a list in the format of a crater runs [`retry-regressed-list.txt`][retry-list].
 
-For `list:`, the value after the colon can either be a comma-separated list of
-crates to run or a link to a newline-separated list of crates ([example][list]).
-For example, `list:lazy_static,brson/hello-rs` and `list:https://git.io/Jes7o`
-will both run an experiment on the `lazy_static` crate and the git repo at
-`github.com/brson/hello-rs`. A link must begin with `http[s]://`.
+### Examples
 
-[list]: https://gist.githubusercontent.com/ecstatic-morse/837c558b63fc73ab469bfbf4ad419a1f/raw/example-crate-list
+Both of the following will run an experiment on the `lazy_static` crate and the git repo at `github.com/brson/hello-rs`
+- `crates=list:lazy_static,brson/hello-rs` 
+- `crates=https://git.io/Jes7o`
+
+[retry-list]: https://crater-reports.s3.amazonaws.com/pr-133502-3/retry-regressed-list.txt
 
 [Go back to the TOC][h-toc]
 

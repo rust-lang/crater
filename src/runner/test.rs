@@ -253,7 +253,7 @@ pub(super) fn run_test(
         let mut build = build_dir.build(ctx.toolchain, krate, sandbox);
 
         for patch in ctx.toolchain.patches.iter() {
-            build = build.patch_with_git(&patch.name, &patch.repo, &patch.branch);
+            build = build.patch_with_git(&patch.name, patch.repo.as_str(), &patch.branch);
         }
 
         detect_broken(build.run(|build| {

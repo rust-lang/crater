@@ -105,6 +105,8 @@ pub enum ToolchainParseError {
     InvalidFlag(String),
     #[error("invalid toolchain SHA: {0} is missing a `try#` or `master#` prefix")]
     PrefixMissing(String),
+    #[error("invalid url {0:?}: {1}")]
+    InvalidUrl(String, url::ParseError),
 }
 
 lazy_static! {
@@ -187,7 +189,9 @@ impl FromStr for Toolchain {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct CratePatch {
     pub name: String,
-    pub repo: String,
+    // cargo currently doesn't accept scp-style "URLs" rust-lang/crates#1851
+    // so ensure its a proper URL
+    pub repo: url::Url,
     pub branch: String,
 }
 
@@ -202,7 +206,8 @@ impl FromStr for CratePatch {
         } else {
             Ok(CratePatch {
                 name: params[0].into(),
-                repo: params[1].into(),
+                repo: url::Url::parse(params[1])
+                    .map_err(|err| ToolchainParseError::InvalidUrl(params[1].into(), err))?,
                 branch: params[2].into(),
             })
         }
@@ -291,7 +296,7 @@ mod tests {
                         ci_try: $ci_try,
                         patches: vec![CratePatch {
                             name: "example".to_string(),
-                            repo: "https://git.example.com/some/repo".to_string(),
+                            repo: url::Url::parse("https://git.example.com/some/repo").unwrap(),
                             branch: "master".to_string()
                         }]
                     });
@@ -306,7 +311,7 @@ mod tests {
                         ci_try: $ci_try,
                         patches: vec![CratePatch {
                             name: "example".to_string(),
-                            repo: "https://git.example.com/some/repo".to_string(),
+                            repo: url::Url::parse("https://git.example.com/some/repo").unwrap(),
                             branch: "master".to_string()
                         }]
                     });

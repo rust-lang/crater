@@ -139,8 +139,10 @@ fn humanize(duration: Duration) -> String {
         format!("{duration:?}")
     } else if duration.as_secs() < 60 * 60 {
         format!("{} minutes", duration.as_secs() / 60)
-    } else {
+    } else if duration.as_secs() < 60 * 60 * 60 {
         format!("{:.1} hours", duration.as_secs_f64() / 60.0 / 60.0)
+    } else {
+        format!("{:.1} days", duration.as_secs_f64() / 60.0 / 60.0 / 24.0)
     }
 }
 

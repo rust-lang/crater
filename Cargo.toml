@@ -68,7 +68,7 @@ tera = "1.19.1"
 thiserror = "1.0.38"
 tokio = "1.24"
 toml = "0.8.6"
-url = "2"
+url = { version = "2", features = ["serde"] }
 walkdir = "2"
 warp = "0.3"
 zstd = "0.13.0"

@@ -124,7 +124,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                             )
                             .line(
                                 "newspaper",
-                                format!("[Open the full report]({report_url})."),
+                                format!("[Open the summary report]({report_url})."),
                             )
                             .note(
                                 "warning",

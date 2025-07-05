@@ -130,10 +130,6 @@ pub(crate) fn get_crates(
                     crates.push(krate);
                 }
             }
-
-            if !desired.is_empty() {
-                bail!("missing desired crates: {:?}", desired);
-            }
         }
 
         CrateSelect::Random(n) => {

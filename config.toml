@@ -226,5 +226,6 @@ rustc_get_version = { skip = true } # does not build on beta
 "c0repwn3r/mangrove" = { skip = true } # broken beta rustc version parsing
 "zbzalex/rustc_get_version" = { skip = true } # broken beta rustc version parsing
 "ns6251/spin-cookie-token-sample" = { skip = true } # invalid dep tree, spuriously compiles
+"daniestevez/qsdr" = { skip = true } # cfg for stable/nightly, but not beta
 
 [local-crates]

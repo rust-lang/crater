@@ -363,6 +363,13 @@ mod tests {
         assert!(Toolchain::from_str("stable+rustdocflags=").is_err());
         assert!(Toolchain::from_str("stable+donotusethisflag=ever").is_err());
         assert!(Toolchain::from_str("stable+patch=").is_err());
+        assert!(matches!(
+            Toolchain::from_str(
+                "stable+patch=getrandom=git@github.com:rust-random/getrandom=backports/v0.2"
+            )
+            .unwrap_err(),
+            super::ToolchainParseError::InvalidUrl(..)
+        ));
         assert!(Toolchain::from_str("try#1234+target=").is_err());
         assert!(Toolchain::from_str("0000000000000000000000000000000000000000").is_err());
     }

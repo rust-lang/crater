@@ -227,5 +227,6 @@ rustc_get_version = { skip = true } # does not build on beta
 "zbzalex/rustc_get_version" = { skip = true } # broken beta rustc version parsing
 "ns6251/spin-cookie-token-sample" = { skip = true } # invalid dep tree, spuriously compiles
 "daniestevez/qsdr" = { skip = true } # cfg for stable/nightly, but not beta
+"Buggaboo/flat_sqlite_rs" = { skip = true } # proc macro causes nondeterministic compile error
 
 [local-crates]

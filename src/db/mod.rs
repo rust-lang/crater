@@ -120,7 +120,11 @@ impl Database {
 
     fn new(conn: SqliteConnectionManager, tempfile: Option<NamedTempFile>) -> Fallible<Self> {
         let pool = Pool::builder()
-            .connection_timeout(Duration::from_secs(5))
+            // By inspection we have 13 threads in production, so make sure each of them can get a
+            // connection. In practice some of those wouldn't acquire database connections (e.g.,
+            // the ctrl-c thread) but this seems like a good idea regardless.
+            .max_size(20)
+            .connection_timeout(Duration::from_secs(30))
             .error_handler(Box::new(ErrorHandler))
             .build(conn)?;
 

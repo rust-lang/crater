@@ -77,3 +77,6 @@ zstd = "0.13.0"
 assert_cmd = "2.0.4"
 difference = "2.0.0"
 predicates = "3.0.4"
+
+[patch.crates-io]
+rustwide = { git = "https://github.com/rust-lang/rustwide.git", rev = "refs/pull/103/head" }

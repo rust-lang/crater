@@ -2,11 +2,11 @@ use crate::config::Config;
 use crate::prelude::*;
 use crate::server::github::{GitHub, GitHubApi};
 use crate::server::{Data, GithubData, HttpError};
+use http::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
 use regex::Regex;
 use rust_team_data::v1 as team_data;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
-use warp::http::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
 use warp::{Filter, Rejection};
 
 lazy_static! {

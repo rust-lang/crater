@@ -3,8 +3,9 @@ use crate::prelude::*;
 use crate::server::routes::ui::{render_template, LayoutContext};
 use crate::server::{Data, HttpError};
 use chrono::{Duration, SecondsFormat, Utc};
+use http::Response;
+use hyper::Body;
 use std::sync::Arc;
-use warp::reply::Response;
 
 #[derive(Serialize)]
 struct ExperimentData {
@@ -60,7 +61,7 @@ struct ListContext {
     experiments: Vec<ExperimentData>,
 }
 
-pub fn endpoint_queue(data: Arc<Data>) -> Fallible<Response> {
+pub fn endpoint_queue(data: Arc<Data>) -> Fallible<Response<Body>> {
     let mut queued = Vec::new();
     let mut running = Vec::new();
     let mut needs_report = Vec::new();
@@ -145,7 +146,7 @@ fn humanize(duration: Duration) -> String {
     }
 }
 
-pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response> {
+pub fn endpoint_experiment(name: String, data: Arc<Data>) -> Fallible<Response<Body>> {
     if let Some(ex) = Experiment::get(&data.db, &name)? {
         let (completed_jobs, total_jobs) = ex.raw_progress(&data.db)?;
 

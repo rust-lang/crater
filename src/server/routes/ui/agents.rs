@@ -3,8 +3,9 @@ use crate::server::agents::AgentStatus;
 use crate::server::routes::ui::{render_template, LayoutContext};
 use crate::server::Data;
 use chrono::SecondsFormat;
+use http::Response;
+use hyper::Body;
 use std::sync::Arc;
-use warp::reply::Response;
 
 #[derive(Serialize)]
 struct AgentData {
@@ -23,7 +24,7 @@ struct ListContext {
     agents: Vec<AgentData>,
 }
 
-pub fn endpoint_list(data: Arc<Data>) -> Fallible<Response> {
+pub fn endpoint_list(data: Arc<Data>) -> Fallible<Response<Body>> {
     let mut agents = Vec::new();
     for agent in &data.agents.all()? {
         let (status_class, status_pretty, show_assigned) = match agent.status() {

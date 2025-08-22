@@ -18,13 +18,13 @@ use crate::server::agents::Agents;
 use crate::server::auth::ACL;
 use crate::server::github::{GitHub, GitHubApi};
 use crate::server::tokens::{BotTokens, Tokens};
-use http::{header::HeaderValue, Response};
-use hyper::Body;
 use metrics::Metrics;
 use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use warp::http::header::HeaderValue;
+use warp::reply::Response;
 use warp::Filter;
 
 lazy_static! {
@@ -132,15 +132,13 @@ pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
                 .or(routes::ui::routes(data))
                 .unify(),
         )
-        .map(
-            |_guard: routes::agent::RequestGuard, mut resp: Response<Body>| {
-                resp.headers_mut().insert(
-                    http::header::SERVER,
-                    HeaderValue::from_static(&SERVER_HEADER),
-                );
-                resp
-            },
-        );
+        .map(|_guard: routes::agent::RequestGuard, mut resp: Response| {
+            resp.headers_mut().insert(
+                warp::http::header::SERVER,
+                HeaderValue::from_static(&SERVER_HEADER),
+            );
+            resp
+        });
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

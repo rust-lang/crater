@@ -8,11 +8,10 @@ use crate::server::auth::{auth_filter, AuthDetails};
 use crate::server::messages::Message;
 use crate::server::{Data, GithubData, HttpError};
 use crossbeam_channel::Sender;
-use http::Response;
-use hyper::Body;
 use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Instant;
+use warp::reply::Response;
 use warp::{Filter, Rejection};
 
 #[derive(Deserialize)]
@@ -27,7 +26,7 @@ pub fn routes(
     data: Arc<Data>,
     mutex: Arc<Mutex<Data>>,
     github_data: Option<Arc<GithubData>>,
-) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
+) -> impl Filter<Extract = (Response,), Error = Rejection> + Clone {
     let data_cloned = data.clone();
     let data_filter = warp::any().map(move || data_cloned.clone());
     let mutex_filter = warp::any().map(move || mutex.clone());
@@ -100,11 +99,7 @@ pub fn routes(
         .unify()
 }
 
-fn endpoint_config(
-    caps: Capabilities,
-    data: Arc<Data>,
-    auth: AuthDetails,
-) -> Fallible<Response<Body>> {
+fn endpoint_config(caps: Capabilities, data: Arc<Data>, auth: AuthDetails) -> Fallible<Response> {
     data.agents.add_capabilities(&auth.name, &caps)?;
 
     Ok(ApiResponse::Success {
@@ -120,7 +115,7 @@ fn endpoint_next_experiment(
     mutex: Arc<Mutex<Data>>,
     github_data: Option<Arc<GithubData>>,
     auth: AuthDetails,
-) -> Fallible<Response<Body>> {
+) -> Fallible<Response> {
     //we need to make sure that Experiment::next executes uninterrupted
     let data = mutex.lock().unwrap();
     let next = Experiment::next(&data.db, &Assignee::Agent(auth.name))?;
@@ -181,7 +176,7 @@ fn endpoint_next_crate(
     experiment: String,
     data: Arc<Data>,
     _auth: AuthDetails,
-) -> Fallible<Response<Body>> {
+) -> Fallible<Response> {
     Ok(ApiResponse::Success {
         result: endpoint_next_crate_inner(experiment, data)?,
     }
@@ -332,7 +327,7 @@ fn endpoint_record_progress(
     result: ExperimentData<ProgressData>,
     data: Arc<Data>,
     _auth: AuthDetails,
-) -> Fallible<Response<Body>> {
+) -> Fallible<Response> {
     let start = Instant::now();
 
     data.metrics
@@ -356,11 +351,7 @@ fn endpoint_record_progress(
     ret
 }
 
-fn endpoint_heartbeat(
-    id: WorkerInfo,
-    data: Arc<Data>,
-    auth: AuthDetails,
-) -> Fallible<Response<Body>> {
+fn endpoint_heartbeat(id: WorkerInfo, data: Arc<Data>, auth: AuthDetails) -> Fallible<Response> {
     data.agents.add_worker(id);
     if let Some(rev) = auth.git_revision {
         data.agents.set_git_revision(&auth.name, &rev)?;
@@ -376,7 +367,7 @@ fn endpoint_error(
     error: ExperimentData<HashMap<String, String>>,
     mutex: Arc<Mutex<Data>>,
     auth: AuthDetails,
-) -> Fallible<Response<Body>> {
+) -> Fallible<Response> {
     log::error!(
         "agent {} failed while running {}: {:?}",
         auth.name,
@@ -393,7 +384,7 @@ fn endpoint_error(
     Ok(ApiResponse::Success { result: true }.into_response()?)
 }
 
-fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
+fn handle_results(resp: Fallible<Response>) -> Response {
     match resp {
         Ok(resp) => resp,
         Err(err) => ApiResponse::internal_error(err.to_string())
@@ -402,7 +393,7 @@ fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
     }
 }
 
-async fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
+async fn handle_errors(err: Rejection) -> Result<Response, Rejection> {
     let error = if let Some(compat) = err.find::<HttpError>() {
         Some(*compat)
     } else if err.is_not_found() {

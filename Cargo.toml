@@ -34,8 +34,6 @@ dotenv = "0.15"
 env_logger = "0.10.0"
 flate2 = "1"
 hmac = "0.12"
-http = "0.2"
-hyper = "0.14"
 indexmap = { version = "2.0.2", features = ["serde"] }
 lazy_static = "1.0"
 log = "0.4.6"
@@ -49,7 +47,7 @@ rand = "0.8"
 rayon = "1.10"
 regex = "1.0"
 remove_dir_all = "0.7"
-reqwest = { version = "0.11", features = ["blocking", "json"] }
+reqwest = { version = "0.12", features = ["blocking", "json"] }
 rusqlite = { version = "0.32.1", features = ["chrono", "functions", "bundled"] }
 rust_team_data = { git = "https://github.com/rust-lang/team" }
 rustwide = { version = "0.19.3", features = [
@@ -70,7 +68,7 @@ tokio = "1.24"
 toml = "0.8.6"
 url = { version = "2", features = ["serde"] }
 walkdir = "2"
-warp = "0.3"
+warp = { version = "0.4", features = ["server"] }
 zstd = "0.13.0"
 
 [dev-dependencies]

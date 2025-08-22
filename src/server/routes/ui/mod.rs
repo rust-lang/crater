@@ -1,11 +1,11 @@
 use crate::assets;
 use crate::prelude::*;
 use crate::server::{Data, HttpError};
-use http::header::{HeaderValue, CONTENT_TYPE};
-use http::{Response, StatusCode};
-use hyper::Body;
 use serde::Serialize;
 use std::sync::Arc;
+use warp::http::header::{HeaderValue, CONTENT_TYPE};
+use warp::http::StatusCode;
+use warp::reply::Response;
 use warp::{Filter, Rejection};
 
 mod agents;
@@ -24,9 +24,7 @@ impl LayoutContext {
     }
 }
 
-pub fn routes(
-    data: Arc<Data>,
-) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
+pub fn routes(data: Arc<Data>) -> impl Filter<Extract = (Response,), Error = Rejection> + Clone {
     let data_filter = warp::any().map(move || data.clone());
 
     let queue = warp::get()
@@ -68,7 +66,7 @@ pub fn routes(
         .unify()
 }
 
-fn endpoint_assets(path: String) -> Fallible<Response<Body>> {
+fn endpoint_assets(path: String) -> Fallible<Response> {
     if let Ok(asset) = assets::load(&path) {
         if let Ok(content) = asset.content() {
             let mut resp = Response::new(content.into_owned().into());
@@ -88,7 +86,7 @@ struct ErrorContext {
     layout: LayoutContext,
 }
 
-fn error_404() -> Fallible<Response<Body>> {
+fn error_404() -> Fallible<Response> {
     let mut resp = render_template(
         "ui/404.html",
         &ErrorContext {
@@ -100,7 +98,7 @@ fn error_404() -> Fallible<Response<Body>> {
     Ok(resp)
 }
 
-fn error_500() -> Response<Body> {
+fn error_500() -> Response {
     // Ensure the 500 error page always renders
     let mut resp = match render_template(
         "ui/500.html",
@@ -120,7 +118,7 @@ fn error_500() -> Response<Body> {
     resp
 }
 
-fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
+fn handle_results(resp: Fallible<Response>) -> Response {
     match resp {
         Ok(resp) => resp,
         Err(err) => {
@@ -144,7 +142,7 @@ fn handle_results(resp: Fallible<Response<Body>>) -> Response<Body> {
     }
 }
 
-async fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
+async fn handle_errors(err: Rejection) -> Result<Response, Rejection> {
     if err.is_not_found() {
         match error_404() {
             Ok(resp) => return Ok(resp),
@@ -159,7 +157,7 @@ async fn handle_errors(err: Rejection) -> Result<Response<Body>, Rejection> {
     Err(err)
 }
 
-fn render_template<C: Serialize>(name: &str, context: &C) -> Fallible<Response<Body>> {
+fn render_template<C: Serialize>(name: &str, context: &C) -> Fallible<Response> {
     let mut resp = Response::new(assets::render_template(name, context)?.into());
     resp.headers_mut()
         .insert(CONTENT_TYPE, HeaderValue::from_static("text/html"));

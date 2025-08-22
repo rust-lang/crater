@@ -8,10 +8,10 @@ use crate::server::routes::webhooks::args::Command;
 use crate::server::{Data, GithubData};
 use bytes::Bytes;
 use hmac::{Hmac, Mac};
-use http::{HeaderMap, Response, StatusCode};
-use hyper::Body;
 use std::str::FromStr;
 use std::sync::Arc;
+use warp::http::{HeaderMap, StatusCode};
+use warp::reply::Response;
 use warp::{Filter, Rejection};
 
 fn process_webhook(
@@ -215,7 +215,7 @@ fn receive_endpoint(
 pub fn routes(
     data: Arc<Data>,
     github_data: Option<Arc<GithubData>>,
-) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
+) -> impl Filter<Extract = (Response,), Error = Rejection> + Clone {
     let data_filter = warp::any().map(move || data.clone());
     let github_data_filter = warp::any().and_then(move || {
         let g = github_data.clone();
@@ -235,7 +235,7 @@ pub fn routes(
         .and(warp::body::bytes())
         .map(
             |data: Arc<Data>, github_data: Arc<GithubData>, headers: HeaderMap, body: Bytes| {
-                let mut resp: Response<Body>;
+                let mut resp: Response;
                 match receive_endpoint(data, github_data, headers, body) {
                     Ok(()) => resp = Response::new("OK\n".into()),
                     Err(err) => {

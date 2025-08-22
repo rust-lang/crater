@@ -1,15 +1,13 @@
 use crate::prelude::*;
 use crate::server::agents::Agent;
 use crate::server::Data;
-use http::{Response, StatusCode};
-use hyper::Body;
 use prometheus::{Encoder, TextEncoder};
 use std::sync::Arc;
+use warp::http::StatusCode;
+use warp::reply::Response;
 use warp::{Filter, Rejection};
 
-pub fn routes(
-    data: Arc<Data>,
-) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
+pub fn routes(data: Arc<Data>) -> impl Filter<Extract = (Response,), Error = Rejection> + Clone {
     let data_filter = warp::any().map(move || data.clone());
 
     warp::get()
@@ -28,7 +26,7 @@ pub fn routes(
         })
 }
 
-fn endpoint_metrics(data: Arc<Data>) -> Fallible<Response<Body>> {
+fn endpoint_metrics(data: Arc<Data>) -> Fallible<Response> {
     data.metrics.update_agent_status(
         &data.db,
         &data.agents.all()?.iter().collect::<Vec<&Agent>>(),
@@ -39,5 +37,5 @@ fn endpoint_metrics(data: Arc<Data>) -> Fallible<Response<Body>> {
     let mut buffer = Vec::new();
     let families = prometheus::gather();
     TextEncoder::new().encode(&families, &mut buffer)?;
-    Ok(Response::new(Body::from(buffer)))
+    Ok(Response::new(String::from_utf8(buffer).unwrap().into()))
 }

@@ -1,13 +1,12 @@
 use crate::config::Config;
 use crate::prelude::*;
-use http::header::{HeaderValue, CONTENT_TYPE};
-use http::Response;
-use http::StatusCode;
-use hyper::Body;
 use serde::Serialize;
 use std::fmt;
 use std::fmt::Display;
 use std::str::FromStr;
+use warp::http::header::{HeaderValue, CONTENT_TYPE};
+use warp::http::StatusCode;
+use warp::reply::Response;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -53,7 +52,7 @@ impl<T> ApiResponse<T> {
 }
 
 impl<T: Serialize> ApiResponse<T> {
-    pub(in crate::server) fn into_response(self) -> Fallible<Response<Body>> {
+    pub(in crate::server) fn into_response(self) -> Fallible<Response> {
         let serialized = ::serde_json::to_vec(&self)?;
 
         let mut resp = Response::new(serialized.into());
@@ -76,9 +75,9 @@ impl Display for CraterToken {
 }
 
 impl FromStr for CraterToken {
-    type Err = ::hyper::Error;
+    type Err = warp::hyper::Error;
 
-    fn from_str(s: &str) -> ::hyper::Result<CraterToken> {
+    fn from_str(s: &str) -> warp::hyper::Result<CraterToken> {
         Ok(CraterToken {
             token: s.to_owned(),
         })

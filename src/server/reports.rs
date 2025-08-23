@@ -1,6 +1,6 @@
 use crate::experiments::{Experiment, Status};
 use crate::prelude::*;
-use crate::report::{self, Comparison, TestResults};
+use crate::report::{self, Comparison, TestResults, SPURIOUS_RETRY};
 use crate::results::DatabaseDB;
 use crate::server::messages::{Label, Message};
 use crate::server::{Data, GithubData};
@@ -99,14 +99,21 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                     .public_url
                     .replace("{bucket}", &data.tokens.reports_bucket.bucket);
                 let report_url = format!("{base_url}/{name}/index.html");
+                let retry_regressed_list_url =
+                    format!("{base_url}/{name}/retry-regressed-list.txt");
 
                 ex.set_status(&data.db, Status::Completed)?;
                 ex.set_report_url(&data.db, &report_url)?;
+
                 info!("report for the experiment {name} generated successfully!");
 
-                let (regressed, fixed) = (
+                let (regressed, fixed, spurious_retry) = (
                     res.info.get(&Comparison::Regressed).unwrap_or(&0),
                     res.info.get(&Comparison::Fixed).unwrap_or(&0),
+                    SPURIOUS_RETRY
+                        .iter()
+                        .flat_map(|comp| res.info.get(comp))
+                        .sum::<u32>(),
                 );
 
                 if let Some(github_data) = github_data {
@@ -122,6 +129,7 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                                     res.info.values().sum::<u32>(),
                                 ),
                             )
+                            .line("bar_chart", format!(" {spurious_retry} spurious results on the [retry-regessed-list.txt]({retry_regressed_list_url}), consider a retry[^1] if this is a significant amount.\n[^1]: re-run the experiment with `crates={retry_regressed_list_url}`", ex.mode))
                             .line(
                                 "newspaper",
                                 format!("[Open the summary report]({report_url})."),

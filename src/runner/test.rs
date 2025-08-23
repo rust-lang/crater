@@ -7,7 +7,7 @@ use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
 use anyhow::Error;
 use cargo_metadata::diagnostic::DiagnosticLevel;
-use cargo_metadata::{Message, Metadata, Package, Target};
+use cargo_metadata::{CrateType, Message, Metadata, Package, Target, TargetKind};
 use docsrs_metadata::Metadata as DocsrsMetadata;
 use remove_dir_all::remove_dir_all;
 use rustwide::cmd::{CommandError, MountKind, ProcessLinesActions, SandboxBuilder};
@@ -453,11 +453,11 @@ pub(super) fn test_rustdoc(
 
 fn is_library(target: &Target) -> bool {
     // Some examples and tests can be libraries (e.g. if they use `cdylib`).
-    target.crate_types.iter().any(|ty| ty != "bin")
+    target.crate_types.iter().any(|ty| *ty != CrateType::Bin)
         && target
             .kind
             .iter()
-            .all(|k| !["example", "test", "bench"].contains(&k.as_str()))
+            .all(|k| ![TargetKind::Example, TargetKind::Test, TargetKind::Bench].contains(k))
 }
 
 pub(crate) fn fix(

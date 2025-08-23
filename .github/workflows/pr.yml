@@ -17,11 +17,6 @@ jobs:
       - name: Ensure there are no warnings with Clippy
         run: cargo clippy --all -- -Dwarnings
 
-      - name: Check if the configuration is correct
-        run: |
-          cargo run -- create-lists
-          cargo run -- check-config
-
   test:
     name: Linux testing
     runs-on: ubuntu-latest
@@ -32,12 +27,16 @@ jobs:
         run: rustup update nightly && rustup default nightly
 
       - name: Build Crater
-        run: cargo build
+        run: cargo build --release
+
+      - name: Check if the configuration is correct
+        run: |
+          cargo run --release -- create-lists
+          cargo run --release -- check-config
 
       - name: Run Crater tests
         run: |
-          cargo run -- create-lists
-          cargo test
+          cargo test --release
 
   # Note: this job is used so that there is a job named "conclusion" both in the PR and merge queue
   # CI. Otherwise, it would not be possible for PR CI to succeed.

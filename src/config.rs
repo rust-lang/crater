@@ -104,7 +104,7 @@ impl Config {
 
     fn crate_config(&self, c: &Crate) -> Option<&CrateConfig> {
         match *c {
-            Crate::Registry(ref details) => self.crates.get(&details.name),
+            Crate::Registry(ref details) => self.crates.get(details.name.as_str()),
             Crate::GitHub(ref repo) => self.github_repos.get(&repo.slug()),
             Crate::Local(ref name) => self.local_crates.get(name),
             Crate::Git(_) | Crate::Path(_) => unimplemented!("unsupported crate"),
@@ -170,7 +170,7 @@ impl Config {
             return Ok(());
         }
 
-        let mut list_of_crates: HashSet<String> = HashSet::new();
+        let mut list_of_crates: HashSet<_> = HashSet::new();
         for krate in crates {
             let name = if let Crate::Registry(ref details) = krate {
                 details.name.clone()
@@ -182,7 +182,7 @@ impl Config {
 
         let mut any_missing = false;
         for crate_name in self.crates.keys() {
-            if !list_of_crates.contains(crate_name) {
+            if !list_of_crates.contains(crate_name.as_str()) {
                 error!("check-config failed: crate `{crate_name}` is not available.");
                 any_missing = true;
             }

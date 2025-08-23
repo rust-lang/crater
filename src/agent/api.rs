@@ -9,7 +9,6 @@ use crate::server::api_types::{AgentConfig, ApiResponse, CraterToken};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use base64::Engine;
-use rand::Rng;
 use reqwest::blocking::RequestBuilder;
 use reqwest::header::AUTHORIZATION;
 use reqwest::{Method, StatusCode};
@@ -108,9 +107,8 @@ impl AgentApi {
                     };
 
                     if retry {
-                        let sleep_for = Duration::from_millis(
-                            rand::thread_rng().gen_range(500..(retry_interval * 1000)),
-                        );
+                        let sleep_for =
+                            Duration::from_millis(rand::random_range(500..(retry_interval * 1000)));
                         warn!("connection to the server failed. retrying in {sleep_for:?}...");
                         ::std::thread::sleep(sleep_for);
                         retry_interval *= 2;

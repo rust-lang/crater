@@ -2,10 +2,9 @@ use crate::crates::{lists::List, Crate};
 use crate::dirs::WORK_DIR;
 use crate::prelude::*;
 use crates_index::GitIndex;
-use rayon::iter::ParallelIterator;
+use smol_str::SmolStr;
 use std::collections::HashMap;
-use std::fs::{self};
-use std::sync::Mutex;
+use std::fs;
 
 pub(crate) struct RegistryList;
 
@@ -13,7 +12,8 @@ impl List for RegistryList {
     const NAME: &'static str = "registry";
 
     fn fetch(&self) -> Fallible<Vec<Crate>> {
-        let counts = Mutex::new(HashMap::new());
+        let arena = bumpalo::Bump::new();
+        let mut counts = HashMap::new();
 
         debug!("updating git index");
         fs::create_dir_all(&*WORK_DIR)?;
@@ -25,9 +25,8 @@ impl List for RegistryList {
         debug!("collecting crate information");
 
         let mut list: Vec<_> = index
-            .crates_parallel()
+            .crates()
             .filter_map(|krate| {
-                let krate = krate.as_ref().unwrap();
                 // The versions() method returns the list of published versions starting from the
                 // first one, so its output is reversed to check the latest first
                 krate
@@ -39,14 +38,17 @@ impl List for RegistryList {
                     .filter(|version| !version.is_yanked())
                     .map(|version| {
                         // Increment the counters of this crate's dependencies
-                        let mut counts = counts.lock().unwrap();
                         for dependency in version.dependencies() {
-                            let count = counts.entry(dependency.name().to_string()).or_insert(0);
-                            *count += 1;
+                            if let Some(count) = counts.get_mut(dependency.name()) {
+                                *count += 1;
+                            } else {
+                                let allocated = arena.alloc_str(dependency.name());
+                                counts.insert(&*allocated, 1);
+                            }
                         }
                         Crate::Registry(RegistryCrate {
-                            name: krate.name().to_string(),
-                            version: version.version().to_string(),
+                            name: SmolStr::from(krate.name()),
+                            version: SmolStr::from(version.version()),
                         })
                     })
                     .next()
@@ -54,12 +56,9 @@ impl List for RegistryList {
             .collect();
 
         // Ensure the list is sorted by popularity
-        let counts = counts.lock().unwrap();
-        list.sort_by(|a, b| {
-            if let (Crate::Registry(ref a), Crate::Registry(ref b)) = (a, b) {
-                let count_a = counts.get(&a.name).cloned().unwrap_or(0);
-                let count_b = counts.get(&b.name).cloned().unwrap_or(0);
-                count_b.cmp(&count_a)
+        list.sort_unstable_by_key(|a| {
+            if let Crate::Registry(ref a) = a {
+                counts.get(a.name.as_str()).cloned().unwrap_or(0)
             } else {
                 panic!("non-registry crate produced in the registry list");
             }
@@ -71,6 +70,6 @@ impl List for RegistryList {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub struct RegistryCrate {
-    pub name: String,
-    pub version: String,
+    pub name: SmolStr,
+    pub version: SmolStr,
 }

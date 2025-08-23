@@ -1,7 +1,7 @@
 use crate::common::CommandCraterExt;
 use assert_cmd::prelude::*;
 use difference::Changeset;
-use rand::distributions::{Alphanumeric, DistString};
+use rand::distr::{Alphanumeric, SampleString};
 use serde_json::{self, Value};
 use std::env;
 use std::path::{Path, PathBuf};
@@ -152,7 +152,7 @@ impl MinicraterRun {
         let ex_arg = format!(
             "--ex=minicrater-{}-{}",
             self.ex,
-            Alphanumeric.sample_string(&mut rand::thread_rng(), 10)
+            Alphanumeric.sample_string(&mut rand::rng(), 10)
         );
 
         // Create local list in the temp work dir

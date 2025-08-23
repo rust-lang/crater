@@ -1,30 +1,27 @@
 use crate::prelude::*;
-use std::path::Path;
-use systemstat::{Filesystem, Platform, System};
 
 pub(crate) struct DiskUsage {
-    mount_point: String,
     usage: f32,
 }
 
 impl DiskUsage {
     pub(crate) fn fetch() -> Fallible<Self> {
-        let fs = current_mount()?;
+        let stat = nix::sys::statvfs::statvfs(&crate::utils::path::normalize_path(
+            &crate::dirs::WORK_DIR,
+        ))?;
         Ok(Self {
-            mount_point: fs.fs_mounted_on.clone(),
-            usage: (fs.total.as_u64() - fs.free.as_u64()) as f32 / fs.total.as_u64() as f32,
+            usage: stat.blocks_available() as f32 / stat.blocks() as f32,
         })
     }
 
     pub(crate) fn is_threshold_reached(&self, threshold: f32) -> bool {
         let usage = (self.usage * 100.0) as u8;
         if self.usage < threshold {
-            info!("{} disk usage at {}%", self.mount_point, usage);
+            info!("disk usage at {}%", usage);
             false
         } else {
             warn!(
-                "{} disk usage at {}%, which is over the threshold of {}%",
-                self.mount_point,
+                "disk usage at {}%, which is over the threshold of {}%",
                 usage,
                 (threshold * 100.0) as u8
             );
@@ -33,21 +30,16 @@ impl DiskUsage {
     }
 }
 
-fn current_mount() -> Fallible<Filesystem> {
-    let current_dir = crate::utils::path::normalize_path(&crate::dirs::WORK_DIR);
-    let system = System::new();
+#[cfg(test)]
+mod test {
+    use super::*;
 
-    let mut found = None;
-    let mut found_pos = usize::MAX;
-    for mount in system.mounts()?.into_iter() {
-        let path = Path::new(&mount.fs_mounted_on);
-        for (i, ancestor) in current_dir.ancestors().enumerate() {
-            if ancestor == path && i < found_pos {
-                found_pos = i;
-                found = Some(mount);
-                break;
-            }
-        }
+    #[test]
+    #[cfg(unix)]
+    fn check() {
+        let usage = DiskUsage::fetch().unwrap();
+        // Make sure usage is in a reasonable range.
+        assert!(usage.usage > 0.05, "{}", usage.usage);
+        assert!(usage.usage < 0.95, "{}", usage.usage);
     }
-    found.ok_or_else(|| anyhow!("failed to find the current mount"))
 }

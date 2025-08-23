@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use rand::distributions::{Alphanumeric, DistString};
+use rand::distr::{Alphanumeric, SampleString};
 use rusqlite::{Connection, Transaction};
 use std::collections::HashSet;
 
@@ -137,10 +137,10 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
 
             let fn_name = format!(
                 "crater_migration__{}",
-                Alphanumeric.sample_string(&mut rand::thread_rng(), 10)
+                Alphanumeric.sample_string(&mut rand::rng(), 10)
             );
             t.create_scalar_function(
-                &fn_name,
+                fn_name.as_str(),
                 1,
                 rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
                     | rusqlite::functions::FunctionFlags::SQLITE_UTF8,
@@ -323,10 +323,10 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
 
             let fn_name = format!(
                 "crater_migration__{}",
-                Alphanumeric.sample_string(&mut rand::thread_rng(), 10)
+                Alphanumeric.sample_string(&mut rand::rng(), 10)
             );
             t.create_scalar_function(
-                &fn_name,
+                fn_name.as_str(),
                 1,
                 rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
                     | rusqlite::functions::FunctionFlags::SQLITE_UTF8,

@@ -28,12 +28,10 @@ impl TempfileBackedBuffer {
                 NonZeroUsize::new(len).unwrap(),
                 nix::sys::mman::ProtFlags::PROT_READ,
                 nix::sys::mman::MapFlags::MAP_PRIVATE,
-                Some(&file),
+                &file,
                 0,
-            )?;
-            let Some(base) = NonNull::new(base as *mut u8) else {
-                panic!("Failed to map file");
-            };
+            )?
+            .cast::<u8>();
             Ok(TempfileBackedBuffer {
                 _file: file,
                 mmap: NonNull::slice_from_raw_parts(base, len),
@@ -50,7 +48,7 @@ impl TempfileBackedBuffer {
 impl Drop for TempfileBackedBuffer {
     fn drop(&mut self) {
         unsafe {
-            if let Err(e) = nix::sys::mman::munmap(self.mmap.as_ptr() as *mut _, self.mmap.len()) {
+            if let Err(e) = nix::sys::mman::munmap(self.mmap.cast(), self.mmap.len()) {
                 eprintln!("Failed to unmap temporary file: {e:?}");
             }
         }

@@ -178,7 +178,6 @@ impl Agents {
             .transpose()?
             .map(|agent| agent.with_capabilities(&self.db))
             .transpose()
-            .map_err(Into::into)
     }
 
     pub fn record_heartbeat(&self, agent: &str) -> Fallible<()> {

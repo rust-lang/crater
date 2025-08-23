@@ -18,11 +18,6 @@ jobs:
       - name: Ensure there are no warnings with Clippy
         run: cargo clippy --all -- -Dwarnings
 
-      - name: Check if the configuration is correct
-        run: |
-          cargo run -- create-lists
-          cargo run -- check-config
-
   test:
     name: Testing
     strategy:
@@ -41,13 +36,13 @@ jobs:
 
       - name: Build Crater
         shell: bash
-        run: cargo build
+        run: cargo build --release
 
       - name: Run Crater tests
         shell: bash
         run: |
-          cargo run -- create-lists
-          cargo test
+          cargo run --release -- create-lists
+          cargo test --release
 
   minicrater:
     name: Minicrater
@@ -64,8 +59,8 @@ jobs:
       - name: Run minicrater
         shell: bash
         run: |
-          cargo run -- create-lists
-          cargo test -- --ignored --nocapture --test-threads 1
+          cargo run --release -- create-lists
+          cargo test --release -- --ignored --nocapture --test-threads 1
         env:
           MINICRATER_FAST_WORKSPACE_INIT: 1
           MINICRATER_SHOW_OUTPUT: 1

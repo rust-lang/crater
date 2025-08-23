@@ -398,6 +398,9 @@ pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     Ok(res)
 }
 
+pub(crate) const SPURIOUS_RETRY: &[Comparison] =
+    &[Comparison::SpuriousRegressed, Comparison::PrepareFail];
+
 /// Generates a list of regressed crate names that can be passed to crater via
 /// `crates=list:...` to retry those.
 fn gen_retry_list(res: &RawTestResults) -> String {
@@ -409,9 +412,7 @@ fn gen_retry_list(res: &RawTestResults) -> String {
         .crates
         .iter()
         .filter(|crate_res| {
-            crate_res.res == Comparison::Regressed
-                || crate_res.res == Comparison::SpuriousRegressed
-                || crate_res.res == Comparison::PrepareFail
+            crate_res.res == Comparison::Regressed || SPURIOUS_RETRY.contains(&crate_res.res)
         })
         .map(|crate_res| &crate_res.krate);
 

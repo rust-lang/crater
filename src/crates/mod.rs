@@ -6,6 +6,7 @@ use crate::prelude::*;
 use cargo_metadata::PackageId;
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
 use rustwide::Crate as RustwideCrate;
+use smol_str::ToSmolStr;
 use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
@@ -88,8 +89,8 @@ impl TryFrom<&'_ PackageId> for Crate {
 
             match parts[..] {
                 [name, version, "registry", _] => Ok(Crate::Registry(RegistryCrate {
-                    name: name.to_string(),
-                    version: version.to_string(),
+                    name: name.to_smolstr(),
+                    version: version.to_smolstr(),
                 })),
                 [_, _, "path", path] => Ok(Crate::Path(path.to_string())),
                 [_, _, "git", repo] => {
@@ -180,11 +181,11 @@ impl TryFrom<&'_ PackageId> for Crate {
                 }
                 Some(SourceKind::Registry | SourceKind::SparseRegistry) => {
                     Ok(Crate::Registry(RegistryCrate {
-                        name: package_id.name().to_string(),
+                        name: package_id.name().into(),
                         version: package_id
                             .version()
                             .ok_or_else(|| anyhow!("missing version for registry crate"))?
-                            .to_string(),
+                            .to_smolstr(),
                     }))
                 }
                 Some(SourceKind::Directory) => {
@@ -192,11 +193,11 @@ impl TryFrom<&'_ PackageId> for Crate {
                 }
                 None => match package_id.url() {
                     None => Ok(Crate::Registry(RegistryCrate {
-                        name: package_id.name().to_string(),
+                        name: package_id.name().into(),
                         version: package_id
                             .version()
                             .ok_or_else(|| anyhow!("missing version for registry crate"))?
-                            .to_string(),
+                            .to_smolstr(),
                     })),
                     Some(url) => match url.scheme() {
                         "http" | "https" | "git" | "ssh" => {
@@ -273,8 +274,8 @@ impl FromStr for Crate {
     fn from_str(s: &str) -> Fallible<Self> {
         match s.split('/').collect::<Vec<_>>()[..] {
             ["reg", name, version] => Ok(Crate::Registry(RegistryCrate {
-                name: name.to_string(),
-                version: version.to_string(),
+                name: name.into(),
+                version: version.into(),
             })),
             ["gh", org, name, sha] => Ok(Crate::GitHub(GitHubRepo {
                 org: org.to_string(),
@@ -308,6 +309,7 @@ mod tests {
     use super::{Crate, GitHubRepo, GitRepo, RegistryCrate};
     use cargo_metadata::PackageId;
     use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+    use smol_str::ToSmolStr;
     use std::convert::TryFrom;
     use std::str::FromStr;
 
@@ -328,8 +330,8 @@ mod tests {
         test_from_pkgid! {
             "dummy 0.1.0 (path+file:///opt/rustwide/workdir)" => Crate::Path("file:///opt/rustwide/workdir".to_string()),
             "dummy 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" => Crate::Registry(RegistryCrate {
-                name: "dummy".to_string(),
-                version: "0.1.0".to_string()
+                name: "dummy".to_smolstr(),
+                version: "0.1.0".to_smolstr()
             }),
             "dummy 0.1.0 (git+https://github.com/dummy_org/dummy#9823f01cf4948a41279f6a3febcf793130cab4f6)" => Crate::GitHub(GitHubRepo {
                 org: "dummy_org".to_string(),
@@ -370,16 +372,16 @@ mod tests {
             // package id spec <https://doc.rust-lang.org/cargo/reference/pkgid-spec.html>
 
             "registry+https://github.com/rust-lang/crates.io-index#cookie@0.15.0" => Crate::Registry(RegistryCrate {
-                name: "cookie".to_string(),
-                version: "0.15.0".to_string(),
+                name: "cookie".to_smolstr(),
+                version: "0.15.0".to_smolstr(),
             }),
             "sparse+https://github.com/rust-lang/crates.io-index#cookie@0.15.0" => Crate::Registry(RegistryCrate {
-                name: "cookie".to_string(),
-                version: "0.15.0".to_string(),
+                name: "cookie".to_smolstr(),
+                version: "0.15.0".to_smolstr(),
             }),
             "regex@1.4.3" => Crate::Registry(RegistryCrate {
-                name: "regex".to_string(),
-                version: "1.4.3".to_string(),
+                name: "regex".to_smolstr(),
+                version: "1.4.3".to_smolstr(),
             }),
 
             "https://github.com/rust-lang/cargo#0.52.0" => Crate::GitHub(GitHubRepo {
@@ -452,7 +454,7 @@ mod tests {
             "git/url" => Crate::Git(GitRepo{url: "url".to_string(), sha: None}),
             &format!("git/{}", utf8_percent_encode("url/with:stange?characters", NON_ALPHANUMERIC)) => Crate::Git(GitRepo{url: "url/with:stange?characters".to_string(), sha: None}),
             "git/url/sha" => Crate::Git(GitRepo{url: "url".to_string(), sha: Some("sha".to_string())}),
-            "reg/name/version" => Crate::Registry(RegistryCrate{name: "name".to_string(), version: "version".to_string()}),
+            "reg/name/version" => Crate::Registry(RegistryCrate{name: "name".to_smolstr(), version: "version".to_smolstr()}),
         }
     }
 }

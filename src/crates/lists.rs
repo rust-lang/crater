@@ -71,7 +71,12 @@ pub(crate) fn get_crates(
         }
 
         CrateSelect::Demo => {
-            let mut demo_registry = config.demo_crates().crates.iter().collect::<HashSet<_>>();
+            let mut demo_registry = config
+                .demo_crates()
+                .crates
+                .iter()
+                .map(|v| v.as_str())
+                .collect::<HashSet<_>>();
             let mut demo_github = config
                 .demo_crates()
                 .github_repos
@@ -90,7 +95,9 @@ pub(crate) fn get_crates(
 
             for krate in all_crates {
                 let add = match krate {
-                    Crate::Registry(RegistryCrate { ref name, .. }) => demo_registry.remove(name),
+                    Crate::Registry(RegistryCrate { ref name, .. }) => {
+                        demo_registry.remove(name.as_str())
+                    }
                     Crate::GitHub(ref repo) => demo_github.remove(&repo.slug()),
                     Crate::Local(ref name) => demo_local.remove(name),
                     Crate::Git(_) | Crate::Path(_) => unimplemented!("unsupported crate"),
@@ -121,7 +128,9 @@ pub(crate) fn get_crates(
 
             for krate in all_crates {
                 let is_desired = match krate {
-                    Crate::Registry(RegistryCrate { ref name, .. }) => desired.remove(name),
+                    Crate::Registry(RegistryCrate { ref name, .. }) => {
+                        desired.remove(name.as_str())
+                    }
                     Crate::GitHub(ref repo) => desired.remove(&repo.slug()),
                     _ => unreachable!(),
                 };

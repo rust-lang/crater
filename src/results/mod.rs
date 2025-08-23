@@ -323,6 +323,8 @@ from_into_string!(TestResult);
 
 #[cfg(test)]
 mod tests {
+    use smol_str::ToSmolStr;
+
     use crate::crates::*;
     use std::collections::BTreeSet;
     use std::str::FromStr;
@@ -372,7 +374,7 @@ mod tests {
             "test-fail:timeout" => TestFail(Timeout),
             "test-pass" => TestPass,
             "error" => Error,
-            "build-fail:depends-on(reg/clint/0.2.1)" => BuildFail(DependsOn(btreeset![Crate::Registry(RegistryCrate{name: "clint".to_string(), version: "0.2.1".to_string()})])),
+            "build-fail:depends-on(reg/clint/0.2.1)" => BuildFail(DependsOn(btreeset![Crate::Registry(RegistryCrate{name: "clint".to_smolstr(), version: "0.2.1".to_smolstr()})])),
         }
 
         // Backward compatibility

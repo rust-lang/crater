@@ -6,12 +6,19 @@ pub(crate) struct DiskUsage {
 
 impl DiskUsage {
     pub(crate) fn fetch() -> Fallible<Self> {
-        let stat = nix::sys::statvfs::statvfs(&crate::utils::path::normalize_path(
-            &crate::dirs::WORK_DIR,
-        ))?;
-        Ok(Self {
-            usage: stat.blocks_available() as f32 / stat.blocks() as f32,
-        })
+        #[cfg(unix)]
+        {
+            let stat = nix::sys::statvfs::statvfs(&crate::utils::path::normalize_path(
+                &crate::dirs::WORK_DIR,
+            ))?;
+            Ok(Self {
+                usage: stat.blocks_available() as f32 / stat.blocks() as f32,
+            })
+        }
+        #[cfg(not(unix))]
+        {
+            Ok(Self { usage: 0.0 })
+        }
     }
 
     pub(crate) fn is_threshold_reached(&self, threshold: f32) -> bool {

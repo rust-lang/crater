@@ -13,7 +13,7 @@ pub struct InvalidStatusCode {
 }
 
 lazy_static! {
-    static ref HTTP_SYNC_CLIENT: Client = setup_sync_client();
+    pub(crate) static ref HTTP_SYNC_CLIENT: Client = setup_sync_client();
 }
 
 fn setup_sync_client() -> Client {

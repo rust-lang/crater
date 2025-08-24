@@ -7,7 +7,7 @@ use crate::report::analyzer::{analyze_report, ReportConfig, ToolchainSelect};
 use crate::results::{EncodedLog, EncodingType, FailureReason, ReadResults, TestResult};
 use crate::toolchain::Toolchain;
 use crate::utils;
-use crates_index::GitIndex;
+use crates_index::SparseIndex;
 use mime::Mime;
 use percent_encoding::{utf8_percent_encode, AsciiSet};
 use std::borrow::Cow;
@@ -183,13 +183,30 @@ fn crate_to_path_fragment(
 }
 
 fn get_crate_version_status(
-    index: &GitIndex,
+    index: &SparseIndex,
     krate: &Crate,
 ) -> Fallible<Option<CrateVersionStatus>> {
     if let Crate::Registry(krate) = krate {
-        let index_krate = index
-            .crate_(&krate.name)
-            .ok_or_else(|| anyhow!("no crate found in index {:?}", &krate))?;
+        let req = index.make_cache_request(&krate.name)?;
+        let req: reqwest::blocking::Request = req
+            .body(reqwest::blocking::Body::from(vec![]))
+            .unwrap()
+            .try_into()?;
+
+        let resp = crate::utils::http::HTTP_SYNC_CLIENT.execute(req)?;
+        let mut builder = crates_index::http::Response::builder()
+            .status(resp.status())
+            .version(resp.version());
+        builder
+            .headers_mut()
+            .unwrap()
+            .extend(resp.headers().iter().map(|(k, v)| (k.clone(), v.clone())));
+        let body = resp.bytes()?;
+        let res = builder.body(Vec::from(body)).unwrap();
+
+        let Some(index_krate) = index.parse_cache_response(&krate.name, res, false)? else {
+            bail!("crate {krate:?} not found in index")
+        };
 
         let outdated = index_krate.most_recent_version().version() != krate.version;
 
@@ -206,7 +223,7 @@ fn get_crate_version_status(
             }
         }
 
-        bail!("version not found");
+        bail!("crate version {krate:?} not found in sparse index");
     } else {
         // we do not check versions for other crates
         Ok(None)
@@ -220,9 +237,9 @@ pub fn generate_report<DB: ReadResults>(
     crates: &[Crate],
 ) -> Fallible<RawTestResults> {
     let mut crates = crates.to_vec();
-    let index = GitIndex::with_path(
-        WORK_DIR.join("crates.io-index"),
-        "https://github.com/rust-lang/crates.io-index",
+    let index = SparseIndex::with_path(
+        WORK_DIR.join("crates.io-sparse-index"),
+        crates_index::sparse::URL,
     )?;
     //crate ids are unique so unstable sort is equivalent to stable sort but is generally faster
     crates.sort_unstable_by_key(|a| a.id());
@@ -642,7 +659,7 @@ mod tests {
     use crate::experiments::{CapLints, Experiment, Mode, Status};
     use crate::results::{BrokenReason, DummyDB, FailureReason, TestResult};
     use crate::toolchain::{MAIN_TOOLCHAIN, TEST_TOOLCHAIN};
-    use crates_index::GitIndex;
+    use crates_index::SparseIndex;
 
     #[test]
     fn test_crate_to_path_fragment() {
@@ -724,9 +741,9 @@ mod tests {
         };
         let gh = Crate::GitHub(repo);
 
-        let index = GitIndex::with_path(
-            WORK_DIR.join("crates.io-index"),
-            "https://github.com/rust-lang/crates.io-index",
+        let index = SparseIndex::with_path(
+            WORK_DIR.join("crates.io-sparse-index"),
+            crates_index::sparse::URL,
         )
         .unwrap();
 

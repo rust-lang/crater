@@ -195,20 +195,7 @@ impl<'a> Worker<'a> {
                     match detect_broken(rustwide_crate.fetch(self.workspace)) {
                         Ok(()) => break,
                         Err(e) => {
-                            if logs
-                                .to_string()
-                                .to_ascii_lowercase()
-                                .contains("no space left on device")
-                            {
-                                if attempt == 3 {
-                                    // FIXME: Doesn't this cause us to potentially delete caches
-                                    // used by other workers? Maybe we can do something more
-                                    // intelligent here?
-                                    if let Err(e) = self.workspace.purge_all_caches() {
-                                        log::warn!("purging caches failed: {:?}", e);
-                                    }
-                                }
-
+                            if logs.to_string().contains("No space left on device") {
                                 if attempt == 15 {
                                     // If we've failed 15 times, then
                                     // just give up. It's been at least

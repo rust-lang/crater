@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::server::github::GitHub;
 use crate::server::{Data, GithubData};
+use std::collections::BTreeMap;
 use std::fmt::Write;
 
 pub enum Label {
@@ -16,6 +17,7 @@ struct Line {
 pub struct Message {
     lines: Vec<Line>,
     notes: Vec<Line>,
+    footnotes: BTreeMap<String, String>,
     new_label: Option<Label>,
 }
 
@@ -24,6 +26,7 @@ impl Message {
         Message {
             lines: Vec::new(),
             notes: Vec::new(),
+            footnotes: BTreeMap::new(),
             new_label: None,
         }
     }
@@ -41,6 +44,11 @@ impl Message {
             emoji: emoji.into(),
             content: content.into(),
         });
+        self
+    }
+
+    pub fn footnote<S1: Into<String>, S2: Into<String>>(mut self, key: S1, content: S2) -> Self {
+        self.footnotes.insert(key.into(), content.into());
         self
     }
 
@@ -66,6 +74,9 @@ impl Message {
         }
         for line in self.notes {
             write!(&mut message, "\n:{}: {}", line.emoji, line.content).unwrap();
+        }
+        for (key, content) in self.footnotes {
+            write!(&mut message, "\n[^{key}]: {content}").unwrap();
         }
 
         github_data.api.post_comment(issue_url, &message)?;

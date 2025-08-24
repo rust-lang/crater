@@ -123,13 +123,14 @@ fn reports_thread(data: &Data, github_data: Option<&GithubData>) -> Fallible<()>
                             .line(
                                 "bar_chart",
                                 format!(
-                                    " {} regressed and {} fixed ({} total)",
+                                    "{} regressed and {} fixed ({} total)",
                                     regressed,
                                     fixed,
                                     res.info.values().sum::<u32>(),
                                 ),
                             )
-                            .line("bar_chart", format!(" {spurious_retry} spurious results on the [retry-regessed-list.txt]({retry_regressed_list_url}), consider a retry[^1] if this is a significant amount.\n[^1]: re-run the experiment with `crates={retry_regressed_list_url}`"))
+                            .line("bar_chart", format!("{spurious_retry} spurious results on the [retry-regessed-list.txt]({retry_regressed_list_url}), consider a retry[^1] if this is a significant amount."))
+                            .footnote("1", "re-run the experiment with `crates={retry_regressed_list_url}`")
                             .line(
                                 "newspaper",
                                 format!("[Open the summary report]({report_url})."),

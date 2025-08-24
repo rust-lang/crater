@@ -195,7 +195,11 @@ impl<'a> Worker<'a> {
                     match detect_broken(rustwide_crate.fetch(self.workspace)) {
                         Ok(()) => break,
                         Err(e) => {
-                            if logs.to_string().contains("No space left on device") {
+                            if logs
+                                .to_string()
+                                .to_ascii_lowercase()
+                                .contains("no space left on device")
+                            {
                                 if attempt == 3 {
                                     // FIXME: Doesn't this cause us to potentially delete caches
                                     // used by other workers? Maybe we can do something more

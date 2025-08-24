@@ -196,6 +196,15 @@ impl<'a> Worker<'a> {
                         Ok(()) => break,
                         Err(e) => {
                             if logs.to_string().contains("No space left on device") {
+                                if attempt == 3 {
+                                    // FIXME: Doesn't this cause us to potentially delete caches
+                                    // used by other workers? Maybe we can do something more
+                                    // intelligent here?
+                                    if let Err(e) = self.workspace.purge_all_caches() {
+                                        log::warn!("purging caches failed: {:?}", e);
+                                    }
+                                }
+
                                 if attempt == 15 {
                                     // If we've failed 15 times, then
                                     // just give up. It's been at least

@@ -102,7 +102,7 @@ pub fn run_ex(
         std::thread::Builder::new()
             .name("disk-space-watcher".into())
             .spawn_scoped(scope1, || {
-                disk_watcher.run();
+                disk_watcher.run(workspace);
             })
             .unwrap();
 

@@ -48,7 +48,7 @@ reqwest = { version = "0.12", features = ["blocking", "json", "gzip"] }
 jiff = { version = "0.2.15", features = ["serde"] }
 rusqlite = { version = "0.37", features = ["chrono", "functions", "bundled"] }
 rust_team_data = { git = "https://github.com/rust-lang/team" }
-rustwide = { version = "0.19.3", features = [
+rustwide = { version = "0.20.0", features = [
     "unstable",
     "unstable-toolchain-ci",
 ] }

@@ -8,11 +8,13 @@ impl DiskUsage {
     pub(crate) fn fetch() -> Fallible<Self> {
         #[cfg(unix)]
         {
-            let stat = nix::sys::statvfs::statvfs(&crate::utils::path::normalize_path(
-                &crate::dirs::WORK_DIR,
-            ))?;
+            let path = crate::utils::path::normalize_path(&crate::dirs::WORK_DIR);
+            let stat = nix::sys::statvfs::statvfs(&path)?;
+            let available = stat.blocks_available();
+            let total = stat.blocks();
+            info!("{available} / {total} blocks used in {path:?}");
             Ok(Self {
-                usage: stat.blocks_available() as f32 / stat.blocks() as f32,
+                usage: available as f32 / total as f32,
             })
         }
         #[cfg(not(unix))]

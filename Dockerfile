@@ -29,6 +29,7 @@ ENV PATH=/root/.cargo/bin:$PATH
 # and doing a full build with it.
 WORKDIR /source
 COPY Cargo.lock Cargo.toml /source/
+COPY .cargo /source/.cargo
 RUN mkdir -p /source/src && \
     echo "fn main() {}" > /source/src/main.rs && \
     echo "fn main() {}" > /source/build.rs

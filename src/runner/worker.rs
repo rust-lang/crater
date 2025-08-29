@@ -160,6 +160,9 @@ impl<'a> Worker<'a> {
             let krate = if let Some(next) = (self.next_crate)()? {
                 next
             } else {
+                // Backoff from calling the server again, to reduce load when we're spinning until
+                // the next experiment is ready.
+                std::thread::sleep(Duration::from_secs(rand::random_range(3..10)));
                 // We're done if no more crates left.
                 return Ok(());
             };

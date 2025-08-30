@@ -162,7 +162,7 @@ impl<'a> Worker<'a> {
             } else {
                 // Backoff from calling the server again, to reduce load when we're spinning until
                 // the next experiment is ready.
-                std::thread::sleep(Duration::from_secs(rand::random_range(3..10)));
+                std::thread::sleep(Duration::from_secs(rand::random_range(60..120)));
                 // We're done if no more crates left.
                 return Ok(());
             };

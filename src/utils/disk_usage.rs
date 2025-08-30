@@ -13,8 +13,9 @@ impl DiskUsage {
             let available = stat.blocks_available();
             let total = stat.blocks();
             info!("{available} / {total} blocks used in {path:?}");
+
             Ok(Self {
-                usage: available as f32 / total as f32,
+                usage: 1.0 - available as f32 / total as f32,
             })
         }
         #[cfg(not(unix))]

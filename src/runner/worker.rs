@@ -347,6 +347,7 @@ impl<'a> Worker<'a> {
         for dir in self.build_dir.values() {
             dir.lock().unwrap().purge()?;
         }
+
         Ok(())
     }
 
@@ -379,10 +380,10 @@ impl<'a> DiskSpaceWatcher<'a> {
         self.waiter.notify_all();
     }
 
-    pub(super) fn run(&self) {
+    pub(super) fn run(&self, workspace: &Workspace) {
         let mut should_stop = self.should_stop.lock().unwrap();
         while !*should_stop {
-            self.check();
+            self.check(workspace);
             // Wait for either the interval to pass or should_stop to get a
             // write. We don't care if we timed out or not, we can double check
             // the should_stop regardless.
@@ -394,7 +395,7 @@ impl<'a> DiskSpaceWatcher<'a> {
         }
     }
 
-    fn check(&self) {
+    fn check(&self, workspace: &Workspace) {
         let usage = match crate::utils::disk_usage::DiskUsage::fetch() {
             Ok(usage) => usage,
             Err(err) => {
@@ -408,6 +409,10 @@ impl<'a> DiskSpaceWatcher<'a> {
             warn!("running the scheduled thread cleanup");
             for worker in self.workers {
                 worker.schedule_target_dir_cleanup();
+            }
+
+            if let Err(e) = workspace.purge_all_caches() {
+                warn!("failed to purge caches: {:?}", e);
             }
         }
     }

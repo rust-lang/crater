@@ -228,5 +228,18 @@ rustc_get_version = { skip = true } # does not build on beta
 "ns6251/spin-cookie-token-sample" = { skip = true } # invalid dep tree, spuriously compiles
 "daniestevez/qsdr" = { skip = true } # cfg for stable/nightly, but not beta
 "Buggaboo/flat_sqlite_rs" = { skip = true } # proc macro causes nondeterministic compile error
+"Arxoto/sudoku" = { skip-tests = true } # memory corruption with static mut
+"Awaiskhan404/flash-db" = { skip-tests = true } # Reused port in multiple tests
+"Cobord/EventEmit" = { skip-tests = true } # timing-sensitive
+"DevOpsJen/BORE" = { skip-tests = true } # race condition
+"FlixCoder/EvoResNN" = { skip-tests = true } # algorithm uses randomness
+"JPMoresmau/rust-linear" = { skip-tests = true } # algorithm uses randomness
+"July-Tea/jsonfixer" = { skip-tests = true } # timing-sensitive
+"Juules32/unnamed-chess-engine" = { skip-tests = true } # memory corruption, presumably UB, given the excessive unsafe code
+"KKKZOZ/mini-lsm" = { skip-tests = true } # presumably a race condition, given that the test has a sleep() call
+"KeKsBoTer/tenXten" = { skip-tests = true } # algorithm uses randomness
+"KermanX/ecma_analyzer" = { skip-tests = true } # tried to write to read-only filesystem
+"Kim8584/multiplicative_subgroup_generator" = { skip-tests = true } # relies on HashSet order
+"LegendarySaiyan/structures" = { skip-tests = true } # new() function creates dangling pointer
 
 [local-crates]

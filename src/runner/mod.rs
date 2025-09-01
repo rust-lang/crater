@@ -10,6 +10,7 @@ use crate::prelude::*;
 use crate::results::TestResult;
 use crate::runner::worker::{DiskSpaceWatcher, Worker};
 use rustwide::Workspace;
+use std::sync::Arc;
 use std::thread::scope;
 use std::time::Duration;
 pub use worker::RecordProgress;
@@ -95,8 +96,18 @@ pub fn run_ex(
     let disk_watcher = DiskSpaceWatcher::new(
         DISK_SPACE_WATCHER_INTERVAL,
         DISK_SPACE_WATCHER_THRESHOLD,
-        &workers,
+        workers.len(),
     );
+
+    for worker in workers.iter() {
+        let disk_watcher = Arc::clone(&disk_watcher);
+        assert!(worker
+            .between_crates
+            .set(Box::new(move |is_permanent| {
+                disk_watcher.worker_idle(is_permanent);
+            }))
+            .is_ok());
+    }
 
     scope(|scope1| {
         std::thread::Builder::new()

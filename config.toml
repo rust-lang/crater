@@ -159,6 +159,16 @@ crt0stack = { skip-tests = true } # UB
 fsdr-blocks = { skip = true } # does not build on beta
 leptos_core = { skip = true } # does not build on beta
 rustc_get_version = { skip = true } # does not build on beta
+deadpool = { skip-tests = true } # flaky tests (timing)
+exclave = { skip-tests = true } # synchronization issue with mutex access
+fides = { skip-tests = true } # depends on `HashMap` iteration order
+kaiser = { skip-tests = true } # UB
+music-player-settings = { skip-tests = true } # flaky tests when run concurrently (mutates shared environment variables)
+nextera_jwt = { skip-tests = true } # flaky tests (relies on test execution order to set environment variable)
+nu_plugin_ws = { skip-tests = true } # flaky test (timing)
+rskin = { skip-tests = true } # tests depend on filesystem layout
+quanta = { skip-tests = true } # flaky test (timing)
+single_executor = { skip-tests = true } # flaky test (timing)
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
@@ -241,5 +251,11 @@ rustc_get_version = { skip = true } # does not build on beta
 "KermanX/ecma_analyzer" = { skip-tests = true } # tried to write to read-only filesystem
 "Kim8584/multiplicative_subgroup_generator" = { skip-tests = true } # relies on HashSet order
 "LegendarySaiyan/structures" = { skip-tests = true } # new() function creates dangling pointer
+"MathiasBjerggaard/3DCylinderSimulation" = { skip-tests = true } # algorithm uses rng
+"anatols/atomic_sibling_counter" = { skip-tests = true } # flaky tests when run concurrently (mutates shared allocator state)
+"aubex/pytron" = { skip-tests = true } # flaky tests when run concurrently (mutates shared environment variable)
+"conradludgate/plunger" = { skip-tests = true } # flaky test (timing)
+"marziply/emotech-grpc" = { skip-tests = true } # flaky tests when run concurrently (all try to open socket on same address)
+"olegfomenko/valida-examples" = { skip-tests = true } # test requires custom toolchain and specific target
 
 [local-crates]

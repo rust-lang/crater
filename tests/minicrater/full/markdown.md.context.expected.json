@@ -30,7 +30,7 @@
                       "res": "build-fail:depends-on(gh/rust-lang/crater/f190933e896443e285e3bb6962fb87d7439b8d65)"
                     }
                   ],
-                  "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
+                  "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-faulty-deps"
                 }
               ]
             ]
@@ -53,7 +53,7 @@
                     "res": "build-fail:unknown"
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-regression"
               },
               []
             ],
@@ -74,7 +74,7 @@
                     "res": "build-fail:compiler-error(E0015)"
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/error-code"
               },
               []
             ],
@@ -95,7 +95,7 @@
                     "res": "build-fail:ice"
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/ice-regression"
               },
               []
             ]
@@ -126,7 +126,7 @@
                     "res": "test-pass"
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-fixed"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-fixed"
               },
               []
             ],
@@ -147,7 +147,7 @@
                     "res": "test-fail:unknown"
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/network-access"
               },
               []
             ]

@@ -483,11 +483,9 @@ fn crate_to_url(c: &Crate) -> String {
                 format!("https://github.com/{}/{}", repo.org, repo.name)
             }
         }
-        Crate::Local(ref name) => format!(
-            "{}/tree/master/local-crates/{}",
-            crate::CRATER_REPO_URL,
-            name
-        ),
+        Crate::Local(ref name) => {
+            format!("{}/tree/HEAD/local-crates/{}", crate::CRATER_REPO_URL, name)
+        }
         Crate::Path(ref path) => utf8_percent_encode(path, &REPORT_ENCODE_SET).to_string(),
         Crate::Git(ref repo) => repo.url.clone(),
     }

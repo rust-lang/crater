@@ -24,7 +24,7 @@
                     "name_idx": 1
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-faulty-deps"
               }
             ]
           }
@@ -55,7 +55,7 @@
                     "name_idx": 4
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/ice-regression"
               }
             ],
             "build compiler-error(E0015)": [
@@ -75,7 +75,7 @@
                     "name_idx": 3
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/error-code"
               }
             ],
             "build failed (unknown)": [
@@ -95,7 +95,7 @@
                     "name_idx": 2
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-regression"
               }
             ]
           }
@@ -136,7 +136,7 @@
                     "name_idx": 0
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-fixed"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-fixed"
               },
               {
                 "color_idx": 1,
@@ -154,7 +154,7 @@
                     "name_idx": 5
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/network-access"
               }
             ]
           }

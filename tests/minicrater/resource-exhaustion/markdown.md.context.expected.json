@@ -20,7 +20,7 @@
                 "res": "test-fail:oom"
               }
             ],
-            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
+            "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/memory-hungry"
           }
         ]
       }

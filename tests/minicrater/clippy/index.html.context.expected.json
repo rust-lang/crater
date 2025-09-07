@@ -34,7 +34,7 @@
                     "name_idx": 1
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/clippy-warn"
               }
             ]
           }

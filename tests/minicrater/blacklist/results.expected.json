@@ -10,7 +10,7 @@
         null,
         null
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/build-fail"
     },
     {
       "krate": {
@@ -28,7 +28,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/build-pass"
     },
     {
       "krate": {
@@ -46,7 +46,7 @@
           "res": "test-skipped"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/test-fail"
     }
   ]
 }

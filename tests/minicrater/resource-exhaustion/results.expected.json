@@ -16,7 +16,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/build-pass"
     },
     {
       "krate": {
@@ -34,7 +34,7 @@
           "res": "test-fail:oom"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/memory-hungry"
     }
   ]
 }

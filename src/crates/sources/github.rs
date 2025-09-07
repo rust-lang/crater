@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::str::FromStr;
 
 static CACHED_LIST: &str =
-    "https://raw.githubusercontent.com/rust-lang/rust-repos/master/data/github.csv";
+    "https://raw.githubusercontent.com/rust-lang/rust-repos/HEAD/data/github.csv";
 const DUMMY_ORG: &str = "ghost";
 const DUMMY_NAME: &str = "missing";
 

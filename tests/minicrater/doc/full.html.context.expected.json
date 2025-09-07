@@ -21,7 +21,7 @@
                 "name_idx": 0
               }
             ],
-            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
+            "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/build-pass"
           }
         ]
       }
@@ -47,7 +47,7 @@
                 "name_idx": 1
               }
             ],
-            "url": "https://github.com/rust-lang/crater/tree/master/local-crates/docs-rs-features"
+            "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/docs-rs-features"
           }
         ]
       }

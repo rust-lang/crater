@@ -98,11 +98,9 @@ fn process_command(
                 )
                 .note(
                     "key",
-                    format!(
-                        "If you are a member of the Rust team and need access, [add yourself to \
-                         the whitelist]({}/blob/master/config.toml).",
-                        crate::CRATER_REPO_URL,
-                    ),
+                    "If you are a member of a Rust team and need access, please update \
+                    rust-lang/team to grant your team or yourself access to the `crater` \
+                    permission.",
                 )
                 .send(&issue.url, data, github_data)?;
             return Ok(());

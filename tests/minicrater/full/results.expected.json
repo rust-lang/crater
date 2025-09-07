@@ -16,7 +16,7 @@
           "res": "build-fail:depends-on(gh/rust-lang/crater/f190933e896443e285e3bb6962fb87d7439b8d65)"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-faulty-deps"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-faulty-deps"
     },
     {
       "krate": {
@@ -34,7 +34,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-fixed"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-fixed"
     },
     {
       "krate": {
@@ -52,7 +52,7 @@
           "res": "build-fail:unknown"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-regression"
     },
     {
       "krate": {
@@ -70,7 +70,7 @@
           "res": "broken:cargo-toml"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/broken-cargotoml"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/broken-cargotoml"
     },
     {
       "krate": {
@@ -88,7 +88,7 @@
           "res": "build-fail:unknown"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-fail"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/build-fail"
     },
     {
       "krate": {
@@ -106,7 +106,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/build-pass"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/build-pass"
     },
     {
       "krate": {
@@ -124,7 +124,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/clippy-warn"
     },
     {
       "krate": {
@@ -142,7 +142,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/docs-rs-features"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/docs-rs-features"
     },
     {
       "krate": {
@@ -160,7 +160,7 @@
           "res": "build-fail:compiler-error(E0015)"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/error-code"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/error-code"
     },
     {
       "krate": {
@@ -178,7 +178,7 @@
           "res": "build-fail:depends-on(reg/lazy_static/0.1.0, gh/rust-lang/crater/c3f462bdab37a93c24b2b172b90564749e892cbc)"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/faulty-deps"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/faulty-deps"
     },
     {
       "krate": {
@@ -196,7 +196,7 @@
           "res": "build-fail:ice"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/ice-regression"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/ice-regression"
     },
     {
       "krate": {
@@ -208,7 +208,7 @@
         null,
         null
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/memory-hungry"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/memory-hungry"
     },
     {
       "krate": {
@@ -226,7 +226,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/missing-examples"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/missing-examples"
     },
     {
       "krate": {
@@ -244,7 +244,7 @@
           "res": "test-fail:unknown"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/network-access"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/network-access"
     },
     {
       "krate": {
@@ -262,7 +262,7 @@
           "res": "test-pass"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/outdated-lockfile"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/outdated-lockfile"
     },
     {
       "krate": {
@@ -280,7 +280,7 @@
           "res": "test-fail:unknown"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/test-fail"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/test-fail"
     },
     {
       "krate": {
@@ -298,7 +298,7 @@
           "res": "broken:yanked"
         }
       ],
-      "url": "https://github.com/rust-lang/crater/tree/master/local-crates/yanked-deps"
+      "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/yanked-deps"
     }
   ]
 }

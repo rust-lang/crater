@@ -23,7 +23,7 @@
                     "res": "build-fail:compiler-error(clippy::print_with_newline)"
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/clippy-warn"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/clippy-warn"
               },
               []
             ]

@@ -23,7 +23,7 @@
                     "res": "build-fail:unknown"
                   }
                 ],
-                "url": "https://github.com/rust-lang/crater/tree/master/local-crates/beta-regression"
+                "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/beta-regression"
               },
               []
             ]

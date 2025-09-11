@@ -48,21 +48,34 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
     match res {
         Ok(ok) => Ok(ok),
         Err(err) => {
-            let mut reason = None;
-
             if let Some(error) = err.downcast_ref() {
-                reason = match *error {
-                    PrepareError::MissingCargoToml => Some(BrokenReason::CargoToml),
-                    PrepareError::InvalidCargoTomlSyntax => Some(BrokenReason::CargoToml),
-                    PrepareError::YankedDependencies(_) => Some(BrokenReason::Yanked),
-                    PrepareError::MissingDependencies(_) => Some(BrokenReason::MissingDependencies),
-                    PrepareError::PrivateGitRepository => Some(BrokenReason::MissingGitRepository),
-                    _ => None,
-                }
-            }
+                let reason = match *error {
+                    PrepareError::MissingCargoToml => {
+                        TestResult::BrokenCrate(BrokenReason::CargoToml)
+                    }
+                    PrepareError::InvalidCargoTomlSyntax => {
+                        TestResult::BrokenCrate(BrokenReason::CargoToml)
+                    }
+                    PrepareError::YankedDependencies(_) => {
+                        TestResult::BrokenCrate(BrokenReason::Yanked)
+                    }
+                    PrepareError::MissingDependencies(_) => {
+                        TestResult::BrokenCrate(BrokenReason::MissingDependencies)
+                    }
+                    PrepareError::PrivateGitRepository => {
+                        TestResult::BrokenCrate(BrokenReason::MissingGitRepository)
+                    }
+                    _ => {
+                        let reason = failure_reason(&err);
+                        if reason.is_spurious() || matches!(reason, FailureReason::Unknown) {
+                            TestResult::PrepareFail(reason)
+                        } else {
+                            TestResult::BrokenCrate(BrokenReason::Unknown)
+                        }
+                    }
+                };
 
-            if let Some(reason) = reason {
-                Err(err.context(OverrideResult(TestResult::BrokenCrate(reason))))
+                Err(err.context(OverrideResult(reason)))
             } else {
                 Err(err)
             }

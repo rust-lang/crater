@@ -169,6 +169,10 @@ nu_plugin_ws = { skip-tests = true } # flaky test (timing)
 rskin = { skip-tests = true } # tests depend on filesystem layout
 quanta = { skip-tests = true } # flaky test (timing)
 single_executor = { skip-tests = true } # flaky test (timing)
+ImageManip = { skip = true } # broken beta rustc version parsing
+graphicsmagick = { skip = true } # broken beta rustc version parsing
+graphicsmagick-sys = { skip = true } # broken beta rustc version parsing
+forkable = { skip = true } # broken beta rustc version parsing
 
 [github-repos]
 # "org_name/repo_name" = { option = true }

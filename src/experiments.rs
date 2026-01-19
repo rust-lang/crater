@@ -25,6 +25,7 @@ string_enum!(pub enum Status {
 
 string_enum!(pub enum Mode {
     BuildAndTest => "build-and-test",
+    BuildAndStatTest => "build-and-stat-test",
     BuildOnly => "build-only",
     CheckOnly => "check-only",
     Clippy => "clippy",
@@ -259,6 +260,7 @@ pub struct Experiment {
     pub report_url: Option<String>,
     pub ignore_blacklist: bool,
     pub requirement: Option<String>,
+    pub stat_run: Option<i32>,
 }
 
 impl Experiment {
@@ -678,6 +680,7 @@ pub struct ExperimentDBRecord {
     report_url: Option<String>,
     ignore_blacklist: bool,
     requirement: Option<String>,
+    stat_run: Option<i32>,
 }
 
 impl ExperimentDBRecord {
@@ -700,6 +703,7 @@ impl ExperimentDBRecord {
             report_url: row.get("report_url")?,
             ignore_blacklist: row.get("ignore_blacklist")?,
             requirement: row.get("requirement")?,
+            stat_run: row.get("stat_run")?,
         })
     }
 
@@ -735,6 +739,7 @@ impl ExperimentDBRecord {
             report_url: self.report_url,
             ignore_blacklist: self.ignore_blacklist,
             requirement: self.requirement,
+            stat_run: self.stat_run,
         })
     }
 }

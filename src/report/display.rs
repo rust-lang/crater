@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::report::Comparison;
-use crate::results::{BrokenReason, FailureReason, TestResult};
+use crate::results::{BrokenReason, FailureReason, StatFailureReasons, TestResult};
+use std::collections::HashMap;
 
 pub trait ResultName {
     fn short_name(&self) -> String;
@@ -38,6 +39,41 @@ impl ResultName for FailureReason {
     }
 }
 
+impl ResultName for StatFailureReasons {
+    fn short_name(&self) -> String {
+        let StatFailureReasons::Reasons(vec) = self else {
+            return String::new();
+        };
+        // ex: "failed (unknown) x2 | OOM x4 | ICE x1"
+        let unique_counts: HashMap<String, usize> =
+            vec.iter().fold(HashMap::new(), |mut map, val| {
+                *map.entry(val.short_name()).or_insert(0) += 1;
+                map
+            });
+        unique_counts
+            .iter()
+            .map(|v| format!("{} x{}", v.0, v.1))
+            .collect::<Vec<_>>()
+            .join(" | ")
+    }
+
+    fn long_name(&self) -> String {
+        let StatFailureReasons::Reasons(vec) = self else {
+            return String::new();
+        };
+        let unique_counts: HashMap<String, usize> =
+            vec.iter().fold(HashMap::new(), |mut map, val| {
+                *map.entry(val.long_name()).or_insert(0) += 1;
+                map
+            });
+        unique_counts
+            .iter()
+            .map(|v| format!("{} x{}", v.0, v.1))
+            .collect::<Vec<_>>()
+            .join(" | ")
+    }
+}
+
 impl ResultName for BrokenReason {
     fn short_name(&self) -> String {
         match self {
@@ -61,6 +97,7 @@ impl ResultName for TestResult {
             TestResult::PrepareFail(reason) => format!("prepare {}", reason.short_name()),
             TestResult::BuildFail(reason) => format!("build {}", reason.short_name()),
             TestResult::TestFail(reason) => format!("test {}", reason.short_name()),
+            TestResult::TestsFail(reason) => format!("tests: {}", reason.short_name()),
             TestResult::TestSkipped => "test skipped".into(),
             TestResult::TestPass => "test passed".into(),
             TestResult::Error => "error".into(),
@@ -73,6 +110,7 @@ impl ResultName for TestResult {
             TestResult::PrepareFail(reason) => format!("prepare {}", reason.long_name()),
             TestResult::BuildFail(reason) => format!("build {}", reason.long_name()),
             TestResult::TestFail(reason) => format!("test {}", reason.long_name()),
+            TestResult::TestsFail(reason) => format!("tests: {}", reason.long_name()),
             TestResult::BrokenCrate(reason) => reason.long_name(),
             TestResult::TestSkipped
             | TestResult::TestPass
@@ -118,6 +156,7 @@ impl ResultColor for TestResult {
             TestResult::BrokenCrate(_) => Color::Single("#44176e"),
             TestResult::BuildFail(_) => Color::Single("#db3026"),
             TestResult::TestFail(_) => Color::Single("#65461e"),
+            TestResult::TestsFail(_) => Color::Single("#65461e"),
             TestResult::TestSkipped | TestResult::TestPass => Color::Single("#62a156"),
             TestResult::Error => Color::Single("#d77026"),
             TestResult::PrepareFail(_) => Color::Striped("#44176e", "#d77026"),

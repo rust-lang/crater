@@ -205,6 +205,7 @@ mod tests {
             ignore_blacklist: false,
             assign: None,
             requirement: None,
+            stat_run: None,
         }
         .apply(&ctx)
         .unwrap();

@@ -4,7 +4,9 @@ use crate::dirs::WORK_DIR;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::report::analyzer::{analyze_report, ReportConfig, ToolchainSelect};
-use crate::results::{EncodedLog, EncodingType, FailureReason, ReadResults, TestResult};
+use crate::results::{
+    EncodedLog, EncodingType, FailureReason, ReadResults, StatFailureReasons, TestResult,
+};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use crates_index::SparseIndex;
@@ -514,8 +516,15 @@ fn compare(
             (TestPass, TestPass) => Comparison::SameTestPass,
 
             // (spurious) fixed
-            (BuildFail(reason), TestSkipped | TestFail(_) | TestPass)
+            (BuildFail(reason), TestSkipped | TestFail(_) | TestsFail(_) | TestPass)
             | (TestFail(reason), TestPass) => {
+                if reason.is_spurious() {
+                    Comparison::SpuriousFixed
+                } else {
+                    Comparison::Fixed
+                }
+            }
+            (TestsFail(reason), TestPass) => {
                 if reason.is_spurious() {
                     Comparison::SpuriousFixed
                 } else {
@@ -524,8 +533,15 @@ fn compare(
             }
 
             // (spurious) regressed
-            (TestSkipped | TestFail(_) | TestPass, BuildFail(reason))
+            (TestSkipped | TestFail(_) | TestsFail(_) | TestPass, BuildFail(reason))
             | (TestPass, TestFail(reason)) => {
+                if reason.is_spurious() {
+                    Comparison::SpuriousRegressed
+                } else {
+                    Comparison::Regressed
+                }
+            }
+            (TestPass, TestsFail(reason)) => {
                 if reason.is_spurious() {
                     Comparison::SpuriousRegressed
                 } else {
@@ -537,9 +553,24 @@ fn compare(
             (BrokenCrate(_), _) | (_, BrokenCrate(_)) => Comparison::Broken,
             (PrepareFail(_), _) | (_, PrepareFail(_)) => Comparison::PrepareFail,
             (Error, _) | (_, Error) => Comparison::Error,
-            (TestFail(_) | TestPass, TestSkipped) | (TestSkipped, TestFail(_) | TestPass) => {
+            (TestFail(_) | TestsFail(_) | TestPass, TestSkipped)
+            | (TestSkipped, TestFail(_) | TestsFail(_) | TestPass) => {
                 panic!("can't compare {res1} and {res2}");
             }
+
+            // Stat tests comparison
+            (TestsFail(v1), TestsFail(v2)) => {
+                let (StatFailureReasons::Reasons(v1), StatFailureReasons::Reasons(v2)) = (v1, v2)
+                else {
+                    panic!("can't compare {res1} and {res2}");
+                };
+                if v2.len() > v1.len() {
+                    Comparison::Regressed
+                } else {
+                    Comparison::SameTestFail
+                }
+            }
+            (TestsFail(_), TestFail(_)) | (TestFail(_), TestsFail(_)) => Comparison::SameTestFail,
         },
         _ if config.should_skip(krate) => Comparison::Skipped,
         _ => Comparison::Unknown,
@@ -940,6 +971,7 @@ mod tests {
             report_url: None,
             ignore_blacklist: false,
             requirement: None,
+            stat_run: None,
         };
 
         let mut db = DummyDB::default();

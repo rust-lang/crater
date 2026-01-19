@@ -12,7 +12,7 @@
     <body>
         <header>
             <div class="navbar">
-                <h1>Crater report for <b>{{ ex.name }}</b></h1>
+                <h1>Crater report for <b>{{ ex.name }}</b>{% if ex.stat_run %} {% if ex.stat_run > 0 %} (statistic testing x{{ ex.stat_run }}) {% endif %} {% endif %}</h1>
                 <ul>
                     {% for item in nav %}
                         <li><a href="{{ item.url }}" {% if item.active %}class="active"{% endif %}>

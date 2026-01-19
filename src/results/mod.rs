@@ -296,6 +296,62 @@ impl FailureReason {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
+pub enum StatFailureReasons {
+    Unknown,
+    Reasons(Vec<FailureReason>),
+}
+
+impl std::error::Error for StatFailureReasons {}
+
+impl ::std::fmt::Display for StatFailureReasons {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        match self {
+            StatFailureReasons::Unknown => write!(f, "unknown"),
+            StatFailureReasons::Reasons(vec) => write!(
+                f,
+                "reasons({})",
+                vec.iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
+                    .join("|"),
+            ),
+        }
+    }
+}
+
+impl ::std::str::FromStr for StatFailureReasons {
+    type Err = ::anyhow::Error;
+
+    fn from_str(s: &str) -> ::anyhow::Result<StatFailureReasons> {
+        if let (Some(idx), true) = (s.find('('), s.ends_with(')')) {
+            let prefix = &s[..idx];
+            let contents = s[idx + 1..s.len() - 1].split("|");
+            match prefix {
+                "reasons" => Ok(StatFailureReasons::Reasons(
+                    contents.map(|st| st.parse().unwrap()).collect(),
+                )),
+                _ => bail!("unexpected prefix: {}", prefix),
+            }
+        } else {
+            match s {
+                "unknown" => Ok(StatFailureReasons::Unknown),
+                _ => bail!("unexpected value: {}", s),
+            }
+        }
+    }
+}
+
+impl StatFailureReasons {
+    pub(crate) fn is_spurious(&self) -> bool {
+        if let StatFailureReasons::Reasons(vec) = self {
+            vec.iter().all(|v| v.is_spurious())
+        } else {
+            false
+        }
+    }
+}
+
 string_enum!(pub enum BrokenReason {
     Unknown => "unknown",
     CargoToml => "cargo-toml",
@@ -310,6 +366,7 @@ test_result_enum!(pub enum TestResult {
         PrepareFail(FailureReason) => "prepare-fail",
         BuildFail(FailureReason) => "build-fail",
         TestFail(FailureReason) => "test-fail",
+        TestsFail(StatFailureReasons) => "stat-tests-fail",
     }
     without_reason {
         TestSkipped => "test-skipped",

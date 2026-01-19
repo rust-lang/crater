@@ -1,8 +1,8 @@
 use crate::crates::Crate;
 use crate::experiments::CapLints;
 use crate::prelude::*;
-use crate::results::DiagnosticCode;
 use crate::results::{BrokenReason, FailureReason, TestResult};
+use crate::results::{DiagnosticCode, StatFailureReasons};
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
 use anyhow::Error;
@@ -318,6 +318,36 @@ pub(super) fn test_build_and_test(
         (Ok(_), Some(Ok(_))) => TestResult::TestPass,
         (_, _) => unreachable!(),
     })
+}
+
+// One build and several test runs
+pub(super) fn test_build_and_stat_test(
+    ctx: &TaskCtx,
+    build_env: &Build,
+    local_packages_id: &[Package],
+) -> Fallible<TestResult> {
+    let build_r = build(ctx, build_env, local_packages_id);
+    let mut errs = Vec::new();
+    if build_r.is_ok() {
+        // Test loop
+        for _i in 0..ctx.experiment.stat_run.unwrap() {
+            if let Some(err) = test(ctx, build_env).err() {
+                errs.push(err);
+            }
+        }
+    } else {
+        return Ok(TestResult::BuildFail(failure_reason(
+            &build_r.err().unwrap(),
+        )));
+    }
+
+    if !errs.is_empty() {
+        Ok(TestResult::TestsFail(StatFailureReasons::Reasons(
+            errs.iter().map(|v| failure_reason(v)).collect(),
+        )))
+    } else {
+        Ok(TestResult::TestPass)
+    }
 }
 
 pub(super) fn test_build_only(

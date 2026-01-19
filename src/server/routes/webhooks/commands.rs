@@ -44,6 +44,7 @@ pub fn check(
             ignore_blacklist: args.ignore_blacklist,
             assign: args.assign,
             requirement: args.requirement,
+            stat_run: None,
         },
     )
 }
@@ -148,6 +149,7 @@ pub fn run(
         ignore_blacklist: args.ignore_blacklist.unwrap_or(false),
         assign: args.assign,
         requirement: Some(requirement),
+        stat_run: args.stat_run,
     }
     .apply(&ActionsCtx::new(&data.db, &data.config))?;
 

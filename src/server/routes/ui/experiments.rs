@@ -35,6 +35,7 @@ impl ExperimentData {
             status_pretty,
             mode: match experiment.mode {
                 Mode::BuildAndTest => "cargo test",
+                Mode::BuildAndStatTest => "cargo test",
                 Mode::BuildOnly => "cargo build",
                 Mode::CheckOnly => "cargo check",
                 Mode::Clippy => "cargo clippy",

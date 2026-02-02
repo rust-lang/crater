@@ -169,6 +169,11 @@ nu_plugin_ws = { skip-tests = true } # flaky test (timing)
 rskin = { skip-tests = true } # tests depend on filesystem layout
 quanta = { skip-tests = true } # flaky test (timing)
 single_executor = { skip-tests = true } # flaky test (timing)
+purse = { skip-tests = true } # flaky test (TypeId sorting; see https://github.com/rauljordan/purse/issues/2)
+sisyphus32 = { skip-tests = true } # probably UB via static mut when running multithreaded tests (README instructs to run tests singlethreaded)
+neutralts = { skip-tests = true } # flaky test (see https://github.com/FranBarInstance/neutralts/issues/2)
+reratui-hooks = { skip-tests = true } # flaky tests (concurrency)
+fp_lib = { skip-tests = true } # flaky test (thread::sleep; will fail on heavily loaded machines)
 
 [github-repos]
 # "org_name/repo_name" = { option = true }

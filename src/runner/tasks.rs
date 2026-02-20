@@ -91,6 +91,11 @@ impl fmt::Debug for Task {
 }
 
 impl Task {
+    /// Dispatches this task to the appropriate test function based on the step variant.
+    // - Matches the TaskStep to select the build directory, action label,
+    //   test function, toolchain, and quiet flag.
+    // - Constructs a TaskCtx with these values.
+    // - Delegates to test::run_test which handles sandboxing and execution.
     pub(super) fn run<'ctx, 's: 'ctx>(
         &'s self,
         config: &'ctx Config,

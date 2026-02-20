@@ -338,7 +338,7 @@ pub(super) fn run_test(
 /// Compiles the crate and its test binaries (without executing them).
 // - Runs `cargo build --frozen` with JSON diagnostics.
 // - Runs `cargo test --frozen --no-run` to compile test harnesses.
-fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallible<()> {
+fn run_cargo_build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallible<()> {
     run_cargo(
         ctx,
         build_env,
@@ -384,7 +384,7 @@ pub(super) fn test_build_and_test(
     build_env: &Build,
     local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
-    let build_r = build(ctx, build_env, local_packages_id);
+    let build_r = run_cargo_build(ctx, build_env, local_packages_id);
     let test_r = if build_r.is_ok() {
         Some(run_cargo_test(ctx, build_env))
     } else {
@@ -405,7 +405,7 @@ pub(super) fn test_build_only(
     build_env: &Build,
     local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
-    if let Err(err) = build(ctx, build_env, local_packages_id) {
+    if let Err(err) = run_cargo_build(ctx, build_env, local_packages_id) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
         Ok(TestResult::TestSkipped)

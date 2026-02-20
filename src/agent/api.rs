@@ -1,3 +1,5 @@
+//! HTTP client that agents use to communicate with the crater server.
+
 use std::time::Duration;
 
 use crate::agent::Capabilities;
@@ -15,6 +17,7 @@ use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json::json;
 
+/// Errors returned by the crater server's agent API.
 #[derive(Debug, thiserror::Error)]
 pub enum AgentApiError {
     #[error("invalid API endpoint called")]
@@ -29,6 +32,7 @@ pub enum AgentApiError {
     InternalServerError(String),
 }
 
+/// Converts an HTTP response into a typed `ApiResponse`, mapping status codes to errors.
 trait ResponseExt {
     fn to_api_response<T: DeserializeOwned>(self) -> Fallible<T>;
 }
@@ -72,6 +76,7 @@ pub struct AgentApi {
 }
 
 impl AgentApi {
+    /// Creates a new API client targeting the given server URL with an auth token.
     pub fn new(url: &str, token: &str) -> Self {
         AgentApi {
             url: url.to_string(),
@@ -80,6 +85,7 @@ impl AgentApi {
         }
     }
 
+    /// Builds an authenticated HTTP request to the given agent-api endpoint.
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
         utils::http::prepare_sync(method, &format!("{}/agent-api/{url}", self.url)).header(
             AUTHORIZATION,
@@ -90,6 +96,11 @@ impl AgentApi {
         )
     }
 
+    /// Retries a request with exponential backoff on transient failures.
+    // - Retries on ServerUnavailable, reqwest timeouts/connection errors,
+    //   and SQLite "database is locked" errors.
+    // - Backs off from 16 s up to a cap of 8 minutes between attempts.
+    // - Non-transient errors are returned immediately.
     fn retry<T, F: Fn(&Self) -> Fallible<T>>(&self, f: F) -> Fallible<T> {
         let mut retry_interval = 16u64;
         loop {
@@ -126,6 +137,7 @@ impl AgentApi {
         }
     }
 
+    /// Sends the agent's capabilities and receives its configuration from the server.
     pub fn config(&self, caps: &Capabilities) -> Fallible<AgentConfig> {
         self.retry(|this| {
             this.build_request(Method::POST, "config")
@@ -135,6 +147,7 @@ impl AgentApi {
         })
     }
 
+    /// Polls the server for the next experiment to run, sleeping 120 s if none is available.
     pub fn next_experiment(&self) -> Result<Experiment> {
         self.retry(|this| loop {
             let resp: Option<_> = this
@@ -154,6 +167,7 @@ impl AgentApi {
         })
     }
 
+    /// Requests the next crate to test for the given experiment, or `None` if the queue is empty.
     pub fn next_crate(&self, ex: &str) -> Fallible<Option<Crate>> {
         self.retry(|this| {
             let resp: Option<Crate> = this
@@ -166,6 +180,7 @@ impl AgentApi {
         })
     }
 
+    /// Uploads a crate's build/test result and base64-encoded log to the server.
     pub fn record_progress(
         &self,
         ex: &Experiment,
@@ -194,6 +209,7 @@ impl AgentApi {
         })
     }
 
+    /// Sends a heartbeat to the server to signal this agent is still alive.
     pub fn heartbeat(&self) -> Fallible<()> {
         self.retry(|this| {
             let _: bool = this
@@ -207,6 +223,7 @@ impl AgentApi {
         })
     }
 
+    /// Reports an error encountered while running an experiment to the server.
     pub fn report_error(&self, ex: &Experiment, error: String) -> Fallible<()> {
         self.retry(|this| {
             let _: bool = this

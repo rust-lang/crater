@@ -76,6 +76,9 @@ pub struct Database {
 }
 
 impl Database {
+    /// Opens the database at the default path inside [`WORK_DIR`].
+    // - Checks for legacy database filenames and renames if found.
+    // - Delegates to `Database::new` for pool setup and migrations.
     pub fn open() -> Fallible<Self> {
         let path = WORK_DIR.join(DATABASE_PATH);
         if !path.exists() {
@@ -100,6 +103,7 @@ impl Database {
         Database::new(SqliteConnectionManager { file: path }, None)
     }
 
+    /// Opens or creates a database at the given filesystem path.
     pub fn open_at(path: &Path) -> Fallible<Self> {
         std::fs::create_dir_all(&*WORK_DIR)?;
         Database::new(
@@ -121,6 +125,11 @@ impl Database {
         )
     }
 
+    /// Builds the connection pool, configures WAL mode, and runs pending migrations.
+    // - Creates an r2d2 pool with up to 20 connections (covers all production threads).
+    // - Enables WAL journal mode for concurrent reads during writes.
+    // - Sets synchronous=NORMAL for better performance (safe under WAL).
+    // - Runs all pending schema migrations.
     fn new(conn: SqliteConnectionManager, tempfile: Option<NamedTempFile>) -> Fallible<Self> {
         let pool = Pool::builder()
             // By inspection we have 13 threads in production, so make sure each of them can get a
@@ -161,6 +170,7 @@ impl Database {
         })
     }
 
+    /// Runs a closure inside a database transaction, committing on success or rolling back on error.
     pub fn transaction<T, F: FnOnce(&TransactionHandle) -> Fallible<T>>(
         &self,
         will_write: bool,
@@ -194,11 +204,13 @@ pub struct TransactionHandle<'a> {
 }
 
 impl TransactionHandle<'_> {
+    /// Commits the transaction, persisting all changes.
     pub fn commit(self) -> Fallible<()> {
         self.transaction.commit()?;
         Ok(())
     }
 
+    /// Rolls the transaction back, discarding all changes.
     pub fn rollback(self) -> Fallible<()> {
         self.transaction.rollback()?;
         Ok(())
@@ -207,8 +219,10 @@ impl TransactionHandle<'_> {
 
 /// Convenience methods for executing SQL queries against the database.
 pub trait QueryUtils {
+    /// Acquires a connection and passes it to the closure.
     fn with_conn<T, F: FnOnce(&Connection) -> Fallible<T>>(&self, f: F) -> Fallible<T>;
 
+    /// Returns `true` if the query matches at least one row.
     fn exists(&self, sql: &str, params: &[&dyn ToSql]) -> Fallible<bool> {
         self.with_conn(|conn| {
             self.trace(sql, || {
@@ -218,6 +232,7 @@ pub trait QueryUtils {
         })
     }
 
+    /// Executes a statement and returns the number of rows changed.
     fn execute(&self, sql: &str, params: &[&dyn ToSql]) -> Fallible<usize> {
         self.with_conn(|conn| {
             self.trace(sql, || {
@@ -228,6 +243,7 @@ pub trait QueryUtils {
         })
     }
 
+    /// Like [`execute`](Self::execute), but uses a prepared-statement cache.
     fn execute_cached(&self, sql: &str, params: &[&dyn ToSql]) -> Fallible<usize> {
         self.with_conn(|conn| {
             self.trace(sql, || {
@@ -238,6 +254,7 @@ pub trait QueryUtils {
         })
     }
 
+    /// Returns the first row of a query, or `None` if the result set is empty.
     fn get_row<T, P>(
         &self,
         sql: &str,
@@ -261,6 +278,7 @@ pub trait QueryUtils {
         })
     }
 
+    /// Executes a query and collects all rows into a `Vec`.
     fn query<T, F: FnMut(&Row) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
@@ -282,6 +300,7 @@ pub trait QueryUtils {
         })
     }
 
+    /// Returns the first row mapped through a fallible closure, or `None`.
     fn query_row<T, F: FnOnce(&Row) -> Fallible<T>>(
         &self,
         sql: &str,
@@ -300,6 +319,7 @@ pub trait QueryUtils {
         })
     }
 
+    /// Runs a closure and logs the SQL statement if it takes longer than 500 ms.
     fn trace<T, F: FnOnce() -> T>(&self, sql: &str, f: F) -> T {
         let start = Instant::now();
         let res = f();

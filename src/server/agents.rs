@@ -1,3 +1,5 @@
+//! Agent registry and status tracking.
+
 use crate::agent::Capabilities;
 use crate::db::{Database, QueryUtils};
 use crate::experiments::{Assignee, Experiment};

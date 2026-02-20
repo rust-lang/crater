@@ -67,6 +67,7 @@ pub struct GithubData {
     pub tokens: BotTokens,
 }
 
+/// Starts the crater HTTP server on the given address.
 pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
     let db = Database::open()?;
     let tokens = tokens::Tokens::load()?;

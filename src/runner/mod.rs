@@ -26,6 +26,7 @@ const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.80;
 #[error("overridden task result to {0}")]
 pub struct OverrideResult(TestResult);
 
+/// Runs an experiment: installs toolchains, spawns worker threads, and builds/tests each crate.
 pub fn run_ex(
     ex: &Experiment,
     workspace: &Workspace,

@@ -1,3 +1,5 @@
+//! Request and response types for the agent API.
+
 use crate::config::Config;
 use crate::prelude::*;
 use serde::Serialize;

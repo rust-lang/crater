@@ -237,6 +237,7 @@ fn get_crate_version_status(
     }
 }
 
+/// Collects per-crate test results for an experiment into [`RawTestResults`].
 pub fn generate_report<DB: ReadResults>(
     db: &DB,
     config: &Config,
@@ -374,6 +375,7 @@ fn write_logs<DB: ReadResults, W: ReportWriter>(
     Ok(())
 }
 
+/// Generates a full experiment report (HTML + markdown) and writes it to `dest`.
 pub fn gen<DB: ReadResults, W: ReportWriter + Display>(
     db: &DB,
     ex: &Experiment,

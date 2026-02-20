@@ -1,3 +1,5 @@
+//! Human-readable byte sizes for configuration.
+
 use crate::prelude::*;
 use std::fmt;
 use std::str::FromStr;

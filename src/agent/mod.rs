@@ -104,8 +104,7 @@ impl Agent {
 
 static HEALTH_CHECK: AtomicBool = AtomicBool::new(false);
 
-// Should be called at least once every 5 minutes, otherwise instance is
-// replaced.
+/// Marks the agent as healthy, enabling the health-check endpoint.
 pub fn set_healthy() {
     HEALTH_CHECK.store(true, Ordering::SeqCst);
 }
@@ -187,6 +186,7 @@ fn run_experiment(
     Ok(())
 }
 
+/// Connects to the server and runs experiments in a loop until interrupted.
 pub fn run(
     url: &str,
     token: &str,

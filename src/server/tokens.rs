@@ -1,3 +1,5 @@
+//! Authentication tokens and secrets loaded from `tokens.toml`.
+
 use crate::prelude::*;
 use serde_derive::Deserialize;
 use std::collections::HashMap;

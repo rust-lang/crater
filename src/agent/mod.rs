@@ -1,3 +1,6 @@
+//! Distributed worker agents that poll the server for experiment work and report
+//! results back.
+
 mod api;
 
 pub use crate::agent::api::AgentApi;

@@ -1,3 +1,5 @@
+//! Traits and types for reading/writing per-crate test results and build logs.
+
 mod db;
 #[cfg(test)]
 mod dummy;

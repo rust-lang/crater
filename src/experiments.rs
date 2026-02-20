@@ -1,3 +1,5 @@
+//! Core domain types: `Experiment`, `Status`, `Mode`, `CrateSelect`, and `CapLints`.
+
 use crate::crates::Crate;
 use crate::db::{Database, QueryUtils};
 use crate::prelude::*;

@@ -1,3 +1,6 @@
+//! Configuration loading from `config.toml` — crate overrides, sandbox limits,
+//! server labels, and bot ACLs.
+
 use crate::crates::Crate;
 use crate::prelude::*;
 use crate::utils::size::Size;

@@ -1,3 +1,6 @@
+//! HTML and markdown report generation comparing build/test results across two
+//! toolchains.
+
 use crate::config::Config;
 use crate::crates::Crate;
 use crate::dirs::WORK_DIR;

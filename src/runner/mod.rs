@@ -1,3 +1,6 @@
+//! Experiment execution engine — builds crates, runs tests, and manages disk space
+//! across worker threads.
+
 mod tasks;
 mod test;
 mod unstable_features;

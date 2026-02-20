@@ -1,3 +1,5 @@
+//! Filesystem layout for the crater work directory.
+
 use crate::prelude::*;
 use std::env;
 use std::ffi::OsStr;

@@ -1,3 +1,6 @@
+//! Command pattern for mutating experiment state — creating, editing, and deleting
+//! experiments and updating their crate lists.
+
 mod experiments;
 mod lists;
 

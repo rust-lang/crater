@@ -1,3 +1,5 @@
+//! HTTP server for the crater web UI and agent API endpoints.
+
 pub mod agents;
 pub mod api_types;
 mod auth;

@@ -1,3 +1,5 @@
+//! Shared utilities — HTTP clients, size formatting, hex encoding, and more.
+
 use crate::prelude::*;
 use percent_encoding::{AsciiSet, CONTROLS};
 use std::any::Any;

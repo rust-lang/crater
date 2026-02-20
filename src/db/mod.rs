@@ -1,3 +1,5 @@
+//! SQLite database layer for persistent state (experiments, results, agents).
+
 mod migrations;
 
 use crate::dirs::WORK_DIR;

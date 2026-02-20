@@ -1,3 +1,5 @@
+//! Rust toolchain abstraction — stable, beta, nightly, try builds, and custom builds.
+
 use crate::prelude::*;
 use crate::utils;
 use regex::Regex;

@@ -1,3 +1,6 @@
+//! Crate abstraction — registry crates, GitHub repos, local paths, git repos,
+//! and crate list management.
+
 pub(crate) mod lists;
 mod sources;
 

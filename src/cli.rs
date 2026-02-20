@@ -441,6 +441,7 @@ impl Crater {
                         threads,
                         &config,
                         &|| Ok(crates.lock().unwrap().pop()),
+                        false,
                     );
                     workspace.purge_all_build_dirs()?;
                     res?;

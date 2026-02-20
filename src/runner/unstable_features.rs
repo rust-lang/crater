@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::results::TestResult;
 use crate::runner::tasks::TaskCtx;
+use crate::timings::TimingVisitor;
 use cargo_metadata::Package;
 use rustwide::Build;
 use std::collections::HashSet;
@@ -11,6 +12,7 @@ pub(super) fn find_unstable_features(
     _ctx: &TaskCtx,
     build: &Build,
     _local_packages_id: &[Package],
+    _timing_visitor: &mut dyn TimingVisitor,
 ) -> Fallible<TestResult> {
     let mut features = HashSet::new();
 

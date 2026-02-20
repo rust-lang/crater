@@ -177,6 +177,7 @@ fn run_experiment(
         threads_count,
         &agent.config,
         &|| agent.next_crate(&ex.name),
+        true,
     )
     .map_err(|err| (Some(Box::new(ex)), err))?;
     Ok(())

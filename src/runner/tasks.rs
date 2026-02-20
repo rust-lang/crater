@@ -4,6 +4,7 @@ use crate::experiments::Experiment;
 use crate::prelude::*;
 use crate::results::TestResult;
 use crate::runner::test;
+use crate::timings::TimingVisitor;
 use crate::toolchain::Toolchain;
 use rustwide::{Build, BuildDirectory};
 use std::collections::HashMap;
@@ -91,12 +92,13 @@ impl Task {
         config: &'ctx Config,
         build_dir: &'ctx HashMap<&'ctx crate::toolchain::Toolchain, Mutex<BuildDirectory>>,
         ex: &'ctx Experiment,
+        timing_visitor: &'ctx mut dyn TimingVisitor,
         logs: &LogStorage,
     ) -> Fallible<TestResult> {
         let (build_dir, action, test, toolchain, quiet): (
             _,
             _,
-            fn(&TaskCtx, &Build, &_) -> _,
+            fn(&TaskCtx, &Build, &_, &mut dyn TimingVisitor) -> _,
             _,
             _,
         ) = match self.step {
@@ -130,6 +132,6 @@ impl Task {
         };
 
         let ctx = TaskCtx::new(build_dir, config, ex, toolchain, &self.krate, quiet);
-        test::run_test(action, &ctx, test, logs)
+        test::run_test(action, &ctx, test, timing_visitor, logs)
     }
 }

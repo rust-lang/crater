@@ -86,6 +86,8 @@ pub struct Config {
     pub local_crates: HashMap<String, CrateConfig>,
     pub server: ServerConfig,
     pub sandbox: SandboxConfig,
+    #[serde(default = "default_false")]
+    pub capture_timings: bool,
 }
 
 impl Config {
@@ -253,6 +255,7 @@ impl Default for Config {
                     experiment_completed: "".into(),
                 },
             },
+            capture_timings: false,
         }
     }
 }

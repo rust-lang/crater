@@ -363,6 +363,27 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         MigrationKind::SQL("alter table agents add column latest_work_for text;"),
     ));
 
+    migrations.push((
+        "create_build_timings_table",
+        MigrationKind::SQL(
+            "
+            CREATE TABLE build_timings (
+                experiment TEXT NOT NULL,
+                crate TEXT NOT NULL,
+                toolchain TEXT NOT NULL,
+                package_id TEXT NOT NULL,
+                target_name TEXT NOT NULL,
+                target_kind TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                duration REAL NOT NULL,
+                rmeta_time REAL,
+                FOREIGN KEY (experiment) REFERENCES experiments(name) ON DELETE CASCADE
+            );
+            CREATE INDEX build_timings__experiment ON build_timings (experiment);
+            ",
+        ),
+    ));
+
     migrations
 }
 

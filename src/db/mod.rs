@@ -65,6 +65,7 @@ impl<E: std::error::Error> r2d2::HandleError<E> for ErrorHandler {
     }
 }
 
+/// Connection pool to the SQLite database backing crater's persistent state.
 #[derive(Clone)]
 pub struct Database {
     pool: Pool<SqliteConnectionManager>,
@@ -185,6 +186,7 @@ impl Database {
     }
 }
 
+/// An active database transaction that must be explicitly committed or rolled back.
 pub struct TransactionHandle<'a> {
     transaction: Transaction<'a>,
 }
@@ -201,6 +203,7 @@ impl TransactionHandle<'_> {
     }
 }
 
+/// Convenience methods for executing SQL queries against the database.
 pub trait QueryUtils {
     fn with_conn<T, F: FnOnce(&Connection) -> Fallible<T>>(&self, f: F) -> Fallible<T>;
 

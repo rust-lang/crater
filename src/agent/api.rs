@@ -64,6 +64,7 @@ impl ResponseExt for ::reqwest::blocking::Response {
     }
 }
 
+/// HTTP client for the agent-to-server API.
 pub struct AgentApi {
     url: String,
     token: String,

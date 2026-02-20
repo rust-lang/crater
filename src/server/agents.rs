@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex};
 /// Number of seconds without an heartbeat after an agent should be considered unreachable.
 const INACTIVE_AFTER: i64 = 300;
 
+/// Whether an agent is currently working, idle, or unreachable.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AgentStatus {
     Working,
@@ -19,6 +20,7 @@ pub enum AgentStatus {
     Unreachable,
 }
 
+/// Server-side view of a registered agent and its current state.
 pub struct Agent {
     name: String,
     experiment: Option<Experiment>,
@@ -73,6 +75,7 @@ impl Agent {
     }
 }
 
+/// Registry of all known agents, backed by the database.
 #[derive(Clone)]
 pub struct Agents {
     db: Database,
@@ -80,6 +83,7 @@ pub struct Agents {
     current_workers: Arc<Mutex<HashMap<String, (WorkerInfo, std::time::Instant)>>>,
 }
 
+/// Heartbeat payload identifying a specific worker process.
 #[derive(Deserialize)]
 pub struct WorkerInfo {
     id: String,

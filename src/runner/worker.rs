@@ -15,6 +15,7 @@ use std::sync::Mutex;
 use std::sync::{Arc, Condvar, OnceLock};
 use std::time::Duration;
 
+/// Reports per-crate progress back to the server or local database.
 pub trait RecordProgress: Send + Sync {
     fn record_progress(
         &self,

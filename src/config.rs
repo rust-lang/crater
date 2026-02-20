@@ -17,10 +17,12 @@ fn default_config_file() -> PathBuf {
         .into()
 }
 
+/// Error indicating the configuration file has validation errors.
 #[derive(Debug, thiserror::Error)]
 #[error("the configuration file has errors")]
 pub struct BadConfig;
 
+/// Per-crate overrides (skip, skip-tests, quiet, broken).
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CrateConfig {
@@ -38,6 +40,7 @@ fn default_false() -> bool {
     false
 }
 
+/// Server-specific configuration: bot ACL and GitHub label settings.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ServerConfig {
@@ -45,6 +48,7 @@ pub struct ServerConfig {
     pub labels: ServerLabels,
 }
 
+/// Access control list for who can trigger experiments via the GitHub bot.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BotACL {
@@ -52,6 +56,7 @@ pub struct BotACL {
     pub github: Vec<String>,
 }
 
+/// GitHub label names applied to issues during the experiment lifecycle.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ServerLabels {
@@ -61,6 +66,7 @@ pub struct ServerLabels {
     pub experiment_completed: String,
 }
 
+/// Small set of crates used for demo/testing runs.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DemoCrates {
@@ -69,6 +75,7 @@ pub struct DemoCrates {
     pub local_crates: Vec<String>,
 }
 
+/// Resource limits for the build sandbox (memory, log size, log lines).
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SandboxConfig {
@@ -77,6 +84,7 @@ pub struct SandboxConfig {
     pub build_log_max_lines: usize,
 }
 
+/// Top-level configuration loaded from `config.toml`.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Config {

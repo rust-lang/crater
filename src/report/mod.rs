@@ -40,11 +40,13 @@ pub(crate) const REPORT_ENCODE_SET: AsciiSet = percent_encoding::CONTROLS
     .add(b'}')
     .add(b'+');
 
+/// Complete per-crate results for an experiment, before categorization.
 #[derive(Serialize, Deserialize)]
 pub struct RawTestResults {
     pub crates: Vec<CrateResult>,
 }
 
+/// Build/test outcome for a single crate across both toolchains.
 #[cfg_attr(test, derive(Debug))]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct CrateResult {
@@ -64,7 +66,9 @@ string_enum!(enum CrateVersionStatus {
     MissingFromIndex => "missing from the index",
 });
 
-string_enum!(pub enum Comparison {
+string_enum!(
+    /// Categorized result of comparing a crate's outcome on two toolchains.
+    pub enum Comparison {
     Regressed => "regressed",
     Fixed => "fixed",
     Skipped => "skipped",
@@ -546,6 +550,7 @@ fn compare(
     }
 }
 
+/// Abstraction for writing report files to disk or S3.
 pub trait ReportWriter: Send + Sync {
     fn write_bytes<P: AsRef<Path>>(
         &self,
@@ -557,6 +562,7 @@ pub trait ReportWriter: Send + Sync {
     fn write_string<P: AsRef<Path>>(&self, path: P, s: Cow<str>, mime: &Mime) -> Fallible<()>;
 }
 
+/// [`ReportWriter`] that writes report files to a local directory.
 pub struct FileWriter(PathBuf);
 
 impl FileWriter {

@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 // Purge all the caches if the disk is more than 50% full.
 const PURGE_CACHES_THRESHOLD: f32 = 0.5;
 
+/// Set of capabilities (e.g. "linux", "windows") advertised by an agent.
 #[derive(Default, Serialize, Deserialize)]
 pub struct Capabilities {
     #[serde(default)]
@@ -66,6 +67,7 @@ impl FromIterator<String> for Capabilities {
     }
 }
 
+/// A connected worker agent that fetches experiments from the server and runs them.
 pub struct Agent {
     api: AgentApi,
     pub config: Config,

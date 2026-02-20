@@ -8,10 +8,12 @@ use crate::config::Config;
 use crate::db::Database;
 use crate::prelude::*;
 
+/// A mutation that can be applied to experiment state.
 pub trait Action {
     fn apply(self, ctx: &ActionsCtx) -> Fallible<()>;
 }
 
+/// Shared context (database + config) passed to every [`Action`].
 pub struct ActionsCtx<'ctx> {
     db: &'ctx Database,
     config: &'ctx Config,

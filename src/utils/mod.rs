@@ -27,6 +27,7 @@ pub(crate) const FILENAME_ENCODE_SET: AsciiSet = CONTROLS
     .add(b'?')
     .add(b'*');
 
+/// Logs a panic payload at the `error` level.
 pub fn report_panic(e: &dyn Any) {
     if let Some(e) = e.downcast_ref::<String>() {
         error!("panicked: {e}")
@@ -37,6 +38,7 @@ pub fn report_panic(e: &dyn Any) {
     }
 }
 
+/// Logs an `anyhow::Error` and its full causal chain at the `error` level.
 pub fn report_failure(err: &anyhow::Error) {
     let backtrace = err.backtrace();
     error!("{err}");

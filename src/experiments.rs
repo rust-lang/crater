@@ -14,7 +14,9 @@ use url::Url;
 //sqlite limit is ignored if the expression evaluates to a negative value
 static SQL_VARIABLE_LIMIT: usize = 500;
 
-string_enum!(pub enum Status {
+string_enum!(
+    /// Lifecycle state of an experiment.
+    pub enum Status {
     Queued => "queued",
     Running => "running",
     NeedsReport => "needs-report",
@@ -23,7 +25,9 @@ string_enum!(pub enum Status {
     Completed => "completed",
 });
 
-string_enum!(pub enum Mode {
+string_enum!(
+    /// What kind of build/test to perform for each crate.
+    pub enum Mode {
     BuildAndTest => "build-and-test",
     BuildOnly => "build-only",
     CheckOnly => "check-only",
@@ -33,7 +37,9 @@ string_enum!(pub enum Mode {
     Fix => "fix",
 });
 
-string_enum!(pub enum CapLints {
+string_enum!(
+    /// `--cap-lints` level passed to cargo during builds.
+    pub enum CapLints {
     Allow => "allow",
     Warn => "warn",
     Deny => "deny",
@@ -42,6 +48,7 @@ string_enum!(pub enum CapLints {
 
 const SMALL_RANDOM_COUNT: u32 = 20;
 
+/// Which set of crates to include in an experiment.
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub enum CrateSelect {
@@ -168,6 +175,7 @@ impl FromStr for DeferredCrateSelect {
     }
 }
 
+/// Who an experiment is assigned to — a named agent, distributed, or CLI.
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Assignee {
@@ -186,6 +194,7 @@ impl fmt::Display for Assignee {
     }
 }
 
+/// Errors from parsing an [`Assignee`] from a string.
 #[derive(Debug, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum AssigneeParseError {
@@ -236,6 +245,7 @@ impl FromStr for Assignee {
     }
 }
 
+/// Reference to a GitHub issue tracking this experiment.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct GitHubIssue {
     pub api_url: String,
@@ -243,6 +253,7 @@ pub struct GitHubIssue {
     pub number: i32,
 }
 
+/// A single crater experiment comparing two toolchains across a set of crates.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Experiment {
     pub name: String,
@@ -660,6 +671,7 @@ impl Experiment {
     }
 }
 
+/// Raw database row for an experiment, before parsing into [`Experiment`].
 pub struct ExperimentDBRecord {
     name: String,
     mode: String,

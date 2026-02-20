@@ -30,6 +30,8 @@ lazy_static! {
     };
 }
 
+/// A Rust toolchain with optional target, flags, and crate patches.
+/// Parsed from strings like `"nightly-2024-01-01+rustflags=-Dwarnings"`.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Toolchain {
     pub source: RustwideToolchain,
@@ -95,6 +97,7 @@ impl fmt::Display for Toolchain {
     }
 }
 
+/// Errors from parsing a [`Toolchain`] from a string.
 #[derive(Debug, thiserror::Error)]
 pub enum ToolchainParseError {
     #[error("empty toolchain name")]
@@ -186,6 +189,7 @@ impl FromStr for Toolchain {
     }
 }
 
+/// A `[patch]` override pointing a crate to a custom git branch.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct CratePatch {
     pub name: String,

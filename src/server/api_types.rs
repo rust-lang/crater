@@ -8,6 +8,7 @@ use warp::http::header::{HeaderValue, CONTENT_TYPE};
 use warp::http::StatusCode;
 use warp::reply::Response;
 
+/// Configuration payload sent to an agent when it first connects.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AgentConfig {
@@ -15,6 +16,7 @@ pub struct AgentConfig {
     pub crater_config: Config,
 }
 
+/// Envelope for all agent API JSON responses.
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "kebab-case")]
 pub enum ApiResponse<T> {
@@ -63,6 +65,7 @@ impl<T: Serialize> ApiResponse<T> {
     }
 }
 
+/// Authentication token in the `Authorization` header of agent API requests.
 #[derive(Debug, Clone)]
 pub struct CraterToken {
     pub token: String,

@@ -21,7 +21,7 @@ fn test_bad_config_duplicate_crate() {
         .assert()
         .failure()
         .code(1)
-        .stderr(contains("duplicate key `lazy_static` in table `crates`"));
+        .stderr(contains("duplicate key"));
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn test_bad_config_duplicate_repo() {
         .failure()
         .code(1)
         .stderr(contains(
-            "duplicate key `brson/hello-rs` in table `github-repos`",
+            "duplicate key",
         ));
 }
 

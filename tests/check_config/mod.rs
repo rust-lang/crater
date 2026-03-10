@@ -31,9 +31,7 @@ fn test_bad_config_duplicate_repo() {
         .assert()
         .failure()
         .code(1)
-        .stderr(contains(
-            "duplicate key",
-        ));
+        .stderr(contains("duplicate key"));
 }
 
 #[test]

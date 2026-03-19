@@ -17,8 +17,8 @@ aws-config = { version = "1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.7"
 base64 = "0.22.1"
 bytes = "1"
-cargo_metadata = "0.22.0"
-cargo-util-schemas = "0.9.0"
+cargo_metadata = "0.23.1"
+cargo-util-schemas = "0.12.0"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 smol_str = "0.3.2"
@@ -48,7 +48,7 @@ reqwest = { version = "0.12", features = ["blocking", "json", "gzip"] }
 jiff = { version = "0.2.15", features = ["serde"] }
 rusqlite = { version = "0.37", features = ["chrono", "functions", "bundled"] }
 rust_team_data = { git = "https://github.com/rust-lang/team" }
-rustwide = { version = "0.19.3", features = [
+rustwide = { version = "0.22.1", features = [
     "unstable",
     "unstable-toolchain-ci",
 ] }
@@ -62,7 +62,7 @@ tempfile = "3.0.0"
 tera = "1.19.1"
 thiserror = "2"
 tokio = "1.24"
-toml = "0.8.6"
+toml = "1.0.6"
 url = { version = "2", features = ["serde"] }
 walkdir = "2"
 warp = { version = "0.4", features = ["server"] }

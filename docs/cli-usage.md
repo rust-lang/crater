@@ -48,8 +48,6 @@ This will output a report to `./work/ex/default/index.html`.
 
 If you want to clean things up you can use the following commands:
 ```bash
-# delete all the target directories
-cargo run -- delete-all-target-dirs
 # delete all results directories
 cargo run -- delete-all-results
 # remove a specific experiment

@@ -58,7 +58,7 @@
                 "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/ice-regression"
               }
             ],
-            "build compiler-error(E0015)": [
+            "build compiler-error(E0277)": [
               {
                 "color_idx": 0,
                 "name": "error-code (local)",

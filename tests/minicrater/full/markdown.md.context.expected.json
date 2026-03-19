@@ -71,7 +71,7 @@
                   },
                   {
                     "log": "beta/local/error-code",
-                    "res": "build-fail:compiler-error(E0015)"
+                    "res": "build-fail:compiler-error(E0277)"
                   }
                 ],
                 "url": "https://github.com/rust-lang/crater/tree/HEAD/local-crates/error-code"

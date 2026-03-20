@@ -36,7 +36,7 @@ The template (for crates.io crates or git repos) is:
 ```
 
 When in doubt about a regression, file an issue. It's best to force the Rust
-developers to aknowledge the regression that to let it slip through.
+developers to acknowledge the regression than to let it slip through.
 
 ## Triaging regressions
 
@@ -68,7 +68,7 @@ For example, if the crate `foo` has a flaky test suite you should add this line
 in the configuration file (possibly sorting it):
 
 ```toml
-flaky = { skip-tests = true } # flaky test suite
+foo = { skip-tests = true } # flaky test suite
 ```
 
 A comment should always be added (on the same line) to briefly explain why the

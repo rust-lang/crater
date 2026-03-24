@@ -299,8 +299,10 @@ impl FailureReason {
 string_enum!(pub enum BrokenReason {
     Unknown => "unknown",
     CargoToml => "cargo-toml",
+    BrokenDependencies => "broken-deps",
     Yanked => "yanked",
     MissingDependencies => "missing-deps",
+    InvalidCargoLock => "invalid-cargo-lock",
     MissingGitRepository => "missing-git-repository",
 });
 
@@ -332,7 +334,8 @@ mod tests {
     #[test]
     fn test_test_result_parsing() {
         use super::{
-            FailureReason::*,
+            FailureReason::{self, *},
+            BrokenReason::{self, *},
             TestResult::{self, *},
         };
 
@@ -359,12 +362,19 @@ mod tests {
 
         //"build-fail:depends-on()" => BuildFail(DependsOn(vec!["001"])),
         test_from_str! {
-            "prepare-fail:unknown" => PrepareFail(Unknown),
+            "prepare-fail:unknown" => PrepareFail(FailureReason::Unknown),
             "prepare-fail:oom" => PrepareFail(OOM),
             "prepare-fail:docker" => PrepareFail(Docker),
             "prepare-fail:no-space" => PrepareFail(NoSpace),
             "prepare-fail:timeout" => PrepareFail(Timeout),
-            "build-fail:unknown" => BuildFail(Unknown),
+            "broken:unknown" => BrokenCrate(BrokenReason::Unknown),
+            "broken:cargo-toml" => BrokenCrate(CargoToml),
+            "broken:broken-deps" => BrokenCrate(BrokenDependencies),
+            "broken:yanked" => BrokenCrate(Yanked),
+            "broken:missing-deps" => BrokenCrate(MissingDependencies),
+            "broken:invalid-cargo-lock" => BrokenCrate(InvalidCargoLock),
+            "broken:missing-git-repository" => BrokenCrate(MissingGitRepository),
+            "build-fail:unknown" => BuildFail(FailureReason::Unknown),
             "build-fail:docker" => BuildFail(Docker),
             "build-fail:compiler-error(001, 002)" => BuildFail(CompilerError(btreeset!["001".parse().unwrap(), "002".parse().unwrap()])),
             "build-fail:compiler-error(001)" => BuildFail(CompilerError(btreeset!["001".parse().unwrap()])),
@@ -380,7 +390,7 @@ mod tests {
         // Backward compatibility
         assert_eq!(
             TestResult::from_str("build-fail").unwrap(),
-            BuildFail(Unknown)
+            BuildFail(FailureReason::Unknown)
         );
         assert!(TestResult::from_str("error:oom").is_err());
         assert!(TestResult::from_str("build-fail:pleasedonotaddthis").is_err());

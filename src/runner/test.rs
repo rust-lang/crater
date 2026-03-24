@@ -56,11 +56,17 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
                     PrepareError::InvalidCargoTomlSyntax => {
                         TestResult::BrokenCrate(BrokenReason::CargoToml)
                     }
+                    PrepareError::BrokenDependencies(_) => {
+                        TestResult::BrokenCrate(BrokenReason::Unknown)
+                    }
                     PrepareError::YankedDependencies(_) => {
                         TestResult::BrokenCrate(BrokenReason::Yanked)
                     }
                     PrepareError::MissingDependencies(_) => {
                         TestResult::BrokenCrate(BrokenReason::MissingDependencies)
+                    }
+                    PrepareError::InvalidCargoLock(_) => {
+                        TestResult::BrokenCrate(BrokenReason::Unknown)
                     }
                     PrepareError::PrivateGitRepository => {
                         TestResult::BrokenCrate(BrokenReason::MissingGitRepository)

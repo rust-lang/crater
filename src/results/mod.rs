@@ -334,8 +334,8 @@ mod tests {
     #[test]
     fn test_test_result_parsing() {
         use super::{
-            FailureReason::{self, *},
             BrokenReason::{self, *},
+            FailureReason::{self, *},
             TestResult::{self, *},
         };
 

@@ -43,8 +43,10 @@ impl ResultName for BrokenReason {
         match self {
             BrokenReason::Unknown => "broken crate".into(),
             BrokenReason::CargoToml => "broken Cargo.toml".into(),
+            BrokenReason::BrokenDependencies => "broken deps".into(),
             BrokenReason::Yanked => "deps yanked".into(),
             BrokenReason::MissingGitRepository => "missing repo".into(),
+            BrokenReason::InvalidCargoLock => "invalid Cargo.lock".into(),
             BrokenReason::MissingDependencies => "missing deps".into(),
         }
     }

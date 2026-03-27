@@ -115,10 +115,15 @@ impl<'a> Worker<'a> {
             //
             // For now we make no distinction between build failures and test failures
             // here, but that may change if this proves too slow.
+            //
+            // No retries for statistic tests.
             let mut should_retry = false;
-            if self.ex.toolchains.len() == 2 {
+            if self.ex.toolchains.len() == 2
+                && !matches!(task.step, TaskStep::BuildAndStatTest { .. })
+            {
                 let toolchain = match &task.step {
                     TaskStep::BuildAndTest { tc, .. }
+                    | TaskStep::BuildAndStatTest { tc, .. }
                     | TaskStep::BuildOnly { tc, .. }
                     | TaskStep::CheckOnly { tc, .. }
                     | TaskStep::Clippy { tc, .. }
@@ -294,6 +299,10 @@ impl<'a> Worker<'a> {
                             }
                         }
                         Mode::BuildAndTest => TaskStep::BuildAndTest {
+                            tc: tc.clone(),
+                            quiet,
+                        },
+                        Mode::BuildAndStatTest => TaskStep::BuildAndStatTest {
                             tc: tc.clone(),
                             quiet,
                         },

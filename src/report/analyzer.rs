@@ -166,6 +166,7 @@ mod tests {
             report_url: None,
             ignore_blacklist: false,
             requirement: None,
+            stat_run: None,
         };
 
         let crates = record_crates! {db, ex,

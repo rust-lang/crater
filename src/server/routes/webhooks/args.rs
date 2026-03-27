@@ -113,6 +113,7 @@ generate_parser!(pub enum Command {
         ignore_blacklist: Option<bool> = "ignore-blacklist",
         assign: Option<Assignee> = "assign",
         requirement: Option<String> = "requirement",
+        stat_run: Option<i32> = "stat-run",
     })
 
     "check" => Check(CheckArgs {

@@ -1,7 +1,7 @@
 use crate::agent::Capabilities;
 use crate::experiments::{Assignee, Experiment};
 use crate::prelude::*;
-use crate::results::{DatabaseDB, EncodingType, FailureReason, ProgressData, TestResult};
+use crate::results::{DatabaseDB, EncodingType, ProgressData};
 use crate::server::agents::WorkerInfo;
 use crate::server::api_types::{AgentConfig, ApiResponse};
 use crate::server::auth::{auth_filter, AuthDetails};
@@ -238,41 +238,11 @@ impl RecordProgressThread {
                             .with_label_values(&["record_progress_worker"])
                             .observe(start.elapsed().as_secs_f64());
 
-                        let to_metric = |f: &FailureReason| match f {
-                            FailureReason::Unknown => "unknown",
-                            FailureReason::OOM => "oom",
-                            FailureReason::NoSpace => "no-space",
-                            FailureReason::Timeout => "timeout",
-                            FailureReason::ICE => "ice",
-                            FailureReason::NetworkAccess => "network-access",
-                            FailureReason::Docker => "docker",
-                            FailureReason::CompilerDiagnosticChange => "compiler-diagnostic-change",
-                            FailureReason::CompilerError(_) => "compiler-error",
-                            FailureReason::DependsOn(_) => "dependency",
-                        };
-
                         metrics
                             .crater_progress_report
                             .with_label_values(&[
                                 ex.name.as_str(),
-                                // Reduce cardinality on the error kind to reduce # of distinct
-                                // metrics created.
-                                &match &result.data.result.result {
-                                    TestResult::BrokenCrate(r) => format!("broken-crate:{}", r),
-                                    TestResult::PrepareFail(r) => {
-                                        format!("prepare-fail:{}", to_metric(r))
-                                    }
-                                    TestResult::BuildFail(r) => {
-                                        format!("build-fail:{}", to_metric(r))
-                                    }
-                                    TestResult::TestFail(r) => {
-                                        format!("test-fail:{}", to_metric(r))
-                                    }
-                                    TestResult::TestSkipped => "test-skipped".to_owned(),
-                                    TestResult::TestPass => "test-pass".to_owned(),
-                                    TestResult::Skipped => "skipped".to_owned(),
-                                    TestResult::Error => "error".to_owned(),
-                                },
+                                &result.data.result.result.to_string(),
                             ])
                             .inc();
                     }

@@ -43,6 +43,7 @@ impl<'ctx> TaskCtx<'ctx> {
 
 pub(super) enum TaskStep {
     BuildAndTest { tc: Toolchain, quiet: bool },
+    BuildAndStatTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
     CheckOnly { tc: Toolchain, quiet: bool },
     Clippy { tc: Toolchain, quiet: bool },
@@ -55,6 +56,9 @@ impl fmt::Debug for TaskStep {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (name, quiet, tc) = match *self {
             TaskStep::BuildAndTest { ref tc, quiet } => ("build and test", quiet, Some(tc)),
+            TaskStep::BuildAndStatTest { ref tc, quiet } => {
+                ("build and statistically test", quiet, Some(tc))
+            }
             TaskStep::BuildOnly { ref tc, quiet } => ("build", quiet, Some(tc)),
             TaskStep::CheckOnly { ref tc, quiet } => ("check", quiet, Some(tc)),
             TaskStep::Clippy { ref tc, quiet } => ("clippy", quiet, Some(tc)),
@@ -104,6 +108,13 @@ impl Task {
                 &build_dir[tc],
                 "testing",
                 test::test_build_and_test,
+                tc,
+                quiet,
+            ),
+            TaskStep::BuildAndStatTest { ref tc, quiet } => (
+                &build_dir[tc],
+                "stat testing",
+                test::test_build_and_stat_test,
                 tc,
                 quiet,
             ),

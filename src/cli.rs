@@ -116,6 +116,12 @@ pub enum Crater {
         assign: Option<Assignee>,
         #[clap(name = "requirement", long = "requirement")]
         requirement: Option<String>,
+        #[clap(
+            name = "stat-run",
+            long = "stat-run",
+            help = "For statistic testing mode (build-and-stat-test), amount of test runs."
+        )]
+        stat_run: Option<i32>,
     },
 
     #[clap(name = "edit", about = "edit an experiment configuration")]
@@ -305,6 +311,7 @@ impl Crater {
                 ref ignore_blacklist,
                 ref assign,
                 ref requirement,
+                ref stat_run,
             } => {
                 let config = Config::load()?;
                 let db = Database::open()?;
@@ -321,6 +328,7 @@ impl Crater {
                     ignore_blacklist: *ignore_blacklist,
                     assign: assign.clone(),
                     requirement: requirement.clone(),
+                    stat_run: *stat_run,
                 }
                 .apply(&ctx)?;
             }

@@ -16,6 +16,7 @@ pub struct CreateExperiment {
     pub ignore_blacklist: bool,
     pub assign: Option<Assignee>,
     pub requirement: Option<String>,
+    pub stat_run: Option<i32>,
 }
 
 impl CreateExperiment {
@@ -34,6 +35,7 @@ impl CreateExperiment {
             ignore_blacklist: false,
             assign: None,
             requirement: None,
+            stat_run: None,
         }
     }
 }
@@ -57,8 +59,8 @@ impl Action for CreateExperiment {
                 "INSERT INTO experiments \
                  (name, mode, cap_lints, toolchain_start, toolchain_end, priority, created_at, \
                  status, github_issue, github_issue_url, github_issue_number, ignore_blacklist, \
-                 assigned_to, requirement) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);",
+                 assigned_to, requirement, stat_run) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15);",
                 &[
                     &self.name,
                     &self.mode.to_str(),
@@ -74,6 +76,7 @@ impl Action for CreateExperiment {
                     &self.ignore_blacklist,
                     &self.assign.map(|a| a.to_string()),
                     &self.requirement,
+                    &self.stat_run,
                 ],
             )?;
 
@@ -130,6 +133,7 @@ mod tests {
             ignore_blacklist: true,
             assign: None,
             requirement: Some("linux".to_string()),
+            stat_run: None,
         }
         .apply(&ctx)
         .unwrap();
@@ -253,6 +257,7 @@ mod tests {
             ignore_blacklist: false,
             assign: None,
             requirement: None,
+            stat_run: None,
         }
         .apply(&ctx)
         .unwrap_err();
@@ -283,6 +288,7 @@ mod tests {
             ignore_blacklist: false,
             assign: None,
             requirement: None,
+            stat_run: None,
         }
         .apply(&ctx)
         .unwrap();
@@ -299,6 +305,7 @@ mod tests {
             ignore_blacklist: false,
             assign: None,
             requirement: None,
+            stat_run: None,
         }
         .apply(&ctx)
         .unwrap_err();

@@ -363,6 +363,18 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
         MigrationKind::SQL("alter table agents add column latest_work_for text;"),
     ));
 
+    // `results` table analog for statistic runs.
+    // statistic run performs one build and several test runs.
+    // run_num == 0 keeps build log.
+    migrations.push((
+        "add_statistic_results",
+        MigrationKind::SQL(
+            "
+            ALTER TABLE experiments ADD COLUMN stat_run INTEGER DEFAULT 0;
+            ",
+        ),
+    ));
+
     migrations
 }
 

@@ -5,6 +5,7 @@ use crate::prelude::*;
 use crate::toolchain::Toolchain;
 use chrono::Utc;
 
+/// Action to create a new experiment with the given parameters.
 pub struct CreateExperiment {
     pub name: String,
     pub toolchains: [Toolchain; 2],

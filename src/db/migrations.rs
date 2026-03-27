@@ -1,3 +1,5 @@
+//! Schema migrations applied on database startup.
+
 use crate::prelude::*;
 use rand::distr::{Alphanumeric, SampleString};
 use rusqlite::{Connection, Transaction};
@@ -366,6 +368,11 @@ fn migrations() -> Vec<(&'static str, MigrationKind)> {
     migrations
 }
 
+/// Applies all pending migrations to the database.
+// - Creates the `migrations` tracking table on first run (user_version == 0).
+// - Loads the set of already-executed migration names.
+// - Iterates the full migration list, running each unapplied one inside
+//   its own transaction and recording it in the `migrations` table.
 pub fn execute(db: &mut Connection) -> Fallible<()> {
     // If the database version is 0, create the migrations table and bump it
     let version: i32 = db.query_row("PRAGMA user_version;", [], |r| r.get(0))?;

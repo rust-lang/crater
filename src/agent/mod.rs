@@ -1,3 +1,6 @@
+//! Distributed worker agents that poll the server for experiment work and report
+//! results back.
+
 mod api;
 
 pub use crate::agent::api::AgentApi;
@@ -19,6 +22,7 @@ use std::time::{Duration, Instant};
 // Purge all the caches if the disk is more than 50% full.
 const PURGE_CACHES_THRESHOLD: f32 = 0.5;
 
+/// Set of capabilities (e.g. "linux", "windows") advertised by an agent.
 #[derive(Default, Serialize, Deserialize)]
 pub struct Capabilities {
     #[serde(default)]
@@ -66,6 +70,7 @@ impl FromIterator<String> for Capabilities {
     }
 }
 
+/// A connected worker agent that fetches experiments from the server and runs them.
 pub struct Agent {
     api: AgentApi,
     pub config: Config,
@@ -99,8 +104,7 @@ impl Agent {
 
 static HEALTH_CHECK: AtomicBool = AtomicBool::new(false);
 
-// Should be called at least once every 5 minutes, otherwise instance is
-// replaced.
+/// Marks the agent as healthy, enabling the health-check endpoint.
 pub fn set_healthy() {
     HEALTH_CHECK.store(true, Ordering::SeqCst);
 }
@@ -182,6 +186,7 @@ fn run_experiment(
     Ok(())
 }
 
+/// Connects to the server and runs experiments in a loop until interrupted.
 pub fn run(
     url: &str,
     token: &str,

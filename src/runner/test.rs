@@ -1,3 +1,5 @@
+//! Cargo invocation and result classification for each experiment mode.
+
 use crate::crates::Crate;
 use crate::experiments::CapLints;
 use crate::prelude::*;
@@ -16,6 +18,10 @@ use rustwide::{Build, PrepareError};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::ErrorKind;
 
+/// Maps an error into a [`FailureReason`] by inspecting its downcast chain.
+// - Checks for a directly attached FailureReason first.
+// - Then inspects CommandError variants for timeout, OOM, docker, and IO errors.
+// - Falls back to FailureReason::Unknown.
 pub(crate) fn failure_reason(err: &Error) -> FailureReason {
     if let Some(reason) = err.downcast_ref::<FailureReason>() {
         reason.clone()
@@ -44,6 +50,12 @@ pub(crate) fn failure_reason(err: &Error) -> FailureReason {
     }
 }
 
+/// Converts known preparation errors into [`OverrideResult`] with a broken-crate reason.
+// - On Ok, passes through unchanged.
+// - On Err, downcasts to PrepareError and maps known variants (missing
+//   Cargo.toml, yanked deps, private git repos, etc.) to BrokenReason.
+// - Wraps matched errors in OverrideResult so callers record BrokenCrate
+//   instead of a generic failure.
 pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
     match res {
         Ok(ok) => Ok(ok),
@@ -89,6 +101,7 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
     }
 }
 
+/// Runs `cargo metadata` to discover which packages live in the crate's source tree.
 fn get_local_packages(build_env: &Build) -> Fallible<Vec<Package>> {
     Ok(build_env
         .cargo()
@@ -102,6 +115,18 @@ fn get_local_packages(build_env: &Build) -> Fallible<Vec<Package>> {
         .collect())
 }
 
+/// Assembles and runs a cargo command inside the sandbox, classifying its output.
+// - Appends --target and toolchain-specific cargo/rust flags to the argument list.
+// - Builds RUSTFLAGS and RUSTDOCFLAGS from cap_lints and toolchain overrides.
+// - When check_errors is true, attaches a JSON line processor that scans for:
+//     - ICEs (internal compiler errors) in local or dependency crates.
+//     - Error codes from the crate under test vs. its dependencies.
+//     - Network access, OOM, disk-full, and trybuild diagnostic changes.
+//   Replaces raw JSON lines with rendered diagnostics for human-readable logs.
+// - Sets CARGO_INCREMENTAL=0 and RUST_BACKTRACE=full, plus caller-supplied env.
+// - Disables the output timeout for quiet crates.
+// - On failure, wraps the error with the most specific detected FailureReason
+//   (ICE > NoSpace > DependsOn > CompilerError > NetworkAccess > DiagnosticChange).
 fn run_cargo(
     ctx: &TaskCtx,
     build_env: &Build,
@@ -291,6 +316,14 @@ struct Diagnostic {
     rendered: Option<String>,
 }
 
+/// Sets up the sandbox, locks the build directory, and runs the given test function.
+// - Captures all output into the provided LogStorage.
+// - Creates a sandboxed environment with a memory limit and no networking.
+// - Locks the per-toolchain BuildDirectory and starts a build with any
+//   toolchain patches applied.
+// - Calls get_local_packages to discover crates in the source tree, then
+//   invokes the mode-specific test_fn.
+// - Wraps the whole thing in detect_broken to catch preparation failures.
 pub(super) fn run_test(
     action: &str,
     ctx: &TaskCtx,
@@ -321,7 +354,10 @@ pub(super) fn run_test(
     })
 }
 
-fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallible<()> {
+/// Compiles the crate and its test binaries (without executing them).
+// - Runs `cargo build --frozen` with JSON diagnostics.
+// - Runs `cargo test --frozen --no-run` to compile test harnesses.
+fn run_cargo_build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallible<()> {
     run_cargo(
         ctx,
         build_env,
@@ -345,7 +381,8 @@ fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallib
     Ok(())
 }
 
-fn test(ctx: &TaskCtx, build_env: &Build) -> Fallible<()> {
+/// Executes the compiled test binaries via `cargo test --frozen`.
+fn run_cargo_test(ctx: &TaskCtx, build_env: &Build) -> Fallible<()> {
     run_cargo(
         ctx,
         build_env,
@@ -358,14 +395,17 @@ fn test(ctx: &TaskCtx, build_env: &Build) -> Fallible<()> {
     )
 }
 
+/// Builds the crate and runs its test suite, returning the combined result.
+// - Calls build(); if that fails, returns BuildFail immediately.
+// - On successful build, calls test(); maps its result to TestFail or TestPass.
 pub(super) fn test_build_and_test(
     ctx: &TaskCtx,
     build_env: &Build,
     local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
-    let build_r = build(ctx, build_env, local_packages_id);
+    let build_r = run_cargo_build(ctx, build_env, local_packages_id);
     let test_r = if build_r.is_ok() {
-        Some(test(ctx, build_env))
+        Some(run_cargo_test(ctx, build_env))
     } else {
         None
     };
@@ -378,18 +418,20 @@ pub(super) fn test_build_and_test(
     })
 }
 
+/// Builds the crate without running tests.
 pub(super) fn test_build_only(
     ctx: &TaskCtx,
     build_env: &Build,
     local_packages_id: &[Package],
 ) -> Fallible<TestResult> {
-    if let Err(err) = build(ctx, build_env, local_packages_id) {
+    if let Err(err) = run_cargo_build(ctx, build_env, local_packages_id) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
         Ok(TestResult::TestSkipped)
     }
 }
 
+/// Runs `cargo check` on the crate.
 pub(super) fn test_check_only(
     ctx: &TaskCtx,
     build_env: &Build,
@@ -417,6 +459,7 @@ pub(super) fn test_check_only(
     }
 }
 
+/// Runs `cargo clippy` on the crate.
 pub(super) fn test_clippy_only(
     ctx: &TaskCtx,
     build_env: &Build,
@@ -444,6 +487,11 @@ pub(super) fn test_clippy_only(
     }
 }
 
+/// Runs `cargo doc` (and docs.rs metadata if applicable) on the crate.
+// - First runs a standard `cargo doc --no-deps --document-private-items`.
+// - Cleans up the generated docs directory after each run to save disk.
+// - If the crate contains a library target, re-runs with docs.rs metadata
+//   (custom features, rustdoc args) and RUSTC_BOOTSTRAP=1.
 pub(super) fn test_rustdoc(
     ctx: &TaskCtx,
     build_env: &Build,
@@ -518,6 +566,7 @@ fn is_library(target: &Target) -> bool {
             .all(|k| ![TargetKind::Example, TargetKind::Test, TargetKind::Bench].contains(k))
 }
 
+/// Runs `cargo fix` on the crate.
 pub(crate) fn fix(
     ctx: &TaskCtx,
     build_env: &Build,

@@ -3,6 +3,7 @@ use crate::db::QueryUtils;
 use crate::experiments::Experiment;
 use crate::prelude::*;
 
+/// Action to delete an experiment and all its associated data.
 pub struct DeleteExperiment {
     pub name: String,
 }

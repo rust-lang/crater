@@ -1,7 +1,10 @@
+//! Human-readable byte sizes for configuration.
+
 use crate::prelude::*;
 use std::fmt;
 use std::str::FromStr;
 
+/// A human-readable byte size (e.g. `"2G"`, `"512M"`), used in config.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub enum Size {

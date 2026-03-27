@@ -47,6 +47,16 @@ impl Toolchain {
 
         encode(&self.to_string(), &utils::FILENAME_ENCODE_SET).to_string()
     }
+
+    /// Returns `true` if this is a nightly distribution or a CI (try/master) build.
+    pub fn is_nightly(&self) -> bool {
+        if let Some(dist) = self.source.as_dist() {
+            dist.name().starts_with("nightly")
+        } else {
+            // CI builds (try#sha, master#sha) use nightly compilers.
+            self.source.as_ci().is_some()
+        }
+    }
 }
 
 impl std::ops::Deref for Toolchain {
@@ -352,6 +362,23 @@ mod tests {
                 ci_try: true,
             },
         };
+
+        // Test is_nightly
+        assert!(!Toolchain::from_str("stable").unwrap().is_nightly());
+        assert!(!Toolchain::from_str("beta-1970-01-01").unwrap().is_nightly());
+        assert!(Toolchain::from_str("nightly-1970-01-01")
+            .unwrap()
+            .is_nightly());
+        assert!(
+            Toolchain::from_str("try#0000000000000000000000000000000000000000")
+                .unwrap()
+                .is_nightly()
+        );
+        assert!(
+            Toolchain::from_str("master#0000000000000000000000000000000000000000")
+                .unwrap()
+                .is_nightly()
+        );
 
         // Test invalid reprs
         assert!(Toolchain::from_str("").is_err());

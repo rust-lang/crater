@@ -6,6 +6,7 @@ use crate::results::{BrokenReason, TestResult};
 use crate::runner::tasks::{Task, TaskStep};
 use crate::runner::test::{detect_broken, failure_reason};
 use crate::runner::OverrideResult;
+use crate::timings::{TimingInfo, TimingVisitor};
 use crate::toolchain::Toolchain;
 use crate::utils;
 use rustwide::logging::{self, LogStorage};
@@ -25,6 +26,18 @@ pub trait RecordProgress: Send + Sync {
         result: &TestResult,
         version: Option<(&Crate, &Crate)>,
     ) -> Fallible<()>;
+
+    /// Records build timing data for a single crate on one toolchain.
+    /// Default implementation is a no-op (used by AgentApi).
+    fn record_timings(
+        &self,
+        _ex: &Experiment,
+        _krate: &Crate,
+        _toolchain: &Toolchain,
+        _timings: &[TimingInfo],
+    ) -> Fallible<()> {
+        Ok(())
+    }
 }
 
 impl RecordProgress for AgentApi {
@@ -49,6 +62,7 @@ pub(super) struct Worker<'a> {
     config: &'a crate::config::Config,
     api: &'a dyn RecordProgress,
     next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
+    is_agent_mode: bool,
 
     // Called by the worker thread between crates, when no global state (namely caches) is in use.
     pub(super) between_crates: OnceLock<Box<dyn Fn(bool) + Send + Sync + 'a>>,
@@ -62,6 +76,7 @@ impl<'a> Worker<'a> {
         config: &'a crate::config::Config,
         api: &'a dyn RecordProgress,
         next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
+        is_agent_mode: bool,
     ) -> Self {
         let mut build_dir = HashMap::new();
         build_dir.insert(
@@ -80,6 +95,7 @@ impl<'a> Worker<'a> {
             config,
             next_crate,
             api,
+            is_agent_mode,
 
             between_crates: OnceLock::new(),
         }
@@ -92,6 +108,7 @@ impl<'a> Worker<'a> {
     fn run_task(
         &self,
         task: &Task,
+        timing_visitor: &mut dyn TimingVisitor,
         storage: &LogStorage,
     ) -> Result<TestResult, (anyhow::Error, TestResult)> {
         info!("running task: {task:?}");
@@ -102,7 +119,13 @@ impl<'a> Worker<'a> {
             // If we're running a task, we call ourselves healthy.
             crate::agent::set_healthy();
 
-            match task.run(self.config, &self.build_dir, self.ex, storage) {
+            match task.run(
+                self.config,
+                &self.build_dir,
+                self.ex,
+                timing_visitor,
+                storage,
+            ) {
                 Ok(res) => return Ok(res),
                 Err(e) => {
                     res = Some(e);
@@ -276,6 +299,9 @@ impl<'a> Worker<'a> {
             }
 
             for tc in &self.ex.toolchains {
+                let mut visitor =
+                    crate::timings::create_visitor(self.config, tc, self.is_agent_mode);
+
                 let quiet = self.config.is_quiet(&krate);
                 let task = Task {
                     krate: krate.clone(),
@@ -320,8 +346,24 @@ impl<'a> Worker<'a> {
                 // Fork logs off to distinct branch, so that each toolchain has its own log file,
                 // while keeping the shared prepare step in common.
                 let storage = logs.duplicate();
-                match self.run_task(&task, &storage) {
+                match self.run_task(&task, &mut *visitor, &storage) {
                     Ok(res) => {
+                        let timing_results = visitor.take_results();
+                        if !timing_results.is_empty() {
+                            info!(
+                                "captured {} timing entries for {} on {}",
+                                timing_results.len(),
+                                krate,
+                                tc
+                            );
+                            if let Err(e) =
+                                self.api
+                                    .record_timings(self.ex, &task.krate, tc, &timing_results)
+                            {
+                                warn!("failed to store timing data: {e:?}");
+                            }
+                        }
+
                         self.api.record_progress(
                             self.ex,
                             &task.krate,

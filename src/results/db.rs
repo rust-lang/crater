@@ -5,6 +5,7 @@ use crate::prelude::*;
 use crate::results::{
     DeleteResults, EncodedLog, EncodingType, ReadResults, TestResult, WriteResults,
 };
+use crate::timings::TimingInfo;
 use crate::toolchain::Toolchain;
 use base64::Engine;
 use rustwide::logging::{self, LogStorage};
@@ -143,6 +144,69 @@ impl<'a> DatabaseDB<'a> {
         Ok(())
     }
 
+    pub fn store_timings(
+        &self,
+        ex: &Experiment,
+        krate: &Crate,
+        toolchain: &Toolchain,
+        timings: &[TimingInfo],
+    ) -> Fallible<()> {
+        for timing in timings {
+            let target_kind = timing.target.kind.join(",");
+            self.db.execute_cached(
+                "INSERT INTO build_timings \
+                 (experiment, crate, toolchain, package_id, target_name, target_kind, mode, duration, rmeta_time) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9);",
+                &[
+                    &ex.name as &dyn rusqlite::types::ToSql,
+                    &krate.id(),
+                    &toolchain.to_string(),
+                    &timing.package_id,
+                    &timing.target.name,
+                    &target_kind,
+                    &timing.mode,
+                    &timing.duration,
+                    &timing.rmeta_time,
+                ],
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn load_timings(
+        &self,
+        ex: &Experiment,
+        krate: &Crate,
+        toolchain: &Toolchain,
+    ) -> Fallible<Vec<TimingInfo>> {
+        self.db.query(
+            "SELECT package_id, target_name, target_kind, mode, duration, rmeta_time \
+             FROM build_timings \
+             WHERE experiment = ?1 AND crate = ?2 AND toolchain = ?3;",
+            [&ex.name, &krate.id(), &toolchain.to_string()],
+            |row| {
+                let target_kind: String = row.get("target_kind")?;
+                let kinds: Vec<String> = target_kind.split(',').map(|s| s.to_string()).collect();
+                Ok(TimingInfo {
+                    package_id: row.get("package_id")?,
+                    target: crate::timings::TimingTarget {
+                        kind: kinds,
+                        crate_types: Vec::new(),
+                        name: row.get("target_name")?,
+                        src_path: String::new(),
+                        edition: String::new(),
+                        doc: false,
+                        doctest: false,
+                        test: false,
+                    },
+                    mode: row.get("mode")?,
+                    duration: row.get("duration")?,
+                    rmeta_time: row.get("rmeta_time")?,
+                })
+            },
+        )
+    }
+
     fn insert_into_results(
         &self,
         ex: &Experiment,
@@ -271,6 +335,16 @@ impl crate::runner::RecordProgress for DatabaseDB<'_> {
             self.update_crate_version(ex, old, new)?;
         }
         Ok(())
+    }
+
+    fn record_timings(
+        &self,
+        ex: &Experiment,
+        krate: &Crate,
+        toolchain: &Toolchain,
+        timings: &[TimingInfo],
+    ) -> Fallible<()> {
+        self.store_timings(ex, krate, toolchain, timings)
     }
 }
 
@@ -466,6 +540,85 @@ mod tests {
             .get_result(&ex, &MAIN_TOOLCHAIN, &krate)
             .unwrap()
             .is_none());
+    }
+
+    #[test]
+    fn test_store_and_load_timings() {
+        let db = Database::temp().unwrap();
+        let results = DatabaseDB::new(&db);
+        let config = Config::default();
+        let ctx = ActionsCtx::new(&db, &config);
+
+        crate::crates::lists::setup_test_lists(&db, &config).unwrap();
+
+        CreateExperiment::dummy("dummy").apply(&ctx).unwrap();
+        let ex = Experiment::get(&db, "dummy").unwrap().unwrap();
+
+        let krate = Crate::Registry(RegistryCrate {
+            name: "lazy_static".into(),
+            version: "1".into(),
+        });
+
+        let timings = vec![
+            crate::timings::TimingInfo {
+                package_id: "serde 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)"
+                    .to_string(),
+                target: crate::timings::TimingTarget {
+                    kind: vec!["lib".to_string()],
+                    crate_types: vec!["lib".to_string()],
+                    name: "serde".to_string(),
+                    src_path: "/path/to/src/lib.rs".to_string(),
+                    edition: "2021".to_string(),
+                    doc: true,
+                    doctest: true,
+                    test: true,
+                },
+                mode: "build".to_string(),
+                duration: 12.5,
+                rmeta_time: Some(8.3),
+            },
+            crate::timings::TimingInfo {
+                package_id: "foo 0.1.0".to_string(),
+                target: crate::timings::TimingTarget {
+                    kind: vec!["bin".to_string()],
+                    crate_types: vec!["bin".to_string()],
+                    name: "foo".to_string(),
+                    src_path: "/path/to/main.rs".to_string(),
+                    edition: "2021".to_string(),
+                    doc: false,
+                    doctest: false,
+                    test: false,
+                },
+                mode: "build".to_string(),
+                duration: 1.0,
+                rmeta_time: None,
+            },
+        ];
+
+        results
+            .store_timings(&ex, &krate, &MAIN_TOOLCHAIN, &timings)
+            .unwrap();
+
+        let loaded = results.load_timings(&ex, &krate, &MAIN_TOOLCHAIN).unwrap();
+
+        assert_eq!(loaded.len(), 2);
+
+        assert_eq!(loaded[0].package_id, timings[0].package_id);
+        assert_eq!(loaded[0].target.name, "serde");
+        assert_eq!(loaded[0].target.kind, vec!["lib"]);
+        assert_eq!(loaded[0].mode, "build");
+        assert!((loaded[0].duration - 12.5).abs() < f64::EPSILON);
+        assert!((loaded[0].rmeta_time.unwrap() - 8.3).abs() < f64::EPSILON);
+
+        assert_eq!(loaded[1].package_id, "foo 0.1.0");
+        assert_eq!(loaded[1].target.name, "foo");
+        assert_eq!(loaded[1].target.kind, vec!["bin"]);
+        assert!((loaded[1].duration - 1.0).abs() < f64::EPSILON);
+        assert!(loaded[1].rmeta_time.is_none());
+
+        // Different toolchain should return empty
+        let empty = results.load_timings(&ex, &krate, &TEST_TOOLCHAIN).unwrap();
+        assert!(empty.is_empty());
     }
 
     #[test]

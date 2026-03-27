@@ -27,6 +27,7 @@ pub mod report;
 pub mod results;
 pub mod runner;
 pub mod server;
+pub mod timings;
 pub mod toolchain;
 
 pub(crate) static GIT_REVISION: Option<&str> = include!(concat!(env!("OUT_DIR"), "/sha"));

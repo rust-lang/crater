@@ -29,6 +29,7 @@ pub fn run_ex(
     threads_count: usize,
     config: &Config,
     next_crate: &(dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
+    is_agent_mode: bool,
 ) -> Fallible<()> {
     // Attempt to spin indefinitely until docker is up. Ideally, we would
     // decomission this agent until docker is up, instead of leaving the
@@ -89,6 +90,7 @@ pub fn run_ex(
                 config,
                 api,
                 next_crate,
+                is_agent_mode,
             )
         })
         .collect::<Vec<_>>();

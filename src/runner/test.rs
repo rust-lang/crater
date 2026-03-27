@@ -5,6 +5,7 @@ use crate::results::DiagnosticCode;
 use crate::results::{BrokenReason, FailureReason, TestResult};
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
+use crate::timings::{NoopTimingVisitor, TimingVisitor};
 use anyhow::Error;
 use cargo_metadata::diagnostic::DiagnosticLevel;
 use cargo_metadata::{CrateType, Metadata, Package, Target, TargetKind};
@@ -111,10 +112,14 @@ fn run_cargo(
     env: HashMap<&'static str, String>,
     mount_kind: MountKind,
     cap_lints: Option<CapLints>,
+    timing_visitor: &mut dyn TimingVisitor,
 ) -> Fallible<()> {
     let local_packages_id: HashSet<_> = local_packages.iter().map(|p| &p.id).collect();
 
     let mut args = args.to_vec();
+    if timing_visitor.is_capturing() {
+        args.push("--timings");
+    }
     if let Some(ref target) = ctx.toolchain.target {
         args.extend(["--target", target]);
     }
@@ -206,6 +211,10 @@ fn run_cargo(
 
                 actions.replace_with_lines(inner_message.rendered.unwrap_or_default().split('\n'));
             }
+            Message::TimingInfo(timing) => {
+                timing_visitor.visit_timing(timing);
+                actions.remove_line();
+            }
             _ => actions.remove_line(),
         }
     };
@@ -261,6 +270,8 @@ fn run_cargo(
 enum Message {
     /// The compiler wants to display a message
     CompilerMessage(CompilerMessage),
+    /// Timing data from cargo's `--timings` flag
+    TimingInfo(crate::timings::TimingInfo),
     #[serde(other)]
     Other,
 }
@@ -294,7 +305,8 @@ struct Diagnostic {
 pub(super) fn run_test(
     action: &str,
     ctx: &TaskCtx,
-    test_fn: fn(&TaskCtx, &Build, &[Package]) -> Fallible<TestResult>,
+    test_fn: fn(&TaskCtx, &Build, &[Package], &mut dyn TimingVisitor) -> Fallible<TestResult>,
+    timing_visitor: &mut dyn TimingVisitor,
     logs: &LogStorage,
 ) -> Fallible<TestResult> {
     rustwide::logging::capture(logs, || {
@@ -316,12 +328,17 @@ pub(super) fn run_test(
 
         detect_broken(build.run(|build| {
             let local_packages = get_local_packages(build)?;
-            test_fn(ctx, build, &local_packages)
+            test_fn(ctx, build, &local_packages, timing_visitor)
         }))
     })
 }
 
-fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallible<()> {
+fn build(
+    ctx: &TaskCtx,
+    build_env: &Build,
+    local_packages: &[Package],
+    timing_visitor: &mut dyn TimingVisitor,
+) -> Fallible<()> {
     run_cargo(
         ctx,
         build_env,
@@ -331,6 +348,7 @@ fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallib
         HashMap::default(),
         MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
+        timing_visitor,
     )?;
     run_cargo(
         ctx,
@@ -341,6 +359,7 @@ fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallib
         HashMap::default(),
         MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
+        timing_visitor,
     )?;
     Ok(())
 }
@@ -355,6 +374,7 @@ fn test(ctx: &TaskCtx, build_env: &Build) -> Fallible<()> {
         HashMap::default(),
         MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
+        &mut NoopTimingVisitor,
     )
 }
 
@@ -362,8 +382,9 @@ pub(super) fn test_build_and_test(
     ctx: &TaskCtx,
     build_env: &Build,
     local_packages_id: &[Package],
+    timing_visitor: &mut dyn TimingVisitor,
 ) -> Fallible<TestResult> {
-    let build_r = build(ctx, build_env, local_packages_id);
+    let build_r = build(ctx, build_env, local_packages_id, timing_visitor);
     let test_r = if build_r.is_ok() {
         Some(test(ctx, build_env))
     } else {
@@ -382,8 +403,9 @@ pub(super) fn test_build_only(
     ctx: &TaskCtx,
     build_env: &Build,
     local_packages_id: &[Package],
+    timing_visitor: &mut dyn TimingVisitor,
 ) -> Fallible<TestResult> {
-    if let Err(err) = build(ctx, build_env, local_packages_id) {
+    if let Err(err) = build(ctx, build_env, local_packages_id, timing_visitor) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
         Ok(TestResult::TestSkipped)
@@ -394,6 +416,7 @@ pub(super) fn test_check_only(
     ctx: &TaskCtx,
     build_env: &Build,
     local_packages_id: &[Package],
+    timing_visitor: &mut dyn TimingVisitor,
 ) -> Fallible<TestResult> {
     if let Err(err) = run_cargo(
         ctx,
@@ -410,6 +433,7 @@ pub(super) fn test_check_only(
         HashMap::default(),
         MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
+        timing_visitor,
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
@@ -421,6 +445,7 @@ pub(super) fn test_clippy_only(
     ctx: &TaskCtx,
     build_env: &Build,
     local_packages: &[Package],
+    timing_visitor: &mut dyn TimingVisitor,
 ) -> Fallible<TestResult> {
     if let Err(err) = run_cargo(
         ctx,
@@ -437,6 +462,7 @@ pub(super) fn test_clippy_only(
         HashMap::default(),
         MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
+        timing_visitor,
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {
@@ -448,8 +474,9 @@ pub(super) fn test_rustdoc(
     ctx: &TaskCtx,
     build_env: &Build,
     local_packages: &[Package],
+    timing_visitor: &mut dyn TimingVisitor,
 ) -> Fallible<TestResult> {
-    let run = |cargo_args, env| {
+    let mut run = |cargo_args, env| {
         let res = run_cargo(
             ctx,
             build_env,
@@ -459,6 +486,7 @@ pub(super) fn test_rustdoc(
             env,
             MountKind::ReadOnly,
             Some(ctx.experiment.cap_lints),
+            &mut *timing_visitor,
         );
 
         // Make sure to remove the built documentation
@@ -522,6 +550,7 @@ pub(crate) fn fix(
     ctx: &TaskCtx,
     build_env: &Build,
     local_packages_id: &[Package],
+    timing_visitor: &mut dyn TimingVisitor,
 ) -> Fallible<TestResult> {
     if let Err(err) = run_cargo(
         ctx,
@@ -540,6 +569,7 @@ pub(crate) fn fix(
         HashMap::default(),
         MountKind::ReadWrite,
         None,
+        timing_visitor,
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
     } else {

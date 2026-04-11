@@ -7,7 +7,9 @@ jobs:
     name: Linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Install Rust nightly
         run: rustup update nightly && rustup default nightly && rustup component add rustfmt clippy
@@ -26,7 +28,9 @@ jobs:
         channel: [nightly]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Install Rust ${{ matrix.channel }}
         shell: bash
@@ -51,7 +55,9 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Install Rust nightly
         run: rustup update --no-self-update nightly && rustup default nightly
@@ -69,7 +75,9 @@ jobs:
     name: Build the Docker image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Build the Docker image
         run: docker build -t crater .
@@ -80,7 +88,7 @@ jobs:
           docker save crater | gzip > /tmp/docker-images/crater.tar.gz
 
       - name: Upload the image to GitHub Actions artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: docker-images
           path: /tmp/docker-images
@@ -96,7 +104,7 @@ jobs:
 
     steps:
       - name: Download the image from GitHub Actions artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: docker-images
           path: docker-images
@@ -105,7 +113,7 @@ jobs:
         run: cat docker-images/crater.tar.gz | gunzip | docker load
 
       - name: Upload the Docker image to ECR
-        uses: rust-lang/simpleinfra/github-actions/upload-docker-image@master
+        uses: rust-lang/simpleinfra/github-actions/upload-docker-image@4da88c824d96c01628fbad1e1b97cd24e08216c4 # master (2026-04-10)
         with:
           image: crater
           repository: crater
@@ -114,6 +122,7 @@ jobs:
           aws_secret_access_key: "${{ secrets.aws_secret_access_key }}"
 
   conclusion:
+    name: Conclusion
     needs: [docker-upload]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to

@@ -174,6 +174,11 @@ sisyphus32 = { skip-tests = true } # probably UB via static mut when running mul
 neutralts = { skip-tests = true } # flaky test (see https://github.com/FranBarInstance/neutralts/issues/2)
 reratui-hooks = { skip-tests = true } # flaky tests (concurrency)
 fp_lib = { skip-tests = true } # flaky test (thread::sleep; will fail on heavily loaded machines)
+digifi = { skip-tests = true } # flaky test (runs a stochastic process and asserts result is good enough)
+dust_dds = { skip-tests = true } # flaky tests
+easy-threadpool = { skip-tests = true } # has a test that's supposed to find flaky tests. and well, it's doing its job.
+expression_engine = { skip-tests = true } # flaky tests at v0.7.0. already fixed in the repo version, but release doesn't look likely any time soon
+check-if-email-exists = { skip-tests = true } # flaky: test fails when ran without network, *unless* it stalls out the 1ms timeout
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
@@ -262,5 +267,27 @@ fp_lib = { skip-tests = true } # flaky test (thread::sleep; will fail on heavily
 "conradludgate/plunger" = { skip-tests = true } # flaky test (timing)
 "marziply/emotech-grpc" = { skip-tests = true } # flaky tests when run concurrently (all try to open socket on same address)
 "olegfomenko/valida-examples" = { skip-tests = true } # test requires custom toolchain and specific target
+"hapejot/logic-programming" = { skip-tests = true } # flaky: hashmap iteration order
+"KafkaWannaFly/calculator-mcp" = { skip-tests = true } # flaky tests when run concurrently (mutates shared environment variable)
+"M1n-74316D65/rusted-yadm" = { skip-tests = true } # flaky tests when run concurrently (mutates shared environment variable)
+"Marven11/justcache" = { skip-tests = true } # flaky: root cause unclear, probably logic bug in management of BuildHasher state
+"Podcastindex-org/feedparser" = { skip-tests = true } # flaky test (vibecoded garbage, didn't investigate beyond reproducing the flakiness)
+"bitcoin-dev-tools/benchkit" = { skip-tests = true } # flaky tests when run concurrently (mutates shared environment variables)
+"codesections/dlarm" = { skip-tests = true } # flaky: mutates global filesystem state, depends on ordering between tests
+"cromulentbanana/korrect" = { skip-tests = true } # flaky tests when run concurrently (mutates shared environment variables)
+"egonzalez49/advent-2023" = { skip-tests = true } # flaky: tests get serialized, but still depend on the order they are ran in
+"foursixnine/hetzner-robot-rs" = { skip-tests = true } # flaky: mutates shared environment variables)
+"girstenbrei/miltr" = { skip-tests = true } # flaky: race condition when setting up test
+"grazzhopper/notebot" = { skip-tests = true } # flaky tests when run concurrently (mutates shared filesystem state)
+"lollek/omoria" = { skip-tests = true } # flaky: no idea, but reproduces quite quickly
+"matheus23/rust-set-reconciliation" = { skip-tests = true } # flaky: i think the proptest only sometimes finds the bug?
+"promised-ai/rv" = { skip-tests = true } # flaky: literally tests that random process succeeds at least once in 5 tries
+"pzhenzhou/r_tpl" = { skip-tests = true } # flaky: unclear why but easy to reproduce
+"rain2307/xext-tokio" = { skip-tests = true } # flaky tests when run concurrently (tests interfere by sending unix signals to each other)
+"vera-codes6/rust-algorithms-implementation" = { skip-tests = true } # flaky: sleep sort fails under havy load
+"nikita-skobov/progresslib2" = { skip-tests = true } # flaky: tests involve sleeps, fails under heavy load
+"ydarma/fluent_data" = { skip-tests = true } # flaky: race condition when setting up test
+"zthompson47/pseudotty" = { skip-tests = true } # flaky: expects subprocess to respond within 10ms
+"chen-siyuan/ray-tracing" = { skip-tests = true } # flaky: tests a random process
 
 [local-crates]

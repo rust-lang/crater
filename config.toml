@@ -241,6 +241,7 @@ fp_lib = { skip-tests = true } # flaky test (thread::sleep; will fail on heavily
 "c0repwn3r/mangrove" = { skip = true } # broken beta rustc version parsing
 "zbzalex/rustc_get_version" = { skip = true } # broken beta rustc version parsing
 "ns6251/spin-cookie-token-sample" = { skip = true } # invalid dep tree, spuriously compiles
+"ecumene/spin_pg" = { skip = true } # invalid dep tree, spuriously compiles
 "daniestevez/qsdr" = { skip = true } # cfg for stable/nightly, but not beta
 "Buggaboo/flat_sqlite_rs" = { skip = true } # proc macro causes nondeterministic compile error
 "Arxoto/sudoku" = { skip-tests = true } # memory corruption with static mut
@@ -262,5 +263,6 @@ fp_lib = { skip-tests = true } # flaky test (thread::sleep; will fail on heavily
 "conradludgate/plunger" = { skip-tests = true } # flaky test (timing)
 "marziply/emotech-grpc" = { skip-tests = true } # flaky tests when run concurrently (all try to open socket on same address)
 "olegfomenko/valida-examples" = { skip-tests = true } # test requires custom toolchain and specific target
+"Steven9101/novasdr-wasm" = { skip = true } # depends on futuredsp, which has cfg for stable/nightly, but not beta
 
 [local-crates]

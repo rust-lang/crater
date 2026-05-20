@@ -92,7 +92,7 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
 fn get_local_packages(build_env: &Build) -> Fallible<Vec<Package>> {
     Ok(build_env
         .cargo()
-        .args(&["metadata", "--no-deps", "--format-version=1"])
+        .args(["metadata", "--no-deps", "--format-version=1"])
         .log_output(false)
         .run_capture()?
         .stdout_lines()

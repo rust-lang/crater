@@ -154,7 +154,7 @@ impl<'a> DatabaseDB<'a> {
         log::info!(
             "insert {krate} for ex={ex:?} with tc={toolchain}; result={res:?}",
             krate = krate.id(),
-            ex = &ex.name
+            ex = ex.name
         );
         self.db.execute(
             "INSERT INTO results (experiment, crate, toolchain, result, log, encoding) \

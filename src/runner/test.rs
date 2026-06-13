@@ -10,7 +10,7 @@ use cargo_metadata::diagnostic::DiagnosticLevel;
 use cargo_metadata::{CrateType, Metadata, Package, Target, TargetKind};
 use docsrs_metadata::Metadata as DocsrsMetadata;
 use remove_dir_all::remove_dir_all;
-use rustwide::cmd::{CommandError, MountKind, ProcessLinesActions, SandboxBuilder};
+use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
 use rustwide::logging::LogStorage;
 use rustwide::{Build, PrepareError};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -92,7 +92,7 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
 fn get_local_packages(build_env: &Build) -> Fallible<Vec<Package>> {
     Ok(build_env
         .cargo()
-        .args(&["metadata", "--no-deps", "--format-version=1"])
+        .args(["metadata", "--no-deps", "--format-version=1"])
         .log_output(false)
         .run_capture()?
         .stdout_lines()
@@ -109,7 +109,6 @@ fn run_cargo(
     check_errors: bool,
     local_packages: &[Package],
     env: HashMap<&'static str, String>,
-    mount_kind: MountKind,
     cap_lints: Option<CapLints>,
 ) -> Fallible<()> {
     let local_packages_id: HashSet<_> = local_packages.iter().map(|p| &p.id).collect();
@@ -213,7 +212,6 @@ fn run_cargo(
     let mut command = build_env
         .cargo()
         .args(&args)
-        .source_dir_mount_kind(mount_kind)
         .env("CARGO_INCREMENTAL", "0")
         .env("RUST_BACKTRACE", "full")
         .env("RUSTFLAGS", rustflags)
@@ -304,7 +302,8 @@ pub(super) fn run_test(
         );
         let sandbox = SandboxBuilder::new()
             .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
-            .enable_networking(false);
+            .enable_networking(false)
+            .source_dir_mount_kind(ctx.mount_kind);
 
         let krate = &ctx.krate.to_rustwide();
         let mut build_dir = ctx.build_dir.lock().unwrap();
@@ -314,10 +313,14 @@ pub(super) fn run_test(
             build = build.patch_with_git(&patch.name, patch.repo.as_str(), &patch.branch);
         }
 
-        detect_broken(build.run(|build| {
-            let local_packages = get_local_packages(build)?;
-            test_fn(ctx, build, &local_packages)
-        }))
+        detect_broken(
+            build
+                .run(|build| {
+                    let local_packages = get_local_packages(build)?;
+                    test_fn(ctx, build, &local_packages)
+                })
+                .map(|v| v.into_inner()),
+        )
     })
 }
 
@@ -329,7 +332,6 @@ fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallib
         true,
         local_packages,
         HashMap::default(),
-        MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
     )?;
     run_cargo(
@@ -339,7 +341,6 @@ fn build(ctx: &TaskCtx, build_env: &Build, local_packages: &[Package]) -> Fallib
         true,
         local_packages,
         HashMap::default(),
-        MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
     )?;
     Ok(())
@@ -353,7 +354,6 @@ fn test(ctx: &TaskCtx, build_env: &Build) -> Fallible<()> {
         false,
         &[],
         HashMap::default(),
-        MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
     )
 }
@@ -408,7 +408,6 @@ pub(super) fn test_check_only(
         true,
         local_packages_id,
         HashMap::default(),
-        MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
@@ -435,7 +434,6 @@ pub(super) fn test_clippy_only(
         true,
         local_packages,
         HashMap::default(),
-        MountKind::ReadOnly,
         Some(ctx.experiment.cap_lints),
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))
@@ -457,7 +455,6 @@ pub(super) fn test_rustdoc(
             true,
             local_packages,
             env,
-            MountKind::ReadOnly,
             Some(ctx.experiment.cap_lints),
         );
 
@@ -538,7 +535,6 @@ pub(crate) fn fix(
         true,
         local_packages_id,
         HashMap::default(),
-        MountKind::ReadWrite,
         None,
     ) {
         Ok(TestResult::BuildFail(failure_reason(&err)))

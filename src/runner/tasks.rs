@@ -5,6 +5,7 @@ use crate::prelude::*;
 use crate::results::TestResult;
 use crate::runner::test;
 use crate::toolchain::Toolchain;
+use rustwide::cmd::MountKind;
 use rustwide::{Build, BuildDirectory};
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -19,6 +20,7 @@ pub(super) struct TaskCtx<'ctx> {
     pub(super) toolchain: &'ctx Toolchain,
     pub(super) krate: &'ctx Crate,
     pub(super) quiet: bool,
+    pub(super) mount_kind: MountKind,
 }
 
 impl<'ctx> TaskCtx<'ctx> {
@@ -29,6 +31,7 @@ impl<'ctx> TaskCtx<'ctx> {
         toolchain: &'ctx Toolchain,
         krate: &'ctx Crate,
         quiet: bool,
+        mount_kind: MountKind,
     ) -> Self {
         TaskCtx {
             build_dir,
@@ -37,6 +40,7 @@ impl<'ctx> TaskCtx<'ctx> {
             toolchain,
             krate,
             quiet,
+            mount_kind,
         }
     }
 }
@@ -93,10 +97,11 @@ impl Task {
         ex: &'ctx Experiment,
         logs: &LogStorage,
     ) -> Fallible<TestResult> {
-        let (build_dir, action, test, toolchain, quiet): (
+        let (build_dir, action, test, toolchain, quiet, mount_kind): (
             _,
             _,
             fn(&TaskCtx, &Build, &_) -> _,
+            _,
             _,
             _,
         ) = match self.step {
@@ -106,30 +111,67 @@ impl Task {
                 test::test_build_and_test,
                 tc,
                 quiet,
+                MountKind::ReadOnly,
             ),
-            TaskStep::BuildOnly { ref tc, quiet } => {
-                (&build_dir[tc], "building", test::test_build_only, tc, quiet)
-            }
-            TaskStep::CheckOnly { ref tc, quiet } => {
-                (&build_dir[tc], "checking", test::test_check_only, tc, quiet)
-            }
-            TaskStep::Clippy { ref tc, quiet } => {
-                (&build_dir[tc], "linting", test::test_clippy_only, tc, quiet)
-            }
-            TaskStep::Rustdoc { ref tc, quiet } => {
-                (&build_dir[tc], "documenting", test::test_rustdoc, tc, quiet)
-            }
+            TaskStep::BuildOnly { ref tc, quiet } => (
+                &build_dir[tc],
+                "building",
+                test::test_build_only,
+                tc,
+                quiet,
+                MountKind::ReadOnly,
+            ),
+            TaskStep::CheckOnly { ref tc, quiet } => (
+                &build_dir[tc],
+                "checking",
+                test::test_check_only,
+                tc,
+                quiet,
+                MountKind::ReadOnly,
+            ),
+            TaskStep::Clippy { ref tc, quiet } => (
+                &build_dir[tc],
+                "linting",
+                test::test_clippy_only,
+                tc,
+                quiet,
+                MountKind::ReadOnly,
+            ),
+            TaskStep::Rustdoc { ref tc, quiet } => (
+                &build_dir[tc],
+                "documenting",
+                test::test_rustdoc,
+                tc,
+                quiet,
+                MountKind::ReadOnly,
+            ),
             TaskStep::UnstableFeatures { ref tc } => (
                 &build_dir[tc],
                 "checking unstable",
                 crate::runner::unstable_features::find_unstable_features,
                 tc,
                 false,
+                MountKind::ReadOnly,
             ),
-            TaskStep::Fix { ref tc, quiet } => (&build_dir[tc], "fixing", test::fix, tc, quiet),
+            TaskStep::Fix { ref tc, quiet } => (
+                &build_dir[tc],
+                "fixing",
+                test::fix,
+                tc,
+                quiet,
+                MountKind::ReadWrite,
+            ),
         };
 
-        let ctx = TaskCtx::new(build_dir, config, ex, toolchain, &self.krate, quiet);
+        let ctx = TaskCtx::new(
+            build_dir,
+            config,
+            ex,
+            toolchain,
+            &self.krate,
+            quiet,
+            mount_kind,
+        );
         test::run_test(action, &ctx, test, logs)
     }
 }

@@ -24,6 +24,8 @@ The runs' output is hidden by default, but you can show it by setting the
 $ MINICRATER_SHOW_OUTPUT=1 cargo test minicrater -- --ignored --test-threads 1
 ```
 
+To bless all minicrater reports set the environment variable `MINICRATER_BLESS`
+
 ## Adding tests to minicrater
 
 There are two ways to add a test to minicrater:

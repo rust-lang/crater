@@ -174,6 +174,10 @@ sisyphus32 = { skip-tests = true } # probably UB via static mut when running mul
 neutralts = { skip-tests = true } # flaky test (see https://github.com/FranBarInstance/neutralts/issues/2)
 reratui-hooks = { skip-tests = true } # flaky tests (concurrency)
 fp_lib = { skip-tests = true } # flaky test (thread::sleep; will fail on heavily loaded machines)
+ImageManip = { skip = true } # broken beta rustc version parsing
+graphicsmagick = { skip = true } # broken beta rustc version parsing
+graphicsmagick-sys = { skip = true } # broken beta rustc version parsing
+forkable = { skip = true } # broken beta rustc version parsing
 
 [github-repos]
 # "org_name/repo_name" = { option = true }

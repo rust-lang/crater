@@ -177,6 +177,7 @@ ImageManip = { skip = true } # broken beta rustc version parsing
 graphicsmagick = { skip = true } # broken beta rustc version parsing
 graphicsmagick-sys = { skip = true } # broken beta rustc version parsing
 forkable = { skip = true } # broken beta rustc version parsing
+pass_by_catastrophe = { skip = true } # proc macro uses randomness, sometimes causing a compile error
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
@@ -267,5 +268,6 @@ forkable = { skip = true } # broken beta rustc version parsing
 "marziply/emotech-grpc" = { skip-tests = true } # flaky tests when run concurrently (all try to open socket on same address)
 "olegfomenko/valida-examples" = { skip-tests = true } # test requires custom toolchain and specific target
 "Steven9101/novasdr-wasm" = { skip = true } # depends on futuredsp, which has cfg for stable/nightly, but not beta
+"jonwolski/records-in-rust" = { skip = true } # writes to a potentially-read-only file
 
 [local-crates]

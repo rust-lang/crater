@@ -7,12 +7,14 @@ use crate::server::messages::Message;
 use crate::server::routes::webhooks::args::Command;
 use crate::server::{Data, GithubData};
 use bytes::Bytes;
-use hmac::{Hmac, Mac};
 use std::str::FromStr;
 use std::sync::Arc;
 use warp::http::{HeaderMap, StatusCode};
 use warp::reply::Response;
 use warp::{Filter, Rejection};
+
+use hmac::{Hmac, KeyInit, Mac};
+use sha2::Sha256;
 
 fn process_webhook(
     payload: &[u8],
@@ -151,39 +153,24 @@ fn process_command(
     Ok(())
 }
 
+type HmacSha256 = Hmac<Sha256>;
+
 fn verify_signature(secret: &str, payload: &[u8], raw_signature: &str) -> bool {
-    type HmacSha1 = Hmac<sha1::Sha1>;
-
-    // The signature must have a =
-    if !raw_signature.contains('=') {
+    // Strip sha256= prefix validating expected algorithm
+    let Some(hex_signature) = raw_signature.strip_prefix("sha256=") else {
         return false;
-    }
-
-    // Split the raw signature to get the algorithm and the signature
-    let splitted: Vec<&str> = raw_signature.split('=').collect();
-    let algorithm = &splitted[0];
-    let hex_signature = splitted
-        .iter()
-        .skip(1)
-        .cloned()
-        .collect::<Vec<&str>>()
-        .join("=");
+    };
 
     // Convert the signature from hex
-    let signature = if let Ok(converted) = crate::utils::hex::from_hex(&hex_signature) {
+    let signature = if let Ok(converted) = crate::utils::hex::from_hex(hex_signature) {
         converted
     } else {
         // This is not hex
         return false;
     };
 
-    // Only SHA-1 is supported
-    if *algorithm != "sha1" {
-        return false;
-    }
-
-    // Verify the HMAC signature
-    let mut mac = HmacSha1::new_from_slice(secret.as_bytes()).unwrap();
+    let mut mac =
+        HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
     mac.update(payload);
     mac.verify_slice(&signature).is_ok()
 }
@@ -195,7 +182,7 @@ fn receive_endpoint(
     body: Bytes,
 ) -> Fallible<()> {
     let signature = headers
-        .get("X-Hub-Signature")
+        .get("X-Hub-Signature-256")
         .and_then(|h| h.to_str().ok())
         .ok_or_else(|| anyhow!("missing header X-Hub-Signature\n"))?;
     let event = headers
@@ -248,4 +235,20 @@ pub fn routes(
                 resp
             },
         )
+}
+
+#[test]
+fn check_sig() {
+    let secret = "It's a Secret to Everybody";
+    let payload: &[u8] = "Hello, World!".as_bytes();
+    assert!(verify_signature(
+        secret,
+        payload,
+        "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17"
+    ));
+    assert!(!verify_signature(
+        secret,
+        payload,
+        "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e18"
+    ));
 }

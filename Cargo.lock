@@ -1040,7 +1040,7 @@ dependencies = [
  "dotenv",
  "env_logger",
  "flate2",
- "hmac 0.12.1",
+ "hmac 0.13.0",
  "indexmap",
  "jiff",
  "lazy_static",
@@ -1065,7 +1065,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_regex",
- "sha-1",
+ "sha2 0.11.0",
  "smol_str",
  "tar",
  "tempfile",
@@ -3723,17 +3723,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "sha-1"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5058ada175748e33390e40e872bd0fe59a19f265d0158daa551c5a88a76009c"
-dependencies = [
- "cfg-if",
- "cpufeatures 0.2.17",
- "digest 0.10.7",
 ]
 
 [[package]]

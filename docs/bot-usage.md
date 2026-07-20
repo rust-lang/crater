@@ -62,13 +62,15 @@ parents (both should be merge commits by bors):
 
 ![Where to look for the commits](images/pr-try-commit.png)
 
-Both start and end commit need to be given as full 40-char hashes.
+You must prefix the start commit with `master#`, and the end commit with
+`try#`, and both of them should be written with the full 40-chars hash.
+(See [specifying-toolchains](#specifying-toolchains) for more details on that syntax.)
 
 Then you need to choose the [experiment mode you want to
 use][h-experiment-modes] and type up the command in your GitHub PR:
 
 ```
-@craterbot run start=fullhash end=fullhash mode=YOUR-MODE
+@craterbot run start=master#fullhash end=try#fullhash mode=YOUR-MODE
 ```
 
 [Go back to the TOC][h-toc]
@@ -147,7 +149,8 @@ that capability.
 ### Specifying Toolchains
 
 Crater allows some configurations to the toolchains used in an experiment.
-You can specify a toolchain using a rustup name or a full 40-character git SHA.
+You can specify a toolchain using a rustup name or `channel#sha` where `channel`
+can be `master` for regular main branch toolchains or `try` for try builds.
 On top of that, you can use the following flags:
 * `+rustflags={flags}`: sets the `RUSTFLAGS` environment variable to `{flags}` when
   building with this toolchain, e.g. `+rustflags=-Zverbose`

@@ -64,6 +64,7 @@ parents (both should be merge commits by bors):
 
 You must prefix the start commit with `master#`, and the end commit with
 `try#`, and both of them should be written with the full 40-chars hash.
+(See [specifying-toolchains](#specifying-toolchains) for more details on that syntax.)
 
 Then you need to choose the [experiment mode you want to
 use][h-experiment-modes] and type up the command in your GitHub PR:
@@ -148,8 +149,9 @@ that capability.
 ### Specifying Toolchains
 
 Crater allows some configurations to the toolchains used in an experiment.
-You can specify a toolchain using a rustup name or `branch#sha`, and use the
-following flags:
+You can specify a toolchain using a rustup name or `channel#sha` where `channel`
+can be `master` for regular main branch toolchains or `try` for try builds.
+On top of that, you can use the following flags:
 * `+rustflags={flags}`: sets the `RUSTFLAGS` environment variable to `{flags}` when
   building with this toolchain, e.g. `+rustflags=-Zverbose`
 * `+cargoflags={flags}`: appends the given `{flags}` to the Cargo command specified

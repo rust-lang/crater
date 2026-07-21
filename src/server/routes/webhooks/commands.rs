@@ -75,7 +75,6 @@ pub fn run(
                 rustflags: None,
                 rustdocflags: None,
                 cargoflags: None,
-                ci_try: false,
                 patches: Vec::new(),
             });
             detected_end = Some(Toolchain {
@@ -84,7 +83,6 @@ pub fn run(
                 rustflags: None,
                 rustdocflags: None,
                 cargoflags: None,
-                ci_try: true,
                 patches: Vec::new(),
             });
             message = message.line(

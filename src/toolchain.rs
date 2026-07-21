@@ -14,7 +14,6 @@ lazy_static! {
         rustflags: None,
         rustdocflags: None,
         cargoflags: None,
-        ci_try: false,
         patches: Vec::new(),
     };
 
@@ -25,7 +24,6 @@ lazy_static! {
         rustflags: None,
         rustdocflags: None,
         cargoflags: None,
-        ci_try: false,
         patches: Vec::new(),
     };
 }
@@ -37,7 +35,6 @@ pub struct Toolchain {
     pub rustflags: Option<String>,
     pub rustdocflags: Option<String>,
     pub cargoflags: Option<String>,
-    pub ci_try: bool,
     pub patches: Vec<CratePatch>,
 }
 
@@ -62,11 +59,7 @@ impl fmt::Display for Toolchain {
         if let Some(dist) = self.source.as_dist() {
             write!(f, "{}", dist.name())?;
         } else if let Some(ci) = self.source.as_ci() {
-            if self.ci_try {
-                write!(f, "try#{}", ci.sha())?;
-            } else {
-                write!(f, "master#{}", ci.sha())?;
-            }
+            write!(f, "{}", ci.sha())?;
         } else {
             panic!("unsupported rustwide toolchain");
         }
@@ -101,10 +94,10 @@ pub enum ToolchainParseError {
     EmptyName,
     #[error("invalid toolchain source name: {0}")]
     InvalidSourceName(String),
+    #[error("invalid old-style toolchain source name (try removing the leading `master#` or `try#`): {0}")]
+    OldSourceName(String),
     #[error("invalid toolchain flag: {0}")]
     InvalidFlag(String),
-    #[error("invalid toolchain SHA: {0} is missing a `try#` or `master#` prefix")]
-    PrefixMissing(String),
     #[error("invalid url {0:?}: {1}")]
     InvalidUrl(String, url::ParseError),
 }
@@ -119,30 +112,27 @@ impl FromStr for Toolchain {
     fn from_str(input: &str) -> Result<Self, ToolchainParseError> {
         let mut parts = input.split('+');
 
+        // Note that string-ified toolchain names are stored in the databse, so a name that
+        // was once accepted has to remain valid ~forever.
         let raw_source = parts.next().ok_or(ToolchainParseError::EmptyName)?;
-        let mut ci_try = false;
-        let source = if let Some(hash_idx) = raw_source.find('#') {
+        let source = if TOOLCHAIN_SHA_RE.is_match(raw_source) {
+            // A full 40-char SHA is definitely a CI-built toolchain.
+            RustwideToolchain::ci(raw_source, /* alt */ false)
+        } else if let Some(hash_idx) = raw_source.find('#') {
+            // Old-style `source#sha` syntax.
+            // We accept (and ignore) "master" and "try" to parse old database entries.
             let (source_name, sha_with_hash) = raw_source.split_at(hash_idx);
-
             let sha = &sha_with_hash[1..];
             if sha.is_empty() {
                 return Err(ToolchainParseError::EmptyName);
             }
 
             match source_name {
-                "try" => {
-                    ci_try = true;
-                    RustwideToolchain::ci(sha, false)
-                }
-                "master" => RustwideToolchain::ci(sha, false),
+                "master" | "try" => RustwideToolchain::ci(sha, /* alt */ false),
                 name => return Err(ToolchainParseError::InvalidSourceName(name.to_string())),
             }
         } else if raw_source.is_empty() {
             return Err(ToolchainParseError::EmptyName);
-        } else if TOOLCHAIN_SHA_RE.is_match(raw_source) {
-            // A common user error is unprefixed SHAs for the `start` or `end` toolchains, check for
-            // these here.
-            return Err(ToolchainParseError::PrefixMissing(raw_source.to_string()));
         } else {
             RustwideToolchain::dist(raw_source)
         };
@@ -180,7 +170,6 @@ impl FromStr for Toolchain {
             rustflags,
             rustdocflags,
             cargoflags,
-            ci_try,
             patches,
         })
     }
@@ -229,7 +218,7 @@ mod tests {
     #[test]
     fn test_string_repr() {
         macro_rules! test_from_str {
-            ($($str:expr => { source: $source:expr, ci_try: $ci_try:expr, },)*) => {
+            ($($str:expr => { source: $source:expr, },)*) => {
                 $(
                     // Test parsing without flags
                     test_from_str!($str => Toolchain {
@@ -238,7 +227,6 @@ mod tests {
                         rustflags: None,
                         rustdocflags: None,
                         cargoflags: None,
-                        ci_try: $ci_try,
                         patches: Vec::new(),
                     });
 
@@ -249,7 +237,6 @@ mod tests {
                         rustflags: None,
                         rustdocflags: None,
                         cargoflags: None,
-                        ci_try: $ci_try,
                         patches: Vec::new(),
                     });
 
@@ -260,7 +247,6 @@ mod tests {
                         rustflags: Some("foo bar".to_string()),
                         rustdocflags: None,
                         cargoflags: None,
-                        ci_try: $ci_try,
                         patches: Vec::new(),
                     });
 
@@ -271,7 +257,6 @@ mod tests {
                         rustflags: None,
                         rustdocflags: Some("-Zunstable-options -wjson".to_string()),
                         cargoflags: None,
-                        ci_try: $ci_try,
                         patches: Vec::new(),
                     });
 
@@ -282,7 +267,6 @@ mod tests {
                         rustflags: None,
                         rustdocflags: None,
                         cargoflags: Some("foo bar".to_string()),
-                        ci_try: $ci_try,
                         patches: Vec::new(),
                     });
 
@@ -293,7 +277,6 @@ mod tests {
                         rustflags: None,
                         rustdocflags: None,
                         cargoflags: None,
-                        ci_try: $ci_try,
                         patches: vec![CratePatch {
                             name: "example".to_string(),
                             repo: url::Url::parse("https://git.example.com/some/repo").unwrap(),
@@ -308,7 +291,6 @@ mod tests {
                         rustflags: Some("foo bar".to_string()),
                         rustdocflags: None,
                         cargoflags: None,
-                        ci_try: $ci_try,
                         patches: vec![CratePatch {
                             name: "example".to_string(),
                             repo: url::Url::parse("https://git.example.com/some/repo").unwrap(),
@@ -333,25 +315,31 @@ mod tests {
         test_from_str! {
             "stable" => {
                 source: RustwideToolchain::dist("stable"),
-                ci_try: false,
             },
             "beta-1970-01-01" => {
                 source: RustwideToolchain::dist("beta-1970-01-01"),
-                ci_try: false,
             },
             "nightly-1970-01-01" => {
                 source: RustwideToolchain::dist("nightly-1970-01-01"),
-                ci_try: false,
             },
-            "master#0000000000000000000000000000000000000000" => {
+            "0000000000000000000000000000000000000000" => {
                 source: RustwideToolchain::ci("0000000000000000000000000000000000000000", false),
-                ci_try: false,
-            },
-            "try#0000000000000000000000000000000000000000" => {
-                source: RustwideToolchain::ci("0000000000000000000000000000000000000000", false),
-                ci_try: true,
             },
         };
+
+        // Test compatibility reprs that do not round-trip.
+        assert_eq!(
+            Toolchain::from_str("master#0000000000000000000000000000000000000000")
+                .unwrap()
+                .source,
+            RustwideToolchain::ci("0000000000000000000000000000000000000000", false)
+        );
+        assert_eq!(
+            Toolchain::from_str("try#0000000000000000000000000000000000000000")
+                .unwrap()
+                .source,
+            RustwideToolchain::ci("0000000000000000000000000000000000000000", false)
+        );
 
         // Test invalid reprs
         assert!(Toolchain::from_str("").is_err());
@@ -371,6 +359,5 @@ mod tests {
             super::ToolchainParseError::InvalidUrl(..)
         ));
         assert!(Toolchain::from_str("try#1234+target=").is_err());
-        assert!(Toolchain::from_str("0000000000000000000000000000000000000000").is_err());
     }
 }

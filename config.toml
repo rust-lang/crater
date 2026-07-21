@@ -183,6 +183,14 @@ dust_dds = { skip-tests = true } # flaky tests
 easy-threadpool = { skip-tests = true } # has a test that's supposed to find flaky tests. and well, it's doing its job.
 expression_engine = { skip-tests = true } # flaky tests at v0.7.0. already fixed in the repo version, but release doesn't look likely any time soon
 check-if-email-exists = { skip-tests = true } # flaky: test fails when ran without network, *unless* it stalls out the 1ms timeout
+vibecheck-core = { skip-tests = true } # flaky test (timing)
+stau = { skip-tests = true } # filesystem race condition between multiple tests
+srgn = { skip-tests = true } # flaky test (timing): test output says "is the host machine very slow?" XD
+rs-tool = { skip-tests = true } # probabilistic test
+rediserde = { skip-tests = true } # flaky test
+hessra-cap = { skip-tests = true } # flaky test (timing)
+beyond-handoff = { skip-tests = true } # flaky test
+xcqa = { skip-tests = true } # flaky test
 
 [github-repos]
 # "org_name/repo_name" = { option = true }
@@ -296,5 +304,11 @@ check-if-email-exists = { skip-tests = true } # flaky: test fails when ran witho
 "ydarma/fluent_data" = { skip-tests = true } # flaky: race condition when setting up test
 "zthompson47/pseudotty" = { skip-tests = true } # flaky: expects subprocess to respond within 10ms
 "chen-siyuan/ray-tracing" = { skip-tests = true } # flaky: tests a random process
+"sora5801/PrehniteDB" = { skip-tests = true } # flaky test
+"jnoh/agent-kernel" = { skip-tests = true } # filesystem race condition
+"cenotelie/onering" = { skip-tests = true } # flaky test (concurrency?)
+"ayymart/jubilant-computing-machine" = { skip-tests = true } # flaky test
+"rauljordan/pouch" = { skip-tests = true } # relies on TypeId ordering, see https://github.com/rauljordan/purse/issues/2
+"mitjans/new_ecs" = { skip-tests = true } # relies on TypeId ordering
 
 [local-crates]

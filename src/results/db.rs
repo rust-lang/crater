@@ -18,12 +18,14 @@ pub struct TaskResult {
     pub log: String,
 }
 
+/// A result payload received from an agent, with optional crate version update.
 #[derive(Deserialize)]
 pub struct ProgressData {
     pub result: TaskResult,
     pub version: Option<(Crate, Crate)>,
 }
 
+/// [`ReadResults`]/[`WriteResults`]/[`DeleteResults`] backed by the SQLite database.
 pub struct DatabaseDB<'a> {
     db: &'a Database,
 }

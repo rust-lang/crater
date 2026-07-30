@@ -1,3 +1,5 @@
+//! Scans crate source files for `#![feature(...)]` attributes.
+
 use crate::prelude::*;
 use crate::results::TestResult;
 use crate::runner::tasks::TaskCtx;
@@ -7,6 +9,7 @@ use std::collections::HashSet;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
+/// Walks the source tree and collects all `#![feature(...)]` gate names.
 pub(super) fn find_unstable_features(
     _ctx: &TaskCtx,
     build: &Build,

@@ -2,6 +2,7 @@ use crate::prelude::*;
 use crate::report::Comparison;
 use crate::results::{BrokenReason, FailureReason, TestResult};
 
+/// Human-readable short and long names for a test result.
 pub trait ResultName {
     fn short_name(&self) -> String;
     fn long_name(&self) -> String;
@@ -84,12 +85,14 @@ impl ResultName for TestResult {
     }
 }
 
+/// A color for rendering result categories in HTML reports.
 #[derive(PartialEq, Eq, Hash, Serialize)]
 pub enum Color {
     Single(&'static str),
     Striped(&'static str, &'static str),
 }
 
+/// Maps a result type to its display [`Color`].
 pub trait ResultColor {
     fn color(&self) -> Color;
 }

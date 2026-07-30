@@ -1,3 +1,5 @@
+//! Authentication tokens and secrets loaded from `tokens.toml`.
+
 use crate::prelude::*;
 use serde_derive::Deserialize;
 use std::collections::HashMap;
@@ -5,6 +7,7 @@ use std::path::Path;
 
 static TOKENS_PATH: &str = "tokens.toml";
 
+/// S3-compatible storage region — standard AWS or a custom endpoint.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum BucketRegion {
@@ -12,6 +15,7 @@ pub enum BucketRegion {
     Custom { url: String },
 }
 
+/// GitHub bot webhook secret and API token.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BotTokens {
@@ -19,6 +23,7 @@ pub struct BotTokens {
     pub api_token: String,
 }
 
+/// S3 bucket configuration for uploading experiment reports.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ReportsBucket {
@@ -41,6 +46,7 @@ impl ReportsBucket {
     }
 }
 
+/// All authentication tokens and secrets, loaded from `tokens.toml`.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Tokens {

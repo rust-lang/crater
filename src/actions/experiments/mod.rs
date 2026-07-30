@@ -6,6 +6,7 @@ pub use self::create::CreateExperiment;
 pub use self::delete::DeleteExperiment;
 pub use self::edit::EditExperiment;
 
+/// Errors returned when creating, editing, or deleting experiments.
 #[derive(Debug, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum ExperimentError {

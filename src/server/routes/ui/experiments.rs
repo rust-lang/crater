@@ -130,8 +130,11 @@ fn humanize(duration: Duration) -> String {
     let duration = match duration.to_std() {
         Ok(d) => d,
         Err(_) => {
-            // Don't try to make it pretty as a fallback.
-            return format!("{duration:?}");
+            // A negative duration (e.g. the "estimated end" of an experiment
+            // whose jobs have all finished but not yet been cleaned up) can't be
+            // converted to a `std::time::Duration`. Report it as zero instead of
+            // the raw `TimeDelta { secs: -1, ... }` debug output.
+            return "0 seconds".to_string();
         }
     };
     if duration.as_secs() < 60 {

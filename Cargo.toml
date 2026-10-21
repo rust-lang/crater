@@ -13,8 +13,8 @@ strip = false
 
 [dependencies]
 anyhow = "1.0.95"
-aws-config = { version = "1", features = ["behavior-version-latest"] }
-aws-sdk-s3 = "1.7"
+aws-config = { version = "1", default-features = false, features = ["behavior-version-latest", "rt-tokio", "default-https-client"] }
+aws-sdk-s3 = { version = "1", default-features = false, features = ["behavior-version-latest", "rt-tokio", "default-https-client"] }
 base64 = "0.22.1"
 bytes = "1"
 cargo_metadata = "0.23.1"
@@ -41,7 +41,6 @@ percent-encoding = "2.1.0"
 prometheus = "0.13.3"
 r2d2 = "0.8.2"
 rand = "0.10"
-rayon = "1.10"
 regex = "1.0"
 remove_dir_all = "0.7"
 reqwest = { version = "0.13", features = ["blocking", "json", "gzip"] }

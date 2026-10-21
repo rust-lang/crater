@@ -13,8 +13,8 @@ strip = false
 
 [dependencies]
 anyhow = "1.0.95"
-aws-config = { version = "1", features = ["behavior-version-latest"] }
-aws-sdk-s3 = "1.7"
+aws-config = { version = "1", default-features = false, features = ["behavior-version-latest", "rt-tokio", "default-https-client"] }
+aws-sdk-s3 = { version = "1", default-features = false, features = ["behavior-version-latest", "rt-tokio", "default-https-client"] }
 base64 = "0.22.1"
 bytes = "1"
 cargo_metadata = "0.23.1"

@@ -971,7 +971,6 @@ dependencies = [
  "r2d2",
  "rand 0.10.2",
  "rawzip",
- "rayon",
  "regex",
  "remove_dir_all 0.7.0",
  "reqwest",

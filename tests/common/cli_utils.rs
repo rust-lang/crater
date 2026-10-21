@@ -1,4 +1,5 @@
 use std::env::{self, consts::EXE_SUFFIX};
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -8,12 +9,16 @@ fn bin_path() -> PathBuf {
     env::var_os("CARGO_BIN_PATH")
         .map(PathBuf::from)
         .or_else(|| {
-            env::current_exe().ok().map(|mut path| {
-                path.pop();
-                if path.ends_with("deps") {
-                    path.pop();
+            env::current_exe().ok().and_then(|mut path| {
+                // Find target/<profile>, regardless whether Cargo uses the new or old build dir
+                // layout
+                while let Some(parent) = path.parent() {
+                    if parent.file_name() == Some(OsStr::new("target")) {
+                        return Some(path);
+                    }
+                    path = parent.to_path_buf();
                 }
-                path
+                None
             })
         })
         .unwrap_or_else(|| panic!("CARGO_BIN_PATH wasn't set. Cannot continue running test"))

@@ -310,5 +310,6 @@ xcqa = { skip-tests = true } # flaky test
 "ayymart/jubilant-computing-machine" = { skip-tests = true } # flaky test
 "rauljordan/pouch" = { skip-tests = true } # relies on TypeId ordering, see https://github.com/rauljordan/purse/issues/2
 "mitjans/new_ecs" = { skip-tests = true } # relies on TypeId ordering
+"kinnison/aoc" = { skip = true } # depends on a Git repo with a dead URL
 
 [local-crates]

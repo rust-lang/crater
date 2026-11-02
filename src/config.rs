@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::utils::size::Size;
 use log::LevelFilter;
 use regex::Regex;
+use rustwide::cmd::DockerRuntime;
 use rustwide::logging::LogStorage;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -75,6 +76,29 @@ pub struct SandboxConfig {
     pub memory_limit: Size,
     pub build_log_max_size: Size,
     pub build_log_max_lines: usize,
+    #[serde(default, with = "docker_runtime_serde")]
+    pub docker_runtime: DockerRuntime,
+}
+
+mod docker_runtime_serde {
+    use rustwide::cmd::DockerRuntime;
+    use serde::{de::Error, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(runtime: &DockerRuntime, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.collect_str(runtime)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DockerRuntime, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse()
+            .map_err(D::Error::custom)
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -241,6 +265,7 @@ impl Default for Config {
                 memory_limit: Size::Gigabytes(2),
                 build_log_max_size: Size::Megabytes(1),
                 build_log_max_lines: 1000,
+                docker_runtime: DockerRuntime::default(),
             },
             server: ServerConfig {
                 bot_acl: BotACL {

@@ -302,6 +302,7 @@ pub(super) fn run_test(
         );
         let sandbox = SandboxBuilder::new()
             .memory_limit(Some(ctx.config.sandbox.memory_limit.to_bytes()))
+            .docker_runtime(ctx.config.sandbox.docker_runtime)
             .enable_networking(false)
             .source_dir_mount_kind(ctx.mount_kind);
 

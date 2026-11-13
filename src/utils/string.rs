@@ -24,10 +24,7 @@ pub(crate) fn split_quoted(input: &str) -> Result<Vec<String>, SplitQuotedError>
             // When a " is encountered, toggle quoting
             '"' => is_quoted = !is_quoted,
             // Split with spaces only if we're not inside a quote
-            ' ' | '\t' if !is_quoted => {
-                segments.push(buffer);
-                buffer = String::new();
-            }
+            ' ' | '\t' if !is_quoted => segments.push(std::mem::take(&mut buffer)),
             // Otherwise push the char
             _ => buffer.push(chr),
         }

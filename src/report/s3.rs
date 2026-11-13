@@ -15,6 +15,7 @@ pub enum S3Error {
     BadUrl(String),
 }
 
+/// Parsed S3 URL (bucket + key prefix) for report uploads.
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct S3Prefix {
@@ -55,6 +56,7 @@ impl FromStr for S3Prefix {
     }
 }
 
+/// [`ReportWriter`] that uploads report files to an S3 bucket.
 pub struct S3Writer {
     bucket: String,
     prefix: String,

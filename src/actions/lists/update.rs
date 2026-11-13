@@ -2,6 +2,7 @@ use crate::actions::{Action, ActionsCtx};
 use crate::crates::lists::{GitHubList, List, LocalList, RegistryList};
 use crate::prelude::*;
 
+/// Action to refresh the cached crate lists (registry, GitHub, local).
 pub struct UpdateLists {
     pub github: bool,
     pub registry: bool,

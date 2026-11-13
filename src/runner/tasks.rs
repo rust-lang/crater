@@ -1,3 +1,5 @@
+//! Task definitions and dispatch for per-crate build/test steps.
+
 use crate::config::Config;
 use crate::crates::Crate;
 use crate::experiments::Experiment;
@@ -13,6 +15,7 @@ use std::sync::Mutex;
 use rustwide::logging::LogStorage;
 use std::fmt;
 
+/// Per-task context passed to each build/test function.
 pub(super) struct TaskCtx<'ctx> {
     pub(super) build_dir: &'ctx Mutex<BuildDirectory>,
     pub(super) config: &'ctx Config,
@@ -45,6 +48,7 @@ impl<'ctx> TaskCtx<'ctx> {
     }
 }
 
+/// The kind of cargo operation to perform on a crate.
 pub(super) enum TaskStep {
     BuildAndTest { tc: Toolchain, quiet: bool },
     BuildOnly { tc: Toolchain, quiet: bool },
@@ -78,6 +82,7 @@ impl fmt::Debug for TaskStep {
     }
 }
 
+/// A crate paired with the step to run on it.
 pub(super) struct Task {
     pub(super) krate: Crate,
     pub(super) step: TaskStep,
@@ -90,6 +95,11 @@ impl fmt::Debug for Task {
 }
 
 impl Task {
+    /// Dispatches this task to the appropriate test function based on the step variant.
+    // - Matches the TaskStep to select the build directory, action label,
+    //   test function, toolchain, and quiet flag.
+    // - Constructs a TaskCtx with these values.
+    // - Delegates to test::run_test which handles sandboxing and execution.
     pub(super) fn run<'ctx, 's: 'ctx>(
         &'s self,
         config: &'ctx Config,

@@ -1,3 +1,5 @@
+//! Traits and types for reading/writing per-crate test results and build logs.
+
 mod db;
 #[cfg(test)]
 mod dummy;
@@ -16,6 +18,7 @@ use rustwide::logging::LogStorage;
 use std::collections::BTreeSet;
 use std::{fmt, io::Read, io::Write, str::FromStr};
 
+/// Loads test results and build logs for a completed experiment.
 pub trait ReadResults {
     fn load_log(
         &self,
@@ -31,6 +34,7 @@ pub trait ReadResults {
     ) -> Fallible<Option<TestResult>>;
 }
 
+/// Records test results and build logs during experiment execution.
 pub trait WriteResults {
     fn get_result(
         &self,
@@ -52,16 +56,20 @@ pub trait WriteResults {
         F: FnOnce() -> Fallible<TestResult>;
 }
 
+/// Deletes stored results for an experiment.
 pub trait DeleteResults {
     fn delete_all_results(&self, ex: &Experiment) -> Fallible<()>;
     fn delete_result(&self, ex: &Experiment, toolchain: &Toolchain, krate: &Crate) -> Fallible<()>;
 }
 
-string_enum!(pub enum EncodingType {
+string_enum!(
+    /// Whether stored log data is plain text or gzip-compressed.
+    pub enum EncodingType {
     Plain => "plain",
     Gzip => "gzip",
 });
 
+/// A build log stored as either plain text or gzip-compressed bytes.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum EncodedLog {
     Plain(Vec<u8>),
@@ -109,10 +117,11 @@ impl EncodedLog {
 }
 
 macro_rules! test_result_enum {
-    (pub enum $name:ident {
+    ($(#[$meta:meta])* pub enum $name:ident {
         with_reason { $($with_reason_name:ident($reason:ident) => $with_reason_repr:expr,)* }
         without_reason { $($reasonless_name:ident => $reasonless_repr:expr,)* }
     }) => {
+        $(#[$meta])*
         #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
         #[serde(try_from = "String", into = "String")]
         pub enum $name {
@@ -156,6 +165,7 @@ macro_rules! test_result_enum {
     }
 }
 
+/// Errors from parsing a [`TestResult`] from a string.
 #[derive(Debug, thiserror::Error)]
 pub enum TestResultParseError {
     #[error("unknown test result: {0}")]
@@ -164,7 +174,7 @@ pub enum TestResultParseError {
     UnexpectedFailureReason,
 }
 
-// simplified and lighter version of cargo-metadata::diagnostic::DiagnosticCode
+/// A rustc diagnostic code (e.g. `E0308`).
 #[derive(Debug, PartialEq, Serialize, Deserialize, Eq, Clone, Hash, PartialOrd, Ord)]
 pub struct DiagnosticCode {
     code: String,
@@ -192,6 +202,7 @@ impl ::std::str::FromStr for DiagnosticCode {
     }
 }
 
+/// Why a build or test failed — OOM, timeout, ICE, compiler error, etc.
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub enum FailureReason {
     Unknown,
@@ -296,7 +307,9 @@ impl FailureReason {
     }
 }
 
-string_enum!(pub enum BrokenReason {
+string_enum!(
+    /// Why a crate is considered broken before testing (bad Cargo.toml, yanked deps, etc).
+    pub enum BrokenReason {
     Unknown => "unknown",
     CargoToml => "cargo-toml",
     BrokenDependencies => "broken-deps",
@@ -306,7 +319,9 @@ string_enum!(pub enum BrokenReason {
     MissingGitRepository => "missing-git-repository",
 });
 
-test_result_enum!(pub enum TestResult {
+test_result_enum!(
+    /// Outcome of building/testing a single crate on a single toolchain.
+    pub enum TestResult {
     with_reason {
         BrokenCrate(BrokenReason) => "broken",
         PrepareFail(FailureReason) => "prepare-fail",

@@ -1,5 +1,6 @@
 macro_rules! string_enum {
-    ($vis:vis enum $name:ident { $($item:ident => $str:expr,)* }) => {
+    ($(#[$meta:meta])* $vis:vis enum $name:ident { $($item:ident => $str:expr,)* }) => {
+        $(#[$meta])*
         #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
         #[serde(try_from = "String", into = "String")]
         $vis enum $name {

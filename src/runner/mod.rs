@@ -1,3 +1,25 @@
+//! Experiment execution engine — builds crates, runs tests, and manages disk space
+//! across worker threads.
+//!
+//! # Execution flow
+//!
+//! 1. [`run_ex`] — Entry point. Waits for Docker, installs toolchains,
+//!    spawns N `Worker` threads and a `DiskSpaceWatcher`.
+//! 2. `Worker::run` — Each worker loops, pulling the next crate from
+//!    the queue, fetching its source, and building a `Task` per toolchain.
+//! 3. `Worker::run_task` — Executes a single task with retry logic
+//!    for the second (regression) toolchain.
+//! 4. `Task::run` — Matches the `TaskStep` variant to select the right
+//!    cargo operation and delegates to `run_test`.
+//! 5. `run_test` — Creates a memory-limited, network-disabled sandbox,
+//!    locks the build directory, and calls the mode-specific test function.
+//! 6. Mode functions (e.g. `test_build_and_test`) — Invoke the private
+//!    helpers `build()` / `test()` which call `run_cargo`.
+//! 7. `run_cargo` — The lowest level: assembles the `cargo` command with
+//!    flags and environment, streams JSON output through a line processor that
+//!    detects ICEs, error codes, OOM, disk-full, and network issues, then maps
+//!    the exit status to a `FailureReason`.
+
 mod tasks;
 mod test;
 mod unstable_features;
@@ -18,10 +40,19 @@ pub use worker::RecordProgress;
 const DISK_SPACE_WATCHER_INTERVAL: Duration = Duration::from_secs(30);
 const DISK_SPACE_WATCHER_THRESHOLD: f32 = 0.80;
 
+/// Sentinel error used to override a task's result (e.g. when the crate is skipped).
 #[derive(Debug, thiserror::Error)]
 #[error("overridden task result to {0}")]
 pub struct OverrideResult(TestResult);
 
+/// Runs an experiment: installs toolchains, spawns worker threads, and builds/tests each crate.
+// - Spins until Docker is available.
+// - Uninstalls unused toolchains to free disk space.
+// - Installs the experiment's toolchains (and clippy/target if needed).
+// - Creates N Worker instances, each with its own build directories.
+// - Spawns a DiskSpaceWatcher thread and wires it to workers via `between_crates`.
+// - Spawns worker threads in a scoped thread pool; waits for all to finish.
+// - Stops the disk watcher before returning.
 pub fn run_ex(
     ex: &Experiment,
     workspace: &Workspace,

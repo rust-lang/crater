@@ -104,7 +104,7 @@ struct DependencyRecord {
     version_id: u64,
 }
 
-const BASE_URL: &str = "https://crates-io.s3.us-west-1.amazonaws.com/db-dump.zip";
+const BASE_URL: &str = "https://static.crates.io/db-dump.zip";
 
 impl List for RegistryList {
     const NAME: &'static str = "registry";
@@ -118,12 +118,8 @@ impl List for RegistryList {
         };
         let len = len.to_str()?.parse::<u64>()?;
 
-        // We pin the version we're reading from so we don't end up reading from two different
-        // files while streaming (partial) contents. Stale versions are retained for at least 24 hours today (per
-        // S3 lifecycle configuration) so this should work fine.
-        //
-        // Note: this actually has no effect today, the version ID is ignored by cloudfront's cache
-        // (we don't include query strings in the cache). Maybe we could hit S3 directly instead...
+        // We check that every ranged read returns the same object version as this HEAD request, so a
+        // dump uploaded while we're streaming fails the fetch instead of mixing data from two files.
         let Some(version) = head_response.headers().get("x-amz-version-id") else {
             anyhow::bail!("missing x-amz-version-id in response: {head_response:?}");
         };

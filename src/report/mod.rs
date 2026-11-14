@@ -522,6 +522,8 @@ fn compare(
                     Comparison::Fixed
                 }
             }
+            // PrepareFail is always spurious (non-spurious would be BrokenCrate)
+            (PrepareFail(_), TestSkipped | TestPass) => Comparison::SpuriousFixed,
 
             // (spurious) regressed
             (TestSkipped | TestFail(_) | TestPass, BuildFail(reason))
@@ -846,6 +848,8 @@ mod tests {
                 BuildFail(OOM), TestSkipped => SpuriousFixed;
                 BuildFail(OOM), TestPass => SpuriousFixed;
                 TestFail(OOM), TestPass => SpuriousFixed;
+                PrepareFail(Unknown), TestSkipped => SpuriousFixed;
+                PrepareFail(Unknown), TestPass => SpuriousFixed;
                 TestPass, TestFail(OOM) => SpuriousRegressed;
                 TestPass, BuildFail(OOM) => SpuriousRegressed;
                 TestSkipped, BuildFail(OOM) => SpuriousRegressed;

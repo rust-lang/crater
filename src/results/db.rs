@@ -266,10 +266,13 @@ impl crate::runner::RecordProgress for DatabaseDB<'_> {
         result: &TestResult,
         version: Option<(&Crate, &Crate)>,
     ) -> Fallible<()> {
-        self.store_result(ex, krate, toolchain, result, log, EncodingType::Plain)?;
-        if let Some((old, new)) = version {
+        let krate = if let Some((old, new)) = version {
             self.update_crate_version(ex, old, new)?;
-        }
+            new
+        } else {
+            krate
+        };
+        self.store_result(ex, krate, toolchain, result, log, EncodingType::Plain)?;
         Ok(())
     }
 }

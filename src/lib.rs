@@ -1,3 +1,28 @@
+//! Crater is a tool for testing Rust compiler changes against the crate ecosystem in crates.io.
+//!
+//! It compares two toolchains by building a set of crates against both and reporting
+//! regressions. This is primarily used by the Rust project to evaluate the impact of
+//! compiler and standard library changes before they land.
+//!
+//! # Modules
+//!
+//! - [`actions`] — Command pattern for mutating experiment state
+//! - [`agent`] — Distributed worker agents that poll the server for work
+//! - [`config`] — Configuration loading from `config.toml`
+//! - [`crates`] — Crate abstraction (registry, GitHub, local, git)
+//! - [`db`] — SQLite database layer for persistent state
+//! - [`dirs`] — Filesystem layout for the crater work directory
+//! - [`experiments`] — Core domain types: `Experiment`, `Status`, `Mode`, etc.
+//! - [`report`] — HTML/markdown report generation
+//! - [`results`] — Traits and types for per-crate test results and build logs
+//! - [`runner`] — Experiment execution engine
+//! - [`server`] — HTTP server for the web UI and agent API
+//! - [`toolchain`] — Rust toolchain abstraction
+//! - [`utils`] — Shared utilities (HTTP, size formatting, hex encoding, etc.)
+//!
+//! See also the CLI entry point in `src/cli.rs` for the command-line interface, and
+//! the [GitHub repository](https://github.com/rust-lang/crater) for architecture notes.
+
 #![recursion_limit = "256"]
 #![allow(
     clippy::needless_pass_by_value,

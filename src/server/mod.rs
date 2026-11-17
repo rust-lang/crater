@@ -1,3 +1,5 @@
+//! HTTP server for the crater web UI and agent API endpoints.
+
 pub mod agents;
 pub mod api_types;
 mod auth;
@@ -32,6 +34,7 @@ lazy_static! {
         format!("crater/{}", crate::GIT_REVISION.unwrap_or("unknown"));
 }
 
+/// HTTP error responses (not found, forbidden).
 #[derive(Debug, thiserror::Error, PartialEq, Eq, Copy, Clone)]
 pub enum HttpError {
     #[error("not found")]
@@ -42,6 +45,7 @@ pub enum HttpError {
 
 impl warp::reject::Reject for HttpError {}
 
+/// Shared application state for all server request handlers.
 #[derive(Clone)]
 pub struct Data {
     pub config: Config,
@@ -55,6 +59,7 @@ pub struct Data {
     pub metrics: Metrics,
 }
 
+/// GitHub API client and bot credentials, if configured.
 #[derive(Clone)]
 pub struct GithubData {
     pub bot_username: String,
@@ -62,6 +67,7 @@ pub struct GithubData {
     pub tokens: BotTokens,
 }
 
+/// Starts the crater HTTP server on the given address.
 pub fn run(config: Config, bind: SocketAddr) -> Fallible<()> {
     let db = Database::open()?;
     let tokens = tokens::Tokens::load()?;

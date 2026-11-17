@@ -1,3 +1,6 @@
+//! Crate abstraction — registry crates, GitHub repos, local paths, git repos,
+//! and crate list management.
+
 pub(crate) mod lists;
 mod sources;
 
@@ -14,12 +17,14 @@ use std::str::FromStr;
 pub(crate) use crate::crates::sources::github::GitHubRepo;
 pub(crate) use crate::crates::sources::registry::RegistryCrate;
 
+/// A git repository identified by URL and optional pinned SHA.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub struct GitRepo {
     pub url: String,
     pub sha: Option<String>,
 }
 
+/// A crate to be tested — registry, GitHub, local, filesystem path, or arbitrary git repo.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Clone)]
 pub enum Crate {
     Registry(RegistryCrate),

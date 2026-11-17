@@ -27,6 +27,7 @@ pub enum ReportCrates {
     },
 }
 
+/// Categorized experiment results, grouped by [`Comparison`] outcome.
 #[cfg_attr(test, derive(Debug, PartialEq))]
 pub struct TestResults {
     pub categories: IndexMap<Comparison, ReportCrates>,

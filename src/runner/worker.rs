@@ -1,3 +1,5 @@
+//! Worker threads that fetch crates and execute build/test tasks.
+
 use crate::agent::AgentApi;
 use crate::crates::Crate;
 use crate::experiments::{Experiment, Mode};
@@ -15,7 +17,9 @@ use std::sync::Mutex;
 use std::sync::{Arc, Condvar, OnceLock};
 use std::time::Duration;
 
+/// Reports per-crate progress back to the server or local database.
 pub trait RecordProgress: Send + Sync {
+    /// Records the build/test result and log for a single crate on one toolchain.
     fn record_progress(
         &self,
         ex: &Experiment,
@@ -41,20 +45,24 @@ impl RecordProgress for AgentApi {
     }
 }
 
-pub(super) struct Worker<'a> {
+/// A single worker thread that processes crates from the queue.
+pub(super) struct Worker<'ctx> {
     name: String,
-    workspace: &'a Workspace,
-    build_dir: HashMap<&'a crate::toolchain::Toolchain, Mutex<BuildDirectory>>,
-    ex: &'a Experiment,
-    config: &'a crate::config::Config,
-    api: &'a dyn RecordProgress,
-    next_crate: &'a (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
+    workspace: &'ctx Workspace,
+    build_dir: HashMap<&'ctx crate::toolchain::Toolchain, Mutex<BuildDirectory>>,
+    ex: &'ctx Experiment,
+    config: &'ctx crate::config::Config,
+    api: &'ctx dyn RecordProgress,
+    next_crate: &'ctx (dyn Fn() -> Fallible<Option<Crate>> + Send + Sync),
 
     // Called by the worker thread between crates, when no global state (namely caches) is in use.
-    pub(super) between_crates: OnceLock<Box<dyn Fn(bool) + Send + Sync + 'a>>,
+    pub(super) between_crates: OnceLock<Box<dyn Fn(bool) + Send + Sync + 'ctx>>,
 }
 
 impl<'a> Worker<'a> {
+    /// Creates a worker with dedicated build directories for each toolchain.
+    // - Allocates one mutex-protected BuildDirectory per toolchain so
+    //   builds for tc1 and tc2 don't share on-disk state.
     pub(super) fn new(
         name: String,
         workspace: &'a Workspace,
@@ -89,6 +97,13 @@ impl<'a> Worker<'a> {
         &self.name
     }
 
+    /// Executes a single task, retrying on the second toolchain to reduce spurious regressions.
+    // - Marks the agent healthy before each attempt.
+    // - Runs the task; on success returns immediately.
+    // - On failure, retries up to 5 times only if the task targets the second
+    //   toolchain (the "regression" side).
+    // - After all attempts exhaust, classifies the error as OverrideResult,
+    //   BrokenCrate, or generic Error.
     fn run_task(
         &self,
         task: &Task,
@@ -155,6 +170,15 @@ impl<'a> Worker<'a> {
         Err((e, result))
     }
 
+    /// Main worker loop: pulls crates from the queue and runs each one against every toolchain.
+    // - Polls `next_crate` for work; sleeps with random backoff when the queue is empty.
+    // - Invokes the `between_crates` callback to coordinate with DiskSpaceWatcher.
+    // - Skips blacklisted crates, reporting them as Skipped.
+    // - Fetches the crate source with up to 15 retries on "no space left" errors.
+    // - For GitHub crates, captures the resolved commit SHA as `updated_version`.
+    // - On fetch failure, records PrepareFail (or BrokenCrate) for all toolchains.
+    // - On success, builds a Task for each toolchain based on the experiment mode,
+    //   forks the log storage, runs the task, and reports the result.
     pub(super) fn run(&self) -> Fallible<()> {
         loop {
             let krate = if let Some(next) = (self.next_crate)()? {
@@ -347,6 +371,7 @@ impl<'a> Worker<'a> {
     }
 }
 
+/// Monitors disk usage and pauses workers to purge caches when a threshold is reached.
 pub(super) struct DiskSpaceWatcher {
     interval: Duration,
     threshold: f32,
@@ -363,6 +388,7 @@ pub(super) struct DiskSpaceWatcher {
 }
 
 impl DiskSpaceWatcher {
+    /// Creates a new watcher with the given polling interval and disk-usage threshold.
     pub(super) fn new(interval: Duration, threshold: f32, worker_count: usize) -> Arc<Self> {
         Arc::new(DiskSpaceWatcher {
             interval,
@@ -377,11 +403,16 @@ impl DiskSpaceWatcher {
         })
     }
 
+    /// Signals the watcher loop to exit.
     pub(super) fn stop(&self) {
         *self.should_stop.lock().unwrap() = true;
         self.waiter.notify_all();
     }
 
+    /// Polls disk usage in a loop until stopped, purging caches when the threshold is exceeded.
+    // - Holds the `should_stop` lock and waits on a condvar with a timeout equal
+    //   to `interval`.
+    // - Each iteration calls `check`; exits when `stop()` sets the flag.
     pub(super) fn run(&self, workspace: &Workspace) {
         let mut should_stop = self.should_stop.lock().unwrap();
         while !*should_stop {
@@ -397,6 +428,7 @@ impl DiskSpaceWatcher {
         }
     }
 
+    /// Fetches current disk usage and triggers a clean if the threshold is reached.
     fn check(&self, workspace: &Workspace) {
         let usage = match crate::utils::disk_usage::DiskUsage::fetch() {
             Ok(usage) => usage,
@@ -412,6 +444,10 @@ impl DiskSpaceWatcher {
         }
     }
 
+    /// Drains all workers to idle, then purges build dirs and caches.
+    // - Sets the `cache_in_use` interest flag and notifies workers.
+    // - Blocks until every worker has called `worker_idle`.
+    // - Clears the interest flag and purges the workspace.
     fn clean(&self, workspace: &dyn ToClean) {
         warn!("declaring interest in worker idle");
 
@@ -438,6 +474,12 @@ impl DiskSpaceWatcher {
         workspace.purge();
     }
 
+    /// Called by a worker between crates to participate in cache-purge synchronization.
+    // - Increments the idle counter and notifies the watcher.
+    // - If `permanent` is false (normal inter-crate pause), blocks until the
+    //   watcher clears its interest flag, then decrements the counter.
+    // - If `permanent` is true (worker finished), leaves the counter incremented
+    //   so the watcher can still reach quorum.
     pub(super) fn worker_idle(&self, permanent: bool) {
         log::trace!("worker at idle point");
         let mut guard = self.cache_in_use.lock().unwrap();

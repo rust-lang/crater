@@ -4,6 +4,7 @@ use crate::experiments::{Assignee, CapLints, CrateSelect, Experiment, Mode, Stat
 use crate::prelude::*;
 use crate::toolchain::Toolchain;
 
+/// Action to modify parameters of a queued experiment. `None` fields are left unchanged.
 pub struct EditExperiment {
     pub name: String,
     pub toolchains: [Option<Toolchain>; 2],

@@ -1,3 +1,15 @@
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::io::ErrorKind;
+
+use anyhow::Error;
+use cargo_metadata::diagnostic::DiagnosticLevel;
+use cargo_metadata::{CrateType, MetadataCommand, Package, Target, TargetKind};
+use docsrs_metadata::Metadata as DocsrsMetadata;
+use remove_dir_all::remove_dir_all;
+use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
+use rustwide::logging::LogStorage;
+use rustwide::{Build, PrepareError};
+
 use crate::crates::Crate;
 use crate::experiments::CapLints;
 use crate::prelude::*;
@@ -5,16 +17,6 @@ use crate::results::DiagnosticCode;
 use crate::results::{BrokenReason, FailureReason, TestResult};
 use crate::runner::tasks::TaskCtx;
 use crate::runner::OverrideResult;
-use anyhow::Error;
-use cargo_metadata::diagnostic::DiagnosticLevel;
-use cargo_metadata::{CrateType, Metadata, Package, Target, TargetKind};
-use docsrs_metadata::Metadata as DocsrsMetadata;
-use remove_dir_all::remove_dir_all;
-use rustwide::cmd::{CommandError, ProcessLinesActions, SandboxBuilder};
-use rustwide::logging::LogStorage;
-use rustwide::{Build, PrepareError};
-use std::collections::{BTreeSet, HashMap, HashSet};
-use std::io::ErrorKind;
 
 pub(crate) fn failure_reason(err: &Error) -> FailureReason {
     if let Some(reason) = err.downcast_ref::<FailureReason>() {
@@ -90,16 +92,18 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
 }
 
 fn get_local_packages(build_env: &Build) -> Fallible<Vec<Package>> {
-    Ok(build_env
+    let output = build_env
         .cargo()
         .args(["metadata", "--no-deps", "--format-version=1"])
         .log_output(false)
-        .run_capture()?
-        .stdout_lines()
-        .iter()
-        .filter_map(|line| serde_json::from_str::<Metadata>(line).ok())
-        .flat_map(|metadata| metadata.packages)
-        .collect())
+        .run_capture()?;
+    let output = output.stdout_lines().join("\n");
+    parse_local_packages(&output)
+}
+
+fn parse_local_packages(s: &str) -> Fallible<Vec<Package>> {
+    let metadata = MetadataCommand::parse(s).context("failed to parse `cargo metadata` output")?;
+    Ok(metadata.packages)
 }
 
 fn run_cargo(
@@ -543,12 +547,107 @@ pub(crate) fn fix(
     }
 }
 
-#[test]
-fn test_failure_reason() {
-    let error: anyhow::Error = anyhow!(CommandError::IO(std::io::Error::other("Test")));
-    assert_eq!(failure_reason(&error), FailureReason::Unknown);
-    assert_eq!(
-        failure_reason(&error.context(FailureReason::ICE)),
-        FailureReason::ICE
-    );
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_failure_reason() {
+        let error: anyhow::Error = anyhow!(CommandError::IO(std::io::Error::other("Test")));
+        assert_eq!(failure_reason(&error), FailureReason::Unknown);
+        assert_eq!(
+            failure_reason(&error.context(FailureReason::ICE)),
+            FailureReason::ICE
+        );
+    }
+
+    /// Taken from cargo's own metadata test suite
+    /// <https://github.com/rust-lang/cargo/blob/ae8f06eb41b8c4a534d0f280f1b9d287f45ead73/tests/testsuite/metadata.rs#L12>.
+    const MINIMAL_METADATA_V1: &str = r#"{
+        "metadata": null,
+        "packages": [
+            {
+                "authors": [
+                    "wycats@example.com"
+                ],
+                "categories": [],
+                "default_run": null,
+                "dependencies": [],
+                "description": null,
+                "documentation": null,
+                "edition": "2015",
+                "features": {},
+                "homepage": null,
+                "id": "path+[ROOTURL]/foo#0.5.0",
+                "keywords": [],
+                "license": null,
+                "license_file": null,
+                "links": null,
+                "manifest_path": "[ROOT]/foo/Cargo.toml",
+                "metadata": null,
+                "name": "foo",
+                "publish": null,
+                "readme": null,
+                "repository": null,
+                "rust_version": null,
+                "source": null,
+                "targets": [
+                    {
+                        "crate_types": [
+                            "bin"
+                        ],
+                        "doc": true,
+                        "doctest": false,
+                        "edition": "2015",
+                        "kind": [
+                            "bin"
+                        ],
+                        "name": "foo",
+                        "src_path": "[ROOT]/foo/src/foo.rs",
+                        "test": true
+                    }
+                ],
+                "version": "0.5.0"
+            }
+        ],
+        "resolve": {
+            "nodes": [
+                {
+                    "dependencies": [],
+                    "deps": [],
+                    "features": [],
+                    "id": "path+[ROOTURL]/foo#0.5.0"
+                }
+            ],
+            "root": "path+[ROOTURL]/foo#0.5.0"
+        },
+        "target_directory": "[ROOT]/foo/target",
+        "build_directory": "[ROOT]/foo/target",
+        "version": 1,
+        "workspace_default_members": [
+            "path+[ROOTURL]/foo#0.5.0"
+        ],
+        "workspace_members": [
+            "path+[ROOTURL]/foo#0.5.0"
+        ],
+        "workspace_root": "[ROOT]/foo"
+    }"#;
+
+    #[test]
+    fn test_minimal_cargo_metadata() {
+        // Naive "expectation" smoke tests on `cargo_metadata` against the minimal metadata test
+        // case in cargo's own metadata test suite.
+        let packages = parse_local_packages(MINIMAL_METADATA_V1).unwrap();
+        assert_eq!(packages.len(), 1);
+        assert_eq!(packages[0].name.as_str(), "foo");
+        assert!(packages[0].targets.iter().any(|t| t.is_bin()));
+    }
+
+    #[test]
+    fn test_invalid_cargo_metadata() {
+        assert!(parse_local_packages("").is_err());
+        assert!(parse_local_packages("warning: not a metadata message").is_err());
+        let no_workspace_root = MINIMAL_METADATA_V1.replace(r#"workspace_root"#, "INVALID_KEY");
+        assert!(parse_local_packages(&no_workspace_root).is_err());
+    }
 }

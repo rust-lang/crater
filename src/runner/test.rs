@@ -71,6 +71,10 @@ pub(super) fn detect_broken<T>(res: Result<T, Error>) -> Result<T, Error> {
                     PrepareError::PrivateGitRepository => {
                         TestResult::BrokenCrate(BrokenReason::MissingGitRepository)
                     }
+                    PrepareError::PathEscapesSource(_)
+                    | PrepareError::InvalidArchiveEntry { .. } => {
+                        TestResult::BrokenCrate(BrokenReason::Unknown)
+                    }
                     _ => {
                         let reason = failure_reason(&err);
                         if reason.is_spurious() || matches!(reason, FailureReason::Unknown) {
